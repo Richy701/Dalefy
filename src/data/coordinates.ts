@@ -267,12 +267,11 @@ export function resolveCoords(location: string): [number, number] | null {
     if (key.toLowerCase() === lower) return coords;
   }
 
-  // Partial match — only match if the location contains a full key or vice versa,
-  // but skip short keys (3 chars or fewer like airport codes) to avoid false matches
+  // A known place named inside the location ("Hotel X, Seoul"): whole words only, and
+  // never airport codes, which hide inside ordinary words ("Adams" -> AMS)
   for (const [key, coords] of Object.entries(LOCATION_COORDS)) {
     if (key.length <= 3) continue;
-    const keyLower = key.toLowerCase();
-    if (lower.includes(keyLower) || keyLower.includes(lower)) {
+    if (new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(location)) {
       return coords;
     }
   }

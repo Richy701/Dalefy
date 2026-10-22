@@ -65,7 +65,6 @@ export interface ActivityResult {
   image: string;
   address: string;
   type: string;
-  openStatus: string;
 }
 
 export interface DiningResult {
@@ -76,7 +75,6 @@ export interface DiningResult {
   address: string;
   priceTag: string;
   cuisines: string[];
-  openStatus: string;
 }
 
 export async function searchActivities(

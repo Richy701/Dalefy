@@ -21,8 +21,8 @@ const STAR_MAP: Record<string, string> = {
 };
 
 const ADVANCED_FIELDS: Record<string, string> = {
-  activities: "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.currentOpeningHours,places.photos",
-  dining: "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.currentOpeningHours,places.photos,places.priceLevel",
+  activities: "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.photos",
+  dining: "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.photos,places.priceLevel",
   hotels: "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.photos,places.priceLevel",
 };
 
@@ -36,7 +36,6 @@ interface GooglePlace {
   formattedAddress?: string;
   primaryType?: string;
   priceLevel?: string;
-  currentOpeningHours?: { openNow?: boolean };
   photos?: { name?: string }[];
 }
 interface PlacesResponse {
@@ -95,7 +94,6 @@ export async function searchPlaces(
         image: a.photos?.[0]?.name ? photoUrl(a.photos[0].name) : "",
         address: a.formattedAddress ?? "",
         type: (a.primaryType ?? "").replace(/_/g, " "),
-        openStatus: a.currentOpeningHours?.openNow ? "Open" : "",
       }));
       return { activities };
     }
@@ -109,7 +107,6 @@ export async function searchPlaces(
         address: r.formattedAddress ?? "",
         priceTag: PRICE_MAP[r.priceLevel ?? ""] ?? "",
         cuisines: r.primaryType ? [(r.primaryType as string).replace(/_/g, " ")] : [],
-        openStatus: r.currentOpeningHours?.openNow ? "Open" : "",
       }));
       return { restaurants };
     }

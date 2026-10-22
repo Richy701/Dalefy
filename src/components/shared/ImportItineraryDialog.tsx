@@ -1499,9 +1499,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     // Geocode event locations and store coords (biased toward trip destination)
     const locations = events.filter(ev => ev.location && !ev.locationCoords).map(ev => ev.location);
     if (locations.length > 0) {
-      const { geocode: geocodeSingle } = await import("@/services/geocode");
-      const destProximity = parsed.destination ? await geocodeSingle(parsed.destination) : null;
-      const coordMap = await geocodeMany(locations, destProximity ?? undefined);
+      const { tripArea } = await import("@/services/geocode");
+      // Only places on the trip: a weak match on another continent is left without a pin
+      const coordMap = await geocodeMany(locations, await tripArea(parsed.destination));
       for (const ev of events) {
         if (ev.location && !ev.locationCoords && coordMap[ev.location]) {
           ev.locationCoords = coordMap[ev.location];

@@ -984,7 +984,7 @@ function FlightDetailScreen({
 
   const flightColor = airlineAccent(airlineIata, C.card, isDark) ?? categoryTone("flight", C).fg;
   // The ticket band always uses the true brand colour; the lightened accent is only for small icons on dark cards
-  const bandColor = airlineBrand(airlineIata) ?? (isDark ? "#2a2a33" : categoryTone("flight", C).fg);
+  const bandColor = airlineBrand(airlineIata) ?? categoryTone("flight", C).fg;
   // The ticket fill: the brand colour, deepened until the faintest white text on it still clears 4.5:1
   const passColors = useMemo(() => passFill(bandColor), [bandColor]);
 

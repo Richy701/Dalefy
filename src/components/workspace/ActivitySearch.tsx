@@ -38,7 +38,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
       location: a.address || a.name,
       supplier: a.type || undefined,
       image: a.image || undefined,
-      notes: [a.type, a.openStatus].filter(Boolean).join(" · ") || undefined,
+      notes: a.type || undefined,
     });
   };
 

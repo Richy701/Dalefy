@@ -7,7 +7,7 @@ import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
 import { ARC_ANIMATION_MS } from "@/config/constants";
 import { EVENT_HEX } from "@/config/eventStyles";
-import { geocode } from "@/services/geocode";
+import { geocode, tripArea } from "@/services/geocode";
 import { sortEvents } from "@/lib/sortEvents";
 import { usePreferences } from "@/context/PreferencesContext";
 
@@ -141,8 +141,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       let order = 0;
       // Every event with a location gets a pin; flights additionally get origin/destination arcs
       const sortedEvents = sortEvents(trip.events.filter((e) => !!e.location?.trim() || (e.type === "flight" && !!e.title)));
+      const area = await tripArea(trip.destination);
       const resolve = async (loc: string): Promise<[number, number] | null> =>
-        resolveCoords(loc) ?? (await geocode(loc));
+        resolveCoords(loc) ?? (await geocode(loc, undefined, area));
 
       const tripStartMs = new Date(trip.start + "T00:00:00").getTime();
       const dayOf = (date: string) => {

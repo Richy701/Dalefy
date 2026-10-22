@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { runParse, runAssist, aiErrorToHttp } from "./api/_parseItineraryCore"
 import { searchFlights, lookupFlightNumber } from "./api/_flightsCore"
 import { searchImages } from "./api/_imagesCore"
-import { geocode, suggest, PROXIMITY_RE } from "./api/_geocodeCore"
+import { geocode, suggest, PROXIMITY_RE, WITHIN_RE, COUNTRY_RE } from "./api/_geocodeCore"
 import { currentWeather, dayForecast, validateWeatherQuery } from "./api/_weatherCore"
 import { searchPlaces } from "./api/_placesCore"
 import { resolveTarget, fetchImage } from "./api/_imageProxyCore"
@@ -237,10 +237,14 @@ function apiRoutesPlugin(env: Record<string, string>) {
             const mode = url.searchParams.get("mode") ?? ""
             if (!q) { send(400, { error: "Missing param: q" }); return }
             if (proximity && !PROXIMITY_RE.test(proximity)) { send(400, { error: "Invalid proximity — expected lng,lat" }); return }
+            const country = url.searchParams.get("country") ?? ""
+            const within = url.searchParams.get("within") ?? ""
+            if (country && !COUNTRY_RE.test(country)) { send(400, { error: "Invalid country" }); return }
+            if (within && !WITHIN_RE.test(within)) { send(400, { error: "Invalid within" }); return }
             const token = env.MAPBOX_TOKEN
             if (!token) { send(500, { error: "MAPBOX_TOKEN not configured" }); return }
             try {
-              send(200, mode === "suggest" ? await suggest(q, proximity, token) : await geocode(q, proximity, token))
+              send(200, mode === "suggest" ? await suggest(q, proximity, token) : await geocode(q, proximity, token, { country: country || undefined, within: within || undefined }))
             } catch (e) {
               const m = errorToHttp(e, "Failed to geocode")
               send(m.status, { error: m.error })

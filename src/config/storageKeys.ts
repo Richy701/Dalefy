@@ -10,7 +10,7 @@ export const STORAGE = {
   COMPLIANCE:        "daf-compliance",
   CUSTOM_TRAVELERS:  "daf-custom-travelers",
   TRAVELERS_MIGRATED:"daf-travelers-migrated",
-  GEOCODE_CACHE:     "daf-geocode-cache-v1",
+  GEOCODE_CACHE:     "daf-geocode-cache-v2",
   TEMPLATES:         "daf-templates",
   EVENT_IMAGE_CACHE: "daf-event-image-cache-v1",
   PENDING_BRANDING:  "daf-pending-branding",
