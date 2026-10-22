@@ -2,8 +2,19 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["B4R2LDD5L9.com.dafadventures.app"],
-        "components": [{ "/": "/shared/*", "comment": "Trip share links and QR codes open the app" }]
+        "appIDs": [
+          "B4R2LDD5L9.com.dafadventures.app"
+        ],
+        "components": [
+          {
+            "/": "/shared/*",
+            "comment": "Trip share links and QR codes open the app"
+          },
+          {
+            "/": "/auth-callback*",
+            "comment": "Email sign-in links open the app"
+          }
+        ]
       }
     ]
   }

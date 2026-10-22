@@ -46,9 +46,12 @@ export default function DocumentScreen() {
       <SafeAreaView style={s.safe}>
         <View style={{ flex: 1, justifyContent: "center" }}>
           <EmptyState
-            icon={<FileX size={48} color={C.textTertiary} weight="light" />}
+            symbol="doc.questionmark"
+            icon={<FileX size={30} color={C.textSecondary} weight="duotone" />}
+            tone="neutral"
             title="Document not found"
-            cta={{ label: "Go back", onPress: () => router.back() }}
+            message="It may have been removed or replaced by your organiser."
+            secondary={{ label: "Go back", onPress: () => router.back() }}
           />
         </View>
       </SafeAreaView>

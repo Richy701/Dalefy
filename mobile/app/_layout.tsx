@@ -226,7 +226,8 @@ function AppStack() {
     }
     // The first time a trip shows up on this phone (joined by code, invite link, or added by the organiser) it
     // gets an intro: the full tour if they've never seen it, otherwise just its welcome page. One per launch.
-    if (!prefs.name || !tripsReady || tourShown.current || onAuthScreen || pathname === "/welcome" || pathname === "/tour") return;
+    // Not over a trip page either: it may be mid-join, picking which traveller they are
+    if (!prefs.name || !tripsReady || tourShown.current || onAuthScreen || pathname === "/welcome" || pathname === "/tour" || pathname.startsWith("/shared/")) return;
     // Anyone who finished the tour before trips were tracked (no "*" marker): count their current trips as
     // introduced quietly, so they don't get a welcome for a trip they already know
     if (prefs.seenTour && !prefs.introducedTrips.includes("*")) {

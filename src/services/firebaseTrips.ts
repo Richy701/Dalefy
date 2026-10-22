@@ -558,6 +558,9 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     organization_id: trip.organizationId ?? null,
     traveler_ids: trip.travelerIds ?? null,
     travelers: trip.travelers ?? null,
+    // Lower-cased traveller emails, so a traveller signing in to the app can be matched to their trips
+    // (api/my-trips). Kept beside travelers on every save; never sent to the app itself.
+    traveler_emails: [...new Set((trip.travelers ?? []).map(t => (t.email ?? "").trim().toLowerCase()).filter(Boolean))],
     organizer: trip.organizer ?? null,
     info: trip.info ?? null,
     documents: trip.documents ?? null,

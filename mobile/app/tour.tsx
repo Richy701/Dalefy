@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, ScrollView, StyleSheet, Platform, useWind
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import Animated, {
   Easing, FadeInDown, FadeInUp, FadeOut, LinearTransition, Extrapolation, interpolate, cancelAnimation,
   useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
@@ -12,6 +13,7 @@ import { Bed, Bell, CalendarDots, Export, FileText, Info, User } from "phosphor-
 import { CachedImage } from "@/components/CachedImage";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { photoPalette } from "@/components/ui/PhotoBackdrop";
+import { HeroSlideshow } from "@/components/ui/HeroSlideshow";
 import { Logo } from "@/components/Logo";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import { useTheme } from "@/context/ThemeContext";
@@ -232,8 +234,8 @@ export default function TourScreen() {
     <PageCtx.Provider key={p.key} value={{ progress, index: i }}>{p.hero ? (
     // Welcome: the words sit low on the full-screen photo, just above the button
     <View style={[styles.page, { width, justifyContent: "flex-end" }]}>
-      <Reveal order={0} style={[pv.heroLogo, { backgroundColor: "rgba(10,10,12,0.55)" }]}>
-        {brand.logoUrl ? <CachedImage uri={brand.logoUrl} style={{ width: 40, height: 40 }} accessible={false} /> : <Logo size={24} color="#fff" />}
+      <Reveal order={0} style={[pv.heroLogo, { backgroundColor: brand.logoUrl ? "#fff" : "rgba(10,10,12,0.55)" }]}>
+        {brand.logoUrl ? <CachedImage uri={brand.logoUrl} style={{ width: 46, height: 46 }} accessible={false} /> : <Logo size={24} color="#fff" />}
       </Reveal>
       <CopyBlock index={i} progress={progress} width={width} title={p.title} body={p.body} styles={styles} />
     </View>
@@ -283,6 +285,7 @@ export default function TourScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, S.md) }]}>
+      <StatusBar style="light" />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {backdrops.map((src, i) => <BackdropLayer key={i} index={i} progress={progress} source={src} still />)}
         <WelcomeHero progress={progress} active={page === 0} />
@@ -353,57 +356,15 @@ function BackdropLayer({ index, progress, source, still }: { index: number; prog
   );
 }
 
-/**
- * Full-screen photos for the welcome page, sized to the screen. Trip covers can't be used here: they are
- * landscape banners (about 1200 x 627), so filling a portrait screen stretches a thin slice of them about 4x.
- */
-const HERO_PHOTOS = [
-  require("@/assets/images/tour/hero-1.jpg"), require("@/assets/images/tour/hero-2.jpg"),
-  require("@/assets/images/tour/hero-3.jpg"), require("@/assets/images/tour/hero-4.jpg"),
-];
-
-/** The welcome page's photos: each holds for a few seconds then the next fades in over it, all slowly pushing in */
+/** The welcome page's photos (the same slideshow as sign-in), fading away as the next page slides in */
 function WelcomeHero({ progress, active }: { progress: SharedValue<number>; active: boolean }) {
-  const { width, height } = useWindowDimensions();
-  const zoom = useSharedValue(1);
-  // step counts up by one per photo; between whole numbers the next photo is part way through fading in
-  const step = useSharedValue(0);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  useLoop(active,
-    () => {
-      zoom.value = withRepeat(withTiming(1.08, { duration: 9000, easing: Easing.inOut(Easing.quad) }), -1, true);
-      timer.current = setInterval(() => {
-        step.value = withTiming(Math.round(step.value) + 1, { duration: 1400, easing: Easing.inOut(Easing.quad) });
-      }, 5200);
-    },
-    () => { cancelAnimation(zoom); if (timer.current) clearInterval(timer.current); timer.current = null; });
   const fade = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 0.7], [1, 0], Extrapolation.CLAMP) }));
-  const kenBurns = useAnimatedStyle(() => ({ transform: [{ scale: zoom.value }] }));
   return (
     <Animated.View style={[StyleSheet.absoluteFill, fade]}>
-      <Animated.View style={[StyleSheet.absoluteFill, kenBurns]}>
-        {HERO_PHOTOS.map((src, i) => <HeroLayer key={i} index={i} step={step} source={src} width={width} height={height} />)}
-      </Animated.View>
+      <HeroSlideshow active={active} />
       {/* Dark at the top for the status bar and progress, and low down where the words sit */}
       <LinearGradient colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]} locations={[0, 0.22]} style={StyleSheet.absoluteFill} />
       <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.88)"]} locations={[0.35, 0.62, 1]} style={StyleSheet.absoluteFill} />
-    </Animated.View>
-  );
-}
-
-function HeroLayer({ index, step, source, width, height }: { index: number; step: SharedValue<number>; source: number; width: number; height: number }) {
-  const n = HERO_PHOTOS.length;
-  const style = useAnimatedStyle(() => {
-    const base = Math.floor(step.value);
-    const frac = step.value - base;
-    const shown = ((base % n) + n) % n;
-    const next = (shown + 1) % n;
-    const opacity = index === shown ? 1 : index === next ? frac : 0;
-    return { opacity, zIndex: index === next ? 2 : index === shown ? 1 : 0 };
-  });
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, style]}>
-      <Image source={source} resizeMode="cover" style={{ width, height }} accessible={false} />
     </Animated.View>
   );
 }
@@ -782,8 +743,9 @@ function GalleryPreview({ photos, names, C, shown, active, screenWidth }: {
         <View pointerEvents="none" style={pv.uploadWrap}>
           <Animated.View
             key={tick}
-            entering={FadeInDown.duration(380).easing(Easing.out(Easing.cubic))}
-            exiting={FadeOut.duration(200)}
+            // The old pill is gone before the new one arrives, so the two never overlap
+            entering={FadeInDown.delay(180).duration(360).easing(Easing.out(Easing.cubic))}
+            exiting={FadeOut.duration(150)}
             style={[pv.uploadPill, { backgroundColor: "rgba(20,20,24,0.82)", borderColor: C.border }]}
           >
             <View style={[pv.uploadAvatar, { backgroundColor: C.teal }]}>
@@ -1012,7 +974,11 @@ const pv = StyleSheet.create({
   photoFact: { color: "rgba(255,255,255,0.92)", fontSize: T.base, fontWeight: T.semibold, marginTop: 2 },
   photoDates: { color: "rgba(255,255,255,0.75)", fontSize: T.sm },
   titleRow: { flexDirection: "row", flexWrap: "wrap" },
-  heroLogo: { width: 52, height: 52, borderRadius: R.md, alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: S.xs },
+  // Company logos sit on white, as on the "Connected to" screen
+  heroLogo: {
+    width: 60, height: 60, borderRadius: R.lg, alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: S.xs,
+    shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+  },
   cardPanel: { position: "absolute", left: S.sm, right: S.sm, bottom: S.sm, padding: S.md, gap: S.sm, borderRadius: R.lg, backgroundColor: "rgba(14,14,18,0.9)" },
   panelHead: { color: "#fff", fontSize: T.base, fontWeight: T.bold },
   panelRow: { flexDirection: "row", alignItems: "center", gap: S.sm },

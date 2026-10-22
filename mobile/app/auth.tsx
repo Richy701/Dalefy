@@ -3,13 +3,12 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from "react-native";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
-  Envelope, LockKey, ArrowRight, CaretLeft, Check,
+  Envelope, LockKey, CaretLeft,
 } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
@@ -22,6 +21,8 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
+import { HeroSlideshow, BlurredHero } from "@/components/ui/HeroSlideshow";
+import { photoPalette } from "@/components/ui/PhotoBackdrop";
 import { GoogleG, AppleMark } from "@/components/BrandLogos";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -29,7 +30,10 @@ WebBrowser.maybeCompleteAuthSession();
 type Step = "splash" | "options" | "email" | "sent" | "password";
 
 export default function AuthScreen() {
-  const { C } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
+  // Every sign-in step sits on the holiday photos, so the dark photo palette in both themes
+  const C = useMemo(() => photoPalette(themeC, themeDark), [themeC, themeDark]);
+  const [emailFocused, setEmailFocused] = useState(false);
   const auth = useAuth();
   const { prefs } = usePreferences();
   const router = useRouter();
@@ -69,8 +73,10 @@ export default function AuthScreen() {
 
   const finish = useCallback(() => {
     haptic.light();
-    router.replace("/welcome");
-  }, [haptic, router]);
+    // Signing back in keeps the name on the phone, and /welcome with a name opens as Edit profile, so
+    // returning travellers go straight to their trips; only new ones need the code and name steps
+    router.replace(prefs.name.trim() ? "/(tabs)" : "/welcome");
+  }, [haptic, router, prefs.name]);
 
   const go = useCallback((next: Step) => {
     haptic.selection();
@@ -181,8 +187,9 @@ export default function AuthScreen() {
 
   const handleGuest = useCallback(() => {
     haptic.selection();
-    router.replace("/welcome");
-  }, [haptic, router]);
+    // Same as signing in: someone who already set up on this phone goes back to their trips
+    router.replace(prefs.name.trim() ? "/(tabs)" : "/welcome");
+  }, [haptic, router, prefs.name]);
 
   const providerBusy = busyProvider !== null;
 
@@ -195,21 +202,33 @@ export default function AuthScreen() {
   }, [resendIn]);
   useEffect(() => { if (step === "sent") setResendIn(30); }, [step]);
 
+  // Work email first: it's what organisers put on the trip, so it's what links people to their trips and names.
+  // Apple (often a hidden relay address) and Google (usually personal) come after, the same size.
   const providers = (onPhoto: boolean) => (
     <View style={styles.stack}>
+      <Pressable
+        onPress={() => go("email")}
+        disabled={providerBusy}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with your work email"
+        style={({ pressed }) => [styles.providerBtn, onPhoto ? styles.providerOnPhotoPrimary : styles.providerPrimary, pressed && styles.pressed]}
+      >
+        <Envelope size={20} color={onPhoto ? "#000" : C.bg} weight="bold" />
+        <Text style={[styles.providerText, { color: onPhoto ? "#000" : C.bg }]}>Continue with work email</Text>
+      </Pressable>
       {Platform.OS === "ios" && (
         <Pressable
           onPress={handleApple}
           disabled={providerBusy}
           accessibilityRole="button"
           accessibilityLabel="Continue with Apple"
-          style={({ pressed }) => [styles.providerBtn, onPhoto ? styles.providerOnPhotoPrimary : styles.providerPrimary, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.providerBtn, onPhoto && styles.providerOnPhoto, pressed && styles.pressed]}
         >
           {busyProvider === "apple"
-            ? <ActivityIndicator size="small" color={onPhoto ? "#000" : C.bg} />
+            ? <ActivityIndicator size="small" color={onPhoto ? "#fff" : C.textPrimary} />
             : <>
-                <AppleMark size={20} color={onPhoto ? "#000" : C.bg} />
-                <Text style={[styles.providerText, { color: onPhoto ? "#000" : C.bg }]}>Continue with Apple</Text>
+                <AppleMark size={20} color={onPhoto ? "#fff" : C.textPrimary} />
+                <Text style={[styles.providerText, onPhoto && { color: "#fff" }]}>Continue with Apple</Text>
               </>}
         </Pressable>
       )}
@@ -229,16 +248,6 @@ export default function AuthScreen() {
               </>}
         </Pressable>
       )}
-      <Pressable
-        onPress={() => go("email")}
-        disabled={providerBusy}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with email"
-        style={({ pressed }) => [styles.providerBtn, onPhoto && styles.providerOnPhoto, pressed && styles.pressed]}
-      >
-        <Envelope size={20} color={onPhoto ? "#fff" : C.textPrimary} weight="regular" />
-        <Text style={[styles.providerText, onPhoto && { color: "#fff" }]}>Continue with email</Text>
-      </Pressable>
     </View>
   );
 
@@ -249,13 +258,8 @@ export default function AuthScreen() {
     return (
       <View style={[styles.safe, { backgroundColor: "#000" }]}>
         <StatusBar style="light" />
-        <Image
-          source={require("@/assets/images/welcome-hero.jpg")}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          transition={300}
-          accessibilityIgnoresInvertColors
-        />
+        {/* The same holiday photos as the tour, crossfading with a slow push-in */}
+        <HeroSlideshow />
         {/* Dark only where the text sits, so white type holds over any part of the photo */}
         <LinearGradient
           colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.88)"]}
@@ -266,15 +270,18 @@ export default function AuthScreen() {
         <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <View style={styles.splash} pointerEvents="box-none">
             <Animated.View entering={FadeIn.duration(500)} style={styles.splashTop}>
-              <Logo size={34} color="#FFFFFF" />
+              <View style={styles.brandRow}>
+                <Logo size={30} color="#FFFFFF" />
+                <Text style={styles.brandName}>Dalefy</Text>
+              </View>
             </Animated.View>
 
             <View style={styles.splashBottom}>
               <Animated.Text entering={FadeInUp.duration(350).delay(150)} style={styles.heroTitle}>
-                Welcome aboard
+                Your trip starts here
               </Animated.Text>
               <Animated.Text entering={FadeInUp.duration(350).delay(220)} style={styles.heroSub}>
-                Sign in to find the trip your organiser has planned for you.
+                Flights, hotels and the plan for every day, from your organiser.
               </Animated.Text>
 
               <Animated.View entering={FadeInUp.duration(350).delay(300)}>
@@ -297,6 +304,8 @@ export default function AuthScreen() {
   if (step === "sent") {
     return (
       <View style={styles.safe}>
+        <StatusBar style="light" />
+        <BlurredHero />
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.centered}>
             <Animated.View entering={FadeIn.duration(400)} style={{ alignItems: "center" }}>
@@ -350,7 +359,7 @@ export default function AuthScreen() {
 
   const title =
     step === "options" ? (isUpgrade ? "Save your trips" : "Sign in")
-    : step === "email" ? "What's your email?"
+    : step === "email" ? "What's your work email?"
     : "Sign in with a password";
 
   const subtitle =
@@ -359,11 +368,13 @@ export default function AuthScreen() {
         ? "Add an account so your trips follow you to a new phone."
         : "Use the email your organiser has for you, so your trips find you.")
     : step === "email"
-      ? "We'll send you a sign-in link. No password to remember."
+      ? "Use the one your organiser has for you, so your trips and name find you. We'll email a sign-in link, no password needed."
       : "For accounts that were set up with a password.";
 
   return (
     <View style={styles.safe}>
+      <StatusBar style="light" />
+      <BlurredHero />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
           <View style={styles.topNav}>
@@ -404,18 +415,20 @@ export default function AuthScreen() {
 
             {step === "options" && (
               <Animated.View entering={FadeInUp.duration(300).delay(120)}>
-                {providers(false)}
+                {providers(true)}
               </Animated.View>
             )}
 
             {(step === "email" || step === "password") && (
               <Animated.View entering={FadeInUp.duration(300).delay(120)} style={styles.stack}>
-                <View style={[styles.inputRow, error ? { borderColor: C.red } : undefined]}>
+                <View style={[styles.inputRow, emailFocused && !error ? { borderColor: C.teal } : undefined, error ? { borderColor: "#ff8a80" } : undefined]}>
                   <Envelope size={18} color={C.textTertiary} weight="regular" />
                   <TextInput
                     value={email}
                     onChangeText={(t) => { setEmail(t); setError(""); }}
-                    placeholder="you@example.com"
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
+                    placeholder="you@company.com"
                     placeholderTextColor={C.textTertiary}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -426,12 +439,9 @@ export default function AuthScreen() {
                     onSubmitEditing={step === "email" ? sendLink : undefined}
                     style={styles.input}
                   />
-                  {step === "email" && emailValid && (
-                    <Check size={16} color={C.tealText} weight="bold" />
-                  )}
                 </View>
                 {step === "password" && (
-                  <View style={[styles.inputRow, error ? { borderColor: C.red } : undefined]}>
+                  <View style={[styles.inputRow, error ? { borderColor: "#ff8a80" } : undefined]}>
                     <LockKey size={18} color={C.textTertiary} weight="regular" />
                     <TextInput
                       value={password}
@@ -475,10 +485,7 @@ export default function AuthScreen() {
                 >
                   {loading
                     ? <ActivityIndicator size="small" color={C.onAccent} />
-                    : <>
-                        <Text style={[styles.ctaText, !emailValid && { color: C.tealText }]}>Send link</Text>
-                        <ArrowRight size={16} color={emailValid ? C.onAccent : C.tealText} weight="bold" />
-                      </>}
+                    : <Text style={[styles.ctaText, !emailValid && { color: C.tealText }]}>Send link</Text>}
                 </Pressable>
                 <Pressable onPress={() => go("password")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
                   <Text style={styles.mutedLinkText}>Use a password instead</Text>
@@ -496,10 +503,7 @@ export default function AuthScreen() {
               >
                 {loading
                   ? <ActivityIndicator size="small" color={C.onAccent} />
-                  : <>
-                      <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.tealText }]}>Sign in</Text>
-                      <ArrowRight size={16} color={emailValid && password ? C.onAccent : C.tealText} weight="bold" />
-                    </>}
+                  : <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.tealText }]}>Sign in</Text>}
               </Pressable>
             )}
 
@@ -517,12 +521,14 @@ export default function AuthScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg },
+    safe: { flex: 1, backgroundColor: "#000" },
     pressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
 
     // ── Splash ──
     splash: { flex: 1, justifyContent: "space-between" },
     splashTop: { paddingHorizontal: S.lg, paddingTop: S.md },
+    brandRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    brandName: { fontSize: 24, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4 },
     splashBottom: { paddingHorizontal: S.lg, paddingBottom: S.sm },
     heroTitle: {
       fontSize: 42, fontWeight: T.bold, color: "#fff",
@@ -541,7 +547,7 @@ function makeStyles(C: ThemeColors) {
     topNav: { height: 44, paddingHorizontal: S.md, justifyContent: "center" },
     topNavBtn: {
       width: 36, height: 36, borderRadius: R.full,
-      backgroundColor: C.elevated, alignItems: "center", justifyContent: "center",
+      backgroundColor: "rgba(255,255,255,0.14)", alignItems: "center", justifyContent: "center",
     },
 
     // ── Step ──
@@ -570,18 +576,18 @@ function makeStyles(C: ThemeColors) {
     // ── Inputs ──
     inputRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm, height: 54,
-      backgroundColor: C.card, borderRadius: R.lg, paddingHorizontal: S.md,
-      borderWidth: 1, borderColor: C.border,
+      backgroundColor: "rgba(255,255,255,0.1)", borderRadius: R.lg, paddingHorizontal: S.md,
+      borderWidth: 1.5, borderColor: "rgba(255,255,255,0.2)",
     },
-    input: { flex: 1, height: 54, fontSize: T.lg, color: C.textPrimary },
+    input: { flex: 1, height: 54, fontSize: T.lg, fontWeight: T.semibold, color: "#fff" },
 
-    errorText: { fontSize: T.sm, color: C.redText, fontWeight: T.medium, marginTop: S.sm, paddingHorizontal: S["2xs"] },
+    errorText: { fontSize: T.sm, color: "#ff8a80", fontWeight: T.medium, marginTop: S.sm, paddingHorizontal: S["2xs"] },
     noticeText: { fontSize: T.sm, color: C.tealText, fontWeight: T.medium, marginTop: S.sm, paddingHorizontal: S["2xs"] },
 
     // ── Sent ──
     sentIcon: {
-      width: 56, height: 56, borderRadius: R.full,
-      backgroundColor: C.elevated, alignItems: "center", justifyContent: "center",
+      width: 64, height: 64, borderRadius: R.xl,
+      backgroundColor: "rgba(255,255,255,0.14)", alignItems: "center", justifyContent: "center",
     },
 
     // ── Footer ──
@@ -590,11 +596,11 @@ function makeStyles(C: ThemeColors) {
       height: 52, borderRadius: R.xl, backgroundColor: C.teal,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
     },
-    ctaDisabled: { backgroundColor: C.tealDim },
+    ctaDisabled: { backgroundColor: "rgba(255,255,255,0.14)" },
     ctaText: { fontSize: T.md, fontWeight: T.bold, color: C.onAccent },
     secondaryBtn: {
       height: 52, borderRadius: R.xl,
-      backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
+      backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
       alignItems: "center", justifyContent: "center",
     },
     secondaryText: { fontSize: T.md, fontWeight: T.semibold, color: C.textPrimary },

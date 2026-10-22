@@ -154,6 +154,11 @@ export default function TodayScreen() {
       })(),
   [activeTrip, visibleEvents, todayISO, destTz, now]);
   const next = useMemo(() => activeTrip ? currentOrNext(displayEvents, destTz, now) : null, [activeTrip, displayEvents, destTz, now]);
+  // For a day with nothing on: the first plan on a later day
+  const nextPlanned = useMemo(() => [...visibleEvents]
+    .filter(e => e.date > todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity))[0] ?? null,
+  [visibleEvents, todayISO]);
   const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
 
   useEffect(() => {
@@ -678,11 +683,34 @@ export default function TodayScreen() {
             })}
           </View>
         ) : (
-          <EmptyState
-            compact
-            icon={<Sun size={48} color={C.textTertiary} weight="light" />}
-            title="No events scheduled for today"
-          />
+          // A free day: say so warmly, and point at the next thing that is planned
+          <View>
+            <EmptyState
+              compact
+              symbol="sun.max"
+              icon={<Sun size={30} color={C.tealText} weight="duotone" />}
+              title="A free day"
+              message={nextPlanned ? "Nothing planned today, so the time is yours. Here's what's next." : "Nothing planned today, so the time is yours."}
+            />
+            {nextPlanned ? (
+              <ScalePress
+                activeScale={0.985}
+                onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: nextPlanned.id } }); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Next up: ${normaliseTitle(nextPlanned.title, nextPlanned.type, nextPlanned.transferType)}`}
+                style={[ps.freeNext, { backgroundColor: C.card, borderColor: C.border }]}
+              >
+                <CategoryDot type={nextPlanned.type} transferType={nextPlanned.transferType} size={32} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[ps.rowSub, { color: C.textTertiary }]}>
+                    {new Date(nextPlanned.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  </Text>
+                  <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={1}>{normaliseTitle(nextPlanned.title, nextPlanned.type, nextPlanned.transferType)}</Text>
+                </View>
+                {nextPlanned.time && !/^tb[acd]$/i.test(nextPlanned.time) ? <Text style={[ps.freeTime, { color: C.tealText }]}>{nextPlanned.time}</Text> : null}
+              </ScalePress>
+            ) : null}
+          </View>
         )}
 
         <FadeIn delay={120}>

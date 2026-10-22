@@ -17,7 +17,7 @@ const PRESSED_SCALE = 0.88;
  * Circular icon-only button. accessibilityLabel is required — icon-only
  * controls are invisible to screen readers without one.
  */
-export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style, badge }: {
+export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style, badge, glassScheme }: {
   size?: number;
   onPress: () => void;
   variant?: Variant;
@@ -26,6 +26,8 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
   style?: StyleProp<ViewStyle>;
   /** Drawn over the top-right edge; kept outside the glass, which clips to the circle */
   badge?: React.ReactNode;
+  /** Force dark or light glass (e.g. dark over a photo in light mode); defaults to the theme */
+  glassScheme?: "dark" | "light";
 }) {
   const { C, isDark } = useTheme();
   // Every round icon button gives the same light tap
@@ -36,7 +38,7 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
   const pressOut = () => { scale.value = withSpring(1, SPRING); };
   const nativeGlass = variant === "glass" && LIQUID_GLASS;
   const bg = {
-    glass: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)",
+    glass: (glassScheme ?? (isDark ? "dark" : "light")) === "dark" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)",
     elevated: C.elevated,
     accent: C.teal,
     plain: "transparent",
@@ -52,6 +54,7 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
         <GlassView
           isInteractive
           glassEffectStyle="regular"
+          colorScheme={glassScheme}
           style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden" }}
         >
           <Pressable

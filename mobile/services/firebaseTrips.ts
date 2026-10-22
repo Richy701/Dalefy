@@ -210,6 +210,34 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   return trip ? docToTrip(String(trip.id), trip) : null;
 }
 
+// ── Trips by sign-in email ─────────────────────────────────────────────────
+
+export interface MyTrip { trip: Trip; travelerId: string | null; travelerName: string | null }
+
+/**
+ * The published trips the organiser listed this person's email on, and who they are on each. The server
+ * matches the verified sign-in email; the app never sees anyone else's email. Empty for guests.
+ */
+export async function fetchMyTrips(): Promise<{ name: string | null; trips: MyTrip[] }> {
+  await waitForAuth();
+  const user = firebaseAuth().currentUser;
+  if (!user || user.isAnonymous) return { name: null, trips: [] };
+  const token = await user.getIdToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${API_BASE}/api/my-trips`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+    if (!response.ok) return { name: null, trips: [] };
+    const data = await response.json() as { name?: string | null; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> };
+    return {
+      name: data.name ?? null,
+      trips: (data.trips ?? []).map(t => ({ trip: docToTrip(String(t.trip.id), t.trip), travelerId: t.travelerId, travelerName: t.travelerName })),
+    };
+  } catch {
+    return { name: null, trips: [] };
+  } finally { clearTimeout(timer); }
+}
+
 // ── Role Check ─────────────────────────────────────────────────────────────
 
 export type TripMemberRole = "traveler" | "leader";

@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   CaretRight, Calendar, Clock, Check,
-  Warning, WarningCircle, ArrowSquareOut, Paperclip,
+  Warning, WarningCircle, ArrowSquareOut, Paperclip, FileText,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -263,8 +263,11 @@ export default function InfoScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <EmptyState
+            symbol="exclamationmark.circle"
+            icon={<WarningCircle size={30} color={C.textSecondary} weight="duotone" />}
+            tone="neutral"
             title="Trip not found"
-            cta={{ label: "Go back", onPress: safeBack }}
+            secondary={{ label: "Go back", onPress: safeBack }}
           />
         </View>
       </SafeAreaView>
@@ -461,7 +464,13 @@ export default function InfoScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
         {ordered.length === 0 ? (
           <View style={{ paddingTop: S.xl }}>
-            <EmptyState compact title="Nothing here yet" message="Your organiser hasn't shared any trip information yet." />
+            <EmptyState
+              compact
+              symbol="doc.text"
+              icon={<FileText size={30} color={C.tealText} weight="duotone" />}
+              title="Nothing here yet"
+              message="Visas, money, packing and contacts appear here as soon as your organiser adds them."
+            />
           </View>
         ) : (
           <View style={styles.content}>

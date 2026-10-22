@@ -281,8 +281,9 @@ export async function upgradeWithEmail(
 export async function signOut(): Promise<void> {
   if (!isFirebaseConfigured()) return;
   await fbSignOut(firebaseAuth());
-  // Fall back to anonymous so Firestore reads still work
-  await signInAnonymously(firebaseAuth()).catch(() => {});
+  // Fall back to anonymous so Firestore reads still work. Not awaited: it's a network round trip, and the
+  // sign-in screen doesn't need it, so waiting here only held the screen still after "Sign out"
+  signInAnonymously(firebaseAuth()).catch(() => {});
 }
 
 // ── Account deletion ────────────────────────────────────────────────────────

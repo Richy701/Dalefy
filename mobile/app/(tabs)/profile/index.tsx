@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert } from "react-native";
+import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert, ActivityIndicator } from "react-native";
 import { daysUntil } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
@@ -31,19 +31,13 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { useToast } from "@/context/ToastContext";
 import { FadeIn } from "@/components/FadeIn";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, avatarColor as colorFor } from "@/components/ui/Avatar";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { useMemo, useState, useCallback } from "react";
 
 /** Stable per-name accent for the initials avatar (hex so alpha suffixes work). */
 const HERO_H = 250;
 
-function deriveAvatarColor(name: string, C: ThemeColors): string {
-  const palette = [C.dining, C.activity, C.hotel, C.transfer, C.green, C.teal];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return palette[Math.abs(hash) % palette.length];
-}
 
 export default function ProfileScreen() {
   const { C: themeC, isDark: themeDark, mode, setMode } = useTheme();
@@ -56,6 +50,7 @@ export default function ProfileScreen() {
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const onRefresh = useCallback(async () => {
     // A light tap when the pull triggers a refresh, like Mail
     haptic.light();
@@ -67,7 +62,7 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
-  const avatarColor = useMemo(() => deriveAvatarColor(prefs.name || "?", themeC), [prefs.name, themeC]);
+  const avatarColor = useMemo(() => colorFor(prefs.name || "?", themeC), [prefs.name, themeC]);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -115,7 +110,7 @@ export default function ProfileScreen() {
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
             {prefs.avatar || initials ? (
-              <Avatar size={76} uri={prefs.avatar} initials={initials || undefined} color={avatarColor} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
+              <Avatar size={76} solid uri={prefs.avatar} initials={initials || undefined} color={avatarColor} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
             ) : (
               <View style={s.avatarFallback}>
                 <User size={34} color={C.textTertiary} weight="light" />
@@ -332,13 +327,29 @@ export default function ProfileScreen() {
                 haptic.medium();
                 Alert.alert("Sign out?", "Your trips stay on this device. Sign in again any time to sync.", [
                   { text: "Cancel", style: "cancel" },
-                  { text: "Sign out", style: "destructive", onPress: async () => { await auth.signOut(); router.replace("/auth"); } },
+                  {
+                    text: "Sign out", style: "destructive", onPress: async () => {
+                      setSigningOut(true);
+                      try {
+                        await auth.signOut();
+                        router.replace("/auth");
+                        toast("You're signed out");
+                      } catch {
+                        toast("Couldn't sign out. Try again.", "error");
+                      } finally {
+                        setSigningOut(false);
+                      }
+                    },
+                  },
                 ]);
               }}
+              disabled={signingOut}
               style={({ pressed }) => [s.row, pressed && { backgroundColor: C.elevated }]}
               accessibilityRole="button"
+              accessibilityState={{ busy: signingOut }}
             >
-              <Text style={[s.rowLabel, { color: C.redText }]}>Sign out</Text>
+              {signingOut ? <ActivityIndicator size="small" color={C.redText} /> : null}
+              <Text style={[s.rowLabel, { color: C.redText }]}>{signingOut ? "Signing out…" : "Sign out"}</Text>
             </Pressable>
             <View style={[s.divider, { marginLeft: S.md }]} />
             <Pressable

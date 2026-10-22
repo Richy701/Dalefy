@@ -109,6 +109,21 @@ export async function queryDocuments(collection: string, field: string, value: s
   return rows.flatMap(row => row.document ? [row.document] : []);
 }
 
+/** Every document whose array field contains the value */
+export async function queryArrayContains(collection: string, field: string, value: string, limit = 50): Promise<FirestoreDoc[]> {
+  const response = await firestoreFetch(`${BASE}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: { fieldFilter: { field: { fieldPath: field }, op: "ARRAY_CONTAINS", value: { stringValue: value } } },
+      limit,
+    } }),
+  });
+  if (!response.ok) throw new Error(`Firestore query: ${response.status}`);
+  const rows = await response.json() as Array<{ document?: FirestoreDoc }>;
+  return rows.flatMap(row => row.document ? [row.document] : []);
+}
+
 /** Every document whose field equals any of the values (Firestore's IN takes 30 at a time; no result cap) */
 export async function queryDocumentsIn(collection: string, field: string, values: string[]): Promise<FirestoreDoc[]> {
   const unique = [...new Set(values.filter(Boolean))];

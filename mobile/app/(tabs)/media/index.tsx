@@ -1210,22 +1210,24 @@ export default function MediaScreen() {
         <View style={styles.emptyWrap}>
           <EmptyState
             compact
+            symbol={mediaFilter === "video" ? "video" : "photo"}
             icon={mediaFilter === "video"
-              ? <VideoCamera size={48} color={C.textTertiary} weight="light" />
-              : <ImageSquare size={48} color={C.textTertiary} weight="light" />}
+              ? <VideoCamera size={30} color={C.tealText} weight="duotone" />
+              : <ImageSquare size={30} color={C.tealText} weight="duotone" />}
             title={mediaFilter === "video" ? "No videos yet" : "No photos yet"}
             message={`Nothing ${mediaFilter === "video" ? "filmed" : "photographed"} on this trip so far.`}
-            cta={{ label: "Show all photos and videos", onPress: () => { Haptics.selectionAsync(); setMediaFilter("all"); } }}
+            secondary={{ label: "Show all photos and videos", onPress: () => setMediaFilter("all") }}
           />
         </View>
       ) : (tripsWithMedia.length === 0 || filteredTrips.length === 0) && emptyTrip ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             compact
-            icon={<Camera size={48} color={C.textTertiary} weight="light" />}
+            symbol="camera"
+            icon={<Camera size={30} color={C.tealText} weight="duotone" />}
             title={`No photos from ${emptyTrip.destination || emptyTrip.name} yet`}
             message="Anything you or the group add shows up here for everyone, newest first."
-            cta={{ label: "Add photos", onPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); } }}
+            cta={{ label: "Add photos", onPress: handleUploadNew }}
           />
           {resolvedTripFilter !== "all" && tripsWithMedia.length > 0 && (
             <Pressable

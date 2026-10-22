@@ -12,7 +12,7 @@ import Animated, {
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, avatarColor } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
@@ -25,9 +25,10 @@ import {
   CalendarDots,
   ShareNetwork, Bell, Plus,
   WifiSlash,
-  Info, Export,
+  Info, Export, Camera,
 } from "phosphor-react-native";
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
+import { EmptyNote } from "@/components/ui/EmptyState";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { ListSkeleton } from "@/components/Skeleton";
 import { openJoinSheet, openSheet } from "@/services/openJoin";
@@ -121,16 +122,17 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push("/(tabs)/profile")}
-            style={({ pressed }) => [styles.avatarRing, { opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [styles.avatarRing, { backgroundColor: avatarColor(prefs.name || "?", C), opacity: pressed ? 0.7 : 1 }]}
             accessibilityRole="button"
             accessibilityLabel="Profile"
             hitSlop={6}
           >
-            <Avatar
-              size={30}
-              uri={prefs.avatar}
-              initials={(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}
-            />
+            {/* A solid circle like the buttons beside it: their photo, or their initial on the accent */}
+            {prefs.avatar ? (
+              <Avatar size={36} uri={prefs.avatar} initials={(prefs.name || "").trim().charAt(0).toUpperCase() || "?"} />
+            ) : (
+              <Text style={[styles.avatarInitial, { color: "rgba(0,0,0,0.82)" }]}>{(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}</Text>
+            )}
           </Pressable>
         </View>
         <Logo size={24} color={overPhoto ? "#fff" : C.textPrimary} />
@@ -173,10 +175,11 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
       height: 44,
     },
     avatarRing: {
-      width: 36, height: 36, borderRadius: 18,
-      backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)",
+      width: 36, height: 36, borderRadius: 18, overflow: "hidden",
+      backgroundColor: C.teal,
       alignItems: "center", justifyContent: "center",
     },
+    avatarInitial: { fontSize: T.base, fontWeight: T.bold },
     headerActions: {
       flex: 1, flexDirection: "row", alignItems: "center", gap: S["2xs"],
     },
@@ -635,7 +638,14 @@ export default function HomeScreen() {
               {!nextEvent ? (
                 <View style={styles.card}>
                   <Text style={styles.cardTitle} accessibilityRole="header">Itinerary</Text>
-                  <Text style={[styles.cardEmpty, { paddingHorizontal: 0, marginTop: S.xs }]}>Nothing on the itinerary yet. Your organiser is still adding to it.</Text>
+                  <View style={{ marginTop: S.sm }}>
+                    <EmptyNote
+                      palette={C}
+                      icon={<CalendarDots size={22} color={C.tealText} weight="duotone" />}
+                      title="Plans are on the way"
+                      message="Your organiser is still adding to the itinerary. It appears here as soon as they do."
+                    />
+                  </View>
                 </View>
               ) : (
                 <>
@@ -771,7 +781,15 @@ export default function HomeScreen() {
                     })}
                   </ScrollView>
                 ) : (
-                  <Text style={styles.cardEmpty}>No photos yet. Be the first to share a moment from this trip.</Text>
+                  <View style={{ paddingHorizontal: S.md }}>
+                    <EmptyNote
+                      palette={C}
+                      icon={<Camera size={22} color={C.tealText} weight="duotone" />}
+                      title="No photos yet"
+                      message="Be the first to share a moment from this trip."
+                      action={{ label: "Add", onPress: () => router.push("/(tabs)/media") }}
+                    />
+                  </View>
                 )}
               </View>
             </FadeIn>
@@ -857,7 +875,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     cardTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     cardMeta: { fontSize: T.sm, color: C.textTertiary },
-    cardEmpty: { fontSize: T.sm, color: C.textTertiary, lineHeight: 19, paddingHorizontal: S.md, paddingBottom: S.md },
     cardFooter: { paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
     cardLink: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
     dayStrip: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },

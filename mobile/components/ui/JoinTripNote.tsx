@@ -4,12 +4,14 @@ import { Image } from "expo-image";
 import { CoverFade } from "@/components/ui/CoverFade";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "@/services/haptics";
-import { CalendarBlank, Images, CaretDown, CaretRight, Plus, WifiSlash } from "phosphor-react-native";
+import { CalendarBlank, CaretDown, CaretRight, Images, Plus, WifiSlash } from "phosphor-react-native";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { S, T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { ListSkeleton } from "@/components/Skeleton";
 import { openJoinSheet } from "@/services/openJoin";
 import { ScreenTitle } from "@/components/ui/CollapsingHeader";
+import { SampleDayPreview, PhotoDriftPreview } from "@/components/ui/EmptyPreviews";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 
 /** A fresh route parameter reopens Home's existing join sheet after dismissal. */
@@ -135,35 +137,25 @@ export function NoTripsPage({ screen, ready, offline, onRetry, retrying }: Recov
           </View>
         ) : (
           <>
-            <View style={styles.contextIcon} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              {offline ? <WifiSlash size={35} color={C.textTertiary} weight="light" /> : isToday ? <CalendarBlank size={35} color={C.textTertiary} weight="light" /> : <Images size={35} color={C.textTertiary} weight="light" />}
-            </View>
-            <Text accessibilityRole="header" style={[styles.contextTitle, { color: C.textPrimary }]}>
-              {offline ? "Your trips are unavailable" : isToday ? "The day, in order." : "Your group’s moments."}
-            </Text>
-            <Text style={[styles.body, { color: C.textSecondary }]}>
-              {offline
+            {/* A live glimpse of the screen once there's a trip, then the empty state itself */}
+            {!offline ? <View style={styles.preview}>{isToday ? <SampleDayPreview /> : <PhotoDriftPreview />}</View> : null}
+            <EmptyState
+              compact
+              symbol={offline ? "wifi.slash" : isToday ? "calendar" : "photo.on.rectangle"}
+              icon={offline
+                ? <WifiSlash size={30} color={C.textSecondary} weight="duotone" />
+                : isToday ? <CalendarBlank size={30} color={C.tealText} weight="duotone" /> : <Images size={30} color={C.tealText} weight="duotone" />}
+              tone={offline ? "neutral" : "accent"}
+              title={offline ? "Your trips are unavailable" : isToday ? "The day, in order" : "Your group’s moments"}
+              message={offline
                 ? "You’re offline and there are no saved trips on this phone. Connect to load your trip details."
                 : isToday
-                  ? "Once you join a trip, you’ll find the day’s times, places and plans here."
+                  ? "Once you join a trip, the day’s times, places and plans appear here."
                   : "Join a trip to see and share photos with the people travelling with you."}
-            </Text>
-            {offline ? (
-              <Pressable
-                onPress={onRetry}
-                disabled={retrying}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: retrying, busy: retrying }}
-                style={({ pressed }) => [styles.textAction, { opacity: pressed || retrying ? 0.6 : 1 }]}
-              >
-                <Text style={[styles.actionText, { color: C.tealText }]}>{retrying ? "Connecting…" : "Try again"}</Text>
-              </Pressable>
-            ) : <JoinLink />}
-            {!offline && isToday && (
-              <View style={[styles.note, { borderTopColor: C.border }]}>
-                <Text style={[styles.helpText, { color: C.textTertiary }]}>Your organiser keeps the itinerary up to date.</Text>
-              </View>
-            )}
+              cta={offline
+                ? { label: retrying ? "Connecting…" : "Try again", onPress: onRetry }
+                : { label: "Join a trip", onPress: openJoin }}
+            />
           </>
         )}
       </View>
@@ -184,10 +176,8 @@ const styles = StyleSheet.create({
   helpAction: { minHeight: 44, marginTop: S.xs, paddingVertical: S.xs, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs2 },
   helpText: { fontSize: T.sm, lineHeight: 18, flexShrink: 1 },
   helpBody: { paddingHorizontal: S.xs, paddingBottom: S.md },
-  context: { paddingHorizontal: S.md + S.xs, paddingTop: 112, paddingBottom: S.lg },
-  contextIcon: { marginBottom: S.lg },
-  contextTitle: { fontSize: 22, lineHeight: 27, fontWeight: T.semibold, letterSpacing: -0.4, marginBottom: S.sm },
+  context: { paddingHorizontal: S.md + S.xs, paddingTop: S.xl, paddingBottom: S.lg },
+  preview: { marginBottom: S.sm },
   textAction: { minHeight: 48, marginTop: S.md, paddingVertical: S.sm, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: S.xs2 },
-  note: { marginTop: S.xl, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: S.md },
   loading: { alignItems: "flex-start", gap: S.md },
 });

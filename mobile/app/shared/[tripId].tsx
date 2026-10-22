@@ -1,10 +1,12 @@
-import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   View, Text, Pressable,
-  StyleSheet, Platform,
+  StyleSheet, Platform, ActivityIndicator,
 } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay,
@@ -14,15 +16,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft, Users, ShareNetwork, Plus, Check, CaretDown,
+  ArrowLeft, Users, ShareNetwork, Check, CaretDown,
   AirplaneTakeoff, AirplaneLanding, WarningCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
-import { T, R, S, SCROLL_BOTTOM_PAD, shadow, type ThemeColors } from "@/constants/theme";
+import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail } from "@/services/firebaseTrips";
 import { tripFactLine, shortDay, destinationFlag } from "@/shared/tripSummary";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { OrganizerCard } from "@/components/OrganizerCard";
@@ -32,6 +35,7 @@ import { CategoryDot } from "@/components/ui/CategoryDot";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { MicroLabel } from "@/components/ui/MicroLabel";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { Pill } from "@/components/ui/Pill";
 import type { Trip } from "@/shared/types";
 import * as Sharing from "expo-sharing";
@@ -58,15 +62,24 @@ const isPlaceholderTime = (t?: string) => !t || /^tb[acd]$/i.test(t);
 const cleanTitle = (title: string) => tidyTitleSeparators(title.replace(/\s*\([A-Z]{3}\)\s*$/, ""));
 
 export default function SharedTripScreen() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  // ?join=1: they already chose "Join this trip" in onboarding, so join (and link their traveller) straight away
+  // traveler: who the server matched them to by sign-in email (onboarding), so no picker is needed
+  const { tripId, join, traveler } = useLocalSearchParams<{ tripId: string; join?: string; traveler?: string }>();
+  const autoJoined = useRef(false);
+  const linkedId = useLinkedTravelerId(tripId);
+  const [showAll, setShowAll] = useState(false);
   const router = useRouter();
-  const { C, isDark } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
+  // Like Home: the cover photo, blurred, carries down the whole page, so the photo palette in both themes
+  const C = useMemo(() => photoPalette(themeC, themeDark), [themeC, themeDark]);
+  const isDark = true;
   const { trips, addTrip } = useTrips();
   const { prefs } = usePreferences();
   const { user: authUser, isAnonymous } = useAuth();
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
-  const { onScroll, stretchStyle } = useBannerStretch(HERO_H);
+  const { onScroll, stretchStyle, scrollY } = useBannerStretch(HERO_H);
+  const joining = join === "1";
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -127,6 +140,11 @@ export default function SharedTripScreen() {
       const claimed = await fetchClaimedTravelerIds(trip.id);
       setClaimedIds(claimed);
 
+      if (traveler && trip.travelers!.some(t => t.id === traveler) && !claimed.has(traveler)) {
+        completeJoin(traveler);
+        return;
+      }
+
       if (!isAnonymous && authUser?.email) {
         const emailMatch = trip.travelers!.find(
           (t) => t.email && t.email.toLowerCase() === authUser.email.toLowerCase() && !claimed.has(t.id),
@@ -141,7 +159,14 @@ export default function SharedTripScreen() {
       return;
     }
     completeJoin();
-  }, [trip, alreadyInMyTrips, justAdded, completeJoin, isAnonymous, authUser]);
+  }, [trip, alreadyInMyTrips, justAdded, completeJoin, isAnonymous, authUser, traveler]);
+
+  useEffect(() => {
+    if (!joining || !trip || autoJoined.current) return;
+    autoJoined.current = true;
+    if (alreadyInMyTrips) { router.replace(`/trip/${trip.id}`); return; }
+    handleAddToMyTrips();
+  }, [joining, trip, handleAddToMyTrips, alreadyInMyTrips, router]);
 
   useEffect(() => {
     if (!tripId) return;
@@ -178,10 +203,12 @@ export default function SharedTripScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: "center" }}>
           <EmptyState
-            icon={<WarningCircle size={48} color={C.textTertiary} weight="light" />}
+            symbol="exclamationmark.circle"
+            icon={<WarningCircle size={30} color={C.textSecondary} weight="duotone" />}
+            tone="neutral"
             title="Trip not found"
             message="This trip isn't available or hasn't been published yet."
-            cta={{ label: "Go back", onPress: () => router.canGoBack() ? router.back() : router.replace("/(tabs)") }}
+            secondary={{ label: "Go back", onPress: () => router.canGoBack() ? router.back() : router.replace("/(tabs)") }}
           />
         </View>
       </SafeAreaView>
@@ -190,11 +217,71 @@ export default function SharedTripScreen() {
 
   const flag = destinationFlag(trip.destination);
 
-  const hasTravelers = (trip.travelers?.length ?? 0) > 0;
-  const viewAsTraveler = viewAsId ? trip.travelers?.find(t => t.id === viewAsId) ?? null : null;
+  // "Which traveller are you?": rises over the page when the server couldn't match them by email
+  const renderLinkSheet = () => (
+    <>
+      {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
+        <View style={styles.linkOverlay}>
+          <View style={styles.linkSheet}>
+            <Text style={styles.linkTitle}>Which traveller are you?</Text>
+            <Text style={styles.linkSub}>Pick your name so you see your own plan.</Text>
 
-  const filteredEvents = viewAsId
-    ? trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId))
+            {trip.travelers.map(t => {
+              const taken = claimedIds.has(t.id);
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => !taken && completeJoin(t.id)} accessibilityRole="button" accessibilityLabel={t.name} accessibilityState={{ disabled: taken }}
+                  disabled={taken}
+                  style={({ pressed }) => [styles.linkOption, pressed && !taken && { opacity: 0.8 }, taken && { opacity: 0.4 }]}
+                >
+                  <Avatar size={40} initials={t.initials} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.linkName}>{t.name}</Text>
+                    {taken && <Text style={{ fontSize: T["2xs"], color: C.textTertiary, marginTop: 1 }}>Already claimed</Text>}
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            <Pressable onPress={() => completeJoin()} accessibilityRole="button" style={({ pressed }) => [styles.linkSkip, pressed && { opacity: 0.7 }]}>
+              <Text style={styles.linkSkipText}>I'm not listed</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </>
+  );
+
+  // Joining from onboarding: they've already seen the trip, so just the photo while it joins (or asks who they are)
+  if (joining) {
+    return (
+      <View style={styles.safe}>
+        <PhotoBackdrop uri={trip.image} />
+        <View style={styles.joiningWrap}>
+          <Text style={styles.heroName} numberOfLines={2}>{trip.name}</Text>
+          <View style={styles.joiningRow}>
+            {justAdded
+              ? <Animated.View style={checkStyle}><Check size={18} color={C.tealText} weight="bold" /></Animated.View>
+              : <ActivityIndicator size="small" color="#fff" />}
+            <Text style={styles.joiningText}>{justAdded ? "You're in" : "Joining your trip…"}</Text>
+          </View>
+        </View>
+        {renderLinkSheet()}
+      </View>
+    );
+  }
+
+  const hasTravelers = (trip.travelers?.length ?? 0) > 0;
+  // Only worth choosing a name when some plans are for particular people
+  const hasPersonalPlans = trip.events.some(e => (e.assignedTo?.length ?? 0) > 0);
+  // Linked to their traveller: their own plan (unless they asked for everyone's); otherwise whoever they picked
+  const me = linkedId ? trip.travelers?.find(t => t.id === linkedId) ?? null : null;
+  const effectiveId = me && !showAll ? me.id : viewAsId;
+  const viewAsTraveler = effectiveId ? trip.travelers?.find(t => t.id === effectiveId) ?? null : null;
+
+  const filteredEvents = effectiveId
+    ? trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(effectiveId))
     : trip.events;
 
   const grouped = filteredEvents.reduce<Record<string, typeof trip.events>>((acc, ev) => {
@@ -219,34 +306,37 @@ export default function SharedTripScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
+    // No bottom safe area here: the bottom bar adds it itself, so it sits on the home indicator, not above it
+    <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top"] : []}>
+      <StatusBar style="light" />
+      <PhotoBackdrop uri={trip.image} />
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            <PhotoBlend>
-              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-            </PhotoBlend>
+            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+            <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <PhotoDissolve uri={trip.image} scrollY={scrollY} />
 
 
           </Animated.View>
           <IconCircleButton
-            variant="glass"
+            variant="glass" glassScheme="dark"
             onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
             accessibilityLabel="Go back"
             style={{ position: "absolute", left: S.md, top: insets.top + S.xs }}
           >
-            <ArrowLeft size={18} color={C.textPrimary} weight="regular" />
+            <ArrowLeft size={18} color="#fff" weight="bold" />
           </IconCircleButton>
 
           <IconCircleButton
-            variant="glass"
+            variant="glass" glassScheme="dark"
             onPress={handleShare}
             accessibilityLabel="Share trip"
             style={{ position: "absolute", right: S.md, top: insets.top + S.xs }}
           >
-            <ShareNetwork size={18} color={C.textPrimary} weight="regular" />
+            <ShareNetwork size={18} color="#fff" weight="bold" />
           </IconCircleButton>
 
           <View style={styles.heroContent}>
@@ -262,68 +352,66 @@ export default function SharedTripScreen() {
           </View>
         </View>
 
-        {/* Traveler picker */}
-        {hasTravelers && (
-          <View style={styles.pickerWrap}>
-            <Pressable
-              style={({ pressed }) => [styles.pickerBtn, viewAsId ? styles.pickerBtnActive : null, pressed && { opacity: 0.7 }]}
-              onPress={() => setPickerOpen(!pickerOpen)} accessibilityRole="button" accessibilityLabel="Personalise your view"
-            >
-              {viewAsTraveler ? (
-                <Avatar size={36} initials={viewAsTraveler.initials} />
-              ) : (
-                <View style={styles.pickerAvatar}>
-                  <Users size={14} color={C.textSecondary} weight="regular" />
-                </View>
-              )}
-              <View style={styles.pickerTextWrap}>
-                <MicroLabel>
-                  {viewAsId ? "Viewing as" : "Personalise your view"}
-                </MicroLabel>
-                <Text style={[styles.pickerName, { color: C.textPrimary }]} numberOfLines={1}>
-                  {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
-                </Text>
-              </View>
-              <CaretDown
-                size={16}
-                color={C.textTertiary}
-                weight="regular"
-                style={{ transform: [{ rotate: pickerOpen ? "180deg" : "0deg" }] }}
-              />
+        {/* Whose plan to show: iOS segmented tabs, or a native menu when there are too many names to fit */}
+        {/* Linked: just say whose plan this is, with a way to see everyone's */}
+        {me && hasPersonalPlans ? (
+          <View style={[styles.pickerWrap, styles.mineRow]}>
+            <Text style={styles.pickerSubtext}>
+              {showAll ? `Showing everyone's plans` : `Showing your plan, ${me.name.split(" ")[0]}`}
+            </Text>
+            <Pressable onPress={() => { Haptics.selectionAsync(); setShowAll(v => !v); }} hitSlop={8} accessibilityRole="button">
+              <Text style={styles.mineLink}>{showAll ? "Just mine" : "All plans"}</Text>
             </Pressable>
-
-            {pickerOpen && (
+          </View>
+        ) : null}
+        {/* Not linked yet, and the choice matters: pick a name */}
+        {!me && hasTravelers && hasPersonalPlans && (
+          <View style={styles.pickerWrap}>
+            <Text style={styles.viewLabel}>Show the plan for</Text>
+            {trip.travelers!.length <= 3 ? (
+              <SegmentedControl
+                values={["Everyone", ...trip.travelers!.map(t => t.name.split(" ")[0])]}
+                selectedIndex={viewAsId ? trip.travelers!.findIndex(t => t.id === viewAsId) + 1 : 0}
+                onChange={(e) => {
+                  Haptics.selectionAsync();
+                  const i = e.nativeEvent.selectedSegmentIndex;
+                  setViewAsId(i === 0 ? null : trip.travelers![i - 1].id);
+                }}
+                appearance="dark"
+                style={styles.segments}
+              />
+            ) : (
+              <Pressable
+                onPress={() => setPickerOpen(!pickerOpen)}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.pickerBtn, pressed && { opacity: 0.7 }]}
+              >
+                {viewAsTraveler ? <Avatar size={28} solid initials={viewAsTraveler.initials} /> : <Users size={18} color="#fff" weight="regular" />}
+                <Text style={styles.pickerName} numberOfLines={1}>{viewAsTraveler ? viewAsTraveler.name : "Everyone"}</Text>
+                <CaretDown size={16} color={C.textSecondary} weight="bold" style={{ transform: [{ rotate: pickerOpen ? "180deg" : "0deg" }] }} />
+              </Pressable>
+            )}
+            {pickerOpen && trip.travelers!.length > 3 && (
               <View style={styles.pickerDropdown}>
-                <Pressable
-                  style={({ pressed }) => [styles.pickerOption, !viewAsId && styles.pickerOptionActive, pressed && { opacity: 0.7 }]}
-                  onPress={() => { setViewAsId(null); setPickerOpen(false); }} accessibilityRole="button" accessibilityState={{ selected: !viewAsId }}
-                >
-                  <Avatar size={30} initials="ALL" color={C.textTertiary} />
-                  <Text style={styles.pickerOptionName}>Everyone, Full itinerary</Text>
-                  {!viewAsId && <Check size={14} color={C.teal} weight="bold" />}
-                </Pressable>
-
-                <View style={[styles.pickerDivider, { backgroundColor: C.border }]} />
-
-                {trip.travelers!.map(t => (
+                {[{ id: null as string | null, name: "Everyone", initials: "" }, ...trip.travelers!].map(t => (
                   <Pressable
-                    key={t.id}
-                    style={({ pressed }) => [styles.pickerOption, viewAsId === t.id && styles.pickerOptionActive, pressed && { opacity: 0.7 }]}
-                    onPress={() => { setViewAsId(t.id); setPickerOpen(false); }} accessibilityRole="button" accessibilityState={{ selected: viewAsId === t.id }}
+                    key={t.id ?? "all"}
+                    onPress={() => { Haptics.selectionAsync(); setViewAsId(t.id); setPickerOpen(false); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: viewAsId === t.id }}
+                    style={({ pressed }) => [styles.pickerOption, pressed && { opacity: 0.7 }]}
                   >
-                    <Avatar size={30} initials={t.initials} />
                     <Text style={styles.pickerOptionName}>{t.name}</Text>
-                    {viewAsId === t.id && <Check size={14} color={C.teal} weight="bold" />}
+                    {viewAsId === t.id ? <Check size={16} color={C.tealText} weight="bold" /> : null}
                   </Pressable>
                 ))}
               </View>
             )}
-
-            {viewAsTraveler && (
-              <Text style={styles.pickerSubtext}>
-                Showing {filteredEvents.length} of {trip.events.length} events for {viewAsTraveler.name}
-              </Text>
-            )}
+            <Text style={styles.pickerSubtext}>
+              {viewAsTraveler
+                ? `${filteredEvents.length} of ${trip.events.length} plans are for ${viewAsTraveler.name.split(" ")[0]}`
+                : `All ${trip.events.length} plans on the trip`}
+            </Text>
           </View>
         )}
 
@@ -342,7 +430,7 @@ export default function SharedTripScreen() {
         {/* Itinerary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MicroLabel>Itinerary</MicroLabel>
+            <MicroLabel color={C.textPrimary}>Itinerary</MicroLabel>
           </View>
 
           {(() => {
@@ -415,73 +503,55 @@ export default function SharedTripScreen() {
         </View>
       </Animated.ScrollView>
 
-      {/* Traveler linking overlay */}
-      {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
-        <View style={styles.linkOverlay}>
-          <View style={styles.linkSheet}>
-            <Text style={styles.linkTitle}>Which traveller are you?</Text>
-            <Text style={styles.linkSub}>
-              This helps show you only the events relevant to you.
-            </Text>
+      {/* Content fades out under the clock instead of running into it */}
+      <LinearGradient
+        colors={["rgba(8,8,10,0.9)", "rgba(8,8,10,0.6)", "rgba(8,8,10,0)"]}
+        locations={[0, 0.55, 1]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top + 28 }}
+        pointerEvents="none"
+      />
 
-            {trip.travelers.map(t => {
-              const taken = claimedIds.has(t.id);
-              return (
-                <Pressable
-                  key={t.id}
-                  onPress={() => !taken && completeJoin(t.id)} accessibilityRole="button" accessibilityLabel={t.name} accessibilityState={{ disabled: taken }}
-                  disabled={taken}
-                  style={({ pressed }) => [styles.linkOption, pressed && !taken && { opacity: 0.8 }, taken && { opacity: 0.4 }]}
-                >
-                  <Avatar size={30} initials={t.initials} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.pickerOptionName, { color: C.textPrimary }]}>{t.name}</Text>
-                    {taken && <Text style={{ fontSize: T["2xs"], color: C.textTertiary, marginTop: 1 }}>Already claimed</Text>}
-                  </View>
-                </Pressable>
-              );
-            })}
+      {renderLinkSheet()}
 
-            <Pressable onPress={() => completeJoin()} accessibilityRole="button" style={({ pressed }) => [styles.linkSkip, pressed && { opacity: 0.7 }]}>
-              <Text style={styles.linkSkipText}>I'm not listed</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {/* Sticky bottom banner */}
-      {!alreadyInMyTrips && !justAdded ? (
-        <View style={[styles.stickyBar, { paddingBottom: insets.bottom + S.sm }]}>
-          <Text style={styles.stickyText}>You're previewing this trip</Text>
-          <Animated.View style={[addBtnStyle, { flex: 1 }]}>
+      {/* Bottom bar: join, or open it once it's in their trips */}
+      <View style={[styles.stickyBar, { paddingBottom: insets.bottom + S.sm }]}>
+        {/* No bar and no edge: the page darkens gradually towards the bottom, so the button sits on it */}
+        <LinearGradient
+          colors={["rgba(12,11,10,0)", "rgba(12,11,10,0.7)", "rgba(12,11,10,0.92)"]}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        {!alreadyInMyTrips && !justAdded ? (
+          <Animated.View style={addBtnStyle}>
             <Pressable
-              onPress={handleAddToMyTrips} accessibilityRole="button" accessibilityLabel="Join a trip"
-              style={({ pressed }) => [
-                styles.addCta,
-                { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 },
-              ]}
+              onPress={handleAddToMyTrips} accessibilityRole="button" accessibilityLabel="Join this trip"
+              style={({ pressed }) => [styles.addCta, { backgroundColor: C.teal, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
             >
-              <Plus size={16} color={C.onAccent} weight="bold" />
-              <Text style={[styles.addCtaText, { color: C.onAccent }]}>Join a trip</Text>
+              <Text style={[styles.addCtaText, { color: C.onAccent }]}>Join this trip</Text>
             </Pressable>
           </Animated.View>
-        </View>
-      ) : (
-        <View style={[styles.stickyBar, styles.stickyBarJoined, { paddingBottom: insets.bottom + S.sm }]}>
-          <Animated.View style={checkStyle}>
-            <Check size={18} color={C.teal} weight="bold" />
-          </Animated.View>
-          <Text style={[styles.stickyTextJoined, { color: C.tealText }]}>Saved to my trips</Text>
-        </View>
-      )}
+        ) : (
+          <Pressable
+            onPress={() => router.replace(`/trip/${trip.id}`)} accessibilityRole="button" accessibilityLabel="Open this trip"
+            style={({ pressed }) => [styles.addCta, { backgroundColor: C.teal, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+          >
+            <Text style={[styles.addCtaText, { color: C.onAccent }]}>Open trip</Text>
+          </Pressable>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
+    safe: { flex: 1, backgroundColor: "#000" },
+    joiningWrap: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: S.xl, gap: S.md },
+    joiningRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    joiningText: { fontSize: T.md, fontWeight: T.semibold, color: "rgba(255,255,255,0.86)" },
+    linkName: { fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
+    scroll: { paddingBottom: SCROLL_BOTTOM_PAD + 40 },
     addCta: {
       height: 52, borderRadius: R.xl,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
@@ -518,11 +588,11 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     section: { paddingBottom: S.md },
     dayBlock: { marginTop: S.sm },
     dayHeader: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md + S.xs, paddingBottom: S.xs },
-    dayHeaderText: { fontSize: T.sm, fontWeight: T.bold, color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+    dayHeaderText: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
     dayHeaderMeta: { fontSize: T.sm, color: C.textTertiary },
     dayCard: {
-      marginHorizontal: S.md, backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
-      ...shadow("card", isDark),
+      marginHorizontal: S.md, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: R.lg, overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.14)",
     },
     tlLine: {
       position: "absolute", left: S.md + DOT / 2 - 1, top: S.sm + DOT / 2, bottom: S.sm + DOT / 2, width: 2,
@@ -538,44 +608,25 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     legText: { flex: 1, fontSize: T.sm, color: C.textSecondary },
     legTime: { fontSize: T.sm, color: C.textTertiary, fontVariant: ["tabular-nums"] },
 
-    // Traveler picker
-    pickerWrap: { paddingHorizontal: S.md, paddingTop: S.md },
+    // Whose plan to show
+    pickerWrap: { paddingHorizontal: S.md, paddingTop: S.lg, gap: S.sm },
+    viewLabel: { fontSize: T.base, fontWeight: T.semibold, color: "#fff" },
+    segments: { height: 36 },
     pickerBtn: {
-      flexDirection: "row", alignItems: "center", gap: S.sm2,
-      padding: S.sm, borderRadius: R.xl,
-      backgroundColor: C.elevated,
+      flexDirection: "row", alignItems: "center", gap: S.sm, minHeight: 48,
+      paddingHorizontal: S.md, borderRadius: R.lg,
+      backgroundColor: "rgba(255,255,255,0.1)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.16)",
     },
-    pickerBtnActive: {
-      backgroundColor: C.tealDim,
-    },
-    pickerAvatar: {
-      width: 36, height: 36, borderRadius: 18,
-      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
-    },
-    pickerTextWrap: { flex: 1 },
-    pickerName: {
-      fontSize: T.md, fontWeight: T.bold as any, marginTop: 1,
-    },
+    pickerName: { flex: 1, fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
     pickerDropdown: {
-      marginTop: S.xs2, borderRadius: R.xl, overflow: "hidden",
-      backgroundColor: C.elevated,
+      borderRadius: R.lg, overflow: "hidden",
+      backgroundColor: "rgba(28,28,32,0.96)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.12)",
     },
-    pickerOption: {
-      flexDirection: "row", alignItems: "center", gap: S.sm2,
-      paddingVertical: S.sm, paddingHorizontal: S.sm, minHeight: 44,
-    },
-    pickerOptionActive: {
-      backgroundColor: C.tealDim,
-    },
-    pickerOptionName: {
-      flex: 1, fontSize: T.sm, fontWeight: T.bold as any, color: C.textSecondary,
-    },
-    pickerDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: S.sm },
-    pickerSubtext: {
-      fontSize: T.xs, fontWeight: T.bold as any, color: C.tealText,
-      letterSpacing: 0.8, textTransform: "uppercase",
-      marginTop: S.xs2, paddingHorizontal: 2,
-    },
+    pickerOption: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, minHeight: 48 },
+    pickerOptionName: { flex: 1, fontSize: T.md, color: "#fff" },
+    pickerSubtext: { fontSize: T.sm, color: C.textSecondary },
+    mineRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    mineLink: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
 
     // Expanded inline events
     linkOverlay: {
@@ -585,21 +636,21 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       zIndex: 10,
     },
     linkSheet: {
-      backgroundColor: C.bg,
+      backgroundColor: "rgba(20,20,24,0.97)",
       borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
       paddingHorizontal: S.xl, paddingTop: S.lg, paddingBottom: S.xl,
     },
     linkTitle: {
-      fontSize: T.xl, fontWeight: "800" as any, color: C.textPrimary,
-      marginBottom: S["2xs"],
+      fontSize: T["2xl"], fontWeight: T.bold, color: "#fff",
+      marginBottom: S["2xs"], letterSpacing: -0.3,
     },
     linkSub: {
       fontSize: T.sm, color: C.textSecondary, marginBottom: S.lg,
     },
     linkOption: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      paddingVertical: S.sm, paddingHorizontal: S["2xs"], minHeight: 56,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight,
+      paddingVertical: S.sm, paddingHorizontal: S.sm, minHeight: 60, marginBottom: S.xs,
+      borderRadius: R.lg, backgroundColor: "rgba(255,255,255,0.08)",
     },
     linkSkip: {
       alignItems: "center", paddingVertical: S.md, marginTop: S.xs,
@@ -611,22 +662,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // Sticky bottom bar
     stickyBar: {
       position: "absolute", bottom: 0, left: 0, right: 0,
-      backgroundColor: C.bg,
-      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
-      paddingHorizontal: S.md, paddingTop: S.sm,
-    },
-    stickyBarJoined: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
-      paddingVertical: S.md,
-    },
-    stickyText: {
-      fontSize: T.xs, fontWeight: T.bold as any, color: C.textTertiary,
-      textTransform: "uppercase", letterSpacing: 1,
-      textAlign: "center", marginBottom: S.xs,
-    },
-    stickyTextJoined: {
-      fontSize: T.sm, fontWeight: T.bold as any,
-      textTransform: "uppercase", letterSpacing: 1,
+      paddingHorizontal: S.md, paddingTop: S["2xl"] + S.md,
     },
   });
 }

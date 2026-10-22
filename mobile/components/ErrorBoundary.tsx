@@ -39,7 +39,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return (
       <View style={[styles.container, { backgroundColor: C.bg }]} accessibilityRole="alert">
         <EmptyState
-          icon={<Warning size={28} color={C.red} weight="regular" />}
+          symbol="exclamationmark.triangle"
+          icon={<Warning size={30} color={C.redText} weight="duotone" />}
+          tone="danger"
           title={this.props.fallbackTitle ?? "Something went wrong"}
           message={this.state.error?.message ?? "An unexpected error occurred"}
           cta={{ label: "Try again", onPress: this.reset }}

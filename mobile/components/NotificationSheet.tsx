@@ -16,7 +16,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { T, R, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constants/theme";
-import { SymbolView } from "expo-symbols";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
 
@@ -143,12 +143,12 @@ export function NotificationList({ onClose }: Props) {
         {/* Grouped list */}
         {notifications.length === 0 ? (
           <View style={styles.emptyWrap}>
-            {/* Apple's empty-screen shape: one large grey symbol, a plain title, one line */}
-            {Platform.OS === "ios"
-              ? <SymbolView name="bell" size={52} tintColor={C.textTertiary} weight="regular" style={{ width: 52, height: 52 }} />
-              : <Bell size={52} color={C.textTertiary} weight="regular" />}
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyText}>Updates from your organiser and trip reminders will show up here.</Text>
+            <EmptyState
+              symbol="bell"
+              icon={<Bell size={30} color={C.tealText} weight="duotone" />}
+              title="No notifications"
+              message="Updates from your organiser and trip reminders will show up here."
+            />
           </View>
         ) : (
           <SectionList
@@ -442,8 +442,6 @@ function makeStyles(C: ThemeColors) {
     },
 
     // Empty state
-    emptyTitle: { fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, textAlign: "center", marginTop: S.sm },
-    emptyText: { fontSize: T.base, color: C.textSecondary, textAlign: "center", lineHeight: 21 },
     emptyWrap: {
       flex: 1,
       alignItems: "center",

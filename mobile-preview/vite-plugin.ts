@@ -14,6 +14,8 @@ export function mobilePreviewPlugin(root:string):Plugin {
     'expo-router':platform,'react-native-safe-area-context':platform,'expo-linear-gradient':platform,
     '@react-native-masked-view/masked-view':platform,'expo-blur':platform,'expo-haptics':platform,'expo-clipboard':platform,
     'expo-glass-effect':platform,'expo-symbols':platform,
+    '@expo/ui/swift-ui':path.join(root,'mobile-preview/nativeUi.ts'),'@expo/ui/swift-ui/modifiers':path.join(root,'mobile-preview/nativeUi.ts'),
+    '@expo/ui/community/pager-view':path.join(root,'mobile-preview/nativeUi.ts'),
   };
   return {name:'mobile-preview-source',enforce:'pre',
     async resolveId(id,importer){
