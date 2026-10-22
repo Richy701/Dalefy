@@ -14,26 +14,28 @@ function MapGlass({ style, children }: { style: any; children: React.ReactNode }
     ? <GlassView glassEffectStyle="regular" style={[style, { overflow: "hidden" }]}>{children}</GlassView>
     : <View style={[style, { backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE }]}>{children}</View>;
 }
-import { MapPin, Clock, Sun, CaretRight, Crosshair, MapTrifold, WifiSlash } from "phosphor-react-native";
+import { Sun, Calendar, NavigationArrow, MapTrifold, WifiSlash } from "phosphor-react-native";
+import { WeatherIcon } from "@/components/ui/WeatherIcon";
+import { fetchCurrentWeather, type Weather } from "@/services/weather";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
-import Animated from "react-native-reanimated";
+import Animated, { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
+import { type ThemeColors, T, S, shadow, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
-import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Avatar";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
 import { getDestinationTz } from "@/shared/timezones";
-import { PreTripSheetContent, PostTripSheetContent } from "@/components/TodayPreTrip";
+import { PreTripSheetContent, PostTripSheetContent, SectionHeader } from "@/components/TodayPreTrip";
+import { sheetStyles as ps } from "@/components/todaySheetStyles";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
@@ -98,55 +100,6 @@ function formatCountdown(mins: number): string {
   return m > 0 ? `in ${h}h ${m}m` : `in ${h}h`;
 }
 
-interface WeatherData {
-  temp: number;
-  description: string;
-  icon: string;
-  feelsLike?: number;
-  humidity?: number;
-  windSpeed?: number;
-  high?: number;
-  low?: number;
-  rainChance?: number;
-}
-
-const WEATHER_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_KEY;
-
-async function geocodeDestination(destination: string): Promise<{ lat: number; lon: number } | null> {
-  if (!WEATHER_KEY) return null;
-  try {
-    const res = await fetch(
-      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(destination)}&limit=1&appid=${WEATHER_KEY}`
-    );
-    const json = await res.json();
-    if (!json[0]) return null;
-    return { lat: json[0].lat, lon: json[0].lon };
-  } catch {
-    return null;
-  }
-}
-
-async function fetchCurrentWeather(destination: string): Promise<WeatherData | null> {
-  const geo = await geocodeDestination(destination);
-  if (!geo) return null;
-  try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${geo.lat}&lon=${geo.lon}&units=metric&appid=${WEATHER_KEY}`
-    );
-    const json = await res.json();
-    return {
-      temp: Math.round(json.main.temp),
-      description: json.weather[0].description,
-      icon: json.weather[0].icon,
-      feelsLike: Math.round(json.main.feels_like),
-      humidity: json.main.humidity,
-      windSpeed: Math.round(json.wind.speed * 3.6),
-    };
-  } catch {
-    return null;
-  }
-}
-
 export default function TodayScreen() {
   const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -176,7 +129,6 @@ export default function TodayScreen() {
 
   const { active: activeTrip, upcoming: upcomingTrip, past: mostRecentTrip } = useMemo(() => selectTodayTrips(trips, now), [trips, now]);
   const displayTrip = activeTrip ?? upcomingTrip ?? mostRecentTrip;
-  const isPreview = !activeTrip && !!upcomingTrip;
   const isLiveDay = !!activeTrip;
   const destTz = getDestinationTz(displayTrip?.destination);
   const todayISO = dateInZone(now, destTz);
@@ -203,16 +155,6 @@ export default function TodayScreen() {
   [activeTrip, visibleEvents, todayISO, destTz, now]);
   const next = useMemo(() => activeTrip ? currentOrNext(displayEvents, destTz, now) : null, [activeTrip, displayEvents, destTz, now]);
   const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
-  const pastCount = activeTrip ? displayEvents.filter(e => eventTiming(e, destTz, now).phase === "earlier").length : 0;
-
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  useEffect(() => {
-    setWeather(null);
-    if (!activeTrip?.destination || offline) return;
-    let cancelled = false;
-    fetchCurrentWeather(activeTrip.destination).then(value => { if (!cancelled) setWeather(value); });
-    return () => { cancelled = true; };
-  }, [activeTrip?.destination, todayISO, offline, refreshing]);
 
   useEffect(() => {
     setDestCenter(null);
@@ -234,6 +176,11 @@ export default function TodayScreen() {
   const listY = useRef(0);
   const scheduleScrollRef = useRef<ScrollView>(null);
   const { onScroll, barStyle, scrollY } = useCollapsingHeader();
+  // Map controls fade and lift away as the sheet rises over them, like Maps
+  const mapControlsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 90], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(scrollY.value, [0, 90], [0, -24], Extrapolation.CLAMP) }],
+  }));
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
   const stayCoord = useMemo((): [number, number] | null => {
@@ -247,6 +194,18 @@ export default function TodayScreen() {
     }
     return null;
   }, [displayEvents, eventCoords, displayTrip, destCenter]);
+
+  // Weather where the group actually is: the hotel, else the first stop on the map, else the destination
+  const weatherCoord = stayCoord ?? displayEvents.map(e => eventCoords[e.id]).find(Boolean) ?? destCenter;
+  const weatherKey = weatherCoord ? weatherCoord.map(n => n.toFixed(2)).join(",") : "";
+  const [weather, setWeather] = useState<Weather | null>(null);
+  useEffect(() => {
+    setWeather(null);
+    if (!activeTrip?.id || !weatherKey || offline) return;
+    let cancelled = false;
+    fetchCurrentWeather(weatherKey.split(",").map(Number) as [number, number]).then(value => { if (!cancelled) setWeather(value); });
+    return () => { cancelled = true; };
+  }, [activeTrip?.id, weatherKey, todayISO, offline, refreshing]);
 
   useEffect(() => {
     if (!displayEvents.length || !destCenter) { setEventCoords({}); return; }
@@ -304,7 +263,6 @@ export default function TodayScreen() {
           properties: {
             id: ev.id,
             index: index + 1,
-            label: isLiveDay ? String(index + 1) : "",
             type: ev.type,
             title: normaliseTitle(ev.title, ev.type, ev.transferType),
             isPast: isLiveDay && eventTiming(ev, destTz, now).phase === "earlier",
@@ -402,11 +360,8 @@ export default function TodayScreen() {
   // Clock updates must not interrupt a traveller exploring the map.
   useFocusEffect(useCallback(() => { snapRef.current(); }, []));
 
-  const handleMarkerPress = useCallback((e: any) => {
-    const feature = e?.features?.[0];
-    if (!feature?.properties?.id) return;
+  const handleMarkerPress = useCallback((evId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const evId = feature.properties.id;
     if (!isLiveDay) {
       router.push({ pathname: "/trip/event", params: { tripId: displayTrip?.id ?? "", eventId: evId } });
       return;
@@ -430,20 +385,6 @@ export default function TodayScreen() {
     scheduleScrollRef.current?.scrollTo({ y: 0, animated: true });
   }, [mapReady, focusedMapEventId, eventCoords]);
 
-  const circleColorExpr: any = useMemo(() => [
-    "match", ["get", "type"],
-    "flight", C.flight,
-    "hotel", C.hotel,
-    "activity", C.activity,
-    "dining", C.dining,
-    "transfer", C.transfer,
-    C.teal,
-  ], [C]);
-
-  const circleOpacityExpr: any = useMemo(() => [
-    "case", ["get", "isPast"], 0.35, 1,
-  ], []);
-
   const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const showLocalTime = !!destTz && destTz !== deviceTz;
   const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: destTz, hour: "2-digit", minute: "2-digit" }).format(now);
@@ -451,7 +392,6 @@ export default function TodayScreen() {
   const { data: nextFlightLive } = useFlightLiveData(nextFlight?.flightNum, nextFlight?.date);
 
   // ── Traveler avatars ──
-  const [showTravelerNames, setShowTravelerNames] = useState(false);
   // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
   const AVATAR_COLORS = useMemo(() => [C.textSecondary], [C]);
 
@@ -554,57 +494,39 @@ export default function TodayScreen() {
               </MapboxGL.MarkerView>
             );
           })}
-          {mapReady && isLiveDay && markerFeatures.features.length > 0 && (
-            <MapboxGL.ShapeSource
-              id="today-event-markers"
-              shape={markerFeatures}
-              onPress={handleMarkerPress}
-              hitbox={{ width: 30, height: 30 }}
-            >
-              <MapboxGL.CircleLayer
-                id="event-marker-glow"
-                style={{
-                  circleRadius: 16,
-                  circleColor: circleColorExpr,
-                  circleOpacity: ["case", ["get", "isPast"], 0.06, 0.15],
-                  circleEmissiveStrength: 1,
-                }}
-              />
-              <MapboxGL.CircleLayer
-                id="event-marker-fill"
-                style={{
-                  circleRadius: 12,
-                  circleColor: circleColorExpr,
-                  circleOpacity: circleOpacityExpr,
-                  circleEmissiveStrength: 1,
-                  circleStrokeWidth: 2.5,
-                  circleStrokeColor: isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.9)",
-                  circleStrokeOpacity: circleOpacityExpr,
-                }}
-              />
-              <MapboxGL.SymbolLayer
-                id="event-marker-labels"
-                style={{
-                  textField: ["get", "label"],
-                  textFont: ["DIN Pro Bold"],
-                  textSize: 11,
-                  textColor: "#fff",
-                  textHaloColor: "rgba(0,0,0,0.3)",
-                  textHaloWidth: 0.5,
-                  textAllowOverlap: true,
-                  textIgnorePlacement: true,
-                  textOpacity: circleOpacityExpr,
-                  textEmissiveStrength: 1,
-                }}
-              />
-            </MapboxGL.ShapeSource>
-          )}
+          {/* Today's stops show what they are, like the stay pins before the trip; past ones fade */}
+          {mapReady && isLiveDay && markerFeatures.features.map((f: any) => {
+            const id = f.properties.id as string;
+            const PinIcon = categoryIcon(f.properties.type);
+            return (
+              <MapboxGL.MarkerView key={id} coordinate={f.geometry.coordinates} anchor={{ x: 0.5, y: 0.5 }} allowOverlap>
+                <Pressable
+                  onPress={() => handleMarkerPress(id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${f.properties.title}, show in list`}
+                  style={[styles.dayPin, { backgroundColor: categoryTone(f.properties.type, C).fg, borderColor: isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.9)", opacity: f.properties.isPast ? 0.35 : 1 }]}
+                >
+                  <PinIcon size={13} color="#fff" weight="fill" />
+                </Pressable>
+              </MapboxGL.MarkerView>
+            );
+          })}
         </MapboxGL.MapView>
       )}
 
-      {/* Over the map: recenter */}
-      <View style={styles.mapTop(insets.top)} pointerEvents="box-none">
-        <View />
+      {/* Over the map: where you are in the trip, like the stay chip before it starts; recenter */}
+      <Animated.View style={[styles.mapTop(insets.top), mapControlsStyle]} pointerEvents="box-none">
+        {dayInfo ? (
+          <MapGlass style={styles.dayChip}>
+            <View style={styles.dayChipRow}>
+              {weather ? <WeatherIcon condition={weather.condition} isDay={weather.isDay} size={16} color={SHEET_GLASS ? C.textPrimary : "#fff"} /> : null}
+              <Text style={[styles.pinTitle, { color: SHEET_GLASS ? C.textPrimary : "#fff", flexShrink: 1 }]} numberOfLines={1}>
+                {[weather ? `${weather.temp}°` : "", `Day ${dayInfo.day} of ${dayInfo.total}`, showLocalTime && localTimeStr ? `${localTimeStr} local` : ""].filter(Boolean).join(", ")}
+              </Text>
+            </View>
+          </MapGlass>
+        ) : <View />}
         {markerCoords.length > 0 && (
           <Pressable
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFocusedMapEventId(null); fitToMarkers(); }}
@@ -614,11 +536,11 @@ export default function TodayScreen() {
             hitSlop={6}
           >
             <MapGlass style={styles.mapButton}>
-              <Crosshair size={18} color={SHEET_GLASS ? C.textPrimary : "#fff"} weight="bold" />
+              <NavigationArrow size={18} color={SHEET_GLASS ? C.textPrimary : "#fff"} weight="fill" />
             </MapGlass>
           </Pressable>
         )}
-      </View>
+      </Animated.View>
       </View>
 
       <Animated.ScrollView
@@ -642,156 +564,69 @@ export default function TodayScreen() {
         {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}
         <View>
         {!isLiveDay && upcomingTrip ? (
-          <PreTripSheetContent trip={travellerTrip!} todayISO={todayISO} />
+          <PreTripSheetContent trip={travellerTrip!} todayISO={todayISO} weatherCoord={weatherCoord} />
         ) : !isLiveDay && mostRecentTrip ? (
           <PostTripSheetContent trip={travellerTrip!} todayISO={todayISO} />
         ) : (
         <>
-        {/* ── Zone 1: Compact Header ── */}
-        <FadeIn delay={0}>
-        <View style={styles.headerSection}>
-          <Text style={[styles.scope, { color: C.textTertiary }]}>
-            {"Your day"}
-            {", "}
-            {new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-          </Text>
-          {/* Row A: Trip name + badge */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-            <Pressable
-              onPress={() => { router.push(`/trip/${displayTrip.id}`); }}
-              style={{ flex: 1 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Open trip ${displayTrip.name}`}
-            >
-              <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={2}>{displayTrip.name}</Text>
-            </Pressable>
-            {dayInfo ? <Pill tone="custom" bg={C.elevated} color={C.textSecondary} label={`Day ${dayInfo.day} of ${dayInfo.total}`} /> : null}
-          </View>
-
-          {/* Row B: Context strip — destination + weather + local time */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs2, marginTop: S.xs }}>
-            {displayTrip.destination && (
-              <>
-                <MapPin size={10} color={C.textTertiary} weight="fill" />
-                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{displayTrip.destination}</Text>
-              </>
-            )}
-            {weather && (
-              <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }} numberOfLines={1}>
-                {weather.temp}°, {weather.description}
-              </Text>
-            )}
-            {showLocalTime && localTimeStr ? (
-              <>
-                <Clock size={10} color={C.textTertiary} weight="bold" />
-                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }}>
-                  {localTimeStr} local
-                </Text>
-              </>
-            ) : null}
-          </View>
-
-          {/* Row D: Traveler avatars */}
-          {(displayTrip.travelers?.length ?? 0) > 0 && (
-            <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowTravelerNames(v => !v); }}
-              style={{ flexDirection: "row", alignItems: "center", marginTop: S.xs }}
-              accessibilityRole="button"
-              accessibilityLabel={`${displayTrip.travelers!.length} ${displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}, show names`}
-              accessibilityState={{ expanded: showTravelerNames }}
-            >
-              <View style={{ flexDirection: "row", marginRight: S.xs }}>
-                {displayTrip.travelers!.slice(0, 6).map((t, i) => {
-                  const col = AVATAR_COLORS[i % AVATAR_COLORS.length];
-                  return (
-                    <View key={t.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}>
-                      <Avatar size={26} initials={t.initials} color={col} ringColor={isDark ? C.card : C.bg} />
-                    </View>
-                  );
-                })}
-                {displayTrip.travelers!.length > 6 && (
-                  <View style={{ marginLeft: -8 }}>
-                    <Avatar size={26} initials={`+${displayTrip.travelers!.length - 6}`} color={C.textTertiary} ringColor={isDark ? C.card : C.bg} />
-                  </View>
-                )}
-              </View>
-              <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary }}>
-                {displayTrip.travelers!.length} {displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}
-              </Text>
-            </Pressable>
-          )}
-          {showTravelerNames && (displayTrip.travelers?.length ?? 0) > 0 && (
-            <View style={{
-              marginTop: S.xs2, paddingVertical: S.xs, paddingHorizontal: S.sm,
-              backgroundColor: C.card, borderRadius: R.lg,
-            }}>
-              {displayTrip.travelers!.map((t) => (
-                <Text key={t.id} style={{
-                  fontSize: T.sm, fontWeight: T.medium,
-                  color: C.textSecondary, paddingVertical: 3,
-                }}>
-                  {t.name}
-                </Text>
-              ))}
-            </View>
-          )}
-        </View>
-        </FadeIn>
-
+        {/* Same sections and rows as the sheet before the trip: what's next, the day, then the trip */}
         {next && (
-          <FadeIn delay={60}>
+          <FadeIn delay={0}>
+            <SectionHeader
+              title={next.phase === "current" ? "Happening now" : "Next up"}
+              C={C}
+              first
+            />
             <ScalePress
-              onPress={() => { router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } }); }}
+              activeScale={0.985}
+              onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } }); }}
               accessibilityRole="button"
-              accessibilityLabel={`${next.phase === "current" ? "Happening now" : "Next up"}: ${next.event.title}, ${next.event.time}`}
-              style={styles.nextCard}
+              accessibilityLabel={`${next.phase === "current" ? "Happening now" : "Next up"}: ${normaliseTitle(next.event.title, next.event.type, next.event.transferType)}, ${next.event.time}`}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm }}>
-                <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{next.phase === "current" ? "Happening now" : "Next up"}</Text>
-                <Text style={{ fontSize: T.base, color: C.textSecondary }}>{next.phase === "current" ? "In progress" : formatCountdown(next.minsUntil ?? 0)}</Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: S.sm, marginTop: S.md }}>
-                <CategoryDot type={next.event.type} transferType={next.event.transferType} size={40} />
-                <View style={{ flex: 1, gap: S.xs2 }}>
-                  <Text style={{ fontSize: T.xl, lineHeight: 26, fontWeight: T.bold, color: C.textPrimary }}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
-                  <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }}>{next.event.time}{next.event.type === "flight" ? ", Departure time" : ", Local time"}</Text>
-                  {!!next.event.location && <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }} numberOfLines={2}>{tidyLocation(next.event.location)}</Text>}
+              <View style={[ps.row, ps.rowTop]}>
+                <View style={ps.iconOnTitle}><CategoryDot type={next.event.type} transferType={next.event.transferType} size={32} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
+                  <Text style={[ps.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
+                    {[
+                      // The countdown only helps when it's close; further out the clock time says it
+                      next.phase !== "current" && (next.minsUntil ?? Infinity) <= 60 ? formatCountdown(next.minsUntil ?? 0).replace(/^in /, "In ") : "",
+                      scheduledMinutes(next.event.time) == null ? "Time to be confirmed" : next.event.time,
+                      tidyLocation(next.event.location),
+                    ].filter(Boolean).join(", ")}
+                  </Text>
                 </View>
-                <CaretRight size={18} color={C.textTertiary} />
               </View>
-              {nextFlightLive && (nextFlightLive.status || nextFlightLive.gate || nextFlightLive.terminal) ? (
-                <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary, marginTop: S.sm }}>
-                  {[nextFlightLive.status, nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "", nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : ""].filter(Boolean).join(", ")}
-                </Text>
+              {(nextFlightLive?.terminal || nextFlightLive?.gate || nextFlightLive?.status) ? (
+                <View style={[ps.flightMeta, { borderTopColor: C.border }]}>
+                  {nextFlightLive.terminal ? <Text style={[ps.metaText, { color: C.textSecondary }]}>Terminal {nextFlightLive.terminal}</Text> : null}
+                  {nextFlightLive.gate ? <Text style={[ps.metaText, { color: C.textSecondary }]}>Gate {nextFlightLive.gate}</Text> : null}
+                  {nextFlightLive.status ? <Text style={[ps.metaText, { color: C.tealText, fontWeight: T.semibold }]}>{nextFlightLive.status}</Text> : null}
+                </View>
               ) : null}
             </ScalePress>
           </FadeIn>
         )}
 
-        {/* ── Zone 2: Schedule ── */}
-        {/* Section header */}
-        <FadeIn delay={120}>
-        <View style={styles.timelineSection}>
-          {!isPreview && displayEvents.length > 0 && (
-            <Text style={[styles.sectionCount, { color: C.textTertiary, textAlign: "right", marginBottom: 2 }]}>
-              {pastCount > 0 ? `${pastCount} earlier, ` : ""}{displayEvents.length} {displayEvents.length === 1 ? "event" : "events"}
-            </Text>
-          )}
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginBottom: S.xs }} />
-        </View>
+        <FadeIn delay={60}>
+          <SectionHeader
+            title={`Today, ${new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`}
+            C={C}
+            first={!next}
+          />
         </FadeIn>
 
         {displayEvents.length > 0 ? (
-          <View style={{ paddingHorizontal: S.md }} onLayout={(e) => { listY.current = e.nativeEvent.layout.y; }}>
+          <View onLayout={(e) => { listY.current = e.nativeEvent.layout.y; }}>
             {displayEvents.map((ev, i) => {
               const timing = eventTiming(ev, destTz, now);
               const isPast = timing.phase === "earlier";
-              const showNowLine = isPast && i + 1 < displayEvents.length && eventTiming(displayEvents[i + 1], destTz, now).phase === "upcoming";
 
               const hasCoord = !!eventCoords[ev.id];
               const rawKm = hasCoord && stayCoord && ev.type !== "hotel" ? distanceKm(stayCoord, eventCoords[ev.id]) : null;
               const km = rawKm != null && rawKm < 100 ? rawKm : null;
               const isHighlighted = highlightedEventId === ev.id;
+              const unscheduled = timing.phase === "unscheduled";
 
               return (
                 <View
@@ -801,76 +636,83 @@ export default function TodayScreen() {
                   <ScalePress
                     activeScale={0.98}
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      Haptics.selectionAsync();
                       router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: ev.id } });
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}, ${ev.time}`}
+                    accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}, ${unscheduled ? "time to be confirmed" : ev.time}`}
                     // The map dot inside the row can't be reached by VoiceOver on its own
                     accessibilityActions={ev.location || ev.locationCoords ? [{ name: "showOnMap", label: "Show on map" }] : undefined}
                     onAccessibilityAction={(e) => { if (e.nativeEvent.actionName === "showOnMap") flyToEvent(ev.id); }}
                   >
                     <View style={[
-                      styles.eventRow,
-                      isHighlighted && { backgroundColor: C.tealDim, borderRadius: R.lg, marginHorizontal: -S["2xs"], paddingHorizontal: S["2xs"] },
+                      ps.row, ps.rowTop,
+                      i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+                      isPast && { opacity: 0.5 },
+                      isHighlighted && { backgroundColor: C.tealDim, opacity: 1 },
                     ]}>
                       <Pressable
                         onPress={() => { if (ev.location || ev.locationCoords) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); flyToEvent(ev.id); } }}
                         disabled={!ev.location && !ev.locationCoords}
                         hitSlop={6}
-                        style={{ opacity: ev.location || ev.locationCoords ? 1 : 0.5 }}
+                        style={[ps.iconOnTitle, { opacity: ev.location || ev.locationCoords ? 1 : 0.5 }]}
                         accessibilityRole="button"
                         accessibilityLabel="Show event on map"
                       >
                         <CategoryDot type={ev.type} transferType={ev.transferType} size={32} />
                       </Pressable>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={2}>
+                        <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>
                           {normaliseTitle(ev.title, ev.type, ev.transferType)}
                         </Text>
-                        {(ev.location || km != null) && (
-                          <Text style={[styles.eventLocation, { color: C.textTertiary, marginTop: 2 }]} numberOfLines={1}>
-                            {km != null ? <Text style={{ color: C.tealText, fontWeight: "600" }}>{formatDistance(km)}</Text> : null}
-                            {km != null && ev.location ? ", " : ""}
-                            {tidyLocation(ev.location)}
-                          </Text>
-                        )}
+                        <Text style={[ps.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
+                          <Text style={{ color: unscheduled ? C.textSecondary : C.tealText, fontWeight: T.semibold }}>{unscheduled ? "Time to be confirmed" : ev.time}</Text>
+                          {km != null ? `, ${formatDistance(km)}` : ""}
+                          {ev.location ? `, ${tidyLocation(ev.location)}` : ""}
+                        </Text>
                       </View>
-                      <Text style={[styles.eventTime, { color: timing.phase === "unscheduled" ? C.textTertiary : C.tealText }]}>{timing.phase === "unscheduled" ? "TBC" : ev.time}</Text>
                     </View>
                   </ScalePress>
-                  {showNowLine && (
-                    <View style={styles.nowLineWrap}>
-                      <View style={[styles.nowDot, { backgroundColor: C.teal }]} />
-                      <View style={[styles.nowLine, { backgroundColor: C.teal }]} />
-                      <Text style={[styles.nowLabel, { color: C.tealText }]}>NOW</Text>
-                    </View>
-                  )}
-                  {i < displayEvents.length - 1 && !showNowLine && (
-                    <View style={[styles.divider, { backgroundColor: C.border }]} />
-                  )}
                 </View>
               );
             })}
-            {/* See full itinerary */}
-            <View style={{ marginTop: S.md }}>
-              <Pressable
-                onPress={() => { router.push(`/trip/${displayTrip.id}`); }}
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.seeAllBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Text style={[styles.seeAllBtnText, { color: C.tealText }]}>See full itinerary</Text>
-                <CaretRight size={14} color={C.tealText} weight="regular" style={{ alignSelf: "center" }} />
-              </Pressable>
-            </View>
           </View>
         ) : (
           <EmptyState
             compact
             icon={<Sun size={48} color={C.textTertiary} weight="light" />}
-            title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
+            title="No events scheduled for today"
           />
         )}
+
+        <FadeIn delay={120}>
+          <SectionHeader title="Trip details" C={C} />
+          {(displayTrip.travelers?.length ?? 0) > 0 && (
+            <View style={ps.row}>
+              <View style={{ flexDirection: "row", marginRight: S.xs }}>
+                {displayTrip.travelers!.slice(0, 5).map((t, i) => (
+                  <View key={t.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}>
+                    <Avatar size={26} initials={t.initials} color={AVATAR_COLORS[i % AVATAR_COLORS.length]} ringColor={C.card} />
+                  </View>
+                ))}
+              </View>
+              <Text style={[ps.rowTitle, { color: C.textPrimary, flex: 1 }]}>
+                {displayTrip.travelers!.length} {displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}
+              </Text>
+            </View>
+          )}
+          <Pressable
+            onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${displayTrip.id}`); }}
+            accessibilityRole="button"
+            accessibilityLabel="Full itinerary"
+            style={({ pressed }) => [ps.row, (displayTrip.travelers?.length ?? 0) > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
+          >
+            <View style={ps.rowIcon}>
+              <Calendar size={16} color={C.textSecondary} weight="regular" />
+            </View>
+            <Text style={[ps.rowTitle, { color: C.textPrimary, flex: 1 }]}>Full itinerary</Text>
+          </Pressable>
+        </FadeIn>
         </>
         )}
         </View>
@@ -893,7 +735,10 @@ function makeStyles(C: ThemeColors) {
     }),
     ...StyleSheet.create({
     mapButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+    dayChip: { minHeight: 44, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 7, justifyContent: "center", flexShrink: 1 },
+    dayChipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     pinWrap: { alignItems: "center" },
+    dayPin: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center" },
     pin: {
       flexDirection: "row", alignItems: "center", gap: 7, maxWidth: 250,
       paddingVertical: 5, paddingLeft: 5, paddingRight: 12, borderRadius: 20,
@@ -918,49 +763,6 @@ function makeStyles(C: ThemeColors) {
     grabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 3, backgroundColor: C.border, marginBottom: S.xs },
     mapFallback: { flex: 1, justifyContent: "center", alignItems: "center", gap: S.sm, padding: S.lg },
     offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
-    // Boxless: the next event leads the page on its own, no card around it
-    nextCard: { marginTop: S.lg, paddingHorizontal: S.md, paddingVertical: S.sm },
-    scope: { fontSize: T.base, fontWeight: "500", marginBottom: 2 },
-
-    // Header
-    headerSection: {
-      paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: 0,
-    },
-    tripName: { fontSize: T["2xl"], lineHeight: 29, fontWeight: "700", letterSpacing: -0.3 },
-
-    // Timeline
-    timelineSection: {
-      paddingHorizontal: S.md, paddingTop: S.md,
-    },
-    sectionCount: { fontSize: T.xs, fontWeight: "600" },
-    eventRow: {
-      flexDirection: "row", alignItems: "center",
-      paddingVertical: S.sm2, gap: S.sm,
-    },
-    eventTitle: { fontSize: T.lg, lineHeight: 23, fontWeight: "600" },
-    eventTime: { fontSize: T.base, fontWeight: "600" },
-    eventLocation: { fontSize: T.base, lineHeight: 21, fontWeight: "500" },
-    divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
-    nowLineWrap: {
-      flexDirection: "row", alignItems: "center",
-      marginVertical: S.xs2,
-    },
-    nowDot: {
-      width: 8, height: 8, borderRadius: 4,
-    },
-    nowLine: {
-      flex: 1, height: 1.5, marginLeft: S["2xs"],
-    },
-    nowLabel: {
-      fontSize: T["2xs"], fontWeight: "800", letterSpacing: 1, marginLeft: S.xs2,
-    },
-
-    // See all button
-    seeAllBtn: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: S["2xs"], paddingVertical: S.sm, borderRadius: R.xl,
-    },
-    seeAllBtnText: { fontSize: T.base, fontWeight: "700" },
     }),
   };
 }

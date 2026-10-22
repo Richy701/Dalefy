@@ -15,9 +15,10 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { type ThemeColors, T, S, statusTone } from "@/constants/theme";
-import { calendarDays, scheduledMinutes, dateInZone } from "@/shared/today";
-import { getDestinationTz } from "@/shared/timezones";
+import { calendarDays, scheduledMinutes } from "@/shared/today";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
+import { sheetStyles } from "@/components/todaySheetStyles";
+import { fetchDayForecast, type DayForecast } from "@/services/weather";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,38 +68,9 @@ function infoStatusLabel(status: InfoStatus, item: TripInfo, todayISO: string): 
   }
 }
 
-const WEATHER_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_KEY;
-
-interface Forecast { temp: number; high: number; low: number; description: string; rainChance: number }
-
-async function fetchFirstDayForecast(destination: string, date: string): Promise<Forecast | null> {
-  if (!WEATHER_KEY) return null;
-  try {
-    const g = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(destination)}&limit=1&appid=${WEATHER_KEY}`).then(r => r.json());
-    if (!g?.[0]) return null;
-    const f = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${g[0].lat}&lon=${g[0].lon}&units=metric&appid=${WEATHER_KEY}`).then(r => r.json());
-    const timeZone = getDestinationTz(destination);
-    const entries = (f.list ?? []).filter((e: any) => typeof e.dt === "number" && dateInZone(e.dt * 1000, timeZone) === date);
-    if (!entries.length) return null;
-    const midday = [...entries].sort((a: any, b: any) => {
-      const hour = (entry: any) => Number(new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(entry.dt * 1000));
-      return Math.abs(hour(a) - 12) - Math.abs(hour(b) - 12);
-    })[0];
-    return {
-      temp: Math.round(midday.main.temp),
-      high: Math.round(Math.max(...entries.map((e: any) => e.main.temp_max))),
-      low: Math.round(Math.min(...entries.map((e: any) => e.main.temp_min))),
-      description: midday.weather[0].description,
-      rainChance: Math.round(Math.max(...entries.map((e: any) => (e.pop ?? 0) * 100))),
-    };
-  } catch {
-    return null;
-  }
-}
-
 // ── Shared bits ──────────────────────────────────────────────────────────────
 
-function SectionHeader({ title, action, onAction, C, first }: { title: string; action?: string; onAction?: () => void; C: ThemeColors; first?: boolean }) {
+export function SectionHeader({ title, action, onAction, C, first }: { title: string; action?: string; onAction?: () => void; C: ThemeColors; first?: boolean }) {
   return (
     <View style={[s.sectionHeader, first && { marginTop: S.xs }]}>
       <Text style={[s.sectionTitle, { color: C.textPrimary }]} accessibilityRole="header">{title}</Text>
@@ -123,7 +95,7 @@ function infoPreview(body: string): string {
 
 // ── Pre-trip ─────────────────────────────────────────────────────────────────
 
-export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: string }) {
+export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Trip; todayISO: string; weatherCoord?: [number, number] | null }) {
   const { C, isDark } = useTheme();
   const router = useRouter();
   const { isLeader } = useTripRole(trip.id);
@@ -145,14 +117,16 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
 
   const docCount = (trip.documents?.length ?? 0) + (trip.info ?? []).filter(item => isLeader || !item.leaderOnly).reduce((n, i) => n + (i.documents?.length ?? 0), 0);
 
-  const [forecast, setForecast] = useState<Forecast | null>(null);
+  // First-day forecast at the stay the map shows, a few days out when it's worth reading
+  const weatherKey = weatherCoord ? weatherCoord.map(n => n.toFixed(2)).join(",") : "";
+  const [forecast, setForecast] = useState<DayForecast | null>(null);
   useEffect(() => {
     setForecast(null);
-    if (!trip.destination || daysUntil > 5) return;
+    if (!weatherKey || daysUntil > 5) return;
     let cancelled = false;
-    fetchFirstDayForecast(trip.destination, trip.start).then(f => { if (!cancelled) setForecast(f); });
+    fetchDayForecast(weatherKey.split(",").map(Number) as [number, number], trip.start).then(f => { if (!cancelled) setForecast(f); });
     return () => { cancelled = true; };
-  }, [trip.destination, trip.start, daysUntil]);
+  }, [weatherKey, trip.start, daysUntil]);
 
   // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
   const AVATAR_COLORS = [C.textSecondary];
@@ -373,36 +347,4 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  header: { paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.xs },
-  countdown: { flexDirection: "row", alignItems: "baseline", gap: S.xs, marginBottom: S.xs },
-  countNum: { fontSize: 40, lineHeight: 46, fontWeight: T.bold, letterSpacing: -1, fontVariant: ["tabular-nums"] },
-  countLabel: { fontSize: T.lg, fontWeight: T.medium },
-  headingMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm, marginBottom: S.sm },
-  headerDates: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
-  forecast: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
-  scope: { fontSize: T.sm, lineHeight: 18, fontWeight: T.semibold, marginBottom: 2 },
-  tripName: { fontSize: T["3xl"], lineHeight: 33, fontWeight: T.bold, letterSpacing: -0.3 },
-
-  sectionHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: S.md, marginTop: S.xl, marginBottom: S.xs,
-  },
-  sectionTitle: { fontSize: T.xl, fontWeight: T.bold, letterSpacing: -0.3 },
-  sectionAction: { fontSize: T.base, fontWeight: T.medium },
-
-  card: {},
-  row: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: 13, minHeight: 52 },
-  rowIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  // Two-line rows: the icon sits on the title line (centred on its 22pt line height), the chevron stays centred
-  rowTop: { alignItems: "flex-start" },
-  iconOnTitle: { marginTop: -5 },
-  rowTitle: { fontSize: T.md, lineHeight: 22, fontWeight: T.medium },
-  rowSub: { fontSize: 14, lineHeight: 20, marginTop: S["2xs"] },
-  flightMeta: {
-    flexDirection: "row", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.xs,
-    borderTopWidth: StyleSheet.hairlineWidth, marginLeft: S.md + 32 + S.sm,
-  },
-  metaText: { fontSize: T.sm },
-  footnote: { fontSize: T.sm, paddingHorizontal: S.md, marginTop: S.sm, lineHeight: 18 },
-});
+const s = sheetStyles;

@@ -10,6 +10,7 @@ import { runParse, runAssist, aiErrorToHttp } from "./api/_parseItineraryCore"
 import { searchFlights, lookupFlightNumber } from "./api/_flightsCore"
 import { searchImages } from "./api/_imagesCore"
 import { geocode, suggest, PROXIMITY_RE } from "./api/_geocodeCore"
+import { currentWeather, dayForecast, validateWeatherQuery } from "./api/_weatherCore"
 import { searchPlaces } from "./api/_placesCore"
 import { resolveTarget, fetchImage } from "./api/_imageProxyCore"
 import { HttpError, errorToHttp } from "./api/_httpError"
@@ -242,6 +243,22 @@ function apiRoutesPlugin(env: Record<string, string>) {
               send(200, mode === "suggest" ? await suggest(q, proximity, token) : await geocode(q, proximity, token))
             } catch (e) {
               const m = errorToHttp(e, "Failed to geocode")
+              send(m.status, { error: m.error })
+            }
+          } else if (p === "/api/weather") {
+            const lat = url.searchParams.get("lat") ?? ""
+            const lng = url.searchParams.get("lng") ?? ""
+            const date = url.searchParams.get("date") ?? ""
+            const err = validateWeatherQuery(lat, lng, date)
+            if (err) { send(400, { error: err }); return }
+            const key = env.OPENWEATHER_KEY
+            if (!key) { send(500, { error: "OPENWEATHER_KEY not configured" }); return }
+            try {
+              send(200, date
+                ? { forecast: await dayForecast(Number(lat), Number(lng), date, key) }
+                : { weather: await currentWeather(Number(lat), Number(lng), key) })
+            } catch (e) {
+              const m = errorToHttp(e, "Failed to fetch weather")
               send(m.status, { error: m.error })
             }
           } else {
