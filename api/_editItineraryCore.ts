@@ -24,6 +24,8 @@ You are given the current trip as JSON in the latest user message. Each event ha
 How to respond:
 - "reply": a short, friendly message to the agent (1-3 sentences). Say what you are proposing, or answer their question. Do not repeat every field you changed, the agent sees a diff.
 - "changes": the edits to propose. Empty when the agent is only asking a question, when you need to ask a clarifying question, or when nothing should change.
+- "warnings": short notes about problems your proposal creates or reveals that the agent should check, e.g. "The 6:00 AM Dawn Game Drive on Mar 21 overlaps the new balloon flight." One sentence each, most important first. Only flag problems this proposal causes or that directly affect it, not unrelated issues elsewhere in the trip. Empty when there is nothing to flag. Do not repeat these in "reply".
+- "options": when you ask a clarifying question with a few clear answers, list them as short replies the agent can tap, written in the agent's voice, e.g. ["The Welcome Dinner on Mar 18", "The Bush Dinner on Mar 20"]. At most 5, under 60 characters each. Empty otherwise.
 
 Each change:
 - op "update": set eventId to an existing event id. In "fields", set ONLY the fields that change; every other field must be null.
@@ -64,6 +66,8 @@ const FieldsSchema = z.object({
 
 const EditResultSchema = z.object({
   reply: z.string(),
+  warnings: z.array(z.string()),
+  options: z.array(z.string()),
   changes: z.array(z.object({
     op: z.enum(["add", "update", "delete"]),
     eventId: z.string(),
@@ -175,6 +179,9 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
 
   return {
     reply: message.parsed_output.reply,
+    warnings: message.parsed_output.warnings.filter(w => w.trim()).slice(0, 5),
+    // Tappable answers only make sense alongside a question, never next to a proposal.
+    options: changes.length ? [] : message.parsed_output.options.filter(o => o.trim()).slice(0, 5),
     changes,
     _usage: {
       input_tokens: message.usage.input_tokens,

@@ -32,7 +32,7 @@ export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assig
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group/sortable relative">
+    <div ref={setNodeRef} style={style} data-event-id={event.id} className="group/sortable relative rounded-xl">
       {/* Drag handle */}
       <button
         type="button"

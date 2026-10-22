@@ -16,6 +16,8 @@ export interface AssistantChange {
 export interface AssistantResult {
   reply: string;
   changes: AssistantChange[];
+  warnings: string[];
+  options: string[];
 }
 
 const TEXT_CAP = 600;

@@ -416,6 +416,21 @@ html[data-accent-fg="light"] .daf-sidebar-cal .cal-today { color: #fff !importan
   animation: marquee 30s linear infinite;
 }
 
+/* Trip assistant: event the agent is hovering in a proposal, and events a proposal just changed */
+[data-event-id] {
+  transition: box-shadow 200ms ease;
+}
+[data-event-id].assistant-focus {
+  box-shadow: 0 0 0 2px rgb(var(--brand-rgb)), 0 0 0 6px rgb(var(--brand-rgb) / 0.15);
+}
+@keyframes assistant-flash {
+  0%, 35% { box-shadow: 0 0 0 2px rgb(var(--brand-rgb)), 0 0 0 8px rgb(var(--brand-rgb) / 0.18); }
+  100%    { box-shadow: 0 0 0 2px rgb(var(--brand-rgb) / 0), 0 0 0 8px rgb(var(--brand-rgb) / 0); }
+}
+[data-event-id].assistant-flash {
+  animation: assistant-flash 2.4s ease-out;
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
