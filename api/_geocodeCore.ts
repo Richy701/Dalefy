@@ -82,7 +82,7 @@ export async function suggest(
   q: string,
   proximity: string | undefined,
   token: string,
-): Promise<{ suggestions: { name: string; center: [number, number] }[] }> {
+): Promise<{ suggestions: { name: string; center: [number, number]; country: string | null }[] }> {
   const encoded = encodeURIComponent(q);
   let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encoded}&access_token=${token}&autocomplete=true&limit=5&language=en&types=country,region,district,place,locality,neighborhood,street,address`;
   if (proximity) url += `&proximity=${encodeURIComponent(proximity)}`;
@@ -95,6 +95,7 @@ export async function suggest(
         name: p.full_address || [p.name, p.place_formatted].filter(Boolean).join(", "),
         // [lng, lat]
         center: [f.geometry!.coordinates![0], f.geometry!.coordinates![1]] as [number, number],
+        country: p.context?.country?.country_code?.toLowerCase() ?? null,
       };
     });
   return { suggestions };

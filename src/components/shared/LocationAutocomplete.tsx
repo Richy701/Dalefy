@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { tripArea } from "@/services/geocode";
 import { MapPin, SpinnerGap } from "@phosphor-icons/react";
 
 interface Suggestion {
@@ -14,12 +15,14 @@ interface LocationAutocompleteProps {
   className?: string;
   /** Accessible name for the input (the visible label isn't always associated). */
   ariaLabel?: string;
+  /** The trip's destination: suggestions near its cities come first */
+  destination?: string;
   id?: string;
 }
 
 type Status = "idle" | "loading" | "results" | "empty" | "error";
 
-export function LocationAutocomplete({ value, onChange, placeholder, className, ariaLabel, id }: LocationAutocompleteProps) {
+export function LocationAutocomplete({ value, onChange, placeholder, className, ariaLabel, id, destination }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
@@ -30,6 +33,18 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
   const reactId = useId();
   const listId = `${reactId}-listbox`;
   const inputId = id ?? `${reactId}-input`;
+  // The trip's first city ([lng, lat]) and countries: suggestions there are listed first
+  const nearRef = useRef<string>("");
+  const countriesRef = useRef<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    tripArea(destination).then(area => {
+      if (cancelled) return;
+      nearRef.current = area ? `${area.anchors[0][1]},${area.anchors[0][0]}` : "";
+      countriesRef.current = area?.countries ?? [];
+    });
+    return () => { cancelled = true; };
+  }, [destination]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.trim().length < 3) { setSuggestions([]); setStatus("idle"); return; }
@@ -37,15 +52,20 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
     setStatus("loading");
     setOpen(true);
     try {
-      const res = await fetch(`/api/geocode?mode=suggest&q=${encodeURIComponent(query)}`);
+      const near = nearRef.current ? `&proximity=${nearRef.current}` : "";
+      const res = await fetch(`/api/geocode?mode=suggest&q=${encodeURIComponent(query)}${near}`);
       if (reqId !== requestRef.current) return; // stale
       if (!res.ok) throw new Error(String(res.status));
       const json = await res.json();
-      const list: Suggestion[] = json.suggestions?.map((s: { name: string; center: [number, number] }) => ({
+      type Hit = { name: string; center: [number, number]; country?: string | null };
+      const onTrip = (h: Hit) => !!h.country && countriesRef.current.includes(h.country);
+      // Places in the trip's countries first; elsewhere stays pickable (a departure lounge, say)
+      const hits: Hit[] = [...(json.suggestions ?? [])].sort((a: Hit, b: Hit) => Number(onTrip(b)) - Number(onTrip(a)));
+      const list: Suggestion[] = hits.map((s) => ({
         place_name: s.name,
         text: s.name.split(",")[0].trim() || s.name,
         center: s.center,
-      })) ?? [];
+      }));
       setSuggestions(list);
       setActiveIndex(-1);
       setStatus(list.length ? "results" : "empty");

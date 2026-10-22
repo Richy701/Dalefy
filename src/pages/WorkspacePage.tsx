@@ -2141,6 +2141,7 @@ export function WorkspacePage() {
                     <LocationAutocomplete
                       id="event-location"
                       ariaLabel="Location"
+                      destination={trip?.destination}
                       value={editingEvent?.location || ""}
                       onChange={(val, coords) => setEditingEvent(prev => prev ? { ...prev, location: val, locationCoords: coords ?? prev.locationCoords } : null)}
                       placeholder="Search for a place..."
