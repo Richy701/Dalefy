@@ -151,11 +151,10 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/geocode` | — | Forward geocoding via Mapbox (location name to coordinates) |
 | `/api/images` | — | Image search with source selection (SerpAPI, Unsplash, Pexels) |
 | `/api/image-proxy` | — | SSRF-protected image proxy (HTTPS only, private IPs blocked, 5MB limit) |
-| `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Haiku 4.5 — extracts events, travelers, info sections |
-| `/api/push` | Bearer | Push notifications — requires CRON_SECRET or Firebase auth token |
+| `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Sonnet 5.5 (event copy assist on Claude Haiku 5.5) - extracts events, travelers, info sections |
 | `/api/notify-trip-update` | Bearer | Notify trip members of itinerary changes via Expo push |
 | `/api/send-invite` | Bearer | Send team invitation emails via Resend |
-| `/api/send-push` | Bearer | Send push notification to a specific device by ID |
+| `/api/send-push` | Bearer | Send a push notification to one device; caller must organize a trip that device has joined |
 | `/api/share-page` | — | Serves `/shared/{id}` with the trip's Open Graph tags (title, dates, cover photo) and forwards to the trip page |
 | `/api/check-flight-status` | Bearer | Cron (daily): checks flight status, saves airport codes/coordinates, and pushes updates to travelers |
 
@@ -165,7 +164,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 - **SSRF protection** — image proxy blocks private/internal IPs, enforces HTTPS, verifies image content-type, 5s timeout, 5MB limit
 - **CORS** — restricted to production domain and localhost dev
 - **CSP** — Content-Security-Policy header on all responses
-- **Push auth** — `/api/push` requires bearer token (cron secret or Firebase ID token)
+- **Push auth** - `/api/send-push` and `/api/notify-trip-update` require a Firebase ID token from the trip's owner or organization
 - **Firestore rules** — scoped reads/writes per user, org admin checks, trip member verification, cron user allowlist
 - **Storage rules** — org admin required for logo uploads, image types only (no SVG)
 - **Email verification** — new email/password signups receive verification emails, banner shown until verified

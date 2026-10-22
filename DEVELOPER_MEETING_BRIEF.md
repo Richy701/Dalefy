@@ -78,8 +78,7 @@ Both apps use Firestore `onSnapshot` listeners for real-time updates:
 | `/api/dining` | Search restaurants | Google Search |
 | `/api/images` | Search cover images | Google -> Unsplash -> Pexels (fallback chain) |
 | `/api/geocode` | Geocode addresses for map pins | Mapbox |
-| `/api/parse-itinerary` | AI-powered itinerary text parser | Claude Haiku (Anthropic) |
-| `/api/push` | Send push notifications | Expo Push Service |
+| `/api/parse-itinerary` | AI-powered itinerary text parser | Claude Sonnet 5.5 (Anthropic) |
 | `/api/image-proxy` | Fetch external images (avoids CORS) | Direct fetch |
 
 The cron job (`check-flight-status`) authenticates as a service account (`cron@dalefy.com`) and scans all trips with upcoming flights to update their real-time status.
@@ -111,7 +110,7 @@ The cron job (`check-flight-status`) authenticates as a service account (`cron@d
   - Push tokens: scoped to owning user, cron can read all for notifications
   - Storage: UID-scoped writes with file type and size validation (2MB avatars/logos, 25MB trip media), public reads
 - **Server-side API keys** - Mapbox, Google, RapidAPI, Anthropic keys are only in Vercel env vars, never shipped to clients
-- **Firebase Auth token verification** on push notification (`/api/push`) and cron (`/api/check-flight-status`) endpoints via JWT verification against Google's public JWKS
+- **Firebase Auth token verification** on push notification (`/api/send-push`, `/api/notify-trip-update`) and cron (`/api/check-flight-status`) endpoints via JWT verification against Google's public JWKS
 - **Sensitive field filtering on mobile** - Budget, PNR, supplier pricing, booking refs, invoices, commissions, and other sensitive info fields are regex-filtered from non-leader views (only trip leaders/agents see them)
 - **HEIC to JPEG conversion** on mobile before upload (compatibility)
 - **Supabase migration partially started** - `mobile/services/supabaseTrips.ts` has working fetch, upsert, delete, and PIN join operations already implemented
