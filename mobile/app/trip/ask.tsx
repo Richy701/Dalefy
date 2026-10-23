@@ -32,6 +32,7 @@ const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 const sessions = new Map<string, ChatTurn[]>();
 
 const EASE_OUT = Easing.out(Easing.cubic);
+const CARD_STAGGER = 110;
 
 function CopyButton({ text, color }: { text: string; color: string }) {
   const [copied, setCopied] = useState(false);
@@ -94,7 +95,11 @@ export default function AskScreen() {
   const [pending, setPending] = useState(false);
   // The answer currently being written out; older answers render in full
   const [streaming, setStreaming] = useState<number | null>(null);
-  const endStream = useCallback(() => setStreaming(null), []);
+  // Writing done: the event cards slide in one after another, each with a click
+  const endStream = useCallback((cards: number) => {
+    setStreaming(null);
+    for (let k = 0; k < cards; k++) setTimeout(() => Haptics.selectionAsync(), 120 + k * CARD_STAGGER);
+  }, []);
   const scrollRef = useRef<ScrollView>(null);
   const viewH = useRef(0);
 
@@ -124,6 +129,8 @@ export default function AskScreen() {
     setPending(true);
     try {
       const { reply, eventIds } = await askTrip(tripId, history);
+      // A soft bump as the reply arrives, felt even with the phone at your side
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
       setStreaming(history.length);
       setTurns([...history, { role: "assistant", content: reply, eventIds }]);
     } catch (e) {
@@ -213,13 +220,14 @@ export default function AskScreen() {
                   text={t.content}
                   style={[styles.answerText, t.error && { color: C.redText }]}
                   animate={streaming === i}
-                  onDone={endStream}
+                  onDone={() => endStream((t.eventIds ?? []).filter(id => byId.has(id)).length)}
+                  onTick={streaming === i ? Haptics.selectionAsync : undefined}
                 />
                 {streaming === i ? null : (
                   <Animated.View entering={EnterFade.duration(220)} style={{ gap: S.xs }}>
-                    {(t.eventIds ?? []).map(id => byId.get(id)).filter((e): e is TravelEvent => !!e).map(ev => (
+                    {(t.eventIds ?? []).map(id => byId.get(id)).filter((e): e is TravelEvent => !!e).map((ev, k) => (
+                      <Animated.View key={ev.id} entering={k ? FadeInDown.duration(280).easing(EASE_OUT).delay(k * CARD_STAGGER) : FadeInDown.duration(280).easing(EASE_OUT)}>
                       <Pressable
-                        key={ev.id}
                         onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                         accessibilityRole="button"
                         accessibilityLabel={`${tidyTitleSeparators(ev.title)}, ${eventLine(ev)}`}
@@ -231,6 +239,7 @@ export default function AskScreen() {
                           <Text style={styles.eventSub} numberOfLines={1}>{eventLine(ev)}</Text>
                         </View>
                       </Pressable>
+                      </Animated.View>
                     ))}
                     {t.error ? (i === turns.length - 1 ? (
                       <Pressable onPress={retry} accessibilityRole="button" hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignSelf: "flex-start" })}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, type StyleProp, type TextStyle } from "react-native";
 import Animated, {
   FadeInDown, Easing,
@@ -11,19 +11,30 @@ import { R, type ThemeColors } from "@/constants/theme";
 const EASE_OUT = Easing.out(Easing.cubic);
 
 /** Writes the answer out a few words at a time, like a reply being typed */
-export function StreamedText({ text, style, animate, onDone }: {
+export function StreamedText({ text, style, animate, onDone, onTick }: {
   text: string;
   style: StyleProp<TextStyle>;
   animate: boolean;
   onDone: () => void;
+  /** Called every few words while writing, for a soft haptic tick */
+  onTick?: () => void;
 }) {
   const parts = useMemo(() => text.split(/(\s+)/), [text]);
   const [shown, setShown] = useState(animate ? 0 : parts.length);
+  const tick = useRef(onTick);
+  useEffect(() => { tick.current = onTick; }, [onTick]);
   useEffect(() => {
     if (!animate) return;
     // Short answers go word by word; long ones speed up so none takes much over a second and a half
     const step = Math.max(1, Math.ceil(parts.length / 60));
-    const id = setInterval(() => setShown(n => Math.min(n + step, parts.length)), 26);
+    let n = 0;
+    let beats = 0;
+    const id = setInterval(() => {
+      n = Math.min(n + step, parts.length);
+      setShown(n);
+      if (n >= parts.length) clearInterval(id);
+      else if (++beats % 5 === 0) tick.current?.();
+    }, 26);
     return () => clearInterval(id);
   }, [animate, parts.length]);
   const done = shown >= parts.length;
