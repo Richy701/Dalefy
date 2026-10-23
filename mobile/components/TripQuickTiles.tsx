@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { View, Text, StyleSheet, Linking, Platform, Alert } from "react-native";
 // Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
 const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
-import { FileText, ChatCircleText } from "phosphor-react-native";
+import { FileText, ChatsTeardrop } from "phosphor-react-native";
 import * as Haptics from "@/services/haptics";
 import { ScalePress } from "@/components/ScalePress";
 import { Avatar } from "@/components/ui/Avatar";
@@ -53,7 +53,7 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk }: {
       style={s.tile}
     >
       <View style={s.iconTile}>
-        <ChatCircleText size={18} color={C.textPrimary} weight="fill" />
+        <ChatsTeardrop size={18} color={C.textPrimary} weight="fill" />
       </View>
       <View style={s.text}>
         <Text style={s.title} numberOfLines={1}>Ask Dale</Text>

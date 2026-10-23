@@ -25,7 +25,7 @@ import {
   CalendarDots,
   ShareNetwork, Bell, Plus,
   WifiSlash,
-  Info, Export, Camera,
+  Info, Export, Camera, ChatsTeardrop,
 } from "phosphor-react-native";
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
 import { EmptyNote } from "@/components/ui/EmptyState";
@@ -542,6 +542,7 @@ export default function HomeScreen() {
   const heroActions = heroTrip ? [
     { label: "Itinerary", Icon: CalendarDots, symbol: "calendar" as const, go: () => router.push(`/trip/${heroTrip.id}`) },
     { label: "Info", Icon: Info, symbol: "info.circle" as const, go: () => router.push(`/trip/info?tripId=${heroTrip.id}`) },
+    { label: "Ask Dale", Icon: ChatsTeardrop, symbol: "bubble.left.and.bubble.right.fill" as const, go: () => router.push(`/trip/ask?tripId=${heroTrip.id}`) },
     // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
     {
       label: "Share", Icon: Export, symbol: "square.and.arrow.up" as const,

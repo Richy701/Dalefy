@@ -10,7 +10,7 @@ import Animated, {
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { ArrowUp, Copy, Check, ChatCircleText } from "phosphor-react-native";
+import { ArrowUp, Copy, Check, ChatsTeardrop } from "phosphor-react-native";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -240,7 +240,7 @@ export default function AskScreen() {
             <FadeIn style={styles.hello}>
               {/* Dale's mark, in the agency's accent */}
               <View style={[styles.mark, { backgroundColor: C.teal }]}>
-                <ChatCircleText size={28} color={C.onAccent} weight="fill" />
+                <ChatsTeardrop size={28} color={C.onAccent} weight="fill" />
               </View>
               <Text style={styles.helloTitle}>{firstName ? `Hi ${firstName}, I'm Dale` : "Hi, I'm Dale"}</Text>
               <Text style={styles.helloSub}>Ask me anything about {trip.name}. I answer from your itinerary and your organiser's notes.</Text>
