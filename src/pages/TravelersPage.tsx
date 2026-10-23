@@ -18,9 +18,8 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTrips } from "@/context/TripsContext";
+import { useDirectoryTravelers, useComplianceRecords } from "@/context/directory";
 import { useNotifications } from "@/context/NotificationContext";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
@@ -51,6 +50,14 @@ const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: st
   Expired: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },
   "Not Required": { color: "text-muted-foreground", bg: "bg-secondary", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
 };
+
+/** "Active 1/2": in the app on some, not all, of their trips */
+const appTripsSuffix = (u: { status: string; appTrips?: number; tripCount?: number }) =>
+  u.status === "Active" && u.tripCount && u.tripCount > 1 && (u.appTrips ?? 0) < u.tripCount ? ` ${u.appTrips}/${u.tripCount}` : "";
+
+/** One app user is one person: their account if they signed in, otherwise their device */
+const personKey = (m: TripMember) => m.uid || m.device_id;
+const isPerson = (m: TripMember, key: string) => m.device_id === key || m.uid === key;
 
 // Same green/amber language as document statuses and the drawer preview dots
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -111,8 +118,8 @@ export function TravelersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("travelers");
 
-  const [complianceOverrides, setComplianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
-  const [customTravelers, setCustomTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const [complianceOverrides, setComplianceOverrides] = useComplianceRecords();
+  const [customTravelers, setCustomTravelers] = useDirectoryTravelers();
 
   // Add Traveler drawer form
   const [drawerForm, setDrawerForm] = useState({ name: "", email: "", role: "", status: "Active" as UserType["status"] });
@@ -182,7 +189,7 @@ export function TravelersPage() {
         setDeletingUser(deviceId);
         try {
           const count = await deleteAppUser(deviceId, tripIds);
-          setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
+          setAppUsers(prev => prev.filter(m => !isPerson(m, deviceId)));
           setDetailPanelUser(null);
           showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
         } catch (err) {
@@ -200,7 +207,7 @@ export function TravelersPage() {
     try {
       await updateTripMemberRole(deviceId, tripId, newRole);
       setAppUsers(prev => prev.map(m =>
-        m.device_id === deviceId && m.trip_id === tripId ? { ...m, role: newRole } : m
+        isPerson(m, deviceId) && m.trip_id === tripId ? { ...m, role: newRole } : m
       ));
       showToast(`Role updated to ${newRole === "leader" ? "Trip Leader" : "Traveler"}`);
     } catch (err) {
@@ -214,7 +221,7 @@ export function TravelersPage() {
     try {
       const count = await renameAppUser(deviceId, newName.trim(), tripIds);
       setAppUsers(prev => prev.map(m =>
-        m.device_id === deviceId ? { ...m, name: newName.trim() } : m
+        isPerson(m, deviceId) ? { ...m, name: newName.trim() } : m
       ));
       setRenamingUser(null);
       showToast(`Renamed to "${newName.trim()}" (${count} record${count === 1 ? "" : "s"})`);
@@ -232,7 +239,7 @@ export function TravelersPage() {
         setRemovingFromTrip(`${deviceId}_${tripId}`);
         try {
           await removeUserFromTrip(deviceId, tripId);
-          setAppUsers(prev => prev.filter(m => !(m.device_id === deviceId && m.trip_id === tripId)));
+          setAppUsers(prev => prev.filter(m => !(isPerson(m, deviceId) && m.trip_id === tripId)));
           showToast(`Removed from ${tripName}`);
         } catch (err) {
           console.error("Remove from trip failed:", err);
@@ -262,7 +269,7 @@ export function TravelersPage() {
         for (const deviceId of selectedUsers) {
           try { await deleteAppUser(deviceId, tripIds); removed++; } catch { /* skip */ }
         }
-        setAppUsers(prev => prev.filter(m => !selectedUsers.has(m.device_id)));
+        setAppUsers(prev => prev.filter(m => !selectedUsers.has(personKey(m))));
         setSelectedUsers(new Set());
         setBulkAction(false);
         setDetailPanelUser(null);
@@ -271,21 +278,21 @@ export function TravelersPage() {
     });
   }, [selectedUsers, showToast, tripIds]);
 
-  // Group app users by device_id (unique person)
+  // One row per person: their account, or their device if they never signed in, so two phones aren't two people
   const groupedAppUsers = useMemo(() => {
     const map = new Map<string, { name: string; avatar: string | null; email: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
     for (const m of appUsers) {
-      const existing = map.get(m.device_id);
+      const existing = map.get(personKey(m));
       const tripEntry = { id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at, role: (m.role || "traveler") as TripMemberRole };
       if (existing) {
-        existing.trips.push(tripEntry);
+        if (!existing.trips.some(t => t.id === tripEntry.id)) existing.trips.push(tripEntry);
         if (new Date(m.joined_at) > new Date(existing.trips[0]?.joinedAt ?? 0)) {
           existing.name = m.name;
           existing.avatar = m.avatar;
         }
         if (!existing.email && m.email) existing.email = m.email;
       } else {
-        map.set(m.device_id, {
+        map.set(personKey(m), {
           name: m.name,
           avatar: m.avatar,
           email: m.email || null,
@@ -386,10 +393,13 @@ export function TravelersPage() {
   const [uploadDocName, setUploadDocName] = useState("");
   const [uploadAssignees, setUploadAssignees] = useState<string[]>([]);
 
-  const linkedTravelerIds = useMemo(() => {
-    const linked = new Set<string>();
+  // Which trips each traveller has picked their name on in the app
+  const appTripsByTraveler = useMemo(() => {
+    const linked = new Map<string, Set<string>>();
     for (const m of appUsers) {
-      if (m.linked_traveler_id) linked.add(m.linked_traveler_id);
+      if (!m.linked_traveler_id) continue;
+      if (!linked.has(m.linked_traveler_id)) linked.set(m.linked_traveler_id, new Set());
+      linked.get(m.linked_traveler_id)!.add(m.trip_id);
     }
     return linked;
   }, [appUsers]);
@@ -429,7 +439,8 @@ export function TravelersPage() {
           role: "Traveler",
           avatar: "",
           initials: tv.initials,
-          status: linkedTravelerIds.has(tv.id) ? "Active" : "Offline",
+          // Worked out below from the trips they're actually on
+          status: "Offline",
         });
       }
     }
@@ -457,9 +468,13 @@ export function TravelersPage() {
         }
       });
       const compliance = complianceOverrides[user.id] || user.compliance || [];
-      return { ...user, assignedTrips, compliance };
+      // In the app on a trip only if they picked their name on that trip, not on any trip at all
+      const onTrips = trips.filter(t => t.travelerIds?.includes(user.id) || t.travelers?.some(tv => tv.id === user.id));
+      const appTrips = onTrips.filter(t => appTripsByTraveler.get(user.id)?.has(t.id)).length;
+      const status: UserType["status"] = appTrips > 0 ? "Active" : user.status === "Away" ? "Away" : "Offline";
+      return { ...user, assignedTrips, compliance, status, appTrips, tripCount: onTrips.length };
     });
-  }, [trips, complianceOverrides, customTravelers, isDemoUser, linkedTravelerIds]);
+  }, [trips, complianceOverrides, customTravelers, isDemoUser, appTripsByTraveler]);
 
   const filtered = useMemo(() => {
     if (!search) return travelers;
@@ -749,7 +764,7 @@ export function TravelersPage() {
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
-                          {statusCfg.label}
+                          {statusCfg.label}{appTripsSuffix(user)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
@@ -888,7 +903,7 @@ export function TravelersPage() {
                         <td className="px-6 py-5 text-right">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-md ${statusCfg.badge}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
-                            {statusCfg.label}
+                            {statusCfg.label}{appTripsSuffix(user)}
                           </span>
                         </td>
                       </tr>

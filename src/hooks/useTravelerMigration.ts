@@ -17,7 +17,8 @@ export function useTravelerMigration(
   ready: boolean,
   setTrips: React.Dispatch<React.SetStateAction<Trip[]>>,
   useCloud: boolean,
-  localSetTrips?: React.Dispatch<React.SetStateAction<Trip[]>>,
+  localSetTrips: React.Dispatch<React.SetStateAction<Trip[]>> | undefined,
+  addDirectoryTravelers: (travelers: User[]) => void,
 ) {
   // Cleanup: dedup custom-travelers by ID
   useEffect(() => {
@@ -46,8 +47,6 @@ export function useTravelerMigration(
     migrated.current = true;
 
     if (localStorage.getItem(STORAGE.TRAVELERS_MIGRATED) === "2") return;
-    localStorage.removeItem(STORAGE.CUSTOM_TRAVELERS);
-    notifyLocalStorage(STORAGE.CUSTOM_TRAVELERS);
 
     const needsMigration = trips.filter(
       t => !t.travelerIds?.length && t.attendees && t.attendees !== "Imported Group",
@@ -58,7 +57,6 @@ export function useTravelerMigration(
       return;
     }
 
-    const stored: User[] = [];
     let allExisting: User[] = [];
     const allNewTravelers: User[] = [];
     const migrationMap = new Map<
@@ -86,8 +84,7 @@ export function useTravelerMigration(
     }
 
     if (allNewTravelers.length > 0) {
-      localStorage.setItem(STORAGE.CUSTOM_TRAVELERS, JSON.stringify([...stored, ...allNewTravelers]));
-      notifyLocalStorage(STORAGE.CUSTOM_TRAVELERS);
+      addDirectoryTravelers(allNewTravelers);
       logger.log("TravelerMigration", `created ${allNewTravelers.length} new traveler(s)`);
     }
 

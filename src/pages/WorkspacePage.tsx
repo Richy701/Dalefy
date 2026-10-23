@@ -33,10 +33,10 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { TravelEvent, Trip, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
+import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
 import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
@@ -73,7 +73,6 @@ import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
-import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
 // The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
 
@@ -293,7 +292,7 @@ export function WorkspacePage() {
   const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
-  const [customTravelers, setCustomTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const [customTravelers, setCustomTravelers] = useDirectoryTravelers();
   const allTravelers = useMemo(() => {
     const seen = new Set<string>();
     if (isDemo) {
@@ -1767,7 +1766,14 @@ export function WorkspacePage() {
                                       <DeviceMobile className="h-3 w-3" weight="bold" /> In the app
                                     </span>
                                   ) : membersLoaded ? (
-                                    <span className="text-[10px] font-medium text-muted-foreground shrink-0">Not joined yet</span>
+                                    <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+                                      {(() => {
+                                        const invited = trip.travelers?.find(tv => tv.id === t.id)?.invitedAt;
+                                        return invited
+                                          ? `Invited ${new Date(invited).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, not joined yet`
+                                          : "Not joined yet";
+                                      })()}
+                                    </span>
                                   ) : null}
                                 </div>
                                 {isEditing ? (
@@ -1804,6 +1810,16 @@ export function WorkspacePage() {
                                     }
                                   </button>
                                 )}
+                                {/* They confirmed a different email in the app: offer it in one click */}
+                                {!isEditing && memberByTraveler.get(t.id)?.email && memberByTraveler.get(t.id)!.email!.toLowerCase() !== (t.email || "").toLowerCase() ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => { saveTravelerEmail(t.id, memberByTraveler.get(t.id)!.email!); toast.success("Email saved"); }}
+                                    className="text-[10px] font-medium text-brand hover:underline mt-0.5 text-left block truncate max-w-full"
+                                  >
+                                    Use {memberByTraveler.get(t.id)!.email} from the app
+                                  </button>
+                                ) : null}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {eventCount > 0 && (
@@ -2781,6 +2797,12 @@ export function WorkspacePage() {
         onOpenChange={setSendInviteOpen}
         trip={trip}
         travelers={tripTravelers}
+        onSent={ids => {
+          if (!ids.length) return;
+          const at = new Date().toISOString();
+          const sent = new Set(ids);
+          updateTrip(trip.id, { travelers: (trip.travelers ?? []).map(tv => (sent.has(tv.id) ? { ...tv, invitedAt: at } : tv)) });
+        }}
       />
 
       <ItineraryPreviewDialog

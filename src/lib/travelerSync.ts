@@ -111,3 +111,11 @@ export function extractNamesFromAttendeesString(attendees: string): string[] {
     .map((n) => n.trim())
     .filter((n) => n.length > 2 && !GROUP_LABEL.test(n));
 }
+
+/**
+ * How many people are on a trip, the same everywhere: the travellers listed on it, or the headcount typed in for
+ * trips without a list. Never counted from the attendees text, whose "+3 more" made it wrong.
+ */
+export function travellerCount(trip: { travelers?: unknown[]; paxCount?: string }): number {
+  return trip.travelers?.length || parseInt(trip.paxCount || "0", 10) || 0;
+}

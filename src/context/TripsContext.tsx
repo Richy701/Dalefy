@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useMemo, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Trip, TravelEvent } from "@/types";
+import type { Trip, TravelEvent, User } from "@/types";
 import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
@@ -8,6 +8,7 @@ import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, re
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { useOrg } from "@/context/OrgContext";
+import { useDirectoryTravelers } from "@/context/directory";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/context/AuthContext";
@@ -351,7 +352,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   // Side-effect hooks (extracted)
   useCloudSync(useCloud, cloud.ready, cloud.trips, local.trips, cloud.setTrips, orgId);
-  useTravelerMigration(trips, ready, setTrips, useCloud, local.setTrips);
+  const [, setDirectoryTravelers] = useDirectoryTravelers();
+  const addDirectoryTravelers = useCallback(
+    (added: User[]) => setDirectoryTravelers(prev => [...prev, ...added.filter(a => !prev.some(p => p.id === a.id))]),
+    [setDirectoryTravelers],
+  );
+  useTravelerMigration(trips, ready, setTrips, useCloud, local.setTrips, addDirectoryTravelers);
 
   // Flush updater to localStorage synchronously
   const flushLocal = useCallback((updater: (prev: Trip[]) => Trip[]) => {

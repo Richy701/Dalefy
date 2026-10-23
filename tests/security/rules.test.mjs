@@ -113,6 +113,35 @@ test('app user rosters stay inside the agency that owns the trip', async () => {
   }
   await assertSucceeds(context('server').firestore().collection('trip_members').where('trip_id', '==', 'published').get());
 });
+test('the traveller directory and compliance belong to one organisation', async () => {
+  const rec = (org, uid) => ({ organization_id: org, user_id: uid, traveler: { id: 't1', name: 'Tony' }, updated_at: 'now' });
+  const comp = (org, uid) => ({ organization_id: org, user_id: uid, traveler_id: 't1', docs: [{ name: 'Passport', status: 'Signed' }], updated_at: 'now' });
+  // Editors write their organisation's directory; viewers, outsiders and travellers can't
+  await assertSucceeds(context('agent').firestore().doc('directory_travelers/agency__t1').set(rec('agency', 'agent')));
+  await assertSucceeds(context('admin').firestore().doc('traveler_compliance/agency__t1').set(comp('agency', 'admin')));
+  for (const uid of ['viewer', 'outsider', 'traveler']) {
+    await assertFails(context(uid).firestore().doc('directory_travelers/agency__t2').set(rec('agency', uid)));
+  }
+  // Nobody plants a record under another organisation's ID, or moves one between organisations
+  await assertFails(context('outsider').firestore().doc('directory_travelers/agency__t3').set(rec('other', 'outsider')));
+  await assertFails(context('outsider').firestore().doc('directory_travelers/agency__t1').set(rec('other', 'outsider')));
+  // Everyone in the organisation reads it, by organisation; nobody else does
+  for (const uid of ['owner', 'admin', 'agent', 'viewer']) {
+    await assertSucceeds(context(uid).firestore().collection('directory_travelers').where('organization_id', '==', 'agency').get());
+    await assertSucceeds(context(uid).firestore().collection('traveler_compliance').where('organization_id', '==', 'agency').get());
+  }
+  for (const uid of [null, 'outsider', 'traveler']) {
+    await assertFails(context(uid).firestore().collection('directory_travelers').where('organization_id', '==', 'agency').get());
+    await assertFails(context(uid).firestore().collection('traveler_compliance').get());
+  }
+  // Without an organisation, a user's directory is theirs alone
+  await assertSucceeds(context('solo').firestore().doc('directory_travelers/u-solo__t1').set(rec(null, 'solo')));
+  await assertFails(context('outsider').firestore().doc('directory_travelers/u-solo__t9').set(rec(null, 'solo')));
+  await assertSucceeds(context('solo').firestore().collection('directory_travelers').where('organization_id', '==', null).where('user_id', '==', 'solo').get());
+  await assertFails(context('outsider').firestore().collection('directory_travelers').where('organization_id', '==', null).where('user_id', '==', 'solo').get());
+  await assertFails(context('viewer').firestore().doc('directory_travelers/agency__t1').delete());
+  await assertSucceeds(context('agent').firestore().doc('directory_travelers/agency__t1').delete());
+});
 for (const uid of [null, 'outsider', 'traveler', 'leader', 'viewer']) {
   test(`${uid ?? 'public'} cannot replace/delete protected attachments`, async () => {
     const storage = context(uid).storage();

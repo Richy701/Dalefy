@@ -192,6 +192,9 @@ export interface TripMember {
   email?: string;
 }
 
+/** An app user is one person whether a doc names their device or their account */
+const isPerson = (data: { device_id?: string; uid?: string }, key: string) => data.device_id === key || data.uid === key;
+
 /**
  * Every member doc on the given trips. Read one trip at a time: the rules only let a trip's own staff read
  * its roster, and only through a query filtered on that trip.
@@ -214,7 +217,12 @@ export async function fetchTripMembers(tripIds: string[]): Promise<TripMember[]>
     const seen = new Map<string, TripMember>();
     for (const m of all) {
       const key = `${m.device_id}_${m.trip_id}`;
-      if (!seen.has(key)) seen.set(key, m);
+      const kept = seen.get(key);
+      if (!kept) { seen.set(key, m); continue; }
+      // The app writes a confirmed email and the account onto the account-keyed doc only; carry them over
+      if (!kept.email && m.email) kept.email = m.email;
+      if (!kept.uid && m.uid) kept.uid = m.uid;
+      if (!kept.linked_traveler_id && m.linked_traveler_id) kept.linked_traveler_id = m.linked_traveler_id;
     }
     return Array.from(seen.values());
   } catch {
@@ -239,8 +247,7 @@ export async function deleteAppUser(deviceId: string, tripIds: string[]): Promis
   const refs = new Map<string, import("firebase/firestore").DocumentReference>();
 
   for (const d of await memberDocsOfTrips(tripIds)) {
-    const data = d.data();
-    if (data.device_id === deviceId || data.uid === deviceId) refs.set(d.id, d.ref);
+    if (isPerson(d.data(), deviceId)) refs.set(d.id, d.ref);
   }
 
   if (refs.size === 0) return 0;
@@ -257,20 +264,14 @@ export async function deleteAppUser(deviceId: string, tripIds: string[]): Promis
   return allRefs.length;
 }
 
-/** Update the role on all trip_members docs for a device+trip pair */
+/** Update the role on all of a person's trip_members docs for one trip */
 export async function updateTripMemberRole(
-  deviceId: string,
+  personKey: string,
   tripId: string,
   role: TripMemberRole,
 ): Promise<void> {
-  const snap = await getDocs(
-    query(
-      collection(firebaseDb(), TRIP_MEMBERS),
-      where("device_id", "==", deviceId),
-      where("trip_id", "==", tripId),
-    ),
-  );
-  for (const d of snap.docs) {
+  const docs = (await memberDocsOfTrips([tripId])).filter(d => isPerson(d.data(), personKey));
+  for (const d of docs) {
     try {
       await setDoc(d.ref, { role }, { merge: true });
     } catch (err) {
@@ -278,53 +279,22 @@ export async function updateTripMemberRole(
       throw err;
     }
   }
-  // Also update UID-keyed docs if they exist
-  const uidSnap = await getDocs(
-    query(
-      collection(firebaseDb(), TRIP_MEMBERS),
-      where("trip_id", "==", tripId),
-    ),
-  );
-  for (const d of uidSnap.docs) {
-    const data = d.data();
-    if (data.device_id === deviceId && d.id !== `${deviceId}_${tripId}`) {
-      try {
-        await setDoc(d.ref, { role }, { merge: true });
-      } catch (err) {
-        logger.error("updateTripMemberRole", `failed on uid-keyed doc ${d.id}:`, err);
-      }
-    }
-  }
 }
 
-/** Remove a user from a single trip (both device-keyed and uid-keyed docs) */
-export async function removeUserFromTrip(deviceId: string, tripId: string): Promise<number> {
-  const [snap, allForTrip] = await Promise.all([
-    getDocs(query(
-      collection(firebaseDb(), TRIP_MEMBERS),
-      where("device_id", "==", deviceId),
-      where("trip_id", "==", tripId),
-    )),
-    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", tripId))),
-  ]);
-
-  const refs = new Map<string, import("firebase/firestore").DocumentReference>();
-  for (const d of snap.docs) refs.set(d.id, d.ref);
-  for (const d of allForTrip.docs) {
-    if (d.data().device_id === deviceId && !refs.has(d.id)) refs.set(d.id, d.ref);
-  }
-
-  if (refs.size === 0) return 0;
+/** Remove a person from a single trip (every doc of theirs on it, device- or account-keyed) */
+export async function removeUserFromTrip(personKey: string, tripId: string): Promise<number> {
+  const docs = (await memberDocsOfTrips([tripId])).filter(d => isPerson(d.data(), personKey));
+  if (docs.length === 0) return 0;
   const batch = writeBatch(firebaseDb());
-  for (const r of refs.values()) batch.delete(r);
+  for (const d of docs) batch.delete(d.ref);
   await batch.commit();
-  logger.log("removeUserFromTrip", `removed ${refs.size} docs for device ${deviceId} from trip ${tripId}`);
-  return refs.size;
+  logger.log("removeUserFromTrip", `removed ${docs.length} docs for ${personKey} from trip ${tripId}`);
+  return docs.length;
 }
 
 /** Rename an app user across their trip_members docs on the given trips */
 export async function renameAppUser(deviceId: string, newName: string, tripIds: string[]): Promise<number> {
-  const docs = (await memberDocsOfTrips(tripIds)).filter(d => d.data().device_id === deviceId);
+  const docs = (await memberDocsOfTrips(tripIds)).filter(d => isPerson(d.data(), deviceId));
   let updated = 0;
   for (const d of docs) {
     try { await setDoc(d.ref, { name: newName }, { merge: true }); updated++; } catch { /* skip */ }

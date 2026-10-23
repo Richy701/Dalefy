@@ -5,6 +5,7 @@ import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TripsProvider } from "@/context/TripsContext";
+import { DirectoryProvider } from "@/context/DirectoryContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
 import { OrgProvider, useOrg } from "@/context/OrgContext";
@@ -166,12 +167,14 @@ export default function App() {
             <OrgProvider>
             <BrandProvider>
             <NotificationProvider>
+              <DirectoryProvider>
               <TripsProvider>
                 <PreferencesProvider>
                   <AppRoutes />
                   <AppToaster />
                 </PreferencesProvider>
               </TripsProvider>
+              </DirectoryProvider>
             </NotificationProvider>
             </BrandProvider>
             </OrgProvider>

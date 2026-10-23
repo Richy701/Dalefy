@@ -8,17 +8,17 @@ import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
+import { travellerCount } from "@/lib/travelerSync";
+import { useDirectoryTravelers, useComplianceRecords } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripStats } from "@/hooks/useTripStats";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { AIRLINE_COLORS, airlineLogoUrl } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
-import type { ComplianceDoc, User } from "@/types";
+import type { User } from "@/types";
 
 type Tab = "operations" | "compliance";
 
@@ -48,8 +48,8 @@ export function ReportsPage() {
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
-  const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
-  const [customTravelers] = useLocalStorage<User[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const [complianceOverrides] = useComplianceRecords();
+  const [customTravelers] = useDirectoryTravelers();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
 
   const handleExportCsv = useCallback(() => {
@@ -75,7 +75,7 @@ export function ReportsPage() {
         "Activities": activities,
         "Dining": dining,
         "Transfers": transfers,
-        "Traveler Count": t.paxCount || t.attendees || "",
+        "Traveler Count": travellerCount(t),
       };
     });
     const csv = Papa.unparse(rows);
@@ -444,8 +444,8 @@ export function ReportsPage() {
                   {trips.length > 0 ? (
                     <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 -mr-1">
                       {trips.map((t) => {
-                        const pax = parseInt(t.paxCount || "0") || (t.travelers?.length ?? 0);
-                        const maxPax = Math.max(...trips.map(tr => parseInt(tr.paxCount || "0") || (tr.travelers?.length ?? 0)), 1);
+                        const pax = travellerCount(t);
+                        const maxPax = Math.max(...trips.map(travellerCount), 1);
                         return (
                           <button
                             key={t.id}

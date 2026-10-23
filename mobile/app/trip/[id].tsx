@@ -565,6 +565,7 @@ export default function TripScreen() {
           docCount={(trip.info ?? []).filter(i => isLeader || !i.leaderOnly).length}
           onDocs={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
           organizer={trip.organizer}
+          onAsk={() => router.push({ pathname: "/trip/ask", params: { tripId: trip.id } })}
         />
 
         {/* ── Per-traveller filter ── */}

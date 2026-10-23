@@ -146,7 +146,8 @@ export interface Trip {
   /** Actual traveler IDs linked to this trip (source of truth for relationships) */
   travelerIds?: string[];
   /** Denormalized traveler display info — synced for shared view access */
-  travelers?: Array<{ id: string; name: string; initials: string; email?: string }>;
+  /** invitedAt: when the itinerary was last emailed to them from the web */
+  travelers?: Array<{ id: string; name: string; initials: string; email?: string; invitedAt?: string }>;
   destination?: string;
   paxCount?: string;
   tripType?: string;

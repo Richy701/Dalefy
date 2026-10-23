@@ -28,8 +28,10 @@ import { cn } from "@/lib/utils";
 import { parseTripDate } from "@/lib/dates";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
-import type { ComplianceDoc, DisplayMode, Trip, User as UserType } from "@/types";
+import type { ComplianceDoc, DisplayMode, Trip } from "@/types";
 import { useTrips } from "@/context/TripsContext";
+import { travellerCount } from "@/lib/travelerSync";
+import { useDirectoryTravelers, useComplianceRecords } from "@/context/directory";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -282,8 +284,8 @@ export function DashboardPage() {
       .slice(0, 4);
   }, [trips]);
 
-  const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
-  const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const [complianceOverrides] = useComplianceRecords();
+  const [customTravelers] = useDirectoryTravelers();
 
   const attentionItems = useMemo(() => {
     const items: Array<{ tripId: string; tripName: string; message: string; severity: "warn" | "info" }> = [];
@@ -575,7 +577,7 @@ export function DashboardPage() {
                       {upcomingCards[0].name}
                     </button>
                     <p className="text-base font-medium text-foreground/90 mt-1">
-                      {tripFactLine(upcomingCards[0])}{upcomingCards[0].paxCount ? ` · ${upcomingCards[0].paxCount} travellers` : ""}
+                      {tripFactLine(upcomingCards[0])}{travellerCount(upcomingCards[0]) ? ` · ${travellerCount(upcomingCards[0])} travellers` : ""}
                     </p>
                     <p className="text-sm text-muted-foreground mt-0.5">{shortDay(upcomingCards[0].start)} → {shortDay(upcomingCards[0].end)} · {upcomingCards[0].events.length} events</p>
                   </div>
@@ -663,10 +665,10 @@ export function DashboardPage() {
                               <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
                               <span className="text-muted-foreground">·</span>
                               <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
-                              {trip.paxCount && (
+                              {travellerCount(trip) > 0 && (
                                 <>
                                   <span className="text-muted-foreground">·</span>
-                                  <span className="flex items-center gap-1 whitespace-nowrap"><Users className="h-2.5 w-2.5 shrink-0" />{trip.paxCount}</span>
+                                  <span className="flex items-center gap-1 whitespace-nowrap"><Users className="h-2.5 w-2.5 shrink-0" />{travellerCount(trip)}</span>
                                 </>
                               )}
                             </div>
@@ -1173,7 +1175,7 @@ export function DashboardPage() {
                           <span className="text-white/25">·</span>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Users className="h-3 w-3 text-brand shrink-0" />
-                            <span className="text-[11px] font-medium tabular-nums truncate">{trip.paxCount || trip.attendees.split(",").length}</span>
+                            <span className="text-[11px] font-medium tabular-nums truncate">{travellerCount(trip)}</span>
                           </div>
                         </div>
                       </div>
@@ -1242,7 +1244,7 @@ export function DashboardPage() {
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           {trip.destination && <span>{trip.destination}</span>}
                           <span>{tDateStr}</span>
-                          <span>{trip.paxCount || trip.attendees.split(",").length} travellers</span>
+                          <span>{travellerCount(trip)} travellers</span>
                           <span>{trip.events.length} events</span>
                         </div>
                         {trip.events.length > 0 && (

@@ -228,6 +228,42 @@ service cloud.firestore {
         || isTripEditor(resource.data.trip_id));
     }
 
+    // ── Traveller directory and HR compliance ───────────────────────────
+    // Shared by the organisation (everyone reads; owners, admins and agents write) or kept by one user
+    // without an organisation. IDs start with the scope, so nobody can create a record in another's space.
+    function directoryScope(data) {
+      return data.get('organization_id', null) != null ? data.organization_id : 'u-' + data.user_id;
+    }
+    function canReadDirectory(data) {
+      return request.auth != null && (
+        (data.get('organization_id', null) != null && isOrgMember(data.organization_id))
+        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid));
+    }
+    function canWriteDirectory(data) {
+      return request.auth != null && (
+        (data.get('organization_id', null) != null && isOrgEditor(data.organization_id))
+        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid));
+    }
+    function validDirectoryWrite(docId) {
+      return canWriteDirectory(request.resource.data)
+        && docId.split('__')[0] == directoryScope(request.resource.data)
+        && (resource == null || directoryScope(resource.data) == directoryScope(request.resource.data));
+    }
+    match /directory_travelers/{docId} {
+      allow read: if canReadDirectory(resource.data);
+      allow create, update: if validDirectoryWrite(docId)
+        && request.resource.data.keys().hasOnly(['organization_id', 'user_id', 'traveler', 'updated_at'])
+        && request.resource.data.traveler is map;
+      allow delete: if canWriteDirectory(resource.data);
+    }
+    match /traveler_compliance/{docId} {
+      allow read: if canReadDirectory(resource.data);
+      allow create, update: if validDirectoryWrite(docId)
+        && request.resource.data.keys().hasOnly(['organization_id', 'user_id', 'traveler_id', 'docs', 'updated_at'])
+        && request.resource.data.docs is list;
+      allow delete: if canWriteDirectory(resource.data);
+    }
+
     // ── Trip versions: a "last changed" stamp per trip, nothing else ─────
     // Travellers can't read trips, so the app listens here and reloads the
     // filtered trip from /api/trip only when the stamp moves.

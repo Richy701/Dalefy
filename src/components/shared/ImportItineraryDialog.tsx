@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useTrips } from "@/context/TripsContext";
+import { useDirectoryTravelers } from "@/context/directory";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
 import { searchImagesProgressive } from "@/services/imageSearch";
@@ -26,7 +27,6 @@ import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
 import { EVENT_TEXT_COLORS, EVENT_ICONS, type EventType } from "@/config/eventStyles";
 import { matchOrCreateTravelers } from "@/lib/travelerSync";
-import { notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { lookupFlight } from "@/services/serpapi";
 import { geocodeMany } from "@/services/geocode";
 import { firebaseAuth } from "@/services/firebase";
@@ -1267,6 +1267,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // re-render this whole dialog on every keystroke. Only a boolean tracks emptiness.
   const [hasPaste, setHasPaste] = useState(false);
   const { trips, addTrip, updateTrip } = useTrips();
+  const [directoryTravelers, setDirectoryTravelers] = useDirectoryTravelers();
   const { showToast, addNotification } = useNotifications();
   const isReimport = !!existingTripId;
   const tripBackupRef = useRef<Trip | null>(null);
@@ -1533,7 +1534,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     let finalPaxCount = parsed.paxCount > 0 ? String(parsed.paxCount) : undefined;
 
     if (parsed.parsedTravelerNames.length > 0) {
-      const stored = JSON.parse(localStorage.getItem(STORAGE.CUSTOM_TRAVELERS) || "[]") as User[];
+      const stored = directoryTravelers;
       // Re-importing: the trip's own travellers come first, so anyone already on it keeps their ID (and with it
       // their app link and personal plans) whatever this browser's directory holds
       const onTrip = (isReimport && existingTripId ? trips.find(t => t.id === existingTripId)?.travelers : undefined) ?? [];
@@ -1548,8 +1549,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       finalAttendees = result.attendees;
       finalPaxCount = String(result.travelerIds.length);
       if (result.newTravelers.length > 0) {
-        localStorage.setItem(STORAGE.CUSTOM_TRAVELERS, JSON.stringify([...stored, ...result.newTravelers]));
-        notifyLocalStorage(STORAGE.CUSTOM_TRAVELERS);
+        setDirectoryTravelers(prev => [...prev, ...result.newTravelers.filter(n => !prev.some(p => p.id === n.id))]);
       }
     }
 

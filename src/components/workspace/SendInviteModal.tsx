@@ -24,6 +24,8 @@ interface SendInviteModalProps {
   onOpenChange: (open: boolean) => void;
   trip: Trip;
   travelers: UserType[];
+  /** The travellers the itinerary actually reached, so the trip can remember they were invited */
+  onSent?: (travelerIds: string[]) => void;
 }
 
 type SendResult = { email: string; ok: boolean; error?: string };
@@ -47,7 +49,7 @@ function formatDates(start: string, end: string) {
   }
 }
 
-export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInviteModalProps) {
+export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent }: SendInviteModalProps) {
   const { brand } = useBrand();
   const { resolvedAccent } = usePreferences();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -175,6 +177,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         body: { template: template.id, tripId: trip.id, subject: resolvedSubject, message: resolvedBody, recipients },
       });
       setResults(r.results);
+      const delivered = new Set(r.results.filter(x => x.ok).map(x => x.email.toLowerCase()));
+      onSent?.(withEmail.filter(t => selectedIds.has(t.id) && delivered.has(t.email.toLowerCase())).map(t => t.id));
       if (r.failed === 0) toast.success(`Sent to ${r.sent} traveller${r.sent === 1 ? "" : "s"}`);
       else toast.warning(`Sent to ${r.sent}, ${r.failed} failed`);
     } catch (err) {
@@ -182,7 +186,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
     } finally {
       setSending(false);
     }
-  }, [recipients, resolvedSubject, resolvedBody, trip.id, template.id]);
+  }, [recipients, resolvedSubject, resolvedBody, trip.id, template.id, withEmail, selectedIds, onSent]);
 
   const sendDisabled = sending || sendingEnabled === null || recipients.length === 0 || !resolvedSubject.trim();
   const primaryLabel = sending ? "Sending itinerary…"

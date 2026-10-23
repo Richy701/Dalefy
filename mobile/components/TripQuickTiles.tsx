@@ -2,23 +2,24 @@ import { useMemo } from "react";
 import { View, Text, StyleSheet, Linking, Platform, Alert } from "react-native";
 // Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
 const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
-import { FileText } from "phosphor-react-native";
+import { FileText, ChatCircleText } from "phosphor-react-native";
 import * as Haptics from "@/services/haptics";
 import { ScalePress } from "@/components/ScalePress";
 import { Avatar } from "@/components/ui/Avatar";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TripOrganizer } from "@/shared/types";
 
-/** Trip info (stays, notes, documents) and the organiser, side by side near the top of the itinerary. */
-export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
+/** Trip info (stays, notes, documents), the organiser and the trip concierge, near the top of the itinerary. */
+export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk }: {
   C: ThemeColors;
   docCount: number;
   onDocs: () => void;
   organizer?: TripOrganizer | null;
+  onAsk?: () => void;
 }) {
   const s = useMemo(() => makeStyles(C), [C]);
   const org = organizer?.name?.trim() ? organizer : null;
-  if (!docCount && !org) return null;
+  if (!docCount && !org && !onAsk) return null;
 
   const initials = org ? org.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("") : "";
   // Only the ways the organiser actually left
@@ -43,7 +44,27 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
     }
   };
 
+  const askTile = onAsk ? (
+    <ScalePress
+      activeScale={0.97}
+      onPress={() => { Haptics.selectionAsync(); onAsk(); }}
+      accessibilityRole="button"
+      accessibilityLabel="Ask Dale about your trip"
+      style={s.tile}
+    >
+      <View style={s.iconTile}>
+        <ChatCircleText size={18} color={C.textPrimary} weight="fill" />
+      </View>
+      <View style={s.text}>
+        <Text style={s.title} numberOfLines={1}>Ask Dale</Text>
+        <Text style={s.sub} numberOfLines={1}>Quick answers</Text>
+      </View>
+    </ScalePress>
+  ) : null;
+  const paired = (docCount > 0 ? 1 : 0) + (org ? 1 : 0);
+
   return (
+    <View style={s.wrap}>
     <View style={s.row}>
       {docCount > 0 ? (
         <ScalePress
@@ -78,15 +99,20 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
           </View>
         </ScalePress>
       ) : null}
+      {/* Ask fills the second half beside a lone tile, or takes its own row under a full pair */}
+      {paired < 2 ? askTile : null}
       {/* A lone tile keeps its half width, so every trip's layout matches */}
-      {!docCount || !org ? <View style={{ flex: 1 }} /> : null}
+      {paired === 1 && !askTile ? <View style={{ flex: 1 }} /> : null}
+    </View>
+    {paired === 2 && askTile ? <View style={s.row}>{askTile}</View> : null}
     </View>
   );
 }
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    row: { flexDirection: "row", gap: S.sm, paddingHorizontal: S.md, marginBottom: S.md },
+    wrap: { gap: S.sm, marginBottom: S.md },
+    row: { flexDirection: "row", gap: S.sm, paddingHorizontal: S.md },
     tile: {
       flex: 1, flexDirection: "row", alignItems: "center", gap: S.sm,
       paddingHorizontal: S.sm2, paddingVertical: S.sm2, borderRadius: R.lg,
