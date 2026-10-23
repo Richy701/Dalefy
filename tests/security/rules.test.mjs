@@ -94,6 +94,25 @@ test('members cannot elevate roles or mutate other memberships', async () => {
   await assertFails(context('outsider').firestore().doc('trip_members/leader_published').delete());
   await assertSucceeds(context('admin').firestore().doc('trip_members/leader_published').update({ role: 'leader' }));
 });
+test('app user rosters stay inside the agency that owns the trip', async () => {
+  // Nobody outside the trip's staff can list members (names, emails, devices), across trips or for one trip
+  for (const uid of [null, 'outsider', 'traveler', 'leader', 'stranger']) {
+    const db = context(uid).firestore();
+    await assertFails(db.collection('trip_members').get());
+    await assertFails(db.collection('trip_members').where('trip_id', '==', 'published').get());
+    await assertFails(db.collection('trip_members').where('device_id', '==', 'device').get());
+  }
+  await assertFails(context('traveler').firestore().doc('trip_members/leader_published').get());
+  // A member still reads their own record, by id and by their uid
+  const traveler = context('traveler').firestore();
+  await assertSucceeds(traveler.doc('trip_members/traveler_published').get());
+  await assertSucceeds(traveler.collection('trip_members').where('uid', '==', 'traveler').get());
+  // The trip's own staff read its roster by trip, including viewers; the server reads for notifications
+  for (const uid of ['owner', 'admin', 'agent', 'viewer']) {
+    await assertSucceeds(context(uid).firestore().collection('trip_members').where('trip_id', '==', 'published').get());
+  }
+  await assertSucceeds(context('server').firestore().collection('trip_members').where('trip_id', '==', 'published').get());
+});
 for (const uid of [null, 'outsider', 'traveler', 'leader', 'viewer']) {
   test(`${uid ?? 'public'} cannot replace/delete protected attachments`, async () => {
     const storage = context(uid).storage();

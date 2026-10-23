@@ -25,7 +25,7 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
 
 const API_BASE = (process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app").replace(/\/$/, "");
 
-async function tripRequest(params: string, body?: unknown): Promise<{ trip?: Record<string, unknown> }> {
+async function tripRequest(params: string, body?: unknown): Promise<{ trip?: Record<string, unknown>; claimed?: unknown[] }> {
   await waitForAuth();
   const user = firebaseAuth().currentUser;
   const token = await user?.getIdToken();
@@ -333,21 +333,12 @@ export async function logTripJoin(
   }
 }
 
+/** Traveller IDs someone on the trip has already picked. Asked of the server, which never says who picked them. */
 export async function fetchClaimedTravelerIds(tripId: string): Promise<Set<string>> {
   try {
     await waitForAuth();
-    const snap = await getDocs(
-      query(
-        collection(firebaseDb(), TRIP_MEMBERS),
-        where("trip_id", "==", tripId),
-      ),
-    );
-    const claimed = new Set<string>();
-    snap.forEach((d) => {
-      const id = d.data().linked_traveler_id;
-      if (id) claimed.add(id);
-    });
-    return claimed;
+    const { claimed } = await tripRequest(`?id=${encodeURIComponent(tripId)}&claimed=1`);
+    return new Set(Array.isArray(claimed) ? claimed.filter((id): id is string => typeof id === "string") : []);
   } catch {
     return new Set();
   }

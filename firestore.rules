@@ -30,6 +30,12 @@ service cloud.firestore {
         || (t.get('organization_id', null) != null && isOrgEditor(t.organization_id)));
     }
 
+    function isTripStaff(tripId) {
+      let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
+      return request.auth != null && (t.user_id == request.auth.uid
+        || (t.get('organization_id', null) != null && isOrgMember(t.organization_id)));
+    }
+
     function canJoinTrip(tripId) {
       let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
       return t.status in ["Published", "published"] || isTripEditor(tripId);
@@ -188,8 +194,13 @@ service cloud.firestore {
     }
 
     match /trip_members/{docId} {
-      // Roster read scope is retained for the existing organizer roster query.
-      allow read: if request.auth != null;
+      // A member reads their own record; the trip's own staff (owner or anyone in its organisation) read its
+      // roster; the server reads for notifications. Nobody else, so names, emails and devices stay inside
+      // the agency that owns the trip. Staff queries must filter on trip_id so this can be checked.
+      allow read: if request.auth != null && (
+        resource.data.get('uid', null) == request.auth.uid
+        || isCronUser()
+        || isTripStaff(resource.data.trip_id));
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.device_id is string

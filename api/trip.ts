@@ -42,6 +42,14 @@ export default async function handler(req: Request, res: Response) {
     const joined = !!payload?.sub && membershipMatches(member, payload.sub, tripId);
     const view = publishedTripView(tripId, trip, joined && member.role === "leader", joined);
     if (!view) return res.status(404).json({ error: "Itinerary unavailable" });
+    // "Which one is you?" greys out names already taken. Only the traveller IDs leave the server, never who
+    // took them, so the app doesn't need to read anyone else's membership.
+    if (req.method === "GET" && req.query.claimed === "1") {
+      if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
+      const members = await queryDocuments("trip_members", "trip_id", tripId, 2000);
+      const claimed = [...new Set(members.map(m => decode(m).linked_traveler_id).filter((v): v is string => typeof v === "string" && !!v))];
+      return res.json({ claimed });
+    }
     if (req.method === "GET") return res.json({ trip: view });
     if (!payload?.sub || !joined) return res.status(403).json({ error: "Join this trip before changing its gallery" });
     const bucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;

@@ -1,15 +1,17 @@
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, Pressable,
+  View, Text, Pressable, TextInput, ScrollView, useWindowDimensions, type StyleProp, type ViewStyle,
   StyleSheet, Platform, ActivityIndicator,
 } from "react-native";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, FadeIn, FadeInDown, ZoomIn, Easing,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, cancelAnimation, runOnJS,
+  FadeIn, FadeInDown, FadeInUp, SlideInDown, ZoomIn, Easing,
 } from "react-native-reanimated";
 import { handedOffTrip } from "@/services/joinHandoff";
 import { Skeleton } from "@/components/Skeleton";
@@ -17,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import {
-  ArrowLeft, Users, ShareNetwork, Check, CaretDown, CalendarBlank, Buildings,
+  ArrowLeft, Users, ShareNetwork, Check, CaretDown, CalendarBlank, Buildings, MagnifyingGlass,
   AirplaneTakeoff, AirplaneLanding, WarningCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
@@ -59,6 +61,19 @@ function timeToMinutes(t: string): number {
 
 const DOT = 32;
 const HERO_H = 380;
+
+/**
+ * The traveller picker's sheet: the system's frosted glass material over the trip photo. (GlassView drew nothing
+ * inside this overlay.) A light hairline along the top edge marks where the sheet starts.
+ */
+function SheetSurface({ style, children }: { style: StyleProp<ViewStyle>; children: ReactNode }) {
+  return (
+    <BlurView intensity={60} tint={Platform.OS === "ios" ? "systemThickMaterialDark" : "dark"} style={[style, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.22)" }]}>
+      {Platform.OS !== "ios" ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(28,28,32,0.6)" }]} /> : null}
+      {children}
+    </BlurView>
+  );
+}
 const isPlaceholderTime = (t?: string) => !t || /^tb[acd]$/i.test(t);
 const cleanTitle = (title: string) => tidyTitleSeparators(title.replace(/\s*\([A-Z]{3}\)\s*$/, ""));
 
@@ -92,6 +107,10 @@ export default function SharedTripScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
+  // "Which one is you?": a tap picks, the button confirms, so a stray tap can't claim someone else's plan
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [nameQuery, setNameQuery] = useState("");
+  const { height: screenH } = useWindowDimensions();
 
   const alreadyInMyTrips = useMemo(
     () => (tripId ? trips.some((t) => t.id === tripId) : false),
@@ -136,9 +155,9 @@ export default function SharedTripScreen() {
     setJustAdded(true);
     setShowLinkPicker(false);
 
-    // Long enough for the arrival to land and be read
-    setTimeout(() => openJoinedTrip(trip.id), 3000);
-  }, [trip, addTrip, addScale, prefs, openJoinedTrip, isAnonymous, authUser, toast]);
+    // Joining from onboarding, the arrival screen's button moves them on; elsewhere, straight to the trip
+    if (!joining) setTimeout(() => openJoinedTrip(trip.id), 1200);
+  }, [trip, addTrip, addScale, prefs, openJoinedTrip, joining, isAnonymous, authUser, toast]);
 
   const handleAddToMyTrips = useCallback(async () => {
     if (!trip || alreadyInMyTrips || justAdded) return;
@@ -195,6 +214,24 @@ export default function SharedTripScreen() {
     return dated.find(e => e.date >= today) ?? dated[0] ?? null;
   }, [trip]);
 
+  // The arrival's button fills over a few seconds, then moves on by itself; a tap goes straight away
+  const arriveProgress = useSharedValue(0);
+  const leftArrival = useRef(false);
+  const goToJoinedTrip = useCallback(() => {
+    if (leftArrival.current || !trip) return;
+    leftArrival.current = true;
+    cancelAnimation(arriveProgress);
+    openJoinedTrip(trip.id);
+  }, [trip, openJoinedTrip, arriveProgress]);
+  useEffect(() => {
+    if (!joining || !justAdded) return;
+    arriveProgress.set(withDelay(1100, withTiming(1, { duration: 4000, easing: Easing.linear }, done => {
+      if (done) runOnJS(goToJoinedTrip)();
+    })));
+    return () => cancelAnimation(arriveProgress);
+  }, [joining, justAdded, arriveProgress, goToJoinedTrip]);
+  const arriveFill = useAnimatedStyle(() => ({ width: `${arriveProgress.value * 100}%` }));
+
   const joinFirst = (prefs.name || "").trim().split(/\s+/)[0];
   const joinFirstName = joinFirst ? joinFirst[0].toUpperCase() + joinFirst.slice(1) : "";
 
@@ -236,40 +273,85 @@ export default function SharedTripScreen() {
   const flag = destinationFlag(trip.destination);
 
   // "Which traveller are you?": rises over the page when the server couldn't match them by email
-  const renderLinkSheet = () => (
-    <>
-      {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
-        <View style={styles.linkOverlay}>
-          <View style={styles.linkSheet}>
-            <Text style={styles.linkTitle}>Which traveller are you?</Text>
-            <Text style={styles.linkSub}>Pick your name so you see your own plan.</Text>
+  const renderLinkSheet = () => {
+    if (!showLinkPicker || !trip.travelers?.length) return null;
+    const q = nameQuery.trim().toLowerCase();
+    const people = q ? trip.travelers.filter(t => t.name.toLowerCase().includes(q)) : trip.travelers;
+    const picked = trip.travelers.find(t => t.id === pickedId) ?? null;
+    return (
+      <View style={styles.linkOverlay}>
+        {/* Slides up from the bottom, as a sheet does */}
+        <Animated.View entering={SlideInDown.duration(380).easing(Easing.out(Easing.cubic))}>
+          {/* Liquid Glass over the trip's photo, holding the sheet itself; a frosted wash where glass isn't available */}
+          <SheetSurface style={styles.linkSheet}>
+          <View style={styles.linkGrabber} />
+          <Text style={styles.linkTitle}>Which one is you?</Text>
+          <Text style={styles.linkSub}>Pick your name so you see your own plan.</Text>
 
-            {trip.travelers.map(t => {
+          {/* A long group gets a search box */}
+          {trip.travelers.length > 9 ? (
+            <View style={styles.linkSearch}>
+              <MagnifyingGlass size={16} color={C.textTertiary} weight="bold" />
+              <TextInput
+                value={nameQuery}
+                onChangeText={setNameQuery}
+                placeholder="Find your name"
+                placeholderTextColor={C.textTertiary}
+                autoCorrect={false}
+                style={styles.linkSearchInput}
+                accessibilityLabel="Find your name"
+              />
+            </View>
+          ) : null}
+
+          <ScrollView style={{ maxHeight: screenH * 0.48 }} contentContainerStyle={styles.linkGrid} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {people.map(t => {
               const taken = claimedIds.has(t.id);
+              const on = t.id === pickedId;
               return (
                 <Pressable
                   key={t.id}
-                  onPress={() => !taken && completeJoin(t.id)} accessibilityRole="button" accessibilityLabel={t.name} accessibilityState={{ disabled: taken }}
+                  onPress={() => { Haptics.selectionAsync(); setPickedId(on ? null : t.id); }}
                   disabled={taken}
-                  style={({ pressed }) => [styles.linkOption, pressed && !taken && { opacity: 0.8 }, taken && { opacity: 0.4 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={taken ? `${t.name}, already taken` : t.name}
+                  accessibilityState={{ disabled: taken, selected: on }}
+                  style={({ pressed }) => [styles.linkPerson, taken && { opacity: 0.35 }, pressed && !taken && { opacity: 0.75 }]}
                 >
-                  <Avatar size={40} initials={t.initials} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.linkName}>{t.name}</Text>
-                    {taken && <Text style={{ fontSize: T["2xs"], color: C.textTertiary, marginTop: 1 }}>Already claimed</Text>}
+                  <View style={[styles.linkFace, on && { borderColor: C.teal }]}>
+                    <Avatar size={60} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} />
+                    {on ? (
+                      <View style={[styles.linkTick, { backgroundColor: C.teal }]}>
+                        <Check size={13} color={C.onAccent} weight="bold" />
+                      </View>
+                    ) : null}
                   </View>
+                  <Text style={[styles.linkName, on && { color: C.tealText }]} numberOfLines={2}>{t.name}</Text>
+                  {taken ? <Text style={styles.linkTaken}>Taken</Text> : null}
                 </Pressable>
               );
             })}
+            {!people.length ? <Text style={[styles.linkSub, { textAlign: "center", width: "100%" }]}>No one by that name on this trip.</Text> : null}
+          </ScrollView>
 
-            <Pressable onPress={() => completeJoin()} accessibilityRole="button" style={({ pressed }) => [styles.linkSkip, pressed && { opacity: 0.7 }]}>
-              <Text style={styles.linkSkipText}>I'm not listed</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-    </>
-  );
+          <Pressable
+            onPress={() => { if (picked) completeJoin(picked.id); }}
+            disabled={!picked}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.linkConfirm, { backgroundColor: C.teal }, !picked && { opacity: 0.4 }, pressed && picked && { opacity: 0.9 }]}
+          >
+            <Text style={[styles.linkConfirmText, { color: C.onAccent }]}>
+              {picked ? `That's me, ${picked.name.trim().split(/\s+/)[0]}` : "Pick your name"}
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => completeJoin()} accessibilityRole="button" style={({ pressed }) => [styles.linkSkip, pressed && { opacity: 0.7 }]}>
+            <Text style={styles.linkSkipText}>I'm not listed</Text>
+          </Pressable>
+          </SheetSurface>
+        </Animated.View>
+      </View>
+    );
+  };
 
   // Joining from onboarding: they've already seen the trip, so just the photo while it joins (or asks who they are)
   if (joining) {
@@ -282,7 +364,7 @@ export default function SharedTripScreen() {
           <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
           <PhotoDissolve uri={trip.image} />
         </View>
-        <View style={styles.joiningWrap}>
+        <View style={[styles.joiningWrap, { paddingBottom: Math.max(insets.bottom, S.md) + S.xs }, showLinkPicker && { opacity: 0 }]}>
           <View style={styles.arriveHead}>
             {justAdded ? (
               <Animated.View entering={ZoomIn.duration(360).easing(Easing.out(Easing.cubic))} style={[styles.joinTick, { backgroundColor: C.teal }]}>
@@ -295,10 +377,11 @@ export default function SharedTripScreen() {
           </View>
           <Text style={styles.joiningText} numberOfLines={2}>{trip.name}</Text>
 
-          {/* The trip arrives a line at a time: when, who, who's looking after them, and what comes first */}
+          {/* The trip arrives a line at a time in one glass card: when, who, who's looking after them, what comes first */}
           {justAdded ? (
-            <View style={styles.arriveList}>
-              <Animated.View entering={FadeInDown.delay(260).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+            <Animated.View entering={FadeInDown.delay(220).duration(420).easing(Easing.out(Easing.cubic))} style={styles.arriveCard}>
+              <BlurView intensity={50} tint={Platform.OS === "ios" ? "systemMaterialDark" : "dark"} style={StyleSheet.absoluteFill} />
+              <Animated.View entering={FadeIn.delay(320).duration(320)} style={styles.arriveRow}>
                 <View style={styles.arriveIcon}><CalendarBlank size={18} color="#fff" weight="bold" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.arriveMain}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
@@ -306,27 +389,29 @@ export default function SharedTripScreen() {
                 </View>
               </Animated.View>
               {trip.travelers?.length ? (
-                <Animated.View entering={FadeInDown.delay(430).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
-                  <View style={styles.arriveFaces}>
-                    {trip.travelers.slice(0, 4).map((t, i) => (
-                      <View key={t.id} style={{ marginLeft: i ? -8 : 0 }}>
-                        <Avatar size={28} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} solid ringColor="rgba(20,20,24,0.9)" />
-                      </View>
-                    ))}
-                  </View>
+                <Animated.View entering={FadeIn.delay(460).duration(320)} style={[styles.arriveRow, styles.arriveRowLine]}>
+                  <View style={styles.arriveIcon}><Users size={18} color="#fff" weight="bold" /></View>
                   <Text style={[styles.arriveMain, { flex: 1 }]} numberOfLines={1}>
                     {trip.travelers.length === 1 ? "1 traveller" : `${trip.travelers.length} travellers`} going
                   </Text>
+                  {/* Who, at a glance, trailing so every row's icon lines up */}
+                  <View style={styles.arriveFaces}>
+                    {trip.travelers.slice(0, 4).map((t, i) => (
+                      <View key={t.id} style={{ marginLeft: i ? -8 : 0 }}>
+                        <Avatar size={26} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} solid ringColor="rgba(30,30,34,1)" />
+                      </View>
+                    ))}
+                  </View>
                 </Animated.View>
               ) : null}
               {trip.organizer?.company || trip.organizer?.name ? (
-                <Animated.View entering={FadeInDown.delay(600).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                <Animated.View entering={FadeIn.delay(600).duration(320)} style={[styles.arriveRow, styles.arriveRowLine]}>
                   <View style={styles.arriveIcon}><Buildings size={18} color="#fff" weight="bold" /></View>
                   <Text style={[styles.arriveMain, { flex: 1 }]} numberOfLines={1}>Hosted by {trip.organizer?.company || trip.organizer?.name}</Text>
                 </Animated.View>
               ) : null}
               {firstPlan ? (
-                <Animated.View entering={FadeInDown.delay(770).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                <Animated.View entering={FadeIn.delay(740).duration(320)} style={[styles.arriveRow, styles.arriveRowLine]}>
                   <CategoryDot palette={C} type={firstPlan.type} transferType={firstPlan.transferType} size={36} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.arriveSub}>
@@ -337,7 +422,23 @@ export default function SharedTripScreen() {
                   </View>
                 </Animated.View>
               ) : null}
-            </View>
+            </Animated.View>
+          ) : null}
+
+          <View style={{ flex: 1 }} />
+          {/* Fills up as a countdown and moves on by itself; tap to go now */}
+          {justAdded ? (
+            <Animated.View entering={FadeInUp.delay(900).duration(360).easing(Easing.out(Easing.cubic))}>
+              <Pressable
+                onPress={goToJoinedTrip}
+                accessibilityRole="button"
+                accessibilityLabel="See your trip"
+                style={({ pressed }) => [styles.arriveGo, { backgroundColor: C.teal }, pressed && { transform: [{ scale: 0.98 }] }]}
+              >
+                <Animated.View style={[styles.arriveGoFill, arriveFill]} />
+                <Text style={[styles.arriveGoText, { color: C.onAccent }]}>See your trip</Text>
+              </Pressable>
+            </Animated.View>
           ) : null}
         </View>
         {renderLinkSheet()}
@@ -623,17 +724,25 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     joinHero: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_H },
     // Starts where the hero melts into the blur, as the trip page's title does
     joiningWrap: { flex: 1, paddingTop: HERO_H - 64, paddingHorizontal: S.lg, gap: 2 },
+    arriveCard: {
+      marginTop: S.lg, borderRadius: R.xl, overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.14)",
+    },
+    arriveRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(255,255,255,0.12)" },
+    arriveGo: { height: 54, borderRadius: R.xl, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+    // A lighter sweep across the button as the seconds run down
+    arriveGoFill: { position: "absolute", left: 0, top: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.28)" },
+    arriveGoText: { fontSize: T.md, fontWeight: T.bold },
     arriveHead: { flexDirection: "row", alignItems: "center", gap: S.sm },
     joinTick: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
     joiningTitle: { flex: 1, fontSize: 28, lineHeight: 33, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4 },
     joiningText: { fontSize: T.md, fontWeight: T.semibold, color: "rgba(255,255,255,0.82)", marginLeft: 30 + S.sm },
-    arriveList: { marginTop: S.xl, gap: S.lg },
-    arriveRow: { flexDirection: "row", alignItems: "center", gap: S.sm2 },
+    arriveRow: { flexDirection: "row", alignItems: "center", gap: S.sm2, paddingHorizontal: S.md, paddingVertical: S.sm2, minHeight: 62 },
     arriveIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
     arriveFaces: { flexDirection: "row" },
     arriveMain: { fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
     arriveSub: { fontSize: T.sm, color: "rgba(255,255,255,0.78)", marginTop: 1 },
-    linkName: { fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
+    linkName: { fontSize: T.sm, fontWeight: T.semibold, color: "#fff", textAlign: "center" },
     scroll: { paddingBottom: SCROLL_BOTTOM_PAD + 40 },
     addCta: {
       height: 52, borderRadius: R.xl,
@@ -714,27 +823,40 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // Expanded inline events
     linkOverlay: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: "rgba(0,0,0,0.6)",
+      backgroundColor: "rgba(0,0,0,0.2)",
       justifyContent: "flex-end",
       zIndex: 10,
     },
     linkSheet: {
-      backgroundColor: "rgba(20,20,24,0.97)",
+      overflow: "hidden",
       borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
-      paddingHorizontal: S.xl, paddingTop: S.lg, paddingBottom: S.xl,
+      paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.xl,
     },
+    // The iOS sheet handle
+    linkGrabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.25)", marginBottom: S.md },
     linkTitle: {
       fontSize: T["2xl"], fontWeight: T.bold, color: "#fff",
-      marginBottom: S["2xs"], letterSpacing: -0.3,
+      marginBottom: S["2xs"], letterSpacing: -0.3, textAlign: "center",
     },
     linkSub: {
-      fontSize: T.sm, color: C.textSecondary, marginBottom: S.lg,
+      fontSize: T.sm, color: C.textSecondary, marginBottom: S.lg, textAlign: "center",
     },
-    linkOption: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      paddingVertical: S.sm, paddingHorizontal: S.sm, minHeight: 60, marginBottom: S.xs,
-      borderRadius: R.lg, backgroundColor: "rgba(255,255,255,0.08)",
+    linkSearch: {
+      flexDirection: "row", alignItems: "center", gap: S.xs, height: 40, paddingHorizontal: S.sm,
+      borderRadius: R.lg, backgroundColor: "rgba(255,255,255,0.08)", marginBottom: S.md,
     },
+    linkSearchInput: { flex: 1, fontSize: T.md, color: "#fff" },
+    linkGrid: { flexDirection: "row", flexWrap: "wrap", paddingBottom: S.sm },
+    linkPerson: { width: "33.333%", alignItems: "center", gap: S.xs, paddingVertical: S.sm, paddingHorizontal: S["2xs"] },
+    // A ring that lights teal when picked; transparent otherwise so nothing shifts
+    linkFace: { padding: 3, borderRadius: 36, borderWidth: 2.5, borderColor: "transparent" },
+    linkTick: {
+      position: "absolute", right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12,
+      alignItems: "center", justifyContent: "center",
+    },
+    linkTaken: { fontSize: T["2xs"], color: C.textTertiary, marginTop: -4 },
+    linkConfirm: { height: 52, borderRadius: R.xl, alignItems: "center", justifyContent: "center", marginTop: S.md },
+    linkConfirmText: { fontSize: T.md, fontWeight: T.bold },
     linkSkip: {
       alignItems: "center", paddingVertical: S.md, marginTop: S.xs,
     },

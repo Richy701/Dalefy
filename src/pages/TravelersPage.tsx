@@ -100,6 +100,8 @@ function PageNumbers({ current, total, onSelect }: { current: number; total: num
 
 export function TravelersPage() {
   const { trips } = useTrips();
+  // App users are read per trip (the rules only show staff the people on their own trips)
+  const tripIds = useMemo(() => trips.map(t => t.id), [trips]);
   const { showToast } = useNotifications();
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
@@ -144,21 +146,21 @@ export function TravelersPage() {
     let cancelled = false;
     setAppUsersLoading(true);
     setAppUsersError(null);
-    fetchTripMembers()
+    fetchTripMembers(tripIds)
       .then(list => { if (!cancelled) setAppUsers(list); })
       .catch(() => { if (!cancelled) setAppUsersError("Couldn't load app users. Check your connection and try again."); })
       .finally(() => { if (!cancelled) setAppUsersLoading(false); });
     return () => { cancelled = true; };
-  }, [appUsersReload]);
+  }, [appUsersReload, tripIds]);
 
   const handleClearAppUsers = useCallback(() => {
     setPendingConfirm({
       title: "Delete All App Users",
-      description: "This removes everyone from the trip_members collection in Firebase. This cannot be undone.",
+      description: "This removes everyone who joined your trips in the app. This cannot be undone.",
       action: async () => {
         setClearing(true);
         try {
-          const count = await deleteAllTripMembers();
+          const count = await deleteAllTripMembers(tripIds);
           setAppUsers([]);
           setDetailPanelUser(null);
           showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
@@ -170,7 +172,7 @@ export function TravelersPage() {
         }
       },
     });
-  }, [showToast]);
+  }, [showToast, tripIds]);
 
   const handleDeleteAppUser = useCallback((deviceId: string, name: string) => {
     setPendingConfirm({
@@ -179,7 +181,7 @@ export function TravelersPage() {
       action: async () => {
         setDeletingUser(deviceId);
         try {
-          const count = await deleteAppUser(deviceId);
+          const count = await deleteAppUser(deviceId, tripIds);
           setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
           setDetailPanelUser(null);
           showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
@@ -191,7 +193,7 @@ export function TravelersPage() {
         }
       },
     });
-  }, [showToast]);
+  }, [showToast, tripIds]);
 
   const handleToggleRole = useCallback(async (deviceId: string, tripId: string, currentRole: TripMemberRole) => {
     const newRole: TripMemberRole = currentRole === "leader" ? "traveler" : "leader";
@@ -210,7 +212,7 @@ export function TravelersPage() {
   const handleRenameUser = useCallback(async (deviceId: string, newName: string) => {
     if (!newName.trim()) return;
     try {
-      const count = await renameAppUser(deviceId, newName.trim());
+      const count = await renameAppUser(deviceId, newName.trim(), tripIds);
       setAppUsers(prev => prev.map(m =>
         m.device_id === deviceId ? { ...m, name: newName.trim() } : m
       ));
@@ -220,7 +222,7 @@ export function TravelersPage() {
       console.error("Rename failed:", err);
       showToast("Failed to rename user");
     }
-  }, [showToast]);
+  }, [showToast, tripIds]);
 
   const handleRemoveFromTrip = useCallback((deviceId: string, tripId: string, tripName: string) => {
     setPendingConfirm({
@@ -258,7 +260,7 @@ export function TravelersPage() {
       action: async () => {
         let removed = 0;
         for (const deviceId of selectedUsers) {
-          try { await deleteAppUser(deviceId); removed++; } catch { /* skip */ }
+          try { await deleteAppUser(deviceId, tripIds); removed++; } catch { /* skip */ }
         }
         setAppUsers(prev => prev.filter(m => !selectedUsers.has(m.device_id)));
         setSelectedUsers(new Set());
@@ -267,7 +269,7 @@ export function TravelersPage() {
         showToast(`Removed ${removed} user${removed === 1 ? "" : "s"}`);
       },
     });
-  }, [selectedUsers, showToast]);
+  }, [selectedUsers, showToast, tripIds]);
 
   // Group app users by device_id (unique person)
   const groupedAppUsers = useMemo(() => {

@@ -192,14 +192,25 @@ export interface TripMember {
   email?: string;
 }
 
-export async function fetchTripMembers(): Promise<TripMember[]> {
+/**
+ * Every member doc on the given trips. Read one trip at a time: the rules only let a trip's own staff read
+ * its roster, and only through a query filtered on that trip.
+ */
+async function memberDocsOfTrips(tripIds: string[]) {
+  const ids = [...new Set(tripIds.filter(Boolean))];
+  const snaps = await Promise.all(ids.map(id =>
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", id))).catch(() => null),
+  ));
+  return snaps.flatMap(snap => snap?.docs ?? []);
+}
+
+export async function fetchTripMembers(tripIds: string[]): Promise<TripMember[]> {
   try {
-    const snap = await getDocs(
-      query(collection(firebaseDb(), TRIP_MEMBERS), orderBy("joined_at", "desc")),
-    );
+    const docs = await memberDocsOfTrips(tripIds);
     // Deduplicate: logTripJoin creates two docs per join (device_id + uid keyed).
     // Keep one entry per device_id+trip_id pair - prefer the device-keyed doc.
-    const all = snap.docs.map((d) => d.data() as TripMember);
+    const all = docs.map((d) => d.data() as TripMember)
+      .sort((a, b) => String(b.joined_at ?? "").localeCompare(String(a.joined_at ?? "")));
     const seen = new Map<string, TripMember>();
     for (const m of all) {
       const key = `${m.device_id}_${m.trip_id}`;
@@ -211,16 +222,14 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
   }
 }
 
-/** Delete all trip_members docs for a given device_id (both device-keyed and uid-keyed) */
-export async function deleteAppUser(deviceId: string): Promise<number> {
+/** Delete a device's trip_members docs (both device-keyed and uid-keyed) on the given trips */
+export async function deleteAppUser(deviceId: string, tripIds: string[]): Promise<number> {
   const refs = new Map<string, import("firebase/firestore").DocumentReference>();
 
-  const [byDevice, byUid] = await Promise.all([
-    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
-    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", deviceId))),
-  ]);
-  for (const d of byDevice.docs) refs.set(d.id, d.ref);
-  for (const d of byUid.docs) refs.set(d.id, d.ref);
+  for (const d of await memberDocsOfTrips(tripIds)) {
+    const data = d.data();
+    if (data.device_id === deviceId || data.uid === deviceId) refs.set(d.id, d.ref);
+  }
 
   if (refs.size === 0) return 0;
 
@@ -301,24 +310,23 @@ export async function removeUserFromTrip(deviceId: string, tripId: string): Prom
   return refs.size;
 }
 
-/** Rename an app user across all their trip_members docs */
-export async function renameAppUser(deviceId: string, newName: string): Promise<number> {
-  const snap = await getDocs(
-    query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
-  );
+/** Rename an app user across their trip_members docs on the given trips */
+export async function renameAppUser(deviceId: string, newName: string, tripIds: string[]): Promise<number> {
+  const docs = (await memberDocsOfTrips(tripIds)).filter(d => d.data().device_id === deviceId);
   let updated = 0;
-  for (const d of snap.docs) {
+  for (const d of docs) {
     try { await setDoc(d.ref, { name: newName }, { merge: true }); updated++; } catch { /* skip */ }
   }
   logger.log("renameAppUser", `renamed ${updated} docs for device ${deviceId} to "${newName}"`);
   return updated;
 }
 
-export async function deleteAllTripMembers(): Promise<number> {
-  const snap = await getDocs(collection(firebaseDb(), TRIP_MEMBERS));
-  if (snap.empty) return 0;
+/** Remove everyone who joined the given trips in the app */
+export async function deleteAllTripMembers(tripIds: string[]): Promise<number> {
+  const docs = await memberDocsOfTrips(tripIds);
+  if (!docs.length) return 0;
   let deleted = 0;
-  for (const d of snap.docs) {
+  for (const d of docs) {
     try {
       await deleteDoc(d.ref);
       deleted++;
@@ -326,7 +334,7 @@ export async function deleteAllTripMembers(): Promise<number> {
       logger.log("deleteAllTripMembers", `failed to delete ${d.id}:`, err);
     }
   }
-  logger.log("deleteAllTripMembers", `deleted ${deleted}/${snap.size} docs`);
+  logger.log("deleteAllTripMembers", `deleted ${deleted}/${docs.length} docs`);
   return deleted;
 }
 
