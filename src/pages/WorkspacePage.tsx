@@ -63,6 +63,7 @@ import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
@@ -764,9 +765,11 @@ export function WorkspacePage() {
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const path = `trips/${tripId}/cover-${Date.now()}.${file.name.split(".").pop()}`;
     try {
-      const url = await uploadToStorage(file, path);
+      const image = await shrinkImage(file);
+      const ext = image === file ? file.name.split(".").pop() : "jpg";
+      const path = `trips/${tripId}/cover-${Date.now()}.${ext}`;
+      const url = await uploadToStorage(image === file ? file : new File([image], `cover.${ext}`, { type: image.type }), path);
       setEditingTrip(prev => ({ ...prev, image: url }));
     } catch { toast.error("Cover upload failed"); }
     e.target.value = "";

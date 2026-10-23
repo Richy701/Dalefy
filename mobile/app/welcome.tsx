@@ -4,8 +4,9 @@ import { StatusBar } from "expo-status-bar";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Image,
-  ActionSheetIOS, Alert, ActivityIndicator, Keyboard,
+  ActionSheetIOS, Alert, ActivityIndicator, Keyboard, useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
@@ -15,8 +16,13 @@ import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
 import { CaretLeft, Camera, User, Ticket, Check, X, ClipboardText } from "phosphor-react-native";
 import { TripPreviewCard } from "@/components/TripPreviewCard";
-import Animated, { FadeIn, FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSequence, withTiming } from "react-native-reanimated";
-import { photoPalette } from "@/components/ui/PhotoBackdrop";
+import Animated, {
+  FadeIn, FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSequence, withTiming,
+  Easing, Extrapolation, interpolate, runOnJS,
+} from "react-native-reanimated";
+import { photoPalette, PhotoBackdrop, PhotoDissolve } from "@/components/ui/PhotoBackdrop";
+import { handOffTrip } from "@/services/joinHandoff";
+import { waitForAuth } from "@/services/firebase";
 import { PinCell, PIN_LEN, PIN_W } from "@/components/ui/PinCell";
 import { BlurredHero } from "@/components/ui/HeroSlideshow";
 import { useTheme } from "@/context/ThemeContext";
@@ -53,6 +59,51 @@ function PasteButton({ onPress, plain = false }: { onPress: () => void; plain?: 
       <ClipboardText size={14} color="#fff" weight="bold" />
       <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: "#fff" }}>Paste</Text>
     </Pressable>
+  );
+}
+
+type LaunchFrame = { x: number; y: number; w: number; h: number };
+// The trip page's hero height (app/trip/[id].tsx, and the joining screen in app/shared/[tripId].tsx)
+const TRIP_HERO_H = 380;
+
+/**
+ * The card's photo leaves the card and grows into the top of the screen, exactly where the trip page shows it,
+ * while the blurred cover fills in behind. The joining screen then fades in over an identical frame.
+ */
+function JoinLaunch({ uri, from, onDone }: { uri: string; from: LaunchFrame; onDone: () => void }) {
+  const { width } = useWindowDimensions();
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = withTiming(1, { duration: 620, easing: Easing.bezier(0.22, 1, 0.36, 1) }, done => {
+      if (done) runOnJS(onDone)();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const box = useAnimatedStyle(() => ({
+    left: interpolate(p.value, [0, 1], [from.x, 0]),
+    top: interpolate(p.value, [0, 1], [from.y, 0]),
+    width: interpolate(p.value, [0, 1], [from.w, width]),
+    height: interpolate(p.value, [0, 1], [from.h, TRIP_HERO_H]),
+    borderRadius: interpolate(p.value, [0, 1], [R.xl, 0]),
+    // Takes over from the card's own photo in the first few frames, so their different edges never show
+    opacity: interpolate(p.value, [0, 0.12], [0, 1], Extrapolation.CLAMP),
+  }));
+  const wash = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.7], [0, 1], Extrapolation.CLAMP) }));
+  const settle = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0.55, 1], [0, 1], Extrapolation.CLAMP) }));
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Animated.View style={[StyleSheet.absoluteFill, wash]}>
+        <PhotoBackdrop uri={uri} />
+      </Animated.View>
+      <Animated.View style={[{ position: "absolute", overflow: "hidden" }, box]}>
+        <CachedImage uri={uri} transition={0} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+        {/* As it lands: the same top shade and melt into the blur as the trip page's hero */}
+        <Animated.View style={[StyleSheet.absoluteFill, settle]} pointerEvents="none">
+          <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
+          <PhotoDissolve uri={uri} />
+        </Animated.View>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -113,6 +164,7 @@ export default function WelcomeScreen() {
     setPref("name", finalName);
     if (finalAvatar) setPref("avatar", finalAvatar);
     haptic.medium();
+    if (trip) handOffTrip(trip);
     if (trip) router.replace(`/shared/${trip.id}?join=1${travelerId ? `&traveler=${encodeURIComponent(travelerId)}` : ""}`);
     else router.replace("/(tabs)");
   }, [setPref, haptic, router]);
@@ -140,15 +192,37 @@ export default function WelcomeScreen() {
   // Who this person is on a trip, if the organiser listed their email on it
   const travellerFor = useCallback((trip: Trip | null) => (trip ? mine[trip.id] ?? null : null), [mine]);
 
+  const asksName = useCallback((trip: Trip | null) => needsName && !travellerFor(trip)?.name?.trim(), [needsName, travellerFor]);
+
   const afterCode = useCallback((trip: Trip | null) => {
     // The organiser already has their name: use it rather than asking
     const listedName = travellerFor(trip)?.name?.trim() || "";
-    if (needsName && !listedName) {
+    if (asksName(trip)) {
       setStep("profile");
       return;
     }
     finishOnboarding(listedName || providerName, auth.user?.avatar || "", trip, travellerFor(trip)?.id ?? null);
-  }, [needsName, finishOnboarding, providerName, auth.user?.avatar, travellerFor]);
+  }, [asksName, finishOnboarding, providerName, auth.user?.avatar, travellerFor]);
+
+  // "Join this trip": the card's photo grows into the trip page's hero, then the joining screen takes over in place
+  const cardPhotoRef = useRef<View>(null);
+  const [launchFrom, setLaunchFrom] = useState<LaunchFrame | null>(null);
+  const joinMatched = useCallback(() => {
+    if (!matchedTrip || launchFrom) return;
+    haptic.medium();
+    // Without a name on the trip, the profile step comes first, so there's nothing to grow into yet
+    if (asksName(matchedTrip) || !matchedTrip.image || !cardPhotoRef.current) { afterCode(matchedTrip); return; }
+    cardPhotoRef.current.measureInWindow((x, y, w, h) => {
+      if (w > 0 && h > 0) setLaunchFrom({ x, y, w, h });
+      else afterCode(matchedTrip);
+    });
+  }, [matchedTrip, launchFrom, haptic, asksName, afterCode]);
+
+  // A new phone signs in as a guest before its first lookup; start that now so the PIN doesn't wait on it
+  useEffect(() => {
+    if (isEdit) return;
+    waitForAuth().catch(() => {});
+  }, [isEdit]);
 
   // ── One box for whatever the organiser sent: a trip PIN, an organisation code or an invite link ──
   const codeInputRef = useRef<TextInput>(null);
@@ -403,7 +477,7 @@ export default function WelcomeScreen() {
 
               {matchedTrip ? (
                 <Animated.View entering={FadeInDown.duration(380)}>
-                  <TripPreviewCard glass trip={matchedTrip} dates={`${fmtDay(matchedTrip.start)} – ${fmtDay(matchedTrip.end)}`} />
+                  <TripPreviewCard glass trip={matchedTrip} photoRef={cardPhotoRef} dates={`${fmtDay(matchedTrip.start)} – ${fmtDay(matchedTrip.end)}`} />
                 </Animated.View>
               ) : lookingUp ? (
                 <ActivityIndicator size="large" color="#fff" style={{ alignSelf: "flex-start", marginTop: S.md }} />
@@ -479,7 +553,7 @@ export default function WelcomeScreen() {
             <Animated.View entering={FadeInUp.duration(300).delay(200)} style={styles.footer}>
               {matchedTrip ? (
                 <>
-                  <Pressable onPress={() => { haptic.medium(); afterCode(matchedTrip); }} accessibilityRole="button" style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}>
+                  <Pressable onPress={joinMatched} accessibilityRole="button" style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}>
                     <Text style={styles.ctaText}>Join this trip</Text>
                   </Pressable>
                   <Pressable onPress={startOver} accessibilityRole="button" style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}>
@@ -510,6 +584,7 @@ export default function WelcomeScreen() {
             </Animated.View>
           </KeyboardAvoidingView>
         </SafeAreaView>
+        {launchFrom && matchedTrip ? <JoinLaunch uri={matchedTrip.image} from={launchFrom} onDone={() => afterCode(matchedTrip)} /> : null}
       </View>
     );
   }

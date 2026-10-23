@@ -3,6 +3,7 @@ import { daysUntil } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { LinearGradient } from "expo-linear-gradient";
 
 const GLASS = isLiquidGlassAvailable();
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +17,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Application from "expo-application";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
-  User, Palette, Bell, LockSimple, UserCirclePlus,
+  User, Palette, Bell, LockSimple,
   Vibrate, ArrowSquareOut,
   CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Newspaper, Compass, CaretRight,
 } from "phosphor-react-native";
@@ -142,23 +143,30 @@ export default function ProfileScreen() {
         {/* ── Account upgrade CTA (anonymous users only) ── */}
         {auth.isAnonymous && (
           <FadeIn delay={60}>
-            <Pressable
-              onPress={() => { haptic.selection(); router.push("/auth?mode=upgrade"); }}
-              style={({ pressed }) => [s.upgradeCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in to save your trips"
-            >
-              <View style={[s.upgradeIcon, { backgroundColor: C.tealDim }]}>
-                <UserCirclePlus size={20} color={C.teal} weight="regular" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.upgradeTitle}>Sign in to save your trips</Text>
-                <Text style={s.upgradeSub}>Access your trips on any device</Text>
-              </View>
-              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.tealText, letterSpacing: 0.5 }}>
-                Sign in
+            {/* Their own trip on the card, so signing in is about keeping something they care about */}
+            <View style={[s.saveCard, !heroTrip?.image && s.saveCardPlain]}>
+              {heroTrip?.image ? (
+                <>
+                  {/* A close crop, so it doesn't read as a second copy of the header photo just above */}
+                  <CachedImage uri={heroTrip.image} style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.9 }] }]} accessible={false} contentPosition={{ top: "60%", left: "30%" }} />
+                  <LinearGradient colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.8)"]} locations={[0, 0.6]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                </>
+              ) : null}
+              <Text style={[s.saveTitle, !heroTrip?.image && { color: C.textPrimary }]}>
+                {heroTrip ? `Keep ${heroTrip.name}\non every device` : "Keep your trips on every device"}
               </Text>
-            </Pressable>
+              <Text style={[s.saveSub, !heroTrip?.image && { color: C.textSecondary }]}>
+                Sign in and your trips stay safe if you change or lose this phone.
+              </Text>
+              <Pressable
+                onPress={() => { haptic.selection(); router.push("/auth?mode=upgrade"); }}
+                style={({ pressed }) => [s.saveBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in to save your trips"
+              >
+                <Text style={s.saveBtnText}>Sign in</Text>
+              </Pressable>
+            </View>
           </FadeIn>
         )}
 
@@ -454,27 +462,19 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoPage: boolean) {
       backgroundColor: C.elevated, borderRadius: R.sm, paddingHorizontal: S.xs, paddingVertical: 3,
     },
     flagEmoji: { fontSize: 18, lineHeight: 22 },
-    upgradeCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: S.sm,
-      padding: S.md,
-      backgroundColor: C.card,
-      borderRadius: R.xl,
-      marginTop: S.sm,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
+    // Photo card: the words sit low on the trip's cover, the button under them
+    saveCard: {
+      minHeight: 210, justifyContent: "flex-end", padding: S.md, gap: S["2xs"],
+      borderRadius: R.xl, overflow: "hidden", marginTop: S.sm, backgroundColor: C.card,
     },
-    upgradeIcon: {
-      width: 40, height: 40, borderRadius: 20,
+    saveCardPlain: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, minHeight: 0 },
+    saveTitle: { fontSize: 21, lineHeight: 26, fontWeight: T.bold, color: "#fff", letterSpacing: -0.3 },
+    saveSub: { fontSize: T.sm, lineHeight: 19, color: "rgba(255,255,255,0.85)" },
+    saveBtn: {
+      height: 46, borderRadius: R.lg, backgroundColor: C.teal, marginTop: S.sm,
       alignItems: "center", justifyContent: "center",
     },
-    upgradeTitle: {
-      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
-    },
-    upgradeSub: {
-      fontSize: T.xs, color: C.textTertiary, marginTop: 1,
-    },
+    saveBtnText: { fontSize: T.md, fontWeight: T.bold, color: C.onAccent },
     avatarFallback: {
       width: 76,
       height: 76,

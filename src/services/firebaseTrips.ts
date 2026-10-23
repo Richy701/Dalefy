@@ -3,6 +3,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { shrinkImage } from "@/lib/shrinkImage";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
 import type { Trip } from "@/types";
@@ -443,10 +444,10 @@ function base64ToBlob(dataUri: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-async function uploadBase64Image(dataUri: string, path: string): Promise<string> {
+async function uploadBase64Image(dataUri: string, path: string, shrink = false): Promise<string> {
   const blob = base64ToBlob(dataUri);
   const storageRef = ref(firebaseStorage(), path);
-  await uploadBytes(storageRef, blob);
+  await uploadBytes(storageRef, shrink ? await shrinkImage(blob) : blob);
   return getDownloadURL(storageRef);
 }
 
@@ -456,7 +457,7 @@ async function reuploadExternalImage(url: string, path: string): Promise<string>
   const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status}`);
-  const blob = await res.blob();
+  const blob = await shrinkImage(await res.blob());
   const storageRef = ref(firebaseStorage(), path);
   await uploadBytes(storageRef, blob);
   return getDownloadURL(storageRef);
@@ -465,7 +466,7 @@ async function reuploadExternalImage(url: string, path: string): Promise<string>
 /** Upload an image (base64 or external URL) to Firebase Storage */
 async function uploadImage(imageUrl: string, storagePath: string): Promise<string> {
   if (isBase64(imageUrl)) {
-    return uploadBase64Image(imageUrl, storagePath);
+    return uploadBase64Image(imageUrl, storagePath, true);
   }
   if (isExternalUrl(imageUrl)) {
     return reuploadExternalImage(imageUrl, storagePath);

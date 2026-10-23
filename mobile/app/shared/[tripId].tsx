@@ -9,14 +9,15 @@ import {
   StyleSheet, Platform, ActivityIndicator,
 } from "react-native";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay,
+  useSharedValue, useAnimatedStyle, withSpring, FadeIn, FadeInDown, ZoomIn, Easing,
 } from "react-native-reanimated";
+import { handedOffTrip } from "@/services/joinHandoff";
 import { Skeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import {
-  ArrowLeft, Users, ShareNetwork, Check, CaretDown,
+  ArrowLeft, Users, ShareNetwork, Check, CaretDown, CalendarBlank, Buildings,
   AirplaneTakeoff, AirplaneLanding, WarningCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
@@ -82,8 +83,10 @@ export default function SharedTripScreen() {
   const joining = join === "1";
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Join hands over the trip it already has, so the joining screen draws on its first frame
+  const [handoff] = useState(() => (joining ? handedOffTrip(tripId) : null));
+  const [trip, setTrip] = useState<Trip | null>(handoff);
+  const [loading, setLoading] = useState(!handoff);
   const [error, setError] = useState(false);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -97,15 +100,20 @@ export default function SharedTripScreen() {
 
   const [justAdded, setJustAdded] = useState(false);
   const addScale = useSharedValue(1);
-  const addCheck = useSharedValue(0);
 
   const addBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: addScale.value }],
   }));
-  const checkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: addCheck.value }],
-    opacity: addCheck.value,
-  }));
+
+  // Joining can start from the first-run screens, which leave nothing underneath. Rebuild the stack as Home with
+  // the trip on top, in one step, so Back goes Home instead of the trip being a dead end.
+  const navigation = useNavigation();
+  const openJoinedTrip = useCallback((id: string) => {
+    navigation.reset({
+      index: 1,
+      routes: [{ name: "(tabs)" as never }, { name: "trip/[id]" as never, params: { id, arrived: "1" } as never }],
+    });
+  }, [navigation]);
 
   const completeJoin = useCallback((linkedTravelerId?: string) => {
     if (!trip) return;
@@ -125,14 +133,12 @@ export default function SharedTripScreen() {
     addScale.value = withSpring(0.92, { damping: 10, stiffness: 200 }, () => {
       addScale.value = withSpring(1, { damping: 14, stiffness: 120 });
     });
-    addCheck.value = withDelay(100, withSpring(1, { damping: 12, stiffness: 200 }));
     setJustAdded(true);
     setShowLinkPicker(false);
 
-    setTimeout(() => {
-      router.replace(`/trip/${trip.id}`);
-    }, 1200);
-  }, [trip, addTrip, addScale, addCheck, prefs, router, isAnonymous, authUser, toast]);
+    // Long enough for the arrival to land and be read
+    setTimeout(() => openJoinedTrip(trip.id), 3000);
+  }, [trip, addTrip, addScale, prefs, openJoinedTrip, isAnonymous, authUser, toast]);
 
   const handleAddToMyTrips = useCallback(async () => {
     if (!trip || alreadyInMyTrips || justAdded) return;
@@ -164,21 +170,33 @@ export default function SharedTripScreen() {
   useEffect(() => {
     if (!joining || !trip || autoJoined.current) return;
     autoJoined.current = true;
-    if (alreadyInMyTrips) { router.replace(`/trip/${trip.id}`); return; }
+    if (alreadyInMyTrips) { openJoinedTrip(trip.id); return; }
     handleAddToMyTrips();
-  }, [joining, trip, handleAddToMyTrips, alreadyInMyTrips, router]);
+  }, [joining, trip, handleAddToMyTrips, alreadyInMyTrips, openJoinedTrip]);
 
   useEffect(() => {
     if (!tripId) return;
-    setLoading(true);
+    // A handed-over trip is already on screen: refresh it quietly, and never swap it for an error mid-join
+    if (!handoff) setLoading(true);
     fetchTripById(tripId)
       .then((t) => {
         if (t) setTrip(t);
-        else setError(true);
+        else if (!handoff) setError(true);
       })
-      .catch(() => setError(true))
+      .catch(() => { if (!handoff) setError(true); })
       .finally(() => setLoading(false));
-  }, [tripId]);
+  }, [tripId, handoff]);
+
+  // The arrival: the first thing on the trip that's still to come
+  const firstPlan = useMemo(() => {
+    if (!trip) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const dated = trip.events.filter(e => e.date).sort((a, b) => `${a.date} ${a.time || "99"}`.localeCompare(`${b.date} ${b.time || "99"}`));
+    return dated.find(e => e.date >= today) ?? dated[0] ?? null;
+  }, [trip]);
+
+  const joinFirst = (prefs.name || "").trim().split(/\s+/)[0];
+  const joinFirstName = joinFirst ? joinFirst[0].toUpperCase() + joinFirst.slice(1) : "";
 
   if (loading) {
     return (
@@ -258,14 +276,69 @@ export default function SharedTripScreen() {
     return (
       <View style={styles.safe}>
         <PhotoBackdrop uri={trip.image} />
+        {/* Join's card photo grew into exactly this spot, and the trip page's hero sits here too */}
+        <View style={styles.joinHero} pointerEvents="none">
+          <CachedImage uri={trip.image} transition={0} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+          <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
+          <PhotoDissolve uri={trip.image} />
+        </View>
         <View style={styles.joiningWrap}>
-          <Text style={styles.heroName} numberOfLines={2}>{trip.name}</Text>
-          <View style={styles.joiningRow}>
-            {justAdded
-              ? <Animated.View style={checkStyle}><Check size={18} color={C.tealText} weight="bold" /></Animated.View>
-              : <ActivityIndicator size="small" color="#fff" />}
-            <Text style={styles.joiningText}>{justAdded ? "You're in" : "Joining your trip…"}</Text>
+          <View style={styles.arriveHead}>
+            {justAdded ? (
+              <Animated.View entering={ZoomIn.duration(360).easing(Easing.out(Easing.cubic))} style={[styles.joinTick, { backgroundColor: C.teal }]}>
+                <Check size={18} color={C.onAccent} weight="bold" />
+              </Animated.View>
+            ) : <ActivityIndicator size="small" color="#fff" style={styles.joinTick} />}
+            <Animated.Text key={justAdded ? "in" : "joining"} entering={FadeIn.duration(280)} style={styles.joiningTitle} numberOfLines={1}>
+              {justAdded ? (joinFirstName ? `You're in, ${joinFirstName}` : "You're in") : "Joining your trip…"}
+            </Animated.Text>
           </View>
+          <Text style={styles.joiningText} numberOfLines={2}>{trip.name}</Text>
+
+          {/* The trip arrives a line at a time: when, who, who's looking after them, and what comes first */}
+          {justAdded ? (
+            <View style={styles.arriveList}>
+              <Animated.View entering={FadeInDown.delay(260).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                <View style={styles.arriveIcon}><CalendarBlank size={18} color="#fff" weight="bold" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.arriveMain}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
+                  <Text style={styles.arriveSub}>{tripFactLine(trip)}</Text>
+                </View>
+              </Animated.View>
+              {trip.travelers?.length ? (
+                <Animated.View entering={FadeInDown.delay(430).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                  <View style={styles.arriveFaces}>
+                    {trip.travelers.slice(0, 4).map((t, i) => (
+                      <View key={t.id} style={{ marginLeft: i ? -8 : 0 }}>
+                        <Avatar size={28} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} solid ringColor="rgba(20,20,24,0.9)" />
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.arriveMain, { flex: 1 }]} numberOfLines={1}>
+                    {trip.travelers.length === 1 ? "1 traveller" : `${trip.travelers.length} travellers`} going
+                  </Text>
+                </Animated.View>
+              ) : null}
+              {trip.organizer?.company || trip.organizer?.name ? (
+                <Animated.View entering={FadeInDown.delay(600).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                  <View style={styles.arriveIcon}><Buildings size={18} color="#fff" weight="bold" /></View>
+                  <Text style={[styles.arriveMain, { flex: 1 }]} numberOfLines={1}>Hosted by {trip.organizer?.company || trip.organizer?.name}</Text>
+                </Animated.View>
+              ) : null}
+              {firstPlan ? (
+                <Animated.View entering={FadeInDown.delay(770).duration(380).easing(Easing.out(Easing.cubic))} style={styles.arriveRow}>
+                  <CategoryDot palette={C} type={firstPlan.type} transferType={firstPlan.transferType} size={36} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.arriveSub}>
+                      First up, {new Date(`${firstPlan.date}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                      {firstPlan.time && /^\d/.test(firstPlan.time) ? ` at ${firstPlan.time}` : ""}
+                    </Text>
+                    <Text style={styles.arriveMain} numberOfLines={1}>{tidyTitleSeparators(firstPlan.title)}</Text>
+                  </View>
+                </Animated.View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
         {renderLinkSheet()}
       </View>
@@ -547,9 +620,19 @@ export default function SharedTripScreen() {
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: "#000" },
-    joiningWrap: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: S.xl, gap: S.md },
-    joiningRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
-    joiningText: { fontSize: T.md, fontWeight: T.semibold, color: "rgba(255,255,255,0.86)" },
+    joinHero: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_H },
+    // Starts where the hero melts into the blur, as the trip page's title does
+    joiningWrap: { flex: 1, paddingTop: HERO_H - 64, paddingHorizontal: S.lg, gap: 2 },
+    arriveHead: { flexDirection: "row", alignItems: "center", gap: S.sm },
+    joinTick: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+    joiningTitle: { flex: 1, fontSize: 28, lineHeight: 33, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4 },
+    joiningText: { fontSize: T.md, fontWeight: T.semibold, color: "rgba(255,255,255,0.82)", marginLeft: 30 + S.sm },
+    arriveList: { marginTop: S.xl, gap: S.lg },
+    arriveRow: { flexDirection: "row", alignItems: "center", gap: S.sm2 },
+    arriveIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
+    arriveFaces: { flexDirection: "row" },
+    arriveMain: { fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
+    arriveSub: { fontSize: T.sm, color: "rgba(255,255,255,0.78)", marginTop: 1 },
     linkName: { fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
     scroll: { paddingBottom: SCROLL_BOTTOM_PAD + 40 },
     addCta: {

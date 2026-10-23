@@ -1,6 +1,27 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "vite build",
+  "images": {
+    "sizes": [
+      640,
+      1080,
+      2048
+    ],
+    "qualities": [
+      75
+    ],
+    "formats": [
+      "image/webp"
+    ],
+    "minimumCacheTTL": 2678400,
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "^firebasestorage\\.googleapis\\.com$",
+        "pathname": "^/v0/b/dalefy-d87c9\\.[a-z.]+/o/.*$"
+      }
+    ]
+  },
   "crons": [
     {
       "path": "/api/check-flight-status",

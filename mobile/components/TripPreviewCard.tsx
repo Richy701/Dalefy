@@ -1,6 +1,6 @@
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { photoPalette } from "@/components/ui/PhotoBackdrop";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type Ref } from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,7 +16,8 @@ import type { Trip } from "@/shared/types";
 const LIQUID_GLASS = Platform.OS === "ios" && isLiquidGlassAvailable();
 
 /** glass: for onboarding's photo screens, a see-through glass card with the photo palette instead of a solid one */
-export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = false }: { trip: Trip; dates: string; eyebrow?: string; glass?: boolean }) {
+/** photoRef: lets Join find the photo on screen, so it can grow from there into the trip page */
+export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = false, photoRef }: { trip: Trip; dates: string; eyebrow?: string; glass?: boolean; photoRef?: Ref<View> }) {
   const { C: themeC, isDark } = useTheme();
   const C = useMemo(() => (glass ? photoPalette(themeC, isDark) : themeC), [glass, themeC, isDark]);
   const styles = useMemo(() => makeStyles(C, glass), [C, glass]);
@@ -32,7 +33,7 @@ export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = f
           ? <GlassView glassEffectStyle="regular" colorScheme="dark" style={StyleSheet.absoluteFill} />
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.12)" }]} />
       ) : null}
-      <View style={styles.photo}>
+      <View ref={photoRef} style={styles.photo}>
         <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
           <MaskedView
             style={StyleSheet.absoluteFill}

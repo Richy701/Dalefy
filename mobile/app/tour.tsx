@@ -192,7 +192,7 @@ export default function TourScreen() {
       ? `${organiser || "Your organiser"} has planned ${trip.name} for you. Here's a quick look at how the app works.`
       : "Here's a quick look at how the app works, so you're ready when your trip is.";
 
-  const pages: { key: string; title: string; body: string; hero?: boolean; preview: (shown: boolean, active: boolean) => ReactNode }[] = [
+  const pages: { key: string; title: string; body: string; hero?: boolean; fill?: boolean; preview: (shown: boolean, active: boolean) => ReactNode }[] = [
     {
       key: "welcome",
       title: welcomeOnly ? (name ? `Welcome back, ${name}` : "Welcome back") : (name ? `Welcome, ${name}` : "Welcome aboard"),
@@ -214,9 +214,11 @@ export default function TourScreen() {
     },
     {
       key: "gallery",
+      // The album sizes itself to the space, so it doesn't need shrinking
+      fill: true,
       title: "Every moment, shared",
       body: "Add your photos and see everyone else's from the trip, together in one album and sorted by day.",
-      preview: (shown, active) => <GalleryPreview photos={HOLIDAY_PHOTOS} names={(trip?.travelers ?? []).map(t => t.name.split(" ")[0]).filter(n => n && n.toLowerCase() !== firstName.toLowerCase())} C={C} shown={shown} active={active} screenWidth={width} />,
+      preview: (shown, active) => <GalleryPreview photos={HOLIDAY_PHOTOS} C={C} shown={shown} active={active} screenWidth={width} />,
     },
     {
       key: "alerts",
@@ -241,11 +243,12 @@ export default function TourScreen() {
     </View>
   ) : (
     <View style={[styles.page, { width }]}>
-      {/* The words sit in the same place on every page; the live preview fills the space under them */}
-      <CopyBlock index={i} progress={progress} width={width} title={p.title} body={p.body} styles={styles} />
+      {/* The live preview plays on a phone up top; the words sit low, just above the button, as on the welcome page */}
       <Parallax index={i} progress={progress} width={width} style={styles.previewArea}>
-        {p.preview(true, page === i)}
+        <PhoneFrame />
+        {p.fill ? p.preview(true, page === i) : <FitBox>{p.preview(true, page === i)}</FitBox>}
       </Parallax>
+      <CopyBlock index={i} progress={progress} width={width} title={p.title} body={p.body} styles={styles} />
     </View>
   )}</PageCtx.Provider>
   ));
@@ -318,6 +321,42 @@ export default function TourScreen() {
   );
 }
 
+/**
+ * How far the phone sits in from the page edges. Each preview's main card spans the full page, so it breaks
+ * out past the phone's sides; everything else stays inside the screen.
+ */
+const PHONE_INSET = 30;
+const IN_PHONE = PHONE_INSET + S.sm;
+
+/** A phone with no edges, just a lighter screen that fades away towards the words */
+function PhoneFrame() {
+  return (
+    <Reveal order={0} from="zoom" style={pv.phone}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.16)", "rgba(255,255,255,0.06)", "rgba(255,255,255,0)"]}
+        locations={[0, 0.4, 0.72]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={pv.island} />
+    </Reveal>
+  );
+}
+
+/** Shrinks a preview that's taller than the phone's screen (iPhone SE, mini) so nothing gets cut off */
+function FitBox({ children }: { children: ReactNode }) {
+  const [room, setRoom] = useState(0);
+  const [natural, setNatural] = useState(0);
+  const s = room && natural > room ? room / natural : 1;
+  return (
+    <View style={{ flex: 1, alignSelf: "stretch" }} onLayout={e => setRoom(e.nativeEvent.layout.height)}>
+      {/* Scaled about the top edge, so it still starts just under the island */}
+      <View onLayout={e => setNatural(e.nativeEvent.layout.height)} style={{ transform: [{ translateY: (-natural * (1 - s)) / 2 }, { scale: s }] }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 /** The preview drifts slower than the page and eases back a little as it leaves, so the swipe has depth */
 function Parallax({ index, progress, width, style, children }: {
   index: number; progress: SharedValue<number>; width: number; style: any; children: ReactNode;
@@ -344,13 +383,18 @@ function BackdropLayer({ index, progress, source, still }: { index: number; prog
   }));
   return (
     <Animated.View style={[StyleSheet.absoluteFill, fade]}>
-      <Image
-        source={typeof source === "string" ? { uri: source } : source}
-        blurRadius={70}
-        resizeMode="cover"
-        style={{ position: "absolute", top: 0, left: 0, width, height, transform: [{ scale: 1.12 }] }}
-        accessible={false}
-      />
+      {typeof source === "string" ? (
+        // The trip's cover, through the cache and the resizer like everywhere else
+        <CachedImage uri={source} blurRadius={70} transition={0} style={{ position: "absolute", top: 0, left: 0, width, height, transform: [{ scale: 1.12 }] }} accessible={false} />
+      ) : (
+        <Image
+          source={source}
+          blurRadius={70}
+          resizeMode="cover"
+          style={{ position: "absolute", top: 0, left: 0, width, height, transform: [{ scale: 1.12 }] }}
+          accessible={false}
+        />
+      )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(8,8,10,0.66)" }]} />
     </Animated.View>
   );
@@ -427,7 +471,7 @@ type HomeMode = -1 | 0 | 1 | 2;
  * card: Itinerary slides up the day, Info shows where you're staying and who to call, Share shows how to
  * send the plan. Then the photo again.
  */
-function HomePreview({ trip, day, C, isDark, active }: {
+function HomePreview({ trip, day, C, active }: {
   trip: Trip | null; day: { date: string; events: TravelEvent[] } | null; C: ThemeColors; isDark: boolean; shown?: boolean; active: boolean;
 }) {
   // A slow push-in on the cover photo, back and forth
@@ -447,13 +491,19 @@ function HomePreview({ trip, day, C, isDark, active }: {
     return () => { clearTimeout(kick); clearInterval(t); };
   }, [active]);
 
+  // The trip's name steps aside while a panel is up, so it doesn't show through it
+  const titleShown = useSharedValue(1);
+  useEffect(() => { titleShown.value = withTiming(mode >= 0 ? 0 : 1, { duration: 220 }); }, [mode, titleShown]);
+  const titleFade = useAnimatedStyle(() => ({ opacity: titleShown.value }));
+
   const hotel = trip?.events.find(e => e.type === "hotel");
   const plans = (day?.events ?? []).slice(0, 3);
   const notes = trip?.info?.length ?? 0;
 
   return (
     <View style={{ alignSelf: "stretch" }}>
-    <Reveal order={0} from="zoom" style={[pv.photoCard, { backgroundColor: C.elevated }, shadow("deep", isDark)]}>
+    <Reveal order={0} from="zoom" style={[pv.photoCard, { backgroundColor: C.card }, pv.lift]}>
+      <View style={pv.photoClip}>
       {trip?.image ? (
         <>
           <Animated.View style={[StyleSheet.absoluteFill, kenBurns]}>
@@ -469,12 +519,12 @@ function HomePreview({ trip, day, C, isDark, active }: {
           <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.72)"]} locations={[0.3, 1]} style={StyleSheet.absoluteFill} />
         </>
       )}
-      <View style={pv.photoText}>
+      <Animated.View style={[pv.photoText, titleFade]}>
         {trip?.destination ? <Text style={pv.photoEyebrow} numberOfLines={1}>{trip.destination.toUpperCase()}</Text> : null}
         <Text style={pv.photoTitle} numberOfLines={2}>{trip?.name ?? "Your next trip"}</Text>
         {trip ? <Text style={pv.photoFact} numberOfLines={1}>{tripFactLine(trip)}</Text> : null}
         {trip ? <Text style={pv.photoDates}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text> : null}
-      </View>
+      </Animated.View>
 
       {mode >= 0 ? (
         <Animated.View
@@ -524,6 +574,7 @@ function HomePreview({ trip, day, C, isDark, active }: {
           )}
         </Animated.View>
       ) : null}
+      </View>
     </Reveal>
     <HomeActions mode={mode} />
     </View>
@@ -618,7 +669,7 @@ function TodayPreview({ day, C, styles, shown, active }: {
   const left = useCountdown(active);
   return (
     <View style={{ alignSelf: "stretch" }}>
-      <Reveal order={0} style={[pv.nextCard, { backgroundColor: C.elevated, borderColor: C.border }]}>
+      <Reveal order={0} style={[pv.nextCard, { backgroundColor: C.card, borderColor: C.border }, pv.lift]}>
         <View style={pv.nextTop}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[pv.nextLabel, { color: C.textTertiary }]}>Next up</Text>
@@ -642,6 +693,7 @@ function TodayPreview({ day, C, styles, shown, active }: {
           </View>
         </View>
       </Reveal>
+      <View style={{ marginHorizontal: IN_PHONE }}>
       <Reveal order={1} style={[styles.cardHeader, { marginTop: S.lg }]}>
         <Text style={styles.cardTitle}>Then on {day?.date ? fmtDay(day.date) : "day 1"}</Text>
         {events.some(ev => !hasTime(ev)) ? <Text style={styles.cardMeta}>{events.every(ev => !hasTime(ev)) ? "Times TBC" : "Some times TBC"}</Text> : null}
@@ -657,6 +709,7 @@ function TodayPreview({ day, C, styles, shown, active }: {
           {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
         </Reveal>
       ))}
+      </View>
     </View>
   );
 }
@@ -709,16 +762,17 @@ const HOLIDAY_PHOTOS = [
 const TILE_GAP = S.xs;
 
 /** Three rows of photos drifting past, each its own speed and direction, while uploads from the group pop up on top */
-function GalleryPreview({ photos, names, C, shown, active, screenWidth }: {
-  photos: number[]; names: string[]; C: ThemeColors; shown: boolean; active: boolean; screenWidth: number;
+function GalleryPreview({ photos, C, shown, active, screenWidth }: {
+  photos: number[]; C: ThemeColors; shown: boolean; active: boolean; screenWidth: number;
 }) {
   // The rows share whatever height the page leaves them, so the album fills the space on any phone
   const [areaH, setAreaH] = useState(0);
-  const tileH = areaH ? Math.min(210, (areaH - TILE_GAP * 2 - S.lg) / 3) : 0;
+  const tileH = areaH ? Math.min(210, (areaH - TILE_GAP * 2 - S.xl * 2) / 3) : 0;
   const tileW = Math.round(tileH * 0.78);
   const rows = [photos.slice(0, 4), photos.slice(4, 7), photos.slice(7)];
 
-  const people = names.length ? names : ["Priya", "Sam", "Jordan", "Ama"];
+  // Demo names, so test or placeholder travelers on a trip never show up here
+  const people = ["Priya", "Sam", "Jordan", "Ama"];
   const uploads = people.slice(0, 4).map((n, i) => `${n} added ${[4, 1, 6, 2][i]} photo${[4, 1, 6, 2][i] === 1 ? "" : "s"}`);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -731,7 +785,7 @@ function GalleryPreview({ photos, names, C, shown, active, screenWidth }: {
   return (
     <View style={{ flex: 1, alignSelf: "stretch", justifyContent: "center" }} onLayout={e => setAreaH(e.nativeEvent.layout.height)}>
       {tileH > 0 ? (
-        <View style={{ width: screenWidth, marginLeft: -S.lg, gap: TILE_GAP, overflow: "hidden" }}>
+        <View style={{ width: screenWidth - S.lg * 2 - PHONE_INSET * 2, marginLeft: PHONE_INSET, gap: TILE_GAP, overflow: "hidden" }}>
           {rows.map((row, r) => (
             <Reveal key={r} shown={shown} order={r} from="zoom">
               <MarqueeRow photos={row} reverse={r === 1} active={active} tileW={tileW} tileH={tileH} speed={[3400, 2800, 3800][r]} />
@@ -886,7 +940,7 @@ function AlertsPreview({ trip, flight, nextPlan, C, isDark, active }: {
 
       {/* Live Activity: the flight's progress, the way it sits on the Lock Screen */}
       {flight ? (
-      <Reveal order={1} from="up" style={[pv.activity, { backgroundColor: C.elevated, borderColor: C.border }, shadow("card", isDark)]}>
+      <Reveal order={1} from="up" style={[pv.activity, { backgroundColor: C.card, borderColor: C.border }, pv.lift]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs }}>
           <View style={[pv.appIconSm, { backgroundColor: C.teal }]}><Logo size={13} color={C.onAccent} /></View>
           <Text style={[pv.bannerTitle, { color: C.textPrimary, flex: 1 }]} numberOfLines={1}>{flightLabel}</Text>
@@ -913,7 +967,7 @@ function AlertsPreview({ trip, flight, nextPlan, C, isDark, active }: {
       </Reveal>
       ) : (
         // No flight: the next plan counting down, with its own icon travelling the line
-        <Reveal order={1} from="up" style={[pv.activity, { backgroundColor: C.elevated, borderColor: C.border }, shadow("card", isDark)]}>
+        <Reveal order={1} from="up" style={[pv.activity, { backgroundColor: C.card, borderColor: C.border }, pv.lift]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs }}>
             <View style={[pv.appIconSm, { backgroundColor: C.teal }]}><Logo size={13} color={C.onAccent} /></View>
             <Text style={[pv.bannerTitle, { color: C.textPrimary, flex: 1 }]} numberOfLines={1}>{upcoming ? tidyTitleSeparators(upcoming.title) : "Your pickup"}</Text>
@@ -938,7 +992,7 @@ function AlertsPreview({ trip, flight, nextPlan, C, isDark, active }: {
         </Reveal>
       )}
 
-      <Reveal order={2} from="up" style={{ gap: S.sm }}>
+      <Reveal order={2} from="up" style={{ gap: S.sm, marginHorizontal: PHONE_INSET + S.xs }}>
         {visible.map(({ key, k, banner, when }) => (
           <Animated.View
             key={key}
@@ -967,7 +1021,12 @@ function AlertsPreview({ trip, flight, nextPlan, C, isDark, active }: {
 }
 
 const pv = StyleSheet.create({
-  photoCard: { alignSelf: "stretch", aspectRatio: 1.05, borderRadius: R.xl, overflow: "hidden", justifyContent: "flex-end" },
+  phone: { position: "absolute", top: 0, bottom: 0, left: PHONE_INSET, right: PHONE_INSET, borderTopLeftRadius: 46, borderTopRightRadius: 46, overflow: "hidden", alignItems: "center" },
+  island: { marginTop: 12, width: 96, height: 28, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)" },
+  photoCard: { alignSelf: "stretch", aspectRatio: 1.15, borderRadius: R.xl },
+  photoClip: { flex: 1, borderRadius: R.xl, overflow: "hidden", justifyContent: "flex-end" },
+  // The card that breaks out of the phone: solid, lifted off it with a shadow that shows on dark
+  lift: { shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 14 } },
   photoText: { padding: S.lg, gap: 2, alignItems: "center" },
   photoEyebrow: { color: "rgba(255,255,255,0.85)", fontSize: T.sm, fontWeight: T.semibold, letterSpacing: 1.5 },
   photoTitle: { color: "#fff", fontSize: 26, lineHeight: 30, fontWeight: T.bold, letterSpacing: -0.4, textAlign: "center" },
@@ -987,7 +1046,7 @@ const pv = StyleSheet.create({
   panelLabel: { color: "rgba(255,255,255,0.7)", fontSize: T.sm, width: 78 },
   panelValue: { flex: 1, color: "#fff", fontSize: T.base, fontWeight: T.semibold },
   panelBody: { color: "rgba(255,255,255,0.82)", fontSize: T.sm, lineHeight: 19 },
-  actions: { flexDirection: "row", justifyContent: "center", gap: S.xl, paddingTop: S.lg },
+  actions: { flexDirection: "row", justifyContent: "center", gap: S.lg, paddingTop: S.lg, marginHorizontal: IN_PHONE },
   action: { alignItems: "center", gap: S.xs2, minWidth: 64 },
   actionCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   actionLabel: { fontSize: T.xs, fontWeight: T.medium, color: "#fff" },
@@ -1031,8 +1090,9 @@ function makeStyles(C: ThemeColors) {
     screen: { flex: 1, backgroundColor: C.bg },
     progressRow: { flexDirection: "row", gap: S["2xs"], paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.sm },
     page: { flex: 1, paddingHorizontal: S.lg },
-    previewArea: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: S.md },
-    copy: { gap: S.xs, paddingTop: S.md, minHeight: 150 },
+    // Not clipped: the breakout cards' shadows reach past this box, and cutting them off drew lines down the sides
+    previewArea: { flex: 1, alignItems: "center", paddingTop: 64, marginTop: S.sm },
+    copy: { gap: S.xs, paddingTop: S.lg, paddingBottom: S.sm, minHeight: 150 },
     title: { fontSize: 28, lineHeight: 33, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
     body: { fontSize: T.md, lineHeight: 23, color: C.textSecondary },
     footer: { paddingHorizontal: S.lg, gap: S["2xs"] },

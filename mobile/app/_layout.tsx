@@ -302,7 +302,18 @@ function AppStack() {
             <Stack.Screen name="join" options={glassSheetOptions} />
             <Stack.Screen name="notifications" options={glassSheetOptions} />
             <Stack.Screen name="edit-profile" options={glassSheetOptions} />
-            <Stack.Screen name="tour" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
+            {/* Joining: each step lands on the same photo in the same place, so they fade rather than slide */}
+            <Stack.Screen name="shared/[tripId]" options={({ route }) => ((route.params as { join?: string } | undefined)?.join === "1" ? { animation: "fade" } : {})} />
+            <Stack.Screen name="trip/[id]" options={({ route }) => ((route.params as { arrived?: string } | undefined)?.arrived ? { animation: "fade" } : {})} />
+            <Stack.Screen
+              name="tour"
+              options={({ route }) => ({
+                presentation: "fullScreenModal",
+                gestureEnabled: false,
+                // Straight after joining a trip it dissolves in over the trip page instead of sliding up
+                ...((route.params as { tripId?: string } | undefined)?.tripId ? { animation: "fade" as const } : {}),
+              })}
+            />
           </Stack>
         </NavThemeProvider>
       </ErrorBoundary>

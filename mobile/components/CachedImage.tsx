@@ -9,6 +9,17 @@ try {
 
 const DEFAULT_BLURHASH = "L6PZfS~q-;j[j[j[fQj[j[fQj[";
 
+const APP_URL = (process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app").replace(/\/$/, "");
+const TRIP_COVER = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/trips%2F[^/?]+%2Fcover/;
+
+/**
+ * Trip covers are stored at full camera size (often 2 MB and up), so they come through Vercel's image resizer
+ * (vercel.json "images"). 2048 wide keeps the full-width hero sharp; blurred backdrops need far less.
+ */
+function sizedCover(uri: string, width: 640 | 2048): string {
+  return TRIP_COVER.test(uri) ? `${APP_URL}/_vercel/image?url=${encodeURIComponent(uri)}&w=${width}&q=75` : uri;
+}
+
 interface Props {
   uri: string;
   style: StyleProp<RNImageStyle>;
@@ -39,6 +50,9 @@ export function CachedImage({
   recyclingKey,
 }: Props) {
   const [retries, setRetries] = useState(0);
+  // The resized copy failed (resizer down or over quota): use the original instead
+  const [original, setOriginal] = useState(false);
+  const src = original ? uri : sizedCover(uri, blurRadius ? 640 : 2048);
   const maxRetries = 3;
   const failed = retries > maxRetries;
   const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -46,6 +60,7 @@ export function CachedImage({
   useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
 
   const handleError = () => {
+    if (src !== uri) { setOriginal(true); return; }
     if (retries < maxRetries) {
       retryTimer.current = setTimeout(() => setRetries(r => r + 1), 800 * (retries + 1));
     } else {
@@ -55,7 +70,7 @@ export function CachedImage({
 
   // Retry the plain URL first so a copy already on disk still shows offline;
   // only bust the expo-image disk cache on the final attempt.
-  const resolvedUri = retries >= maxRetries ? `${uri}${uri.includes("?") ? "&" : "?"}_r=${retries}` : uri;
+  const resolvedUri = retries >= maxRetries ? `${src}${src.includes("?") ? "&" : "?"}_r=${retries}` : src;
 
   if (!uri || failed) {
     if (ExpoImage) {
@@ -76,7 +91,7 @@ export function CachedImage({
   if (ExpoImage) {
     return (
       <ExpoImage
-        key={retries}
+        key={`${retries}${original ? "o" : ""}`}
         source={{ uri: resolvedUri }}
         style={style}
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
