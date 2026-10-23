@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, deleteField, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -220,6 +220,18 @@ export async function fetchTripMembers(tripIds: string[]): Promise<TripMember[]>
   } catch {
     return [];
   }
+}
+
+/** Point a member's app account at one of the trip's travellers, on both of their docs (null unlinks them) */
+export async function setMemberTraveler(tripId: string, deviceId: string, travelerId: string | null): Promise<void> {
+  const docs = (await memberDocsOfTrips([tripId])).filter(d => d.data().device_id === deviceId);
+  await Promise.all(docs.map(d => setDoc(d.ref, { linked_traveler_id: travelerId ?? deleteField() }, { merge: true })));
+}
+
+/** Unlink whoever picked this traveller in the app, e.g. when the traveller is taken off the trip */
+export async function unlinkTraveler(tripId: string, travelerId: string): Promise<void> {
+  const docs = (await memberDocsOfTrips([tripId])).filter(d => d.data().linked_traveler_id === travelerId);
+  await Promise.all(docs.map(d => setDoc(d.ref, { linked_traveler_id: deleteField() }, { merge: true })));
 }
 
 /** Delete a device's trip_members docs (both device-keyed and uid-keyed) on the given trips */

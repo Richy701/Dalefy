@@ -18,9 +18,14 @@ function firstLast(name: string): string {
   return `${parts[0]} ${parts[parts.length - 1]}`.toLowerCase();
 }
 
+/**
+ * firstNameOnlyIds: the only travellers a bare first name may match ("Tony" for "Tony Smith"). Pass the trip's own
+ * travellers on a re-import; across the whole directory that guess merged different people who share a first name.
+ */
 export function matchOrCreateTravelers(
   parsedNames: string[],
   existingTravelers: User[],
+  firstNameOnlyIds: ReadonlySet<string> = new Set(),
 ): MatchResult {
   const travelerIds: string[] = [];
   const travelers: MatchResult["travelers"] = [];
@@ -44,11 +49,11 @@ export function matchOrCreateTravelers(
       );
     }
 
-    // 3. First-name only (if exactly one candidate)
+    // 3. First-name only (if exactly one candidate), and only among the travellers allowed it
     if (!match) {
       const first = norm.split(" ")[0];
       const candidates = existingTravelers.filter(
-        (u) => !used.has(u.id) && normalize(u.name).split(" ")[0] === first,
+        (u) => firstNameOnlyIds.has(u.id) && !used.has(u.id) && normalize(u.name).split(" ")[0] === first,
       );
       if (candidates.length === 1) match = candidates[0];
     }

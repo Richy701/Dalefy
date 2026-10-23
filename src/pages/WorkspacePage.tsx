@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus,
+  ChatCircleText, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
@@ -60,7 +60,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
-import { upsertTrip } from "@/services/firebaseTrips";
+import { upsertTrip, fetchTripMembers, setMemberTraveler, unlinkTraveler, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
@@ -354,6 +354,32 @@ export function WorkspacePage() {
     const linkedIds = new Set(tripTravelers.map(t => t.id));
     return allTravelers.filter(u => !linkedIds.has(u.id));
   }, [trip, allTravelers, tripTravelers]);
+  // Who on this trip has joined in the app, and which traveller each one picked
+  const [tripMembers, setTripMembers] = useState<TripMember[]>([]);
+  const [membersLoadedFor, setMembersLoadedFor] = useState<string | null>(null);
+  const [membersReload, setMembersReload] = useState(0);
+  useEffect(() => {
+    if (!tripId || isDemo || !isFirebaseConfigured()) return;
+    let cancelled = false;
+    fetchTripMembers([tripId]).then(list => {
+      if (cancelled) return;
+      setTripMembers(list);
+      setMembersLoadedFor(tripId);
+    });
+    return () => { cancelled = true; };
+  }, [tripId, isDemo, membersReload]);
+  const membersLoaded = !!tripId && membersLoadedFor === tripId;
+  const membersHere = useMemo(() => (membersLoaded ? tripMembers.filter(m => m.trip_id === tripId) : []), [membersLoaded, tripMembers, tripId]);
+  const memberByTraveler = useMemo(
+    () => new Map(membersHere.filter(m => m.linked_traveler_id).map(m => [m.linked_traveler_id!, m])),
+    [membersHere],
+  );
+  // Joined with "I'm not listed", or picked someone who has since come off the list
+  const unlistedMembers = useMemo(
+    () => membersHere.filter(m => !m.linked_traveler_id || !tripTravelers.some(t => t.id === m.linked_traveler_id)),
+    [membersHere, tripTravelers],
+  );
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
   const [peopleSearch, setPeopleSearch] = useState("");
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [editingEmailValue, setEditingEmailValue] = useState("");
@@ -538,6 +564,23 @@ export function WorkspacePage() {
       </div>
     );
   }
+
+  // Off the list, off their events, and unlinked from anyone who picked them in the app
+  const removeTravelerFromTrip = async (t: { id: string; name: string }) => {
+    const newIds = (trip.travelerIds || []).filter(id => id !== t.id);
+    const newTravelers = (trip.travelers || []).filter(tr => tr.id !== t.id);
+    updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
+    trip.events.forEach(ev => {
+      if (ev.assignedTo?.includes(t.id)) {
+        updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== t.id) });
+      }
+    });
+    if (memberByTraveler.has(t.id)) {
+      await unlinkTraveler(trip.id, t.id).catch(() => toast.error("Removed, but couldn't unlink their app account"));
+      setMembersReload(n => n + 1);
+    }
+    toast.success(`Removed ${t.name} from trip`);
+  };
 
   const handleGeocodeAll = async () => {
     if (geocoding || !trip) return;
@@ -1657,7 +1700,9 @@ export function WorkspacePage() {
                             Edit All Emails
                           </button>
                         )}
-                        <span className="text-[11px] font-medium text-muted-foreground">{tripTravelers.length} assigned</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          {tripTravelers.length} assigned{membersLoaded && tripTravelers.length ? `, ${tripTravelers.filter(t => memberByTraveler.has(t.id)).length} in the app` : ""}
+                        </span>
                       </div>
                     </div>
 
@@ -1715,7 +1760,16 @@ export function WorkspacePage() {
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border group hover:border-brand/30 transition-colors">
                               <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-xs font-black uppercase shrink-0">{t.initials}</div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
+                                  {memberByTraveler.has(t.id) ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
+                                      <DeviceMobile className="h-3 w-3" weight="bold" /> In the app
+                                    </span>
+                                  ) : membersLoaded ? (
+                                    <span className="text-[10px] font-medium text-muted-foreground shrink-0">Not joined yet</span>
+                                  ) : null}
+                                </div>
                                 {isEditing ? (
                                   <form
                                     className="flex items-center gap-1.5 mt-1"
@@ -1759,17 +1813,9 @@ export function WorkspacePage() {
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const newIds = (trip.travelerIds || []).filter(id => id !== t.id);
-                                    const newTravelers = (trip.travelers || []).filter(tr => tr.id !== t.id);
-                                    updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
-                                    trip.events.forEach(ev => {
-                                      if (ev.assignedTo?.includes(t.id)) {
-                                        updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== t.id) });
-                                      }
-                                    });
-                                    toast.success(`Removed ${t.name} from trip`);
-                                  }}
+                                  aria-label={`Remove ${t.name} from trip`}
+                                  // Someone already using the app for this traveller gets a warning first
+                                  onClick={() => (memberByTraveler.has(t.id) ? setRemoveTarget({ id: t.id, name: t.name }) : removeTravelerFromTrip(t))}
                                   className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
                                 >
                                   <X className="h-3.5 w-3.5" />
@@ -1787,6 +1833,62 @@ export function WorkspacePage() {
                       </div>
                     )}
                   </div>
+
+                  {/* In the app but not matched to anyone on the list: they see everyone's plan until linked */}
+                  {unlistedMembers.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-foreground">In the app, not on the list</h3>
+                        <span className="text-[11px] font-medium text-muted-foreground">{unlistedMembers.length}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-4">They joined without picking a name, so they see everyone's plan. Link each one to a traveller to give them their own.</p>
+                      <div className="space-y-2">
+                        {unlistedMembers.map(m => {
+                          const free = tripTravelers.filter(t => !memberByTraveler.has(t.id));
+                          return (
+                            <div key={m.device_id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                              <div className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-xs font-black uppercase shrink-0">
+                                {(m.name || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("")}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-foreground truncate">{m.name || "Unnamed traveller"}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground truncate">
+                                  {m.email || "No email"}{m.joined_at ? `, joined ${new Date(m.joined_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                                </p>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  disabled={!free.length}
+                                  className="h-8 px-3 rounded-lg border border-border bg-secondary text-xs font-medium text-foreground hover:border-brand/40 flex items-center gap-1.5 shrink-0 disabled:opacity-40"
+                                >
+                                  <LinkSimple className="h-3.5 w-3.5" weight="bold" /> {free.length ? "Link to traveller" : "Everyone's linked"}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 bg-card border border-border shadow-2xl rounded-xl p-1 max-h-72 overflow-y-auto">
+                                  {free.map(t => (
+                                    <DropdownMenuItem
+                                      key={t.id}
+                                      className="rounded-lg text-xs"
+                                      onClick={async () => {
+                                        try {
+                                          await setMemberTraveler(trip.id, m.device_id, t.id);
+                                          setMembersReload(n => n + 1);
+                                          toast.success(`${m.name || "They"} now see ${t.name}'s plan`);
+                                        } catch {
+                                          toast.error("Couldn't link them. Only editors can do this.");
+                                        }
+                                      }}
+                                    >
+                                      {t.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Add Travelers */}
                   <div>
@@ -3275,6 +3377,16 @@ export function WorkspacePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={open => { if (!open) setRemoveTarget(null); }}
+        title={`Remove ${removeTarget?.name ?? "traveller"}?`}
+        description={`${removeTarget?.name ?? "They"} already use the app for this trip. Removing them unlinks their account: they stay on the trip but will see everyone's plan instead of their own.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={async () => { if (removeTarget) await removeTravelerFromTrip(removeTarget); setRemoveTarget(null); }}
+      />
 
       <ConfirmDialog
         open={deleteConfirmOpen}

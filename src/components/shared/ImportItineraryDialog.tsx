@@ -1534,7 +1534,15 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
     if (parsed.parsedTravelerNames.length > 0) {
       const stored = JSON.parse(localStorage.getItem(STORAGE.CUSTOM_TRAVELERS) || "[]") as User[];
-      const result = matchOrCreateTravelers(parsed.parsedTravelerNames, stored);
+      // Re-importing: the trip's own travellers come first, so anyone already on it keeps their ID (and with it
+      // their app link and personal plans) whatever this browser's directory holds
+      const onTrip = (isReimport && existingTripId ? trips.find(t => t.id === existingTripId)?.travelers : undefined) ?? [];
+      const onTripIds = new Set(onTrip.map(t => t.id));
+      const candidates: User[] = [
+        ...onTrip.map(t => ({ id: t.id, name: t.name, email: t.email ?? "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const })),
+        ...stored.filter(u => !onTripIds.has(u.id)),
+      ];
+      const result = matchOrCreateTravelers(parsed.parsedTravelerNames, candidates, onTripIds);
       travelerIds = result.travelerIds;
       tripTravelers = result.travelers;
       finalAttendees = result.attendees;
@@ -1563,10 +1571,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         const newEvents = events.filter(e => !existingKeys.has(normalizeKey(e)) && !existingKeys.has(normalizeKeyWithTime(e)));
         const mergedEvents = [...existing.events, ...newEvents];
 
-        const existingTravelerIds = new Set(existing.travelerIds ?? []);
-        const mergedTravelerIds = [...(existing.travelerIds ?? []), ...(travelerIds ?? []).filter(id => !existingTravelerIds.has(id))];
-        const existingTravelerNames = new Set((existing.travelers ?? []).map(t => t.name.toLowerCase()));
-        const mergedTravelers = [...(existing.travelers ?? []), ...(tripTravelers ?? []).filter(t => !existingTravelerNames.has(t.name.toLowerCase()))];
+        const existingTravelerKeys = new Set((existing.travelers ?? []).flatMap(t => [t.id, t.name.toLowerCase()]));
+        const mergedTravelers = [...(existing.travelers ?? []), ...(tripTravelers ?? []).filter(t => !existingTravelerKeys.has(t.id) && !existingTravelerKeys.has(t.name.toLowerCase()))];
+        // IDs follow the list itself, so the two can't drift apart
+        const mergedTravelerIds = mergedTravelers.map(t => t.id);
 
         const existingInfoTitles = new Set((existing.info ?? []).map(i => i.title.toLowerCase()));
         const newInfo = cleanedInfo.filter(i => !existingInfoTitles.has(i.title.toLowerCase()));
