@@ -1,12 +1,8 @@
 import {
   View, Text, ScrollView, Pressable, TextInput,
   StyleSheet, Platform, KeyboardAvoidingView, Keyboard,
-  type StyleProp, type TextStyle,
 } from "react-native";
-import Animated, {
-  FadeIn as EnterFade, FadeInDown, Easing,
-  useSharedValue, useAnimatedStyle, withRepeat, withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeIn as EnterFade, FadeInDown, Easing } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -18,6 +14,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { CategoryDot } from "@/components/ui/CategoryDot";
+import { StreamedText, TypingDots } from "@/components/DaleChat";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { PhotoBackdrop, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { FadeIn } from "@/components/FadeIn";
@@ -35,46 +32,6 @@ const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 const sessions = new Map<string, ChatTurn[]>();
 
 const EASE_OUT = Easing.out(Easing.cubic);
-
-/** Writes the answer out a few words at a time, like a reply being typed */
-function StreamedText({ text, style, animate, onDone }: {
-  text: string;
-  style: StyleProp<TextStyle>;
-  animate: boolean;
-  onDone: () => void;
-}) {
-  const parts = useMemo(() => text.split(/(\s+)/), [text]);
-  const [shown, setShown] = useState(animate ? 0 : parts.length);
-  useEffect(() => {
-    if (!animate) return;
-    // Short answers go word by word; long ones speed up so none takes much over a second and a half
-    const step = Math.max(1, Math.ceil(parts.length / 60));
-    const id = setInterval(() => setShown(n => Math.min(n + step, parts.length)), 26);
-    return () => clearInterval(id);
-  }, [animate, parts.length]);
-  const done = shown >= parts.length;
-  useEffect(() => { if (animate && done) onDone(); }, [animate, done, onDone]);
-  return <Text style={style} selectable accessibilityLabel={text}>{parts.slice(0, shown).join("")}</Text>;
-}
-
-const THINKING = ["Reading your itinerary", "Checking times and places", "Putting it together"];
-
-/** Breathing status line while the answer is on its way */
-function ThinkingLine({ color }: { color: string }) {
-  const [phase, setPhase] = useState(0);
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(0.35, { duration: 750, easing: Easing.inOut(Easing.quad) }), -1, true);
-    const id = setInterval(() => setPhase(p => Math.min(p + 1, THINKING.length - 1)), 1400);
-    return () => clearInterval(id);
-  }, [pulse]);
-  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
-  return (
-    <Animated.View entering={EnterFade.duration(200)} accessibilityLiveRegion="polite">
-      <Animated.Text style={[{ fontSize: T.md, fontWeight: T.medium, color }, style]}>{THINKING[phase]}</Animated.Text>
-    </Animated.View>
-  );
-}
 
 function CopyButton({ text, color }: { text: string; color: string }) {
   const [copied, setCopied] = useState(false);
@@ -287,7 +244,7 @@ export default function AskScreen() {
               </Animated.View>
             ))
           )}
-          {pending ? <ThinkingLine color={C.textSecondary} /> : null}
+          {pending ? <TypingDots C={C} /> : null}
         </ScrollView>
 
         {turns.length === 0 ? (

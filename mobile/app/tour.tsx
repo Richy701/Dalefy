@@ -9,7 +9,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { Bed, Bell, CalendarDots, Export, FileText, Info, User } from "phosphor-react-native";
+import { ArrowUp, Bed, Bell, CalendarDots, ChatsTeardrop, Export, FileText, Info, User } from "phosphor-react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { photoPalette } from "@/components/ui/PhotoBackdrop";
@@ -26,12 +26,14 @@ import { fetchTripById } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/shared/dates";
 import { tripFactLine, shortDay } from "@/shared/tripSummary";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
+import { areaOf } from "@/shared/eventDisplay";
+import { StreamedText, TypingDots } from "@/components/DaleChat";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { T, R, S, shadow, type ThemeColors } from "@/constants/theme";
 
 // The SwiftUI pager needs iOS 17; older phones and the web preview get a paging ScrollView
 const NATIVE_PAGER = Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 17;
-const PAGE_COUNT = 5;
+const PAGE_COUNT = 6;
 
 const fmtDay = (d: string) => parseTripDate(d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 const hasTime = (ev: TravelEvent) => !!ev.time && !/^tb[acd]$/i.test(ev.time);
@@ -211,6 +213,12 @@ export default function TourScreen() {
       title: "Always know what's next",
       body: "Today shows what's coming up and when to be ready. Tap any plan for the address, your tickets and directions.",
       preview: (shown, active) => <TodayPreview day={day} C={C} styles={styles} shown={shown} active={active} />,
+    },
+    {
+      key: "dale",
+      title: "Ask Dale anything",
+      body: "Dale is your trip concierge. Ask about times, places or what to pack, and the answer comes straight from your itinerary.",
+      preview: (shown, active) => <DalePreview trip={trip} flight={flight} nextPlan={nextPlan} C={C} active={active} />,
     },
     {
       key: "gallery",
@@ -837,6 +845,146 @@ function MarqueeRow({ photos, reverse, active, tileW, tileH, speed }: {
   );
 }
 
+type DaleExchange = { q: string; a: string; ev: TravelEvent | null };
+
+/** Questions a traveller would ask, answered from their own trip the way Dale answers. Scripted, so the tour never calls the AI */
+function daleScript(trip: Trip | null, flight: TravelEvent | null, nextPlan: TravelEvent | null): DaleExchange[] {
+  const out: DaleExchange[] = [];
+  const next = nextPlan ?? SAMPLE_DAY[0];
+  out.push({
+    q: "What's next for me?",
+    a: `${tidyTitleSeparators(next.title)}${next.date ? ` on ${fmtDay(next.date)}` : ""}${hasTime(next) ? ` at ${next.time}` : ""}${next.location ? `, from ${areaOf(next.location)}` : ""}.`,
+    ev: next,
+  });
+  const hotel = trip?.events.find(e => e.type === "hotel");
+  if (hotel) {
+    out.push({
+      q: "Where am I staying?",
+      a: `You're at ${tidyTitleSeparators(hotel.title)}${hotel.location ? ` in ${areaOf(hotel.location)}` : ""}. You check in on ${fmtDay(hotel.date)}.`,
+      ev: hotel,
+    });
+  }
+  if (flight) {
+    out.push({
+      q: "When's my flight?",
+      a: `${flight.flightNum || tidyTitleSeparators(flight.title)} leaves on ${fmtDay(flight.date)}${hasTime(flight) ? ` at ${flight.time}` : ""}. Aim to be at the airport two hours before.`,
+      ev: flight,
+    });
+  }
+  out.push({
+    q: "What should I pack?",
+    a: `Light layers and comfy shoes for ${trip?.destination || "the trip"}, plus your passport and a charger. As general advice, check your organiser's notes for the full list.`,
+    ev: null,
+  });
+  return out;
+}
+
+const TYPE_MS = 40;
+
+/**
+ * Dale on a phone: a question types itself into the message box, rises as a bubble, the dots show Dale
+ * thinking, the answer writes itself out and the event it's about slides in. Then the next question.
+ */
+function DalePreview({ trip, flight, nextPlan, C, active }: {
+  trip: Trip | null; flight: TravelEvent | null; nextPlan: TravelEvent | null; C: ThemeColors; active: boolean;
+}) {
+  const script = useMemo(() => daleScript(trip, flight, nextPlan), [trip, flight, nextPlan]);
+  const haptic = useHaptic();
+  const [idx, setIdx] = useState(0);
+  const [typed, setTyped] = useState(0);
+  const [stage, setStage] = useState<"typing" | "thinking" | "answer" | "card">("typing");
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  const at = (ms: number, fn: () => void) => { timers.current.push(setTimeout(fn, ms)); };
+
+  const ask = useCallback((n: number) => {
+    clear();
+    const q = script[n % script.length].q;
+    setIdx(n);
+    setStage("typing");
+    setTyped(0);
+    for (let c = 1; c <= q.length; c++) at(500 + c * TYPE_MS, () => setTyped(c));
+    const sent = 500 + q.length * TYPE_MS + 350;
+    at(sent, () => { haptic.light(); setStage("thinking"); });
+    at(sent + 1300, () => setStage("answer"));
+  }, [script, haptic]);
+
+  // Starts fresh each time the page comes on screen (ask resets everything), and stops when it leaves
+  useEffect(() => {
+    clear();
+    if (active) at(0, () => ask(0));
+    return clear;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  // The answer has finished writing: the event slides in, then the next question starts
+  const answered = useCallback(() => {
+    haptic.selection();
+    setStage("card");
+    at(2600, () => ask(idx + 1));
+  }, [haptic, ask, idx]);
+
+  const ex = script[idx % script.length];
+  const typing = stage === "typing";
+  const draft = typing ? ex.q.slice(0, typed) : "";
+
+  return (
+    <View style={{ alignSelf: "stretch" }}>
+      <Reveal order={0} style={[pv.daleHead, { marginHorizontal: IN_PHONE }]}>
+        <View style={[pv.daleMark, { backgroundColor: C.teal }]}>
+          <ChatsTeardrop size={15} color={C.onAccent} weight="fill" />
+        </View>
+        <Text style={[pv.daleName, { color: C.textPrimary }]}>Dale</Text>
+      </Reveal>
+
+      <View style={[pv.daleThread, { marginHorizontal: IN_PHONE }]}>
+        {!typing ? (
+          <Animated.View
+            key={`q${idx}`}
+            entering={FadeInDown.duration(300).easing(Easing.out(Easing.cubic))}
+            exiting={FadeOut.duration(180)}
+            style={[pv.daleQ, { backgroundColor: C.elevated }]}
+          >
+            <Text style={[pv.daleText, { color: C.textPrimary }]}>{ex.q}</Text>
+          </Animated.View>
+        ) : null}
+        {stage === "thinking" ? <TypingDots C={C} /> : null}
+        {stage === "answer" || stage === "card" ? (
+          <Animated.View key={`a${idx}`} exiting={FadeOut.duration(180)}>
+            <StreamedText text={ex.a} style={[pv.daleA, { color: C.textPrimary }]} animate={stage === "answer"} onDone={answered} />
+          </Animated.View>
+        ) : null}
+        {stage === "card" && ex.ev ? (
+          <Animated.View
+            key={`e${idx}`}
+            entering={FadeInDown.duration(320).easing(Easing.out(Easing.cubic))}
+            exiting={FadeOut.duration(180)}
+            style={[pv.daleCard, { backgroundColor: C.elevated }]}
+          >
+            <CategoryDot palette={C} type={ex.ev.type} transferType={ex.ev.transferType} size={32} base={C.elevated} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[pv.bannerTitle, { color: C.textPrimary }]} numberOfLines={1}>{tidyTitleSeparators(ex.ev.title)}</Text>
+              <Text style={[pv.bannerSub, { color: C.textSecondary }]} numberOfLines={1}>
+                {[ex.ev.date ? fmtDay(ex.ev.date) : "", hasTime(ex.ev) ? ex.ev.time : ""].filter(Boolean).join(", ") || "On your itinerary"}
+              </Text>
+            </View>
+          </Animated.View>
+        ) : null}
+      </View>
+
+      {/* The message box breaks out of the phone, like each page's main card */}
+      <Reveal order={1} style={[pv.daleComposer, { backgroundColor: C.card, borderColor: C.border }, pv.lift]}>
+        <Text style={[pv.daleText, { flex: 1, color: draft ? C.textPrimary : C.textTertiary }]} numberOfLines={1}>
+          {draft || "Message Dale"}
+        </Text>
+        <View style={[pv.daleSend, { backgroundColor: draft ? C.teal : C.border }]}>
+          <ArrowUp size={16} weight="bold" color={draft ? C.onAccent : C.textTertiary} />
+        </View>
+      </Reveal>
+    </View>
+  );
+}
+
 type Banner = { title: string; body: string };
 
 /** A Lock Screen three hours before the flight: the clock, the flight's Live Activity, then notifications arriving */
@@ -1021,6 +1169,20 @@ function AlertsPreview({ trip, flight, nextPlan, C, isDark, active }: {
 }
 
 const pv = StyleSheet.create({
+  daleHead: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs, paddingBottom: S.md },
+  daleMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  daleName: { fontSize: T.md, fontWeight: T.semibold },
+  // Fixed height, so the phone doesn't resize as messages come and go
+  daleThread: { height: 290, gap: S.sm, overflow: "hidden" },
+  daleQ: { alignSelf: "flex-end", maxWidth: "85%", borderRadius: R.lg, paddingHorizontal: S.sm2 + 4, paddingVertical: S.sm2 },
+  daleText: { fontSize: T.base, lineHeight: 21 },
+  daleA: { fontSize: T.base, lineHeight: 22, paddingRight: S.sm },
+  daleCard: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.sm2, borderRadius: R.lg },
+  daleComposer: {
+    flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.md,
+    height: 52, borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, paddingLeft: S.md, paddingRight: 9,
+  },
+  daleSend: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   phone: { position: "absolute", top: 0, bottom: 0, left: PHONE_INSET, right: PHONE_INSET, borderTopLeftRadius: 46, borderTopRightRadius: 46, overflow: "hidden", alignItems: "center" },
   island: { marginTop: 12, width: 96, height: 28, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)" },
   photoCard: { alignSelf: "stretch", aspectRatio: 1.15, borderRadius: R.xl },
