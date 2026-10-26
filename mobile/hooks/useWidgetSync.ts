@@ -3,7 +3,7 @@ import { Platform, AppState } from "react-native";
 import { File, Directory, Paths } from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import type { useSurfaceTrips } from "./useSurfaceTrips";
-import { widgetTimeline } from "@/shared/widgetSchedule";
+import { widgetProps, widgetTimelineDates } from "@/shared/widgetSchedule";
 import { useTheme } from "@/context/ThemeContext";
 
 
@@ -97,17 +97,33 @@ export function useWidgetSync(surface: ReturnType<typeof useSurfaceTrips>) {
     if (!ready || !TripCountdown || Platform.OS !== "ios") return;
     let cancelled = false;
     let generation = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     async function sync() {
       const current = ++generation;
+      const stale = () => cancelled || current !== generation;
       const images: Record<string, string> = {};
       for (const trip of trips) images[trip.id] = await prepareWidgetImage(trip.image || "");
-      if (cancelled || current !== generation) return;
-      const timeline = widgetTimeline(trips, Date.now(), C.teal, images);
+      if (stale()) return;
+      // Hundreds of entries: build them a slice at a time so a tap never waits behind the whole timeline
+      const now = Date.now();
+      const timeline: { date: Date; props: ReturnType<typeof widgetProps> }[] = [];
+      for (const date of widgetTimelineDates(trips, now)) {
+        timeline.push({ date: new Date(date), props: widgetProps(trips, date, C.teal, images) });
+        if (timeline.length % 25 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+          if (stale()) return;
+        }
+      }
       TripCountdown.updateSnapshot(timeline[0].props);
       TripCountdown.updateTimeline(timeline);
     }
-    void sync();
-    const sub = AppState.addEventListener("change", state => { if (state === "active") void sync(); });
-    return () => { cancelled = true; sub.remove(); };
+    // Trips settle in a few quick updates at launch; sync once they stop
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void sync(), 1000);
+    };
+    schedule();
+    const sub = AppState.addEventListener("change", state => { if (state === "active") schedule(); });
+    return () => { cancelled = true; if (timer) clearTimeout(timer); sub.remove(); };
   }, [trips, ready, C.teal]);
 }

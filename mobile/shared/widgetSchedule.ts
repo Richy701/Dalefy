@@ -53,6 +53,11 @@ export function widgetProps(trips: Trip[], now: number, accentColor: string, ima
 }
 
 export function widgetTimeline(trips: Trip[], now: number, accent: string, images: Record<string, string>) {
+  return widgetTimelineDates(trips, now).map(date => ({ date: new Date(date), props: widgetProps(trips, date, accent, images) }));
+}
+
+/** The instants the widget timeline needs an entry for, sorted */
+export function widgetTimelineDates(trips: Trip[], now: number) {
   const dates = new Set<number>([now]);
   // Hourly entries cover local midnight/DST changes, even when the app is closed.
   for (let i = 1; i <= 24 * 7; i++) dates.add(now + i * 3600000);
@@ -71,5 +76,5 @@ export function widgetTimeline(trips: Trip[], now: number, accent: string, image
       if (date != null && date > now && date < now + 60 * 86400000) dates.add(date);
     }
   }
-  return [...dates].sort((a, b) => a - b).map(date => ({ date: new Date(date), props: widgetProps(trips, date, accent, images) }));
+  return [...dates].sort((a, b) => a - b);
 }

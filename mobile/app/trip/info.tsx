@@ -154,7 +154,8 @@ function splitLines(body: string): string[] {
 
 /** "Anantara Resort: 14 rooms, 7–8 Nov" -> name and details */
 function splitNamed(line: string): { name: string; detail: string } {
-  const i = line.indexOf(":");
+  // The colon in "https://" is part of a link, not a label
+  const i = line.search(/:(?!\/\/)/);
   return i > 0 && i < 70 ? { name: line.slice(0, i).trim(), detail: line.slice(i + 1).trim() } : { name: line, detail: "" };
 }
 
@@ -366,6 +367,14 @@ export default function InfoScreen() {
           {pairs.length > 0 && (
             <View style={styles.card}>
               {pairs.map((pr, i) => {
+                // A sentence among the "label: value" lines runs full width instead of being squeezed into the value column
+                if (!pr.detail) {
+                  return (
+                    <View key={i} style={[styles.listRow, i > 0 && styles.rowBorder]}>
+                      <LinkedText text={pr.name} style={[styles.todoText, { flex: 1 }]} linkColor={C.tealText} />
+                    </View>
+                  );
+                }
                 const phone = /^\+?[\d\s()-]{6,}$/.test(pr.detail) ? pr.detail.replace(/[^\d+]/g, "") : null;
                 return (
                   <Pressable
@@ -376,8 +385,12 @@ export default function InfoScreen() {
                     accessibilityLabel={phone ? `Call ${pr.name}, ${pr.detail}` : undefined}
                     style={({ pressed }) => [styles.pairRow, i > 0 && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}
                   >
-                    <Text style={styles.pairLabel}>{pr.name || " "}</Text>
-                    <Text style={[styles.pairValue, phone && { color: C.tealText }]} selectable={!phone}>{pr.detail || pr.name}</Text>
+                    <Text style={styles.pairLabel}>{pr.detail ? pr.name : " "}</Text>
+                    {!phone && /https?:\/\//.test(pr.detail || pr.name) ? (
+                      <LinkedText text={pr.detail || pr.name} style={styles.pairValue} linkColor={C.tealText} />
+                    ) : (
+                      <Text style={[styles.pairValue, phone && { color: C.tealText }]} selectable={!phone}>{pr.detail || pr.name}</Text>
+                    )}
                   </Pressable>
                 );
               })}
