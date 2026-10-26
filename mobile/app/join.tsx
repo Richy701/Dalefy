@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import type { TextInputInstance } from "react-native";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
   Easing, FadeIn, FadeInDown, FadeOut,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
@@ -42,42 +42,12 @@ try {
 } catch { /* native module not in this build */ }
 
 function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; onContinue: () => void }) {
-  const imgOpacity = useSharedValue(0);
-  const imgScale = useSharedValue(1.08);
-  const checkScale = useSharedValue(0);
-  const copyOpacity = useSharedValue(0);
-  const copyY = useSharedValue(14);
-  const pillsOpacity = useSharedValue(0);
-  const ctaOpacity = useSharedValue(0);
-  const ctaY = useSharedValue(10);
-
+  // One quiet fade for the whole card: no zoom, no bounce, nothing arriving in stages
+  const opacity = useSharedValue(0);
   useEffect(() => {
-    imgOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
-    imgScale.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
-    checkScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 180 }));
-    copyOpacity.value = withDelay(350, withTiming(1, { duration: 300 }));
-    copyY.value = withDelay(350, withSpring(0, { damping: 14, stiffness: 100 }));
-    pillsOpacity.value = withDelay(450, withTiming(1, { duration: 300 }));
-    ctaOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
-    ctaY.value = withDelay(500, withSpring(0, { damping: 14, stiffness: 100 }));
+    opacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
   }, []);
-
-  const imgStyle = useAnimatedStyle(() => ({
-    opacity: imgOpacity.value,
-    transform: [{ scale: imgScale.value }],
-  }));
-  const checkAnim = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-  }));
-  const copyStyle = useAnimatedStyle(() => ({
-    opacity: copyOpacity.value,
-    transform: [{ translateY: copyY.value }],
-  }));
-  const pillsStyle = useAnimatedStyle(() => ({ opacity: pillsOpacity.value }));
-  const ctaStyle = useAnimatedStyle(() => ({
-    opacity: ctaOpacity.value,
-    transform: [{ translateY: ctaY.value }],
-  }));
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   const nights = Math.max(0, Math.ceil((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000));
   const startDate = parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -85,29 +55,29 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
 
   const flag = destinationFlag(trip.destination);
   return (
-    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.lg }}>
+    <Animated.View style={[{ flex: 1, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.lg }, fadeStyle]}>
       <View style={{ width: "100%", borderRadius: R.xl, overflow: "hidden", backgroundColor: C.card }}>
         {/* Photo dissolves into the card, same treatment as the Home hero */}
         <View style={{ height: 220, backgroundColor: C.elevated }}>
-          <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
+          <View style={StyleSheet.absoluteFill}>
             <MaskedView
               style={StyleSheet.absoluteFill}
               maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
             >
               <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />
             </MaskedView>
-          </Animated.View>
+          </View>
         </View>
 
         <View style={{ paddingHorizontal: S.md, paddingBottom: S.md, marginTop: -S.lg, gap: S.sm }}>
-          <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs }, checkAnim]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs }}>
             <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.teal, alignItems: "center", justifyContent: "center" }}>
               <Check size={13} color={C.onAccent} weight="bold" />
             </View>
             <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>You're in</Text>
-          </Animated.View>
+          </View>
 
-          <Animated.View style={[{ gap: 3 }, copyStyle]}>
+          <View style={{ gap: 3 }}>
             <Text style={{ fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={2}>{trip.name}</Text>
             {trip.destination ? (
               <Text style={{ fontSize: T.base, color: C.textSecondary }} numberOfLines={1}>{flag ? `${flag}  ` : ""}{trip.destination}</Text>
@@ -115,19 +85,18 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
             <Text style={{ fontSize: T.sm, color: C.textTertiary }} numberOfLines={1}>
               {startDate} – {endDate}, {nights} night{nights !== 1 ? "s" : ""}
             </Text>
-          </Animated.View>
+          </View>
 
           {trip.organizer?.name ? (
-            <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs, paddingTop: S.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pillsStyle]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs, paddingTop: S.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }}>
               <Avatar size={24} uri={trip.organizer.avatar} initials={trip.organizer.name.trim().charAt(0).toUpperCase()} />
               <Text style={{ fontSize: T.sm, color: C.textSecondary }} numberOfLines={1}>Hosted by {trip.organizer.name}</Text>
-            </Animated.View>
+            </View>
           ) : null}
         </View>
       </View>
 
-      {/* CTA — appears after animation settles */}
-      <Animated.View style={[{ marginTop: S.md }, ctaStyle]}>
+      <View style={{ marginTop: S.md }}>
         <ScalePress
           onPress={onContinue}
           accessibilityRole="button"
@@ -140,8 +109,8 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
           <Text style={{ fontSize: T.md, fontWeight: T.semibold, color: C.onAccent }}>See itinerary</Text>
           <CaretRight size={14} color={C.onAccent} weight="bold" />
         </ScalePress>
-      </Animated.View>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -379,14 +348,16 @@ export default function JoinScreen() {
     <>
       <Stack.Screen
         options={{
-          headerShown: !foundTrip,
-          title: "Join a trip",
+          // Always shown: toggling a modal header's visibility remounts the screen and loses the found trip.
+          // It's transparent, so on the found-trip screen it just goes blank.
+          headerShown: true,
+          title: foundTrip ? "" : "Join a trip",
           headerTransparent: true,
           headerTitleStyle: { color: C.textPrimary },
           headerShadowVisible: false,
           // Newer iOS defaults sheets to a hard edge with a divider under the bar
           scrollEdgeEffects: { top: "soft", bottom: "hidden", left: "hidden", right: "hidden" },
-          headerLeft: () => (
+          headerLeft: () => foundTrip ? null : (
             <Pressable onPress={closeSheet} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
               <X size={20} color={C.textPrimary} weight="bold" />
             </Pressable>

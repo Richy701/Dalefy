@@ -67,6 +67,7 @@ import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { MessageDialog } from "@/components/shared/MessageDialog";
+import { withoutTravelers } from "@/lib/removeTravelers";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
@@ -568,14 +569,9 @@ export function WorkspacePage() {
 
   // Off the list, off their events, and unlinked from anyone who picked them in the app
   const removeTravelerFromTrip = async (t: { id: string; name: string }) => {
-    const newIds = (trip.travelerIds || []).filter(id => id !== t.id);
-    const newTravelers = (trip.travelers || []).filter(tr => tr.id !== t.id);
-    updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
-    trip.events.forEach(ev => {
-      if (ev.assignedTo?.includes(t.id)) {
-        updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== t.id) });
-      }
-    });
+    const { updates, events } = withoutTravelers(trip, new Set([t.id]));
+    updateTrip(trip.id, updates);
+    events.forEach(ev => updateEvent(trip.id, ev));
     if (memberByTraveler.has(t.id)) {
       await unlinkTraveler(trip.id, t.id).catch(() => toast.error("Removed, but couldn't unlink their app account"));
       setMembersReload(n => n + 1);

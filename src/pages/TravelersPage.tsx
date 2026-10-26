@@ -18,6 +18,7 @@ import { MessageDialog } from "@/components/shared/MessageDialog";
 import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
 import { timeAgo } from "@/lib/timeAgo";
 import { cn } from "@/lib/utils";
+import { withoutTravelers } from "@/lib/removeTravelers";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
@@ -359,13 +360,9 @@ export function TravelersPage() {
       description: `Take ${p.name} off ${trip?.name ?? "this trip"}? They come off its traveller list and events, and the trip leaves their app.`,
       action: async () => {
         if (trip && !p.appOnly) {
-          updateTrip(tripId, {
-            travelers: (trip.travelers ?? []).filter(t => t.id !== p.id),
-            travelerIds: (trip.travelerIds ?? []).filter(id => id !== p.id),
-          });
-          for (const ev of trip.events) {
-            if (ev.assignedTo?.includes(p.id)) updateEvent(tripId, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== p.id) });
-          }
+          const { updates, events } = withoutTravelers(trip, new Set([p.id]));
+          updateTrip(tripId, updates);
+          for (const ev of events) updateEvent(tripId, ev);
         }
         try {
           for (const key of p.appKeys) await removeUserFromTrip(key, tripId);
@@ -388,14 +385,12 @@ export function TravelersPage() {
         const ids = new Set(ps.filter(p => !p.appOnly).map(p => p.id));
         const names = new Set(ps.filter(p => !p.appOnly).map(p => p.name.trim().toLowerCase()));
         for (const trip of trips) {
-          if (!(trip.travelers ?? []).some(t => ids.has(t.id)) && !(trip.travelerIds ?? []).some(id => ids.has(id))) continue;
-          updateTrip(trip.id, {
-            travelers: (trip.travelers ?? []).filter(t => !ids.has(t.id)),
-            travelerIds: (trip.travelerIds ?? []).filter(id => !ids.has(id)),
-          });
-          for (const ev of trip.events) {
-            if (ev.assignedTo?.some(id => ids.has(id))) updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => !ids.has(id)) });
-          }
+          const onIt = (trip.travelers ?? []).some(t => ids.has(t.id)) || (trip.travelerIds ?? []).some(id => ids.has(id))
+            || (trip.publishedSnapshot?.travelers ?? []).some(t => ids.has(t.id));
+          if (!onIt) continue;
+          const { updates, events } = withoutTravelers(trip, ids);
+          updateTrip(trip.id, updates);
+          for (const ev of events) updateEvent(trip.id, ev);
         }
         // The directory merges people by name, so a same-named entry would bring them back
         setCustomTravelers(prev => prev.filter(u => !ids.has(u.id) && !names.has(u.name.trim().toLowerCase())));
