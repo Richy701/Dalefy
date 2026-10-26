@@ -36,5 +36,12 @@ export const sheetStyles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, marginLeft: S.md + 32 + S.sm,
   },
   metaText: { fontSize: T.sm },
+  // A stay: photo on the left, the facts and directions beside it
+  stayCard: { flexDirection: "row", gap: S.sm, marginHorizontal: S.md, marginBottom: S.sm, padding: S.sm, borderRadius: R.xl, borderWidth: StyleSheet.hairlineWidth },
+  stayPhoto: { width: 88, height: 104, borderRadius: R.md },
+  stayBody: { flex: 1, minWidth: 0, gap: 2, justifyContent: "center" },
+  stayAction: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: S.xs, minHeight: 28 },
+  photoStrip: { gap: S.xs, paddingHorizontal: S.md },
+  photo: { width: 96, height: 128, borderRadius: R.md },
   footnote: { fontSize: T.sm, paddingHorizontal: S.md, marginTop: S.sm, lineHeight: 18 },
 });

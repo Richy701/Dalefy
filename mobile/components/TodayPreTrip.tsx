@@ -1,20 +1,19 @@
 import { useMemo, useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import {
-  WarningCircle, Clock, Calendar, Check, Images, FileText, CloudSun, MapPin,
+  WarningCircle, Clock, Calendar, Check, Images, FileText, CloudSun, MapPin, NavigationArrow, CaretRight,
 } from "phosphor-react-native";
+import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
-import { Avatar } from "@/components/ui/Avatar";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
-import { Pill } from "@/components/ui/Pill";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
-import { type ThemeColors, T, S, statusTone } from "@/constants/theme";
+import { type ThemeColors, T, S, R, statusTone } from "@/constants/theme";
 import { calendarDays, scheduledMinutes } from "@/shared/today";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
 import { sheetStyles } from "@/components/todaySheetStyles";
@@ -93,6 +92,117 @@ function infoPreview(body: string): string {
   return body.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0] ?? "";
 }
 
+/** "Check-in at X", "Overnight at X", "Check-out from X": the hotel is X */
+const stayName = (title: string) => tidyTitleSeparators(title.replace(/^\s*(check[\s-]?in|overnight|check[\s-]?out)\s+(at|from|of|in)\s+/i, "")).trim();
+const isCheckout = (title: string) => /^\s*check[\s-]?out\b/i.test(title);
+
+export type Stay = { event: TravelEvent; name: string; start: string; end: string; nights: number };
+
+/** Each place they sleep. Imports often give one hotel several entries (check-in, overnights, check-out,
+ *  names shortened on some), so entries for the same hotel in a row are one stay, ending at its check-out,
+ *  else its own end date, else the next stay or the trip end, like the map labels. */
+export function tripStays(trip: Trip): Stay[] {
+  const hotels = [...trip.events].filter(e => e.type === "hotel")
+    .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? 0) - (scheduledMinutes(b.time) ?? 0));
+  const groups: { key: string; events: TravelEvent[] }[] = [];
+  for (const h of hotels) {
+    const key = stayName(h.title).toLowerCase();
+    const last = groups[groups.length - 1];
+    if (last && (last.key.startsWith(key) || key.startsWith(last.key))) {
+      last.events.push(h);
+      if (key.length > last.key.length) last.key = key;
+    } else if (!isCheckout(h.title) || !last) {
+      groups.push({ key, events: [h] });
+    }
+  }
+  return groups.map((g, i) => {
+    const stayEvents = g.events.filter(e => !isCheckout(e.title));
+    const event = stayEvents.find(e => e.image) ?? stayEvents[0] ?? g.events[0];
+    const start = (stayEvents[0] ?? g.events[0]).date;
+    const checkout = g.events.find(e => isCheckout(e.title));
+    const end = checkout?.date
+      || g.events.map(e => e.endDate || e.checkout).filter((d): d is string => !!d).sort().pop()
+      || groups[i + 1]?.events[0].date
+      || trip.end;
+    const name = g.events.map(e => stayName(e.title)).sort((x, y) => y.length - x.length)[0];
+    return { event, name, start, end, nights: Math.max(0, calendarDays(start, end)) };
+  });
+}
+
+function openDirections(place: string) {
+  const q = encodeURIComponent(place);
+  Linking.openURL(Platform.OS === "ios" ? `maps://?q=${q}` : `geo:0,0?q=${q}`).catch(() => {});
+}
+
+/** A hotel with its photo: how long, when, where, and a way to get there */
+export function StayCard({ stay, tripId, C, label }: { stay: Stay; tripId: string; C: ThemeColors; label?: string }) {
+  const router = useRouter();
+  const ev = stay.event;
+  const where = ev.location || stay.name;
+  const when = stay.nights > 0
+    ? `${stay.nights} ${stay.nights === 1 ? "night" : "nights"}, ${fmtShort(stay.start)} – ${fmtShort(stay.end)}`
+    : fmtLong(stay.start);
+  return (
+    <ScalePress
+      activeScale={0.985}
+      onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId, eventId: ev.id } }); }}
+      accessibilityRole="button"
+      accessibilityLabel={`${label ? `${label}, ` : ""}${stay.name}, ${when}`}
+      style={[s.stayCard, { backgroundColor: C.card, borderColor: C.border }]}
+    >
+      {ev.image ? <CachedImage uri={ev.image} style={s.stayPhoto} accessible={false} /> : null}
+      <View style={s.stayBody}>
+        {label ? <Text style={[s.rowSub, { color: C.tealText, marginTop: 0, fontWeight: T.semibold }]}>{label}</Text> : null}
+        <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{stay.name}</Text>
+        <Text style={[s.rowSub, { color: C.textSecondary, marginTop: 0 }]} numberOfLines={1}>{when}</Text>
+        {ev.location ? <Text style={[s.rowSub, { color: C.textSecondary, marginTop: 0 }]} numberOfLines={1}>{ev.location}</Text> : null}
+        <Pressable
+          onPress={() => { Haptics.selectionAsync(); openDirections(where); }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Directions to ${stay.name}`}
+          style={({ pressed }) => [s.stayAction, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          {/* Mirrored to point up and right, like the arrow in Maps */}
+          <View style={{ transform: [{ scaleX: -1 }] }}><NavigationArrow size={14} color={C.tealText} weight="fill" /></View>
+          <Text style={[s.sectionAction, { color: C.tealText }]}>Directions</Text>
+        </Pressable>
+      </View>
+    </ScalePress>
+  );
+}
+
+/** The trip's photos, newest first, opening the gallery */
+function PhotoStrip({ trip, C }: { trip: Trip; C: ThemeColors }) {
+  const router = useRouter();
+  const photos = useMemo(() => [...(trip.media ?? [])]
+    .filter(m => m.type !== "video")
+    .sort((a, b) => String(b.uploadedAt ?? "").localeCompare(String(a.uploadedAt ?? "")))
+    .slice(0, 10), [trip.media]);
+  const open = () => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); };
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.photoStrip}>
+      {photos.map(m => (
+        <Pressable key={m.id} onPress={open} accessibilityRole="button" accessibilityLabel="Open the trip's photos" style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+          <CachedImage uri={m.thumbUrl ?? m.url} style={[s.photo, { backgroundColor: C.elevated }]} accessible={false} />
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** Plain link row closing a section, e.g. the full itinerary */
+function LinkRow({ label, onPress, C, Icon }: { label: string; onPress: () => void; C: ThemeColors; Icon: typeof Calendar }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}>
+      <View style={s.rowIcon}><Icon size={16} color={C.textSecondary} weight="regular" /></View>
+      <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>{label}</Text>
+      <CaretRight size={14} color={C.textTertiary} weight="bold" />
+    </Pressable>
+  );
+}
+export { LinkRow };
+
 // ── Pre-trip ─────────────────────────────────────────────────────────────────
 
 export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Trip; todayISO: string; weatherCoord?: [number, number] | null }) {
@@ -115,7 +225,7 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
     return { tasks: tasks.slice(0, 4), notes: notes.slice(0, 3), more: tasks.length > 4 || notes.length > 3 };
   }, [trip.info, isLeader]);
 
-  const docCount = (trip.documents?.length ?? 0) + (trip.info ?? []).filter(item => isLeader || !item.leaderOnly).reduce((n, i) => n + (i.documents?.length ?? 0), 0);
+  const stays = useMemo(() => tripStays(trip), [trip]);
 
   // First-day forecast at the stay the map shows, a few days out when it's worth reading
   const weatherKey = weatherCoord ? weatherCoord.map(n => n.toFixed(2)).join(",") : "";
@@ -128,8 +238,6 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
     return () => { cancelled = true; };
   }, [weatherKey, trip.start, daysUntil]);
 
-  // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
-  const AVATAR_COLORS = [C.textSecondary];
   const openTrip = () => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); };
   const openInfo = () => { Haptics.selectionAsync(); router.push({ pathname: "/trip/info", params: { tripId: trip.id } }); };
 
@@ -238,38 +346,17 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
           </FadeIn>
         )}
 
-        {/* Documents + travellers */}
+        {/* Where they'll sleep, with photos and directions */}
+        {stays.length > 0 && (
+          <FadeIn delay={next()}>
+            <SectionHeader title="Where you're staying" C={C} />
+            {stays.slice(0, 4).map(st => <StayCard key={st.event.id} stay={st} tripId={trip.id} C={C} />)}
+          </FadeIn>
+        )}
+
         <FadeIn delay={next()}>
-          <SectionHeader title="Trip details" C={C} />
-          <Card C={C} isDark={isDark}>
-            {docCount > 0 && (
-              <Pressable onPress={openInfo} accessibilityRole="button" accessibilityLabel={`${docCount} documents`} style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}>
-                <View style={s.rowIcon}>
-                  <FileText size={20} color={C.textSecondary} weight="regular" />
-                </View>
-                <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>{docCount} {docCount === 1 ? "document" : "documents"}</Text>
-              </Pressable>
-            )}
-            {(trip.travelers?.length ?? 0) > 0 && (
-              <View style={[s.row, docCount > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }]}>
-                <View style={{ flexDirection: "row", marginRight: S.xs }}>
-                  {trip.travelers!.slice(0, 5).map((t, i) => (
-                    <View key={t.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}>
-                      <Avatar size={26} initials={t.initials} color={AVATAR_COLORS[i % AVATAR_COLORS.length]} ringColor={C.card} />
-                    </View>
-                  ))}
-                </View>
-                <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>
-                  {trip.travelers!.length} {trip.travelers!.length === 1 ? "traveller" : "travellers"}
-                </Text>
-              </View>
-            )}
-            <Pressable onPress={openTrip} accessibilityRole="button" accessibilityLabel="Full itinerary" style={({ pressed }) => [s.row, (docCount > 0 || (trip.travelers?.length ?? 0) > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}>
-              <View style={s.rowIcon}>
-                <Calendar size={16} color={C.textSecondary} weight="regular" />
-              </View>
-              <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>Full itinerary</Text>
-            </Pressable>
+          <Card C={C} isDark={isDark} style={{ marginTop: S.xs }}>
+            <LinkRow label="Full itinerary" onPress={openTrip} C={C} Icon={Calendar} />
           </Card>
         </FadeIn>
     </View>
@@ -282,64 +369,62 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
   const { C, isDark } = useTheme();
   const router = useRouter();
   const daysSince = Math.max(0, daysBetween(trip.end, todayISO));
-  const photoCount = trip.media?.length ?? 0;
+  const photoCount = (trip.media ?? []).filter(m => m.type !== "video").length;
+  const openTrip = () => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); };
+  const openGallery = () => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); };
+
+  // A one-line recap of what the trip was
+  const recap = useMemo(() => {
+    const days = daysBetween(trip.start, trip.end) + 1;
+    const stays = tripStays(trip).length;
+    const flights = trip.events.filter(e => e.type === "flight").length;
+    return [
+      days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "",
+      stays ? `${stays} ${stays === 1 ? "hotel" : "hotels"}` : "",
+      flights ? `${flights} ${flights === 1 ? "flight" : "flights"}` : "",
+    ].filter(Boolean).join(", ");
+  }, [trip]);
 
   return (
     <View>
       <FadeIn delay={0}>
         <View style={s.header}>
           <Text style={[s.scope, { color: C.textTertiary }]}>
-            {daysSince === 0 ? "Trip ended today" : daysSince === 1 ? "Trip ended yesterday" : `Trip ended ${daysSince} days ago`}, {fmtShort(trip.start)} – {fmtShort(trip.end)}
+            {/* Counting days only helps while it's recent; after that the dates say it */}
+            {daysSince === 0 ? "Ended today, " : daysSince === 1 ? "Ended yesterday, " : daysSince < 14 ? `Ended ${daysSince} days ago, ` : ""}
+            {fmtShort(trip.start)} – {fmtShort(trip.end)}{daysSince >= 14 ? ` ${trip.end.slice(0, 4)}` : ""}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-            <Pressable
-              onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); }}
-              style={{ flex: 1 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Open trip ${trip.name}`}
-            >
-              <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={2}>{trip.name}</Text>
-            </Pressable>
-            <Pill tone="custom" bg={C.elevated} color={C.textTertiary} label="Past" />
-          </View>
-          {trip.destination ? (
+          <Pressable onPress={openTrip} accessibilityRole="button" accessibilityLabel={`Open trip ${trip.name}`}>
+            <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={2}>{trip.name}</Text>
+          </Pressable>
+          {trip.destination || recap ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
-              <MapPin size={10} color={C.textTertiary} weight="fill" />
-              <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
+              {trip.destination ? <MapPin size={10} color={C.textTertiary} weight="fill" /> : null}
+              <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>
+                {[trip.destination, recap].filter(Boolean).join(", ")}
+              </Text>
             </View>
           ) : null}
         </View>
       </FadeIn>
 
       <FadeIn delay={60}>
-        <SectionHeader title="Look back" C={C} />
-        <Card C={C} isDark={isDark}>
-          <Pressable
-            onPress={() => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); }}
-            accessibilityRole="button"
-            accessibilityLabel="Open gallery"
-            style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}
-          >
-            <View style={s.rowIcon}>
-              <Images size={16} color={C.textSecondary} weight="regular" />
-            </View>
-            <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>
-              {photoCount > 0 ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"} from the group` : "Add your photos for the group"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); }}
-            accessibilityRole="button"
-            accessibilityLabel="Open itinerary"
-            style={({ pressed }) => [s.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
-          >
-            <View style={s.rowIcon}>
-              <Calendar size={16} color={C.textSecondary} weight="regular" />
-            </View>
-            <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>Itinerary</Text>
-          </Pressable>
+        {photoCount > 0 ? (
+          <>
+            <SectionHeader title={`${photoCount} ${photoCount === 1 ? "photo" : "photos"} from the group`} action="See all" onAction={openGallery} C={C} />
+            <PhotoStrip trip={trip} C={C} />
+          </>
+        ) : (
+          <>
+            <SectionHeader title="Photos" C={C} />
+            <Card C={C} isDark={isDark}>
+              <LinkRow label="Add your photos for the group" onPress={openGallery} C={C} Icon={Images} />
+            </Card>
+          </>
+        )}
+        <Card C={C} isDark={isDark} style={{ marginTop: S.sm }}>
+          <LinkRow label="Relive the itinerary" onPress={openTrip} C={C} Icon={Calendar} />
         </Card>
-        <Text style={[s.footnote, { color: C.textTertiary }]}>Your next trip will appear here once your organiser shares it.</Text>
       </FadeIn>
     </View>
   );

@@ -29,13 +29,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, S, shadow, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
-import { Avatar } from "@/components/ui/Avatar";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
 import { getDestinationTz } from "@/shared/timezones";
-import { PreTripSheetContent, PostTripSheetContent, SectionHeader } from "@/components/TodayPreTrip";
+import { PreTripSheetContent, PostTripSheetContent, SectionHeader, StayCard, LinkRow, tripStays } from "@/components/TodayPreTrip";
 import { sheetStyles as ps } from "@/components/todaySheetStyles";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
@@ -279,6 +278,9 @@ export default function TodayScreen() {
     return { type: "FeatureCollection" as const, features };
   }, [displayEvents, eventCoords, now, destTz, destCenter, isLiveDay]);
 
+  // The stay they sleep at tonight: checked in, not yet checked out
+  const tonight = useMemo(() => (displayTrip ? tripStays(displayTrip).find(st => st.start <= todayISO && todayISO < st.end) ?? null : null), [displayTrip, todayISO]);
+
   // Nights per stay, for the map labels: to the stay's end date, else the next stay or the trip end
   const stayNights = useMemo(() => {
     const nights: Record<string, number> = {};
@@ -396,10 +398,6 @@ export default function TodayScreen() {
   const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: destTz, hour: "2-digit", minute: "2-digit" }).format(now);
   const nextFlight = next?.event.type === "flight" ? next.event : null;
   const { data: nextFlightLive } = useFlightLiveData(nextFlight?.flightNum, nextFlight?.date);
-
-  // ── Traveler avatars ──
-  // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
-  const AVATAR_COLORS = useMemo(() => [C.textSecondary], [C]);
 
   // No trips at all — empty state
   if (!displayTrip) {
@@ -542,7 +540,7 @@ export default function TodayScreen() {
             hitSlop={6}
           >
             <MapGlass style={styles.mapButton}>
-              <NavigationArrow size={18} color={SHEET_GLASS ? C.textPrimary : "#fff"} weight="fill" />
+              <View style={{ transform: [{ scaleX: -1 }] }}><NavigationArrow size={18} color={SHEET_GLASS ? C.textPrimary : "#fff"} weight="fill" /></View>
             </MapGlass>
           </Pressable>
         )}
@@ -714,33 +712,15 @@ export default function TodayScreen() {
           </View>
         )}
 
-        <FadeIn delay={120}>
-          <SectionHeader title="Trip details" C={C} />
-          {(displayTrip.travelers?.length ?? 0) > 0 && (
-            <View style={ps.row}>
-              <View style={{ flexDirection: "row", marginRight: S.xs }}>
-                {displayTrip.travelers!.slice(0, 5).map((t, i) => (
-                  <View key={t.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}>
-                    <Avatar size={26} initials={t.initials} color={AVATAR_COLORS[i % AVATAR_COLORS.length]} ringColor={C.card} />
-                  </View>
-                ))}
-              </View>
-              <Text style={[ps.rowTitle, { color: C.textPrimary, flex: 1 }]}>
-                {displayTrip.travelers!.length} {displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}
-              </Text>
-            </View>
-          )}
-          <Pressable
-            onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${displayTrip.id}`); }}
-            accessibilityRole="button"
-            accessibilityLabel="Full itinerary"
-            style={({ pressed }) => [ps.row, (displayTrip.travelers?.length ?? 0) > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
-          >
-            <View style={ps.rowIcon}>
-              <Calendar size={16} color={C.textSecondary} weight="regular" />
-            </View>
-            <Text style={[ps.rowTitle, { color: C.textPrimary, flex: 1 }]}>Full itinerary</Text>
-          </Pressable>
+        {/* Where tonight is, with directions back to it */}
+        {tonight && (
+          <FadeIn delay={120}>
+            <SectionHeader title="Tonight" C={C} />
+            <StayCard stay={tonight} tripId={displayTrip.id} C={C} />
+          </FadeIn>
+        )}
+        <FadeIn delay={150}>
+          <LinkRow label="Full itinerary" onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${displayTrip.id}`); }} C={C} Icon={Calendar} />
         </FadeIn>
         </>
         )}
