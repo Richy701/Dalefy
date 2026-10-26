@@ -70,5 +70,12 @@ module.exports = ({ config }) => ({
     "expo-web-browser",
     "expo-apple-authentication",
     "expo-updates",
+    [
+      "expo-build-properties",
+      {
+        // iOS 27 (Xcode 27 builds) requires the scene life cycle; 16.4 is the SDK 57 minimum, kept here so prebuild can't reset it
+        ios: { enableSceneSupport: true, deploymentTarget: "16.4" },
+      },
+    ],
   ],
 });
