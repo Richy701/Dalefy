@@ -34,7 +34,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **iOS Live Activities & Dynamic Island** -- Flight activity in the airline's colour with a live boarding, departure and landing countdown, a plane on a progress track and the gate; event activity with category colour, icon tile and a big countdown. Native SwiftUI in `mobile/native-widgets/TripCountdown.swift`, so layout changes need a store build
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
 - **Notification Center** -- Grouped by date with type-based icons, unread state, Mail-style full-height swipe actions (read, delete) and context menus
-- **Push Notifications** -- Itinerary updates, flight changes ("QR 843 is delayed") and local reminders for trips, flights, hotels and events. Titles say what happened, the trip is the subtitle, details are one per line. Reminders carry the trip photo; flights, events and trips have View flight / Directions / Open itinerary buttons; flight alerts are time-sensitive
+- **Push Notifications** -- Itinerary updates, flight changes ("QR 843 is delayed") and local reminders for trips, flights, hotels and events. Titles say what happened, the trip is the subtitle, details are one per line. Reminders carry the trip photo; flights, events and trips have View flight / Directions / Open itinerary buttons; flight alerts are time-sensitive. iOS groups each trip's notifications together
+- **Message Travellers** -- Organisers message everyone on a trip, chosen people, or everyone on an event, from Workspace (Share menu) or the Travelers page. Quick messages are written from the itinerary, a tap can open an event, a day or a Trip info item, urgent messages break through Focus, and a lock-screen preview and per-person results (notified, notifications off, didn't go through) show who it reached
+- **In-app Inbox** -- Every push is recorded in the server's push log, and the app's notifications list reads the traveller's own entries, so messages sent while the app was closed or with notifications off still show up
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
 - **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
@@ -54,7 +56,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Charts:** Recharts
 - **Routing:** react-router-dom v7 (HashRouter)
 - **PDF:** html2canvas + jsPDF
-- **Mobile:** Expo / React Native (in `/mobile`), expo-widgets (Live Activities + Dynamic Island), @gorhom/bottom-sheet
+- **Mobile:** Expo SDK 58 / React Native 0.88 (in `/mobile`, built for iOS 27 with the scene life cycle), expo-widgets (Live Activities + Dynamic Island), @gorhom/bottom-sheet
 - **Cloud Functions:** Firebase Cloud Functions (Gen 2) for server-side push notifications on publish
 
 ## Getting Started
@@ -79,7 +81,7 @@ The mobile app is traveler-facing -- no admin features, PIN-based trip joining, 
 
 ### Join Trip Flow
 
-The Join sheet has PIN and Scan tabs. PIN cells spring in as you type, ripple while the code is looked up, then light up teal as the trip card rises (cover photo, place, dates, organiser). Pasting an invite link into the PIN field resolves it too. The scanner shows its viewfinder before camera access is granted and offers Open Settings if access was denied.
+The Join sheet has PIN and Scan tabs. PIN cells spring in as you type and ripple while the code is looked up; a matching trip's card (cover photo, place, dates, organiser) then fades in once, quietly, and See itinerary opens the trip with Home underneath. Pasting an invite link into the PIN field resolves it too. The scanner shows its viewfinder before camera access is granted and offers Open Settings if access was denied.
 
 ### Shared Trip Preview
 
@@ -95,28 +97,31 @@ Pinned day strip (a tapped or linked day stays highlighted; scrolling ticks with
 
 ### Today Tab
 
-Three-state daily schedule view:
+A full-screen Mapbox map behind a Liquid Glass sheet. The sheet has one job per state:
 
-- **Active trip** -- Full-screen Mapbox Standard 3D map (pitched city view centered on next event location with proximity-biased geocoding) behind an Apple Maps-style bottom sheet. Sheet contains trip name with stats strip (flights, hotels, events, days), weather data, "Next Up" countdown card, trip info and organizer cards, timeline with NOW divider and past-event dimming, "See full itinerary" button
-- **Upcoming trip** -- "Your next trip" headline, hero card with countdown badge and weather forecast, first-day event preview with cleaned titles, trip info and organizer shortcuts, stats footer
+- **Before the trip** -- Before you go tasks, the first flight (live terminal, gate and status from a day out), notes from the organiser, then Where you're staying: a card per hotel with its photo, nights and dates, address and Directions. An import's check-in, overnight and check-out entries for the same hotel count as one stay
+- **During the trip** -- A Day N of M chip with weather and local time over the map, Next up with a countdown, today's timeline, and Tonight: the hotel card with directions back to it
+- **After the trip** -- The dates (or "Ended N days ago" while it's recent), the destination with a days, hotels and flights recap, a strip of the group's photos and Relive the itinerary
 - **Empty** -- Compass icon in teal circle, "No trips yet" with "Join a trip" CTA button
+
+Attachments (PDFs and other documents) open in the iOS Quick Look viewer inside the app (`mobile/modules/dalefy-quick-look`), with share, save to Files and print; older builds fall back to opening the link.
 
 ### Media Uploads
 
 Travelers can upload photos and videos from the mobile gallery with multi-select support. Uploads sync to Firebase Storage and appear in the web Media Library organized by trip. HEIC images are automatically converted to JPEG before upload for cross-browser compatibility. File size limit: 500 MB.
 
-### App Users
+### Travelers Page
 
-The web Travelers page shows all mobile users who have joined trips via PIN. Admins can:
+The web Travelers page is one list of people, joining each person's entry on trip lists, the directory and their app account:
 
-- **Sort and filter** by name, device count, or trip
-- **Search** with highlighted matches
-- **Detail panel** with profile, trip memberships, activity timeline, and push notifications
-- **Rename** users, **remove** from individual trips, and bulk-select for batch operations
-- **Export** the user list as CSV
-- **Paginate** (10 per page) with keyboard nav
+- **Columns** -- trips, app status ("Active 5 min ago on iPhone", "Invited 3 days ago", "Not on the app") and documents ("2 to sign", "1 expired")
+- **Filters** -- search, a trip picker, and Everyone / On the app / Not on the app / Documents outstanding, with counts
+- **Bulk** -- select people to message or delete them together
+- **Person panel** -- trips (make trip leader, remove from trip), documents (sign, remind), message history, Message, Email and Delete
+- **Delete** removes someone from the directory, every trip's list and events (including the published copy phones read, without a republish) and their app access
+- **Export** the list as CSV
 
-Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
+"Last seen" comes from the app, stamped when it opens or returns to the foreground, at most every 15 minutes.
 
 ### Profile
 
@@ -138,6 +143,7 @@ The app sends each activity its timing (boarding is departure minus 40 minutes),
 
 - **Lock Screen**: flight number in the airline colour, status in plain words, route with progress track, live countdown and gate
 - **Dynamic Island**: compact shows the plane and departure code with a countdown (the gate once boarding); expanded shows both airports, flight, status, track, countdown and gate
+- **Stale data**: each refresh sets a stale date 30 minutes ahead (capped at arrival). If the app stops refreshing, iOS marks the activity stale and it dims with "Times may have changed. Open Dalefy to refresh."
 
 ## API Endpoints
 
@@ -154,7 +160,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Sonnet 5.5 (event copy assist on Claude Haiku 5.5) - extracts events, travelers, info sections |
 | `/api/notify-trip-update` | Bearer | Notify trip members of itinerary changes via Expo push |
 | `/api/send-invite` | Bearer | Send team invitation emails via Resend |
-| `/api/send-push` | Bearer | Send a push notification to one device; caller must organize a trip that device has joined |
+| `/api/send-push` | Bearer | Message a trip's travellers: everyone, chosen people or everyone on an event, with an optional title, tap target and urgent flag. `dryRun` returns who it would reach. Caller must organise the trip; each send is logged in `push_log`, which is also the travellers' in-app inbox |
 | `/api/share-page` | — | Serves `/shared/{id}` with the trip's Open Graph tags (title, dates, cover photo) and forwards to the trip page |
 | `/api/check-flight-status` | Bearer | Cron (every 15 min): checks flights around departure (3-hourly from 24h out, every run from 3h before to 1h after, hourly in the air), saves airport codes/coordinates, and pushes delays, cancellations, gate and time changes to travelers |
 
@@ -226,7 +232,8 @@ Hosted on [Vercel](https://dalefy.vercel.app). Push to `main` to trigger a produ
 ### Mobile releases
 
 - **JavaScript changes** ship over the air: `cd mobile && npx eas-cli update --branch production --environment production`
-- **Native changes** (Live Activities, widgets, splash, entitlements) need a store build: `npx eas-cli build --profile production --platform ios --auto-submit`
+- **Native changes** (Live Activities, widgets, splash, entitlements, native module or Expo SDK updates) need a store build: `npx eas-cli build --profile production --platform ios --auto-submit`
+- **Runtime version** is a fixed string in `mobile/app.json`. Bump it with every build that changes native code or package versions, so over-the-air updates only reach builds they match (currently `1.0.0-sdk58-20261026`)
 - **Universal links** are served from `public/.well-known/` (`apple-app-site-association`, `assetlinks.json`); the app claims `dalefy.vercel.app` and `dalefy.app` for `/shared/*`
 
 The flight status cron runs daily via Vercel Cron Jobs (Hobby plan limit). On-demand flight checks run when users view trips with upcoming flights. AI itinerary parsing requires an `ANTHROPIC_API_KEY` -- without it, the import falls back to the offline heuristic parser.
