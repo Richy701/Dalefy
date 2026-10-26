@@ -70,14 +70,14 @@ function FlightTrackerActivity(
 
   // ── Banner (Lock Screen) ──
   const banner = (
-    <VStack
+    <VStack spacing={0}
       modifiers={[
         padding({ horizontal: 20, vertical: 14 }),
         frame({ maxWidth: Infinity }),
       ]}
     >
       {/* Top: flight number left, status right */}
-      <HStack>
+      <HStack spacing={0}>
         <Text
           modifiers={[
             font({ size: 12, weight: "semibold" }),
@@ -87,7 +87,7 @@ function FlightTrackerActivity(
           {props.airline ? props.airline + " " : ""}{props.flightNum}
         </Text>
         <Spacer />
-        <HStack
+        <HStack spacing={0}
           modifiers={[
             padding({ horizontal: 8, vertical: 3 }),
             background(statusColor + "18", shapes.capsule()),
@@ -105,13 +105,13 @@ function FlightTrackerActivity(
       </HStack>
 
       {/* Middle: airport codes with plane between */}
-      <HStack
+      <HStack spacing={0}
         modifiers={[
           padding({ top: 10 }),
           frame({ maxWidth: Infinity }),
         ]}
       >
-        <VStack>
+        <VStack spacing={0}>
           <Text
             modifiers={[
               font({ size: 30, weight: "black", design: "rounded" }),
@@ -131,10 +131,10 @@ function FlightTrackerActivity(
         </VStack>
 
         <Spacer />
-        <VStack>
-          <HStack>
+        <VStack spacing={0}>
+          <HStack spacing={0}>
             {doneW > 0 ? (
-              <HStack
+              <HStack spacing={0}
                 modifiers={[
                   frame({ width: doneW, height: 2 }),
                   background(teal, shapes.capsule()),
@@ -146,7 +146,7 @@ function FlightTrackerActivity(
             ) : null}
             <Image systemName="airplane" size={12} color={teal} />
             {todoW > 0 ? (
-              <HStack
+              <HStack spacing={0}
                 modifiers={[
                   frame({ width: todoW, height: 2 }),
                   background("#ffffff30", shapes.capsule()),
@@ -170,7 +170,7 @@ function FlightTrackerActivity(
         </VStack>
         <Spacer />
 
-        <VStack>
+        <VStack spacing={0}>
           <Text
             modifiers={[
               font({ size: 30, weight: "black", design: "rounded" }),
@@ -192,7 +192,7 @@ function FlightTrackerActivity(
 
       {/* Bottom: gate info */}
       {props.gate ? (
-        <HStack modifiers={[padding({ top: 8 })]}>
+        <HStack spacing={0} modifiers={[padding({ top: 8 })]}>
           <Text
             modifiers={[
               font({ size: 11, weight: "bold" }),
@@ -209,7 +209,7 @@ function FlightTrackerActivity(
 
   // ── Compact: leading — plane + departure code ──
   const compactLeading = (
-    <HStack>
+    <HStack spacing={0}>
       <Image systemName="airplane" size={9} color={teal} />
       <Text
         modifiers={[
@@ -255,10 +255,10 @@ function FlightTrackerActivity(
 
   // ── Expanded: center — plane + flight number ──
   const expandedCenter = (
-    <VStack modifiers={[padding({ all: 4 })]}>
-      <HStack>
+    <VStack spacing={0} modifiers={[padding({ all: 4 })]}>
+      <HStack spacing={0}>
         {doneW > 0 ? (
-          <HStack
+          <HStack spacing={0}
             modifiers={[
               frame({ width: Math.round(doneW * 0.5), height: 2 }),
               background(teal, shapes.capsule()),
@@ -270,7 +270,7 @@ function FlightTrackerActivity(
         ) : null}
         <Image systemName="airplane" size={9} color={teal} />
         {todoW > 0 ? (
-          <HStack
+          <HStack spacing={0}
             modifiers={[
               frame({ width: Math.round(todoW * 0.5), height: 2 }),
               background("#ffffff30", shapes.capsule()),
@@ -289,12 +289,12 @@ function FlightTrackerActivity(
 
   // ── Expanded: bottom — times + status ──
   const expandedBottom = (
-    <HStack modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
+    <HStack spacing={0} modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
       <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
         {props.departTime}
       </Text>
       <Spacer />
-      <HStack
+      <HStack spacing={0}
         modifiers={[
           padding({ horizontal: 6, vertical: 2 }),
           background(statusColor + "22", shapes.capsule()),

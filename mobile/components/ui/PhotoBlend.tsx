@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { StyleSheet } from "react-native";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { MaskedView } from "@/components/native/MaskedView";
 import { LinearGradient } from "expo-linear-gradient";
 
 /** Fade the sharp cover and its shading together into the coloured wash. */

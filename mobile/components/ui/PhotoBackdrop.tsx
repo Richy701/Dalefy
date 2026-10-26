@@ -1,6 +1,6 @@
 import { View, StyleSheet, useWindowDimensions } from "react-native";
 import Animated, { useAnimatedStyle, type SharedValue } from "react-native-reanimated";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { MaskedView } from "@/components/native/MaskedView";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
 import { darkColors, applyAccentHex, type ThemeColors } from "@/constants/theme";

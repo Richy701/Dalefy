@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";

@@ -36,7 +36,7 @@ async function localCopy(url: string, name?: string): Promise<File> {
   const file = new File(dir, /\.\w{2,4}$/.test(filename) ? filename : `${filename}.${ext}`);
   if (file.exists) return file;
   if (!dir.exists) dir.create({ intermediates: true });
-  if (data) file.write(base64ToBytes(data[2]));
+  if (data) file.writeSync(base64ToBytes(data[2]));
   else await File.downloadFileAsync(url, file, { idempotent: true });
   return file;
 }
@@ -70,7 +70,7 @@ export async function openDocument(url: string, name?: string): Promise<void> {
   const filename = name || `document.${ext}`;
 
   const file = new File(Paths.cache, filename);
-  file.write(base64ToBytes(base64));
+  file.writeSync(base64ToBytes(base64));
 
   await Sharing.shareAsync(file.uri, { mimeType, UTI: mimeType });
 }

@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
-index 24d4571..d18fa96 100644
+index 4d135c4..39b283c 100644
 --- a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
 @@ -3,17 +3,17 @@ import WidgetKit
@@ -15,9 +15,9 @@ index 24d4571..d18fa96 100644
  
    public struct ContentState: Codable, Hashable {
 -    var name: String
--    var props: String
+-    var props: String?
 +    public var name: String
-+    public var props: String
++    public var props: String?
    }
  
 -  init(url: String? = nil) {

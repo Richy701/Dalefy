@@ -2,9 +2,10 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { photoPalette } from "@/components/ui/PhotoBackdrop";
 import { useEffect, useMemo, type Ref } from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
+import type { HostInstance } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { useTheme } from "@/context/ThemeContext";
@@ -17,7 +18,7 @@ const LIQUID_GLASS = Platform.OS === "ios" && isLiquidGlassAvailable();
 
 /** glass: for onboarding's photo screens, a see-through glass card with the photo palette instead of a solid one */
 /** photoRef: lets Join find the photo on screen, so it can grow from there into the trip page */
-export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = false, photoRef }: { trip: Trip; dates: string; eyebrow?: string; glass?: boolean; photoRef?: Ref<View> }) {
+export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = false, photoRef }: { trip: Trip; dates: string; eyebrow?: string; glass?: boolean; photoRef?: Ref<HostInstance> }) {
   const { C: themeC, isDark } = useTheme();
   const C = useMemo(() => (glass ? photoPalette(themeC, isDark) : themeC), [glass, themeC, isDark]);
   const styles = useMemo(() => makeStyles(C, glass), [C, glass]);

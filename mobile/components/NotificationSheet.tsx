@@ -3,8 +3,9 @@ import {
   View, Text, SectionList, Pressable, StyleSheet, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
-import { Animated } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Reanimated, { useAnimatedStyle, interpolate, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import ContextMenu from "@/components/ContextMenu";
 import {
@@ -192,40 +193,24 @@ interface RowProps {
 }
 
 function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
-  const swipeRef = useRef<Swipeable>(null);
+  const swipeRef = useRef<SwipeableMethods>(null);
   const Icon = getNotifIcon(n);
   const tone = getNotifTone(n, Icon, C);
   const navigable = n.tripId != null;
 
   const actionWidth = n.read ? SWIPE_SLOT : SWIPE_SLOT * 2;
-  // Rows are see-through on the glass sheet, so the panels travel with the row's edge and only ever
-  // fill the gap it leaves, never sitting underneath the row's text
-  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const opacity = progress.interpolate({ inputRange: [0, 0.02, 1], outputRange: [0, 1, 1] });
-    const translateX = dragX.interpolate({ inputRange: [-actionWidth, 0], outputRange: [0, actionWidth], extrapolate: "clamp" });
-    return (
-      <Animated.View style={[styles.swipeActions, { width: actionWidth, opacity, transform: [{ translateX }] }]}>
-        {!n.read && (
-          <Pressable
-            style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.teal, opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => { swipeRef.current?.close(); onMarkRead(); }}
-            accessibilityRole="button"
-            accessibilityLabel="Mark read"
-          >
-            <Check size={22} color={C.onAccent} weight="bold" />
-          </Pressable>
-        )}
-        <Pressable
-          style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.red, opacity: pressed ? 0.8 : 1 }]}
-          onPress={() => { swipeRef.current?.close(); onRemove(); }}
-          accessibilityRole="button"
-          accessibilityLabel="Delete notification"
-        >
-          <Trash size={22} color={ON_RED} weight="bold" />
-        </Pressable>
-      </Animated.View>
-    );
-  }, [n.read, C, styles, onMarkRead, onRemove, actionWidth]);
+  const renderRightActions = useCallback((progress: SharedValue<number>, translation: SharedValue<number>) => (
+    <SwipeActions
+      progress={progress}
+      translation={translation}
+      width={actionWidth}
+      read={n.read}
+      C={C}
+      styles={styles}
+      onMarkRead={() => { swipeRef.current?.close(); onMarkRead(); }}
+      onRemove={() => { swipeRef.current?.close(); onRemove(); }}
+    />
+  ), [n.read, C, styles, onMarkRead, onRemove, actionWidth]);
 
   const contextActions = [
     ...(!n.read ? [{ title: "Mark read", systemIcon: "checkmark.circle" }] : []),
@@ -241,7 +226,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
   }, [onMarkRead, onPress, onRemove]);
 
   return (
-    <Swipeable
+    <ReanimatedSwipeable
       ref={swipeRef}
       containerStyle={styles.swipeContainer}
       renderRightActions={renderRightActions}
@@ -299,7 +284,47 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
           </Pressable>
         </ContextMenu>
       </View>
-    </Swipeable>
+    </ReanimatedSwipeable>
+  );
+}
+
+/** Rows are see-through on the glass sheet, so the panels travel with the row's edge and only ever
+ *  fill the gap it leaves, never sitting underneath the row's text */
+function SwipeActions({ progress, translation, width, read, C, styles, onMarkRead, onRemove }: {
+  progress: SharedValue<number>;
+  translation: SharedValue<number>;
+  width: number;
+  read: boolean;
+  C: ThemeColors;
+  styles: ReturnType<typeof makeStyles>;
+  onMarkRead: () => void;
+  onRemove: () => void;
+}) {
+  const animated = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.02, 1], [0, 1, 1]),
+    transform: [{ translateX: interpolate(translation.value, [-width, 0], [0, width], Extrapolation.CLAMP) }],
+  }));
+  return (
+    <Reanimated.View style={[styles.swipeActions, { width }, animated]}>
+      {!read && (
+        <Pressable
+          style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.teal, opacity: pressed ? 0.8 : 1 }]}
+          onPress={onMarkRead}
+          accessibilityRole="button"
+          accessibilityLabel="Mark read"
+        >
+          <Check size={22} color={C.onAccent} weight="bold" />
+        </Pressable>
+      )}
+      <Pressable
+        style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.red, opacity: pressed ? 0.8 : 1 }]}
+        onPress={onRemove}
+        accessibilityRole="button"
+        accessibilityLabel="Delete notification"
+      >
+        <Trash size={22} color={ON_RED} weight="bold" />
+      </Pressable>
+    </Reanimated.View>
   );
 }
 

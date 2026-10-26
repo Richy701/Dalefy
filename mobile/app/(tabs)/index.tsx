@@ -760,14 +760,16 @@ export default function HomeScreen() {
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle} accessibilityRole="header">Photos</Text>
-                  <Pressable
-                    onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={latestPhotos.length > 0 ? "See all photos" : "Add a photo"}
-                  >
-                    <Text style={styles.cardLink}>{latestPhotos.length > 0 ? "See all" : "Add"}</Text>
-                  </Pressable>
+                  {latestPhotos.length > 0 && (
+                    <Pressable
+                      onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="See all photos"
+                    >
+                      <Text style={styles.cardLink}>See all</Text>
+                    </Pressable>
+                  )}
                 </View>
                 {latestPhotos.length > 0 ? (
                   <ScrollView
@@ -800,15 +802,20 @@ export default function HomeScreen() {
                     })}
                   </ScrollView>
                 ) : (
-                  <View style={{ paddingHorizontal: S.md }}>
-                    <EmptyNote
-                      palette={C}
-                      icon={<Camera size={22} color={C.tealText} weight="duotone" />}
-                      title="No photos yet"
-                      message="Be the first to share a moment from this trip."
-                      action={{ label: "Add", onPress: () => router.push("/(tabs)/media") }}
-                    />
-                  </View>
+                  // The strip's own shape, so nothing jumps when the first photo lands
+                  <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
+                    <Pressable
+                      onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add a photo"
+                      style={({ pressed }) => [styles.latestPhoto, styles.addPhotoTile, pressed && { opacity: 0.7 }]}
+                    >
+                      <Camera size={22} color={C.textSecondary} weight="regular" />
+                      <Text style={styles.addPhotoText}>Add a photo</Text>
+                    </Pressable>
+                    <View style={[styles.latestPhoto, styles.emptyPhotoTile]} accessible={false} />
+                    <View style={[styles.latestPhoto, styles.emptyPhotoTile]} accessible={false} />
+                  </ScrollView>
                 )}
               </View>
             </FadeIn>
@@ -945,6 +952,12 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       width: 104, height: 138, borderRadius: R.sm,
       backgroundColor: C.elevated,
     },
+    addPhotoTile: {
+      backgroundColor: "transparent", borderWidth: 1.5, borderStyle: "dashed", borderColor: C.border,
+      alignItems: "center", justifyContent: "center", gap: S.xs,
+    },
+    addPhotoText: { fontSize: T.xs, fontWeight: T.medium, color: C.textSecondary },
+    emptyPhotoTile: { opacity: 0.45 },
     photoCaption: {
       flexDirection: "row", alignItems: "center", gap: S["2xs"], marginTop: S.xs2,
     },

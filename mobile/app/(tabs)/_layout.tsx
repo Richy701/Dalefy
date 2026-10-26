@@ -125,7 +125,7 @@ function AndroidTabLayout() {
             title: label,
             href: hidden ? null : undefined,
             tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name={materialIcon} size={size} color={color} />
+              <MaterialIcons name={materialIcon} size={size} color={color as string} />
             ),
             tabBarLabel: ({ focused, color }) => (
               <Text style={{ fontSize: 11, fontWeight: focused ? "700" : "500", color }}>{label}</Text>

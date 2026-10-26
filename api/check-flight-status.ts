@@ -325,6 +325,8 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
       data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum, logId },
       // "View flight" button, and it comes through Focus modes
       categoryId: "flight",
+      // iOS stacks each trip's notifications together
+      threadId: update.tripId,
       interruptionLevel: "time-sensitive" as const,
       sound: "default" as const,
     }));

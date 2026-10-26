@@ -114,6 +114,8 @@ export default async function handler(req: any, res: any) {
       body,
       data: { tripId, category: "update", logId },
       categoryId: "trip",
+      // iOS stacks each trip's notifications together
+      threadId: String(tripId),
       sound: "default" as const,
     }));
 

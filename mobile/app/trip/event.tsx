@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";

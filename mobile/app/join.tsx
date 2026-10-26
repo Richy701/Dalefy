@@ -3,6 +3,7 @@ import {
   StyleSheet, TextInput, KeyboardAvoidingView, Platform,
   Dimensions, Keyboard, Linking,
 } from "react-native";
+import type { TextInputInstance } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
   Easing, FadeIn, FadeInDown, FadeOut,
@@ -13,7 +14,7 @@ import { TripPreviewCard } from "@/components/TripPreviewCard";
 import { PinCell, PIN_LEN, PIN_W } from "@/components/ui/PinCell";
 import { Avatar } from "@/components/ui/Avatar";
 import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { MaskedView } from "@/components/native/MaskedView";
 import * as Haptics from "@/services/haptics";
 import { useRouter, Stack } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
@@ -23,7 +24,7 @@ import { X,
   CaretRight, Scan, Check, ClipboardText,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -230,7 +231,7 @@ export default function JoinScreen() {
   const [foundTrip, setFoundTrip] = useState<Trip | null>(null);
   const [previewTrip, setPreviewTrip] = useState<Trip | null>(null);
   const [pinLit, setPinLit] = useState(false);
-  const pinRefs = useRef<Array<TextInput | null>>([]);
+  const pinRefs = useRef<Array<TextInputInstance | null>>([]);
   const shakeX = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
 
@@ -593,7 +594,8 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
       flex: 1, textAlign: "center", fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary,
     },
     backLink: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "flex-start", marginBottom: S.md },
-    pinTitle: { fontSize: T.base, color: C.textSecondary, textAlign: "center", marginTop: S.xs, marginBottom: S.md },
+    // Primary text: on the glass sheet the secondary grey drops below 2:1 over a bright photo
+    pinTitle: { fontSize: T.base, color: C.textPrimary, textAlign: "center", marginTop: S.xs, marginBottom: S.md },
     pinBoxes: { flexDirection: "row", justifyContent: "center", gap: S.xs },
     pinBox: {
       width: 46, height: 58, borderRadius: R.lg, backgroundColor: C.elevated,
@@ -618,10 +620,10 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     joinedThumb: { width: 140, height: 96, borderRadius: R.md, backgroundColor: C.card, marginBottom: S.xs },
     startOver: { alignSelf: "center", paddingVertical: S.md },
     qrNote: { fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary, marginTop: S.sm, textAlign: "center", paddingHorizontal: S.lg },
-    qrHint: { fontSize: T.base, color: C.textSecondary, textAlign: "center", marginTop: S.md },
+    qrHint: { fontSize: T.base, color: C.textPrimary, textAlign: "center", marginTop: S.md },
     pinHiddenInput: { position: "absolute", opacity: 0, width: 1, height: 1 },
     pinHintRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.xs, marginTop: S.sm, marginBottom: S.lg },
-    pinHint: { flex: 1, paddingHorizontal: 0, marginTop: 0, marginBottom: 0 },
+    pinHint: { flex: 1, paddingHorizontal: 0, marginTop: 0, marginBottom: 0, color: C.textPrimary },
     altGroup: { marginTop: S.xl },
     altRowItem: { flexDirection: "row", alignItems: "center", gap: S.sm, minHeight: 50 },
     altItemText: { flex: 1, fontSize: T.md, fontWeight: T.medium, color: C.textPrimary },

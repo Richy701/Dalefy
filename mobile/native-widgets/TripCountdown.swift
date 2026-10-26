@@ -480,10 +480,14 @@ struct NativeLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: LiveActivityAttributes.self) { ctx in
       let n = ctx.state.name
-      let p = parse(ctx.state.props)
+      let p = parse(ctx.state.props ?? "")
       VStack(alignment: .leading, spacing: 8) {
-        BannerView(name: n, props: p)
-        if ctx.isStale { Text("Open Dalefy for your latest itinerary").font(.system(size: 12)).foregroundStyle(.white.opacity(0.7)) }
+        // Out of date: dim what we can no longer vouch for and say how to fix it
+        BannerView(name: n, props: p).opacity(ctx.isStale ? 0.55 : 1)
+        if ctx.isStale {
+          Text(n == "FlightTracker" ? "Times may have changed. Open Dalefy to refresh." : "Open Dalefy for your latest itinerary")
+            .font(.system(size: 12)).foregroundStyle(.white.opacity(0.7))
+        }
       }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -491,7 +495,7 @@ struct NativeLiveActivity: Widget {
         .widgetURL(ctx.attributes.url.flatMap(URL.init(string:)))
     } dynamicIsland: { ctx in
       let n = ctx.state.name
-      let p = parse(ctx.state.props)
+      let p = parse(ctx.state.props ?? "")
       return DynamicIsland {
         DynamicIslandExpandedRegion(.leading) { ExLeading(name: n, props: p) }
         DynamicIslandExpandedRegion(.trailing) { ExTrailing(name: n, props: p) }

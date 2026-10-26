@@ -353,7 +353,7 @@ function notificationPhoto(path: string, id: string) {
     if (!src.exists) return null;
     const dest = new File(Paths.cache, `${id}.jpg`);
     if (dest.exists) dest.delete();
-    src.copy(dest);
+    src.copySync(dest);
     return [{ identifier: "photo", url: dest.uri, type: null, typeHint: "public.jpeg" }];
   } catch {
     return null;

@@ -133,6 +133,8 @@ export default async function handler(req: any, res: any) {
       body: body.trim(),
       data: { tripId, category: "message", logId, ...tapTarget },
       categoryId: tapTarget.eventId ? "event" : "trip",
+      // iOS stacks each trip's notifications together
+      threadId: tripId,
       // Urgent ones come through Focus modes, like flight alerts
       interruptionLevel: urgent ? "time-sensitive" as const : "active" as const,
       sound: "default" as const,

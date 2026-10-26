@@ -57,7 +57,7 @@ export function PinCell({ ch, index, active, resolving, lit, C, styles, onPress 
   const restBorder = active ? C.teal : C.border;
   const cellStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: lift.value }],
-    backgroundColor: interpolateColor(glow.value, [0, 1], [C.elevated, C.tealDim]),
+    backgroundColor: interpolateColor(glow.value, [0, 1], [C.fieldFill, C.tealDim]),
     borderColor: interpolateColor(glow.value, [0, 1], [restBorder, C.teal]),
   }));
   const charStyle = useAnimatedStyle(() => ({

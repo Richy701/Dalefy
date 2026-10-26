@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Image,
   ActionSheetIOS, Alert, ActivityIndicator, Keyboard, useWindowDimensions,
 } from "react-native";
+import type { HostInstance, TextInputInstance } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -145,7 +146,7 @@ export default function WelcomeScreen() {
   const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
   const uploadedUrlRef = useRef<string | null>(null);
   const [, setUploading] = useState(false);
-  const nameRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInputInstance>(null);
   const styles = useMemo(() => makeStyles(C, !isEdit), [C, isEdit]);
   const [nameFocused, setNameFocused] = useState(false);
 
@@ -205,7 +206,7 @@ export default function WelcomeScreen() {
   }, [asksName, finishOnboarding, providerName, auth.user?.avatar, travellerFor]);
 
   // "Join this trip": the card's photo grows into the trip page's hero, then the joining screen takes over in place
-  const cardPhotoRef = useRef<View>(null);
+  const cardPhotoRef = useRef<HostInstance>(null);
   const [launchFrom, setLaunchFrom] = useState<LaunchFrame | null>(null);
   const joinMatched = useCallback(() => {
     if (!matchedTrip || launchFrom) return;
@@ -225,7 +226,7 @@ export default function WelcomeScreen() {
   }, [isEdit]);
 
   // ── One box for whatever the organiser sent: a trip PIN, an organisation code or an invite link ──
-  const codeInputRef = useRef<TextInput>(null);
+  const codeInputRef = useRef<TextInputInstance>(null);
   const shakeX = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
   const shake = () => {

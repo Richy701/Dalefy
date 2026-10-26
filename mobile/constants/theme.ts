@@ -10,6 +10,8 @@ export const darkColors = {
   surface: "#0e0e12",
   card: "#141418",
   elevated: "#1c1c22",
+  // Input cells that sit on glass or a photo, so the material shows through
+  fieldFill: "rgba(255,255,255,0.08)",
 
   border: "rgba(255,255,255,0.10)",
   borderLight: "rgba(255,255,255,0.05)",
@@ -65,6 +67,7 @@ export const lightColors = {
   surface: "#eef0f5",
   card: "#ffffff",
   elevated: "#f0f1f5",
+  fieldFill: "rgba(0,0,0,0.05)",
 
   border: "rgba(0,0,0,0.07)",
   borderLight: "rgba(0,0,0,0.03)",

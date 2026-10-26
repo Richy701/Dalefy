@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useRef, useState, useCallback, useEffect, type ReactNode } from "react";
 import { View, Text, Image, Pressable, ScrollView, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -143,7 +144,7 @@ export default function TourScreen() {
   const progress = useSharedValue(0);
   const [page, setPage] = useState(0);
   const pagerRef = useRef<{ setPage: (p: number) => void } | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const isLast = page === pageCount - 1;
 
   const land = useCallback((p: number) => {

@@ -38,7 +38,7 @@ import { CategoryDot } from "@/components/ui/CategoryDot";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { MicroLabel } from "@/components/ui/MicroLabel";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { Pill } from "@/components/ui/Pill";
 import type { Trip } from "@/shared/types";
 import * as Sharing from "expo-sharing";

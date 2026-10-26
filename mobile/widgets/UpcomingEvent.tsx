@@ -47,14 +47,14 @@ function UpcomingEventActivity(
 
   // ── Banner (Lock Screen) — this is the main view, give it room ──
   const banner = (
-    <VStack
+    <VStack spacing={0}
       modifiers={[
         padding({ horizontal: 20, vertical: 14 }),
         frame({ maxWidth: Infinity }),
       ]}
     >
       {/* Top: time left, type badge right */}
-      <HStack>
+      <HStack spacing={0}>
         <Text
           modifiers={[
             font({ size: 13, weight: "bold", design: "rounded" }),
@@ -64,7 +64,7 @@ function UpcomingEventActivity(
           {props.time}
         </Text>
         <Spacer />
-        <HStack
+        <HStack spacing={0}
           modifiers={[
             padding({ horizontal: 8, vertical: 3 }),
             background(teal + "18", shapes.capsule()),
@@ -95,7 +95,7 @@ function UpcomingEventActivity(
 
       {/* Location — subtle, with pin */}
       {props.location ? (
-        <HStack modifiers={[padding({ top: 6 })]}>
+        <HStack spacing={0} modifiers={[padding({ top: 6 })]}>
           <Image systemName="mappin" size={10} color={teal} />
           <Text
             modifiers={[
@@ -112,7 +112,7 @@ function UpcomingEventActivity(
 
   // ── Compact: leading — icon + time ──
   const compactLeading = (
-    <HStack>
+    <HStack spacing={0}>
       <Image systemName={icon} size={9} color={teal} />
       <Text
         modifiers={[
@@ -161,13 +161,13 @@ function UpcomingEventActivity(
 
   // ── Expanded: bottom — time + location ──
   const expandedBottom = (
-    <HStack modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
+    <HStack spacing={0} modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
       <Text modifiers={[font({ size: 10, weight: "bold" }), foregroundStyle(teal)]}>
         {props.time}
       </Text>
       <Spacer />
       {props.location ? (
-        <HStack>
+        <HStack spacing={0}>
           <Image systemName="mappin" size={8} color={teal} />
           <Text modifiers={[font({ size: 10 }), foregroundStyle(hierarchicalSecondary)]}>
             {props.location.length > 24 ? props.location.slice(0, 22) + "..." : props.location}

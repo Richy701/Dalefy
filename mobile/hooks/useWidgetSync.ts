@@ -72,7 +72,7 @@ export async function prepareWidgetImage(remoteUrl: string): Promise<string> {
     );
 
     const resizedFile = new File(resized.uri);
-    resizedFile.copy(destFile);
+    resizedFile.copySync(destFile);
 
     try { downloaded.delete(); } catch {}
     try { resizedFile.delete(); } catch {}

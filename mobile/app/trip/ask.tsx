@@ -2,6 +2,7 @@ import {
   View, Text, ScrollView, Pressable, TextInput,
   StyleSheet, Platform, KeyboardAvoidingView, Keyboard,
 } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import Animated, { FadeIn as EnterFade, FadeInDown, Easing } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -100,7 +101,7 @@ export default function AskScreen() {
     setStreaming(null);
     for (let k = 0; k < cards; k++) setTimeout(() => Haptics.selectionAsync(), 120 + k * CARD_STAGGER);
   }, []);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const viewH = useRef(0);
 
   // The composer sits on the home indicator inset, and right on the keyboard while it is up

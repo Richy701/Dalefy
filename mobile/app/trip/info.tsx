@@ -2,6 +2,7 @@ import {
   View, Text, ScrollView, Pressable,
   StyleSheet, Platform, Share, Linking,
 } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -199,7 +200,7 @@ function hostname(url: string): string {
 export default function InfoScreen() {
   // itemId: a message from the organiser pointed here, so open on that item
   const { tripId, itemId } = useLocalSearchParams<{ tripId: string; itemId?: string }>();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const contentY = useRef(0);
   const jumped = useRef(false);
   const { trips } = useTrips();

@@ -12,6 +12,7 @@ const LOCK_DARK = "#1c1c1e";
 const LOCK_LIGHT = "#f2f2f7";
 // Same rule as the flight page's "Boarding from about"
 const BOARDING_LEAD_MS = 40 * 60000;
+const FLIGHT_STALE_MS = 30 * 60000;
 
 // Lazy-load to avoid crash on Android / Expo Go
 let FlightTracker: any = null;
@@ -169,7 +170,9 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       if (startingRef.current === key) return;
 
       const props = { ...eventToProps(bestFlight), ...flightTiming(selected!.start!, selected!.end!, now) };
-      const staleDate = new Date(selected!.end!);
+      // Each refresh pushes this on; if the app stops refreshing (offline, suspended), iOS marks the
+      // times stale after half an hour instead of showing a delay we never heard about as current
+      const staleDate = new Date(Math.min(selected!.end!, now + FLIGHT_STALE_MS));
 
       if (activityRef.current && activityRef.current.eventId === key) {
         safe(() => activityRef.current!.activity.update(props, staleDate));

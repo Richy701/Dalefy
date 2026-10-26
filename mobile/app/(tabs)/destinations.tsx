@@ -2,6 +2,7 @@ import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
   ActivityIndicator, useWindowDimensions,
 } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
@@ -179,7 +180,7 @@ export default function TodayScreen() {
   const [eventCoords, setEventCoords] = useState<Record<string, [number, number]>>({});
   const eventRowYs = useRef<Record<string, number>>({});
   const listY = useRef(0);
-  const scheduleScrollRef = useRef<ScrollView>(null);
+  const scheduleScrollRef = useRef<ScrollViewInstance>(null);
   const { onScroll, barStyle, scrollY } = useCollapsingHeader();
   // Map controls fade and lift away as the sheet rises over them, like Maps
   const mapControlsStyle = useAnimatedStyle(() => ({

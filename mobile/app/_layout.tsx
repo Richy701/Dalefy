@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
-import { Appearance, Platform, View, AppState, InteractionManager, Text, TextInput, Linking } from "react-native";
+import { Appearance, Platform, View, AppState, Text, TextInput, Linking } from "react-native";
 import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -158,10 +158,10 @@ function AppStack() {
   useEffect(() => {
     if (!ready) return;
     let t: ReturnType<typeof setTimeout> | null = null;
-    const task = InteractionManager.runAfterInteractions(() => {
+    const idle = requestIdleCallback(() => {
       t = setTimeout(() => setSettled(true), 1500);
     });
-    return () => { task.cancel(); if (t) clearTimeout(t); };
+    return () => { cancelIdleCallback(idle); if (t) clearTimeout(t); };
   }, [ready]);
   const pendingTripNav = useRef<string | null>(null);
   const tourShown = useRef(false);

@@ -5,6 +5,7 @@ import {
   View, Text, ScrollView, StyleSheet, Dimensions, FlatList,
   Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
 } from "react-native";
+import type { HostInstance } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,7 +20,7 @@ import Animated, {
   interpolate, Extrapolation,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -732,7 +733,7 @@ const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C
   onDelete?: () => void;
   C: ThemeColors;
 }) {
-  const tileRef = useRef<View>(null);
+  const tileRef = useRef<HostInstance>(null);
   const aspectRef = useRef<number | undefined>(undefined);
   const open = () => {
     const node = tileRef.current;

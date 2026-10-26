@@ -90,7 +90,7 @@
         "projectId": "4bffc7b2-6f5d-481c-8712-44e8d9107dbb"
       }
     },
-    "runtimeVersion": "1.0.0-sdk57-scenes-20261026",
+    "runtimeVersion": "1.0.0-sdk58-20261026",
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",

@@ -41,14 +41,14 @@ function TripCountdownWidget(
   // ── Small: Empty ──
   if (isSmall && state === "empty") {
     return (
-      <VStack
+      <VStack spacing={0}
         modifiers={[
           padding({ all: 14 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
           background(bg),
         ]}
       >
-        <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+        <HStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
           <Image systemName="airplane" size={10} color={accent} />
           <Text
             modifiers={[
@@ -97,14 +97,14 @@ function TripCountdownWidget(
   // ── Small: Active ──
   if (isSmall && state === "active") {
     return (
-      <VStack
+      <VStack spacing={0}
         modifiers={[
           padding({ all: 14 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
           background(bg),
         ]}
       >
-        <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+        <HStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
           <Image systemName="airplane" size={10} color={accent} />
           <Text
             modifiers={[
@@ -153,14 +153,14 @@ function TripCountdownWidget(
   // ── Small: Upcoming ──
   if (isSmall) {
     return (
-      <VStack
+      <VStack spacing={0}
         modifiers={[
           padding({ all: 14 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
           background(bg),
         ]}
       >
-        <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+        <HStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
           <Image systemName="airplane" size={10} color={accent} />
           <Text
             modifiers={[
@@ -217,14 +217,14 @@ function TripCountdownWidget(
   // ── Medium: Empty ──
   if (state === "empty") {
     return (
-      <VStack
+      <VStack spacing={0}
         modifiers={[
           padding({ all: 16 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
           background(bg),
         ]}
       >
-        <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+        <HStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
           <Image systemName="airplane" size={12} color={accent} />
           <Text
             modifiers={[
@@ -264,14 +264,14 @@ function TripCountdownWidget(
   // ── Medium: Active ──
   if (state === "active") {
     return (
-      <HStack
+      <HStack spacing={0}
         modifiers={[
           padding({ all: 16 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
           background(bg),
         ]}
       >
-        <VStack modifiers={[frame({ width: 90 })]}>
+        <VStack spacing={0} modifiers={[frame({ width: 90 })]}>
           <Image systemName="airplane" size={12} color={accent} />
           <Spacer />
           <Text
@@ -294,7 +294,7 @@ function TripCountdownWidget(
 
         <Spacer />
 
-        <VStack>
+        <VStack spacing={0}>
           <Text
             modifiers={[
               font({ size: 10, weight: "bold" }),
@@ -342,14 +342,14 @@ function TripCountdownWidget(
 
   // ── Medium: Upcoming ──
   return (
-    <HStack
+    <HStack spacing={0}
       modifiers={[
         padding({ all: 16 }),
         frame({ maxWidth: Infinity, maxHeight: Infinity }),
         background(bg),
       ]}
     >
-      <VStack modifiers={[frame({ width: 80 })]}>
+      <VStack spacing={0} modifiers={[frame({ width: 80 })]}>
         <Image systemName="airplane" size={12} color={accent} />
         <Spacer />
         <Text
@@ -372,7 +372,7 @@ function TripCountdownWidget(
 
       <Spacer />
 
-      <VStack>
+      <VStack spacing={0}>
         <Text
           modifiers={[
             font({ size: 10, weight: "bold" }),
@@ -392,7 +392,7 @@ function TripCountdownWidget(
         >
           {props.destination || props.tripName}
         </Text>
-        <HStack>
+        <HStack spacing={0}>
           <Image systemName="calendar" size={10} color={textSecondary} />
           <Text
             modifiers={[
