@@ -179,6 +179,17 @@ test('push log: trip staff read it per trip, travellers and outsiders cannot, on
   await assertSucceeds(context('server').firestore().doc('push_log/3-server').set({ trip_id: 'published', title: 'x', body: 'y', recipients: [], sent_at: 'now' }));
 });
 
+test('push log: travellers read what was sent to their own account, as their inbox, and nobody else\'s', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await c.firestore().doc('push_log/4-inbox').set({ trip_id: 'published', trip_name: 'Original', category: 'message', title: 'Hi', body: 'There', recipients: ['traveler', 'device'], sent_by: 'owner', sent_at: '2026-01-01T00:00:00.000Z', sent: 1, failed: 0 });
+  });
+  const inbox = (db, uid) => db.collection('push_log').where('recipients', 'array-contains', uid).get();
+  await assertSucceeds(inbox(context('traveler').firestore(), 'traveler'));
+  await assertFails(inbox(context('outsider').firestore(), 'traveler'));
+  await assertSucceeds(context('traveler').firestore().doc('push_log/4-inbox').get());
+  await assertFails(context('outsider').firestore().doc('push_log/4-inbox').get());
+});
+
 test('travellers stamp when they last opened the app, and nothing else that way', async () => {
   const mine = context('traveler').firestore().doc('trip_members/traveler_published');
   await assertSucceeds(mine.set({ last_seen_at: '2026-01-02T00:00:00.000Z', platform: 'ios' }, { merge: true }));

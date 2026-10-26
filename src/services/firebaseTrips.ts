@@ -208,6 +208,8 @@ export interface PushLogEntry {
   sent_at: string;
   sent: number;
   failed: number;
+  /** People it didn't notify (it's still in their app inbox); only on messages sent since this was recorded */
+  missed?: string[];
 }
 
 /**
@@ -279,14 +281,19 @@ export async function unlinkTraveler(tripId: string, travelerId: string): Promis
 }
 
 /** Delete a device's trip_members docs (both device-keyed and uid-keyed) on the given trips */
-export async function deleteAppUser(deviceId: string, tripIds: string[]): Promise<number> {
+/** A roster entry someone picked in the app, so removing them can take it off the trip too */
+export interface RosterLink { tripId: string; travelerId: string }
+
+const rosterLinks = (docs: { data(): Record<string, any> }[]): RosterLink[] =>
+  docs.map(d => ({ tripId: d.data().trip_id, travelerId: d.data().linked_traveler_id }))
+    .filter((l): l is RosterLink => typeof l.tripId === "string" && typeof l.travelerId === "string" && !!l.travelerId);
+
+export async function deleteAppUser(deviceId: string, tripIds: string[]): Promise<{ count: number; links: RosterLink[] }> {
   const refs = new Map<string, import("firebase/firestore").DocumentReference>();
+  const matched = (await memberDocsOfTrips(tripIds)).filter(d => isPerson(d.data(), deviceId));
+  for (const d of matched) refs.set(d.id, d.ref);
 
-  for (const d of await memberDocsOfTrips(tripIds)) {
-    if (isPerson(d.data(), deviceId)) refs.set(d.id, d.ref);
-  }
-
-  if (refs.size === 0) return 0;
+  if (refs.size === 0) return { count: 0, links: [] };
 
   const db = firebaseDb();
   const allRefs = [...refs.values()];
@@ -297,14 +304,14 @@ export async function deleteAppUser(deviceId: string, tripIds: string[]): Promis
     await batch.commit();
   }
   logger.log("deleteAppUser", `deleted ${allRefs.length} docs for device ${deviceId}`);
-  return allRefs.length;
+  return { count: allRefs.length, links: rosterLinks(matched) };
 }
 
 /** Delete several people's trip_members docs on the given trips with one roster read; returns how many people had any */
-export async function deleteAppUsers(personKeys: string[], tripIds: string[]): Promise<number> {
+export async function deleteAppUsers(personKeys: string[], tripIds: string[]): Promise<{ count: number; links: RosterLink[] }> {
   const keys = new Set(personKeys);
   const docs = (await memberDocsOfTrips(tripIds)).filter(d => keys.has(d.data().device_id) || keys.has(d.data().uid));
-  if (docs.length === 0) return 0;
+  if (docs.length === 0) return { count: 0, links: [] };
   const db = firebaseDb();
   for (let i = 0; i < docs.length; i += 500) {
     const batch = writeBatch(db);
@@ -314,7 +321,7 @@ export async function deleteAppUsers(personKeys: string[], tripIds: string[]): P
   const found = new Set(docs.flatMap(d => [d.data().device_id, d.data().uid].filter(Boolean)));
   const people = [...keys].filter(k => found.has(k)).length;
   logger.log("deleteAppUsers", `deleted ${docs.length} docs for ${people} people`);
-  return people;
+  return { count: people, links: rosterLinks(docs) };
 }
 
 /** Update the role on all of a person's trip_members docs for one trip */

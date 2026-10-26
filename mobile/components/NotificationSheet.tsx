@@ -19,6 +19,7 @@ import { T, R, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constant
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
+import { notificationPath } from "@/services/notificationTarget";
 
 const ON_RED = "#fff";
 const SWIPE_SLOT = 76;
@@ -117,7 +118,7 @@ export function NotificationList({ onClose }: Props) {
     if (!n.read) markRead(n.id);
     if (n.tripId) {
       onClose();
-      setTimeout(() => router.push(`/trip/${n.tripId}`), 300);
+      setTimeout(() => router.push(notificationPath({ tripId: n.tripId!, eventId: n.eventId, date: n.date, infoId: n.infoId }) as any), 300);
     }
   }, [markRead, onClose, router]);
 

@@ -108,7 +108,7 @@ export function useTripNotifications() {
     const deviceToday = todayInTz(undefined);
     AsyncStorage.getItem(SEED_KEY).then(lastSeeded => {
       if (lastSeeded === deviceToday) return;
-      if (notifications.length > 0) clearAll();
+      if (notifications.length > 0) clearAll({ keepInbox: true });
 
       const now = new Date();
       const seen = new Set<string>();

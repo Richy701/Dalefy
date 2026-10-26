@@ -16,7 +16,7 @@ import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_f
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
-import { sendPush, logPush } from "./_expoPush.js";
+import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 import { tripUpdatedEmail } from "../src/lib/email/templates.js";
 
 const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.app").trim().replace(/\/$/, "");
@@ -106,12 +106,13 @@ export default async function handler(req: any, res: any) {
     const body = changes.slice(0, 3).join("\n") + (extra > 0 ? `\nand ${extra} more change${extra === 1 ? "" : "s"}` : "");
 
     // 4. Send via Expo Push API (batches of 100)
+    const logId = newPushLogId();
     const messages = tokens.map(token => ({
       to: token,
       title,
       subtitle: tripName,
       body,
-      data: { tripId, category: "update" },
+      data: { tripId, category: "update", logId },
       categoryId: "trip",
       sound: "default" as const,
     }));
@@ -126,7 +127,7 @@ export default async function handler(req: any, res: any) {
       recipients: allMembers.flatMap(d => [String(decodeValue(d.fields?.device_id) ?? ""), String(decodeValue(d.fields?.uid) ?? "")]),
       sentBy: payload.sub ?? "",
       tickets: results,
-    });
+    }, logId);
 
     res.json({ sent: tokens.length, emailed, results });
   } catch (err: any) {

@@ -190,4 +190,10 @@ export interface Notification {
   read: boolean;
   type: "info" | "success" | "warning" | "flight" | "landed" | "boarding" | "hotel" | "dining" | "activity" | "transfer";
   tripId?: string;
+  /** Where tapping it goes, when the organiser pointed it somewhere */
+  eventId?: string;
+  date?: string;
+  infoId?: string;
+  /** In the server's push log, so it comes back on any phone and survives the daily reset */
+  logged?: boolean;
 }

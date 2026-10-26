@@ -1,7 +1,7 @@
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
-import { sendPush, logPush } from "./_expoPush.js";
+import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 
 /** True if the user owns the trip or belongs to the trip's organization. */
 async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
@@ -14,6 +14,29 @@ async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
   return !!(await getDocument("org_members", `${uid}_${orgId}`).catch(() => null));
 }
 
+interface Person { key: string; name: string; uid: string; deviceIds: string[]; travelerIds: string[] }
+
+/** One entry per person on the trip: their account if they signed in, else their device, so two phones aren't two people */
+function peopleOf(memberDocs: any[]): Person[] {
+  const byKey = new Map<string, Person>();
+  for (const d of memberDocs) {
+    const f = d.fields ?? {};
+    const uid = String(decodeValue(f.uid) ?? "");
+    const deviceId = String(decodeValue(f.device_id) ?? "");
+    const key = uid || deviceId;
+    if (!key) continue;
+    const p = byKey.get(key) ?? { key, name: "", uid, deviceIds: [], travelerIds: [] };
+    if (!p.name) p.name = String(decodeValue(f.name) ?? "");
+    if (deviceId && !p.deviceIds.includes(deviceId)) p.deviceIds.push(deviceId);
+    const linked = String(decodeValue(f.linked_traveler_id) ?? "");
+    if (linked && !p.travelerIds.includes(linked)) p.travelerIds.push(linked);
+    byKey.set(key, p);
+  }
+  return [...byKey.values()];
+}
+
+type Audience = "all" | { people: string[] } | { eventId: string };
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -24,56 +47,120 @@ export default async function handler(req: any, res: any) {
 
   if (!rateLimit(req, res, { bucket: "send-push", limit: 30, windowMs: 60_000 })) return;
 
-  const { deviceId, title, body } = req.body ?? {};
-  if (!deviceId || !title || !body) {
-    return res.status(400).json({ error: "deviceId, title, and body required" });
+  // Older clients send { deviceId, title, body } for one person
+  const { deviceId, body, target, urgent, dryRun } = req.body ?? {};
+  let { tripId, to, title } = req.body ?? {};
+  if (!to && typeof deviceId === "string") to = { people: [deviceId] };
+  if (title === "Dalefy") title = "";
+  if (!to || (!dryRun && (typeof body !== "string" || !body.trim()))) {
+    return res.status(400).json({ error: "to and body required" });
   }
-  if (typeof deviceId !== "string" || typeof title !== "string" || title.length > 200 || typeof body !== "string" || body.length > 1000) {
+  if ((title && (typeof title !== "string" || title.length > 200)) || (typeof body === "string" && body.length > 1000)) {
     return res.status(400).json({ error: "Title max 200 chars, body max 1000 chars" });
   }
+  const audience = to as Audience;
 
   try {
-    // The key names a person: their account (uid), or their device for joins made before accounts.
-    // Only an organizer of a trip they've joined may message them, otherwise any
-    // signed-in user (travelers included) could push to anyone.
-    const memberships = [
-      ...await queryDocuments("trip_members", "uid", deviceId, 500),
-      ...await queryDocuments("trip_members", "device_id", deviceId, 500),
-    ];
-    const tripIds = [...new Set(memberships.map(d => decodeValue(d.fields?.trip_id)).filter(Boolean))] as string[];
-    let allowedTrip: string | null = null;
-    for (const tripId of tripIds) {
-      if (await canManageTrip(payload.sub!, tripId)) { allowedTrip = tripId; break; }
+    // Without a trip (old one-person requests), use the first trip of theirs this organiser runs
+    if (!tripId && audience !== "all" && "people" in audience && audience.people.length === 1) {
+      const key = audience.people[0];
+      const memberships = [
+        ...await queryDocuments("trip_members", "uid", key, 500),
+        ...await queryDocuments("trip_members", "device_id", key, 500),
+      ];
+      for (const id of new Set(memberships.map(d => String(decodeValue(d.fields?.trip_id) ?? "")).filter(Boolean))) {
+        if (await canManageTrip(payload.sub!, id)) { tripId = id; break; }
+      }
     }
-    if (!allowedTrip) return res.status(403).json({ error: "Not authorized to message this user" });
+    if (typeof tripId !== "string" || !tripId) return res.status(403).json({ error: "Not authorized to message this user" });
+    // Only the trip's own organisers may message its travellers
+    if (!(await canManageTrip(payload.sub!, tripId))) return res.status(403).json({ error: "Not authorized for this trip" });
 
-    // Every phone this person has joined from, plus tokens saved against their account
-    const deviceIds = [...new Set([deviceId, ...memberships.map(d => String(decodeValue(d.fields?.device_id) ?? ""))].filter(Boolean))];
+    const trip = await getDocument("trips", tripId);
+    const tripName = String(decodeValue(trip?.fields?.name) ?? "");
+    const everyone = peopleOf(await queryDocuments("trip_members", "trip_id", tripId, 20000));
+
+    let chosen: Person[];
+    if (audience === "all") {
+      chosen = everyone;
+    } else if ("people" in audience) {
+      const keys = new Set(audience.people);
+      chosen = everyone.filter(p => keys.has(p.key) || p.deviceIds.some(id => keys.has(id)) || (p.uid && keys.has(p.uid)));
+    } else {
+      // Everyone the event is assigned to; an event assigned to no one is for the whole group
+      const events: any[] = decodeValue(trip?.fields?.events) ?? [];
+      const ev = events.find(e => e?.id === audience.eventId);
+      if (!ev) return res.status(404).json({ error: "Event not found" });
+      const assigned = new Set<string>(Array.isArray(ev.assignedTo) ? ev.assignedTo : []);
+      chosen = assigned.size ? everyone.filter(p => p.travelerIds.some(id => assigned.has(id))) : everyone;
+    }
+
+    // Every phone they joined from, plus tokens saved against their account
     const tokenDocs = [
-      ...await queryDocumentsIn("push_tokens", "device_id", deviceIds),
-      ...await queryDocuments("push_tokens", "user_id", deviceId, 10),
+      ...await queryDocumentsIn("push_tokens", "device_id", chosen.flatMap(p => p.deviceIds)),
+      ...await queryDocumentsIn("push_tokens", "user_id", chosen.map(p => p.uid).filter(Boolean)),
     ];
-    const tokens = [...new Set(tokenDocs.map(d => decodeValue(d.fields?.token)).filter((t): t is string => typeof t === "string" && !!t))];
-
-    if (!tokens.length) {
-      return res.json({ sent: 0, reason: "No push token found for this user" });
+    const tokensOf = new Map<string, string[]>();
+    for (const p of chosen) {
+      const ids = new Set([...p.deviceIds, p.uid].filter(Boolean));
+      const tokens = tokenDocs
+        .filter(d => ids.has(String(decodeValue(d.fields?.device_id) ?? "")) || ids.has(String(decodeValue(d.fields?.user_id) ?? "")))
+        .map(d => decodeValue(d.fields?.token))
+        .filter((t): t is string => typeof t === "string" && !!t);
+      tokensOf.set(p.key, [...new Set(tokens)]);
     }
 
-    const results = await sendPush(tokens.map(to => ({ to, title, body, sound: "default" })));
-    const sent = results.filter(r => r?.status === "ok").length;
-    const tripName = memberships.find(d => decodeValue(d.fields?.trip_id) === allowedTrip)?.fields?.trip_name;
-    await logPush({
-      tripId: allowedTrip,
-      tripName: String(decodeValue(tripName) ?? ""),
-      category: "message",
-      title,
-      body,
-      recipients: [deviceId, ...deviceIds, ...memberships.map(d => String(decodeValue(d.fields?.uid) ?? ""))],
-      sentBy: payload.sub!,
-      tickets: results,
-    });
+    const reachable = chosen.filter(p => (tokensOf.get(p.key) ?? []).length > 0);
+    if (dryRun) {
+      return res.json({
+        recipients: chosen.map(p => ({ key: p.key, name: p.name, reachable: reachable.includes(p) })),
+        tripName,
+      });
+    }
 
-    res.json({ sent, result: results[0] });
+    const tapTarget = {
+      ...(typeof target?.eventId === "string" && target.eventId ? { eventId: target.eventId } : {}),
+      ...(typeof target?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(target.date) ? { date: target.date } : {}),
+      ...(typeof target?.infoId === "string" && target.infoId ? { infoId: target.infoId } : {}),
+    };
+    const logId = newPushLogId();
+    const finalTitle = (title as string)?.trim() || tripName || "Message from your organiser";
+    const messages = reachable.flatMap(p => (tokensOf.get(p.key) ?? []).map(to => ({
+      to,
+      title: finalTitle,
+      // The trip in the iOS subtitle, unless it is already the title
+      ...(finalTitle !== tripName && tripName ? { subtitle: tripName } : {}),
+      body: body.trim(),
+      data: { tripId, category: "message", logId, ...tapTarget },
+      categoryId: tapTarget.eventId ? "event" : "trip",
+      // Urgent ones come through Focus modes, like flight alerts
+      interruptionLevel: urgent ? "time-sensitive" as const : "active" as const,
+      sound: "default" as const,
+      person: p.key,
+    })));
+
+    const tickets = await sendPush(messages.map(({ person: _person, ...m }) => m));
+    const delivered = new Set(messages.filter((_, i) => tickets[i]?.status === "ok").map(m => m.person));
+    const results = chosen.map(p => ({
+      key: p.key,
+      name: p.name,
+      status: delivered.has(p.key) ? "sent" : reachable.includes(p) ? "failed" : "no_notifications",
+    }));
+
+    await logPush({
+      tripId,
+      tripName,
+      category: "message",
+      title: finalTitle,
+      body: body.trim(),
+      recipients: chosen.flatMap(p => [p.key, p.uid, ...p.deviceIds]),
+      sentBy: payload.sub!,
+      tickets,
+      target: tapTarget,
+      missed: results.filter(r => r.status !== "sent").map(r => r.key),
+    }, logId);
+
+    res.json({ sent: delivered.size, total: chosen.length, results, logId });
   } catch (err: any) {
     console.error("[send-push] Error:", err);
     res.status(500).json({ error: "Internal error" });

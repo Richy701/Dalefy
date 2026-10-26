@@ -265,9 +265,12 @@ service cloud.firestore {
     }
 
     // ── Push log: what the server sent to whom. The trip's staff read it
-    // (queries must filter on trip_id, like rosters); only the server writes.
+    // (queries must filter on trip_id, like rosters); each traveller reads what was
+    // sent to their account, as their in-app inbox (queries filter recipients
+    // array-contains their uid); only the server writes.
     match /push_log/{logId} {
-      allow read: if request.auth != null && isTripStaff(resource.data.trip_id);
+      allow read: if request.auth != null
+        && (request.auth.uid in resource.data.recipients || isTripStaff(resource.data.trip_id));
       allow write: if isCronUser();
     }
 

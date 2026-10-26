@@ -91,13 +91,18 @@ export interface PushLogEntry {
   /** The organiser's uid, or "system" for the flight cron */
   sentBy: string;
   tickets: Ticket[];
+  /** Where tapping it in the app goes */
+  target?: { eventId?: string; date?: string; infoId?: string };
+  /** People it didn't reach (no notifications, or Expo refused it) */
+  missed?: string[];
 }
 
-/** One push_log row per send, so organisers can see what reached whom. Never throws. */
-export async function logPush(entry: PushLogEntry): Promise<void> {
+/** Time-first IDs so "newest first" is just descending document order, no index needed. Made before sending, so the push can carry it and the app's inbox matches it to the log. */
+export const newPushLogId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** One push_log row per send, so organisers can see what reached whom; it is also the travellers' in-app inbox. Never throws. */
+export async function logPush(entry: PushLogEntry, id = newPushLogId()): Promise<void> {
   const sent = entry.tickets.filter(t => t.status === "ok").length;
-  // Time-first IDs so "newest first" is just descending document order, no index needed
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   try {
     await setDocument("push_log", id, {
       trip_id: { stringValue: entry.tripId },
@@ -110,6 +115,10 @@ export async function logPush(entry: PushLogEntry): Promise<void> {
       sent_at: { stringValue: new Date().toISOString() },
       sent: { integerValue: String(sent) },
       failed: { integerValue: String(entry.tickets.length - sent) },
+      ...(entry.target?.eventId ? { event_id: { stringValue: entry.target.eventId } } : {}),
+      ...(entry.target?.date ? { date: { stringValue: entry.target.date } } : {}),
+      ...(entry.target?.infoId ? { info_id: { stringValue: entry.target.infoId } } : {}),
+      ...(entry.missed?.length ? { missed: { arrayValue: { values: [...new Set(entry.missed)].map(v => ({ stringValue: v })) } } } : {}),
     });
   } catch (err) {
     console.warn("push log:", err instanceof Error ? err.message : err);

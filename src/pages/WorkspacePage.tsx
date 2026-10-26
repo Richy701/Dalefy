@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple,
+  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
@@ -66,6 +66,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
+import { MessageDialog } from "@/components/shared/MessageDialog";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
@@ -411,6 +412,7 @@ export function WorkspacePage() {
   const [tripImageLastQuery, setTripImageLastQuery] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [sendInviteOpen, setSendInviteOpen] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
   const [reimportOpen, setReimportOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
@@ -1211,6 +1213,7 @@ export function WorkspacePage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-card border border-border shadow-2xl rounded-xl p-1">
                     <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-muted-foreground" /> Send to travellers</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMessageOpen(true)} className={item}><Megaphone className="h-4 w-4 text-muted-foreground" /> Message travellers</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-muted-foreground" /> Share link &amp; PIN</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-secondary" />
                     <DropdownMenuItem onClick={() => setPreviewOpen(true)} className={item}><Eye className="h-4 w-4" /> Preview itinerary</DropdownMenuItem>
@@ -1280,6 +1283,9 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <EnvelopeOpen className="h-4 w-4" /> Send to Client
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMessageOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+                <Megaphone className="h-4 w-4" /> Message travellers
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <FileText className="h-4 w-4" /> Export PDF
@@ -2792,6 +2798,8 @@ export function WorkspacePage() {
         onPublish={handlePublish}
         publishing={publishing}
       />
+
+      {messageOpen && <MessageDialog open onOpenChange={setMessageOpen} trips={[trip]} />}
 
       <SendInviteModal
         open={sendInviteOpen}

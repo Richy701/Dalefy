@@ -1,11 +1,11 @@
 import {
   collection, doc, getDocs, setDoc, deleteDoc, getDoc,
-  query, where, onSnapshot,
+  query, where, onSnapshot, limit,
   type Unsubscribe,
 } from "firebase/firestore";
 import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import type { Trip } from "@/shared/types";
+import type { Trip, Notification } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
 import { AppState, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -349,7 +349,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
   });
 }
 
-const LAST_SEEN_EVERY_MS = 6 * 60 * 60_000;
+const LAST_SEEN_EVERY_MS = 15 * 60_000;
 
 /** Stamps this account's memberships with when the app was last opened, so organisers can see who is active */
 export async function touchLastSeen(): Promise<void> {
@@ -497,4 +497,33 @@ function legacyDocToTrip(id: string, data: Record<string, unknown>): Trip {
   delete published.travelerIds;
   published.travelers = published.travelers?.map(({ id, name, initials }) => ({ id, name, initials }));
   return published;
+}
+
+/** What organisers, flight alerts and itinerary changes have sent this account, from the server's push log; the app's inbox, however the push arrived */
+export async function fetchInbox(): Promise<Notification[]> {
+  try {
+    await waitForAuth();
+    const uid = firebaseAuth().currentUser?.uid;
+    if (!uid) return [];
+    const snap = await getDocs(query(collection(firebaseDb(), "push_log"), where("recipients", "array-contains", uid), limit(50)));
+    return snap.docs.map(d => {
+      const e = d.data();
+      const sentAt = new Date(typeof e.sent_at === "string" ? e.sent_at : Number(d.id.split("-")[0]));
+      return {
+        id: d.id,
+        message: String(e.title ?? "Trip update"),
+        detail: String(e.body ?? ""),
+        time: sentAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        read: false,
+        type: e.category === "flight" ? "flight" : "info",
+        tripId: typeof e.trip_id === "string" ? e.trip_id : undefined,
+        eventId: typeof e.event_id === "string" ? e.event_id : undefined,
+        date: typeof e.date === "string" ? e.date : undefined,
+        infoId: typeof e.info_id === "string" ? e.info_id : undefined,
+        logged: true,
+      } satisfies Notification;
+    });
+  } catch {
+    return [];
+  }
 }

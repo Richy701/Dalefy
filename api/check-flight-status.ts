@@ -3,7 +3,7 @@ import { pickBestFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
-import { sendPush, logPush, checkPushReceipts } from "./_expoPush.js";
+import { sendPush, logPush, checkPushReceipts, newPushLogId } from "./_expoPush.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on upcoming flights,
@@ -315,13 +315,14 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
     if (tokens.length === 0) continue;
 
     const { title, body } = flightPushCopy(update);
+    const logId = newPushLogId();
 
     const messages = tokens.map(token => ({
       to: token,
       title,
       subtitle: update.tripName,
       body,
-      data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum },
+      data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum, logId },
       // "View flight" button, and it comes through Focus modes
       categoryId: "flight",
       interruptionLevel: "time-sensitive" as const,
@@ -338,7 +339,8 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
       recipients: peopleByTrip.get(update.tripId) ?? [],
       sentBy: "system",
       tickets,
-    });
+      target: { eventId: update.eventId },
+    }, logId);
   }
 }
 

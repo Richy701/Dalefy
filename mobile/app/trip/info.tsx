@@ -14,7 +14,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, statusTone, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import type { TripInfo } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { CachedImage } from "@/components/CachedImage";
@@ -197,7 +197,11 @@ function hostname(url: string): string {
 }
 
 export default function InfoScreen() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  // itemId: a message from the organiser pointed here, so open on that item
+  const { tripId, itemId } = useLocalSearchParams<{ tripId: string; itemId?: string }>();
+  const scrollRef = useRef<ScrollView>(null);
+  const contentY = useRef(0);
+  const jumped = useRef(false);
   const { trips } = useTrips();
   const router = useRouter();
   const { C: themeC, isDark: themeDark } = useTheme();
@@ -296,7 +300,15 @@ export default function InfoScreen() {
 
     return (
       <ContextMenu key={item.id} {...shareMenu(item)}>
-        <View style={styles.topic}>
+        <View
+          style={styles.topic}
+          onLayout={item.id === itemId ? e => {
+            if (jumped.current) return;
+            jumped.current = true;
+            const y = contentY.current + e.nativeEvent.layout.y - (insets.top + 56);
+            setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true }), 80);
+          } : undefined}
+        >
           <Text
             style={styles.groupTitle}
             accessibilityRole="header"
@@ -474,7 +486,7 @@ export default function InfoScreen() {
     <View style={styles.safe}>
       {photoPage && <PhotoBackdrop uri={coverImage!} />}
       <Stack.Screen options={headerOptions("Trip info")} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
         {ordered.length === 0 ? (
           <View style={{ paddingTop: S.xl }}>
             <EmptyState
@@ -486,7 +498,7 @@ export default function InfoScreen() {
             />
           </View>
         ) : (
-          <View style={styles.content}>
+          <View style={styles.content} onLayout={e => { contentY.current = e.nativeEvent.layout.y; }}>
             <View style={styles.intro}>
               <Text style={styles.introName} numberOfLines={2}>{trip.name}</Text>
               <Text style={styles.introSub}>Everything your organiser has shared for this trip</Text>

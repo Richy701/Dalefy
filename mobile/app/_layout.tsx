@@ -52,6 +52,8 @@ import { BrandProvider } from "@/context/BrandContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
+import { touchLastSeen } from "@/services/firebaseTrips";
+import { notificationPath, notificationTarget } from "@/services/notificationTarget";
 let QuickActions: any = null;
 let useQuickActionRouting: any = () => {};
 try {
@@ -146,7 +148,7 @@ function AppStack() {
     } catch { /* not available */ }
   }, []);
 
-  const { addNotification } = useNotifications();
+  const { addNotification, syncInbox } = useNotifications();
   const { prefs, setPref } = usePreferences();
   const auth = useAuth();
   const ready = (fontsLoaded || fontError) && tripsReady && prefsReady && !auth.isLoading;
@@ -176,10 +178,12 @@ function AppStack() {
       if (!allowed) return;
 
       addNotification({
+        ...(typeof data?.logId === "string" ? { id: data.logId, logged: true } : {}),
         message: title ?? "Trip Update",
         detail: body ?? "",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        type: "info",
+        type: category === "flight_status" ? "flight" : "info",
+        ...notificationTarget(data),
       });
     });
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -187,15 +191,15 @@ function AppStack() {
       const tripId = data.tripId as string | undefined;
       const eventId = data.eventId as string | undefined;
       const location = data.location as string | undefined;
+      // Opened from the lock screen, so it never reached the in-app list; the inbox sync fills in anything else
+      syncInbox();
       // "Directions" goes straight to Maps; everything else opens the event, or the trip
       if (response.actionIdentifier === "directions" && location) {
         Linking.openURL(`maps://?q=${encodeURIComponent(location)}`).catch(() => {});
         return;
       }
       if (!tripId) return;
-      const path = eventId && response.actionIdentifier !== "view-trip"
-        ? `/trip/event?tripId=${encodeURIComponent(tripId)}&eventId=${encodeURIComponent(eventId)}`
-        : `/trip/${tripId}`;
+      const path = response.actionIdentifier === "view-trip" ? `/trip/${tripId}` : notificationPath({ tripId, ...notificationTarget(data) });
       if (ready) {
         router.push(path as any);
       } else {
@@ -203,7 +207,7 @@ function AppStack() {
       }
     });
     return () => { recvSub.remove(); tapSub.remove(); };
-  }, [router, addNotification, prefs.tripReminders, prefs.itineraryUpdates, ready]);
+  }, [router, addNotification, syncInbox, prefs.tripReminders, prefs.itineraryUpdates, ready]);
 
   useEffect(() => {
     if (ready && pendingTripNav.current) {
@@ -343,6 +347,12 @@ function DeferredServices() {
   useEffect(() => {
     registerForPushNotifications({ prompt: hasTrips && seenTourAtLaunch });
   }, [hasTrips, seenTourAtLaunch]);
+
+  // Most opens are resumes from the background, not launches; stamp those too (throttled inside)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", state => { if (state === "active") void touchLastSeen(); });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     let Upd: typeof import("expo-updates") | null = null;
