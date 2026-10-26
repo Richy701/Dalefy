@@ -4,6 +4,8 @@
  * Imported by BOTH api/image-proxy.ts (Vercel) and vite.config.ts (local dev)
  * so the security checks can never drift.
  */
+import https from "node:https";
+import type { IncomingMessage } from "node:http";
 import { HttpError } from "./_httpError.js";
 
 export function resolveTarget(
@@ -35,6 +37,12 @@ export function resolveTarget(
     throw new HttpError(403, "Only HTTPS allowed");
   }
 
+  assertPublicHost(parsed);
+
+  return { target: url };
+}
+
+function assertPublicHost(parsed: URL): void {
   // Block private/internal hostnames (IPv4 and IPv6).
   // URL.hostname keeps the brackets on IPv6 literals ("[::1]"), so strip them
   // before matching or every v6 check below silently misses.
@@ -65,44 +73,112 @@ export function resolveTarget(
   ) {
     throw new HttpError(403, "Private addresses not allowed");
   }
+}
 
-  return { target: url };
+const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
+const TIMEOUT_MS = 5000;
+
+/**
+ * Raw https GET. Unlike global fetch (undici) this never decodes
+ * Content-Encoding, so attacker-controlled Brotli bytes never reach the
+ * zlib decoder (CVE-2026-111497). Redirects are followed by hand so every
+ * hop passes the same HTTPS + public-host guard as the original URL.
+ */
+function getRaw(url: string, deadline: number): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return reject(new HttpError(502, "Failed to fetch image"));
+    const req = https.get(url, { headers: { "accept-encoding": "identity", "user-agent": "node" } }, (resp) => {
+      clearTimeout(timer);
+      resolve(resp);
+    });
+    const timer = setTimeout(() => req.destroy(new Error("timeout")), remaining);
+    req.on("error", () => {
+      clearTimeout(timer);
+      reject(new HttpError(502, "Failed to fetch image"));
+    });
+  });
+}
+
+function readBody(resp: IncomingMessage, deadline: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const timer = setTimeout(() => resp.destroy(new Error("timeout")), Math.max(0, deadline - Date.now()));
+    resp.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BYTES) {
+        clearTimeout(timer);
+        resp.destroy();
+        reject(new HttpError(413, "Image too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    resp.on("end", () => {
+      clearTimeout(timer);
+      resolve(Buffer.concat(chunks));
+    });
+    resp.on("error", () => {
+      clearTimeout(timer);
+      reject(new HttpError(502, "Failed to fetch image"));
+    });
+  });
 }
 
 export async function fetchImage(target: string): Promise<{ contentType: string; buffer: Buffer }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const deadline = Date.now() + TIMEOUT_MS;
+  let url = target;
 
-  let resp: Response;
-  try {
-    resp = await fetch(target, { signal: controller.signal });
-  } catch {
-    throw new HttpError(502, "Failed to fetch image");
-  } finally {
-    clearTimeout(timeout);
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const resp = await getRaw(url, deadline);
+    const status = resp.statusCode ?? 0;
+
+    if (status >= 300 && status < 400 && resp.headers.location) {
+      resp.resume();
+      let next: URL;
+      try {
+        next = new URL(resp.headers.location, url);
+      } catch {
+        throw new HttpError(502, "Failed to fetch image");
+      }
+      if (next.protocol !== "https:") throw new HttpError(403, "Only HTTPS allowed");
+      assertPublicHost(next);
+      url = next.href;
+      continue;
+    }
+
+    // Empty message → respond with the upstream status and no body
+    if (status < 200 || status >= 300) {
+      resp.resume();
+      throw new HttpError(status || 502, "");
+    }
+
+    // Compressed bodies are refused rather than decoded (see getRaw).
+    const encoding = String(resp.headers["content-encoding"] ?? "identity").toLowerCase();
+    if (encoding !== "identity") {
+      resp.destroy();
+      throw new HttpError(502, "Failed to fetch image");
+    }
+
+    const length = Number(resp.headers["content-length"]);
+    if (Number.isFinite(length) && length > MAX_BYTES) {
+      resp.destroy();
+      throw new HttpError(413, "Image too large");
+    }
+
+    const contentType = resp.headers["content-type"] || "image/jpeg";
+
+    // Verify response is actually an image
+    if (!contentType.startsWith("image/")) {
+      resp.destroy();
+      throw new HttpError(403, "Response is not an image");
+    }
+
+    const buffer = await readBody(resp, deadline);
+    return { contentType, buffer };
   }
 
-  // Empty message → respond with the upstream status and no body
-  if (!resp.ok) throw new HttpError(resp.status, "");
-
-  const contentType = resp.headers.get("content-type") || "image/jpeg";
-
-  // Verify response is actually an image
-  if (!contentType.startsWith("image/")) {
-    throw new HttpError(403, "Response is not an image");
-  }
-
-  let buffer: Buffer;
-  try {
-    buffer = Buffer.from(await resp.arrayBuffer());
-  } catch {
-    throw new HttpError(502, "Failed to fetch image");
-  }
-
-  // Reject responses over 5MB
-  if (buffer.length > 5 * 1024 * 1024) {
-    throw new HttpError(413, "Image too large");
-  }
-
-  return { contentType, buffer };
+  throw new HttpError(502, "Failed to fetch image");
 }

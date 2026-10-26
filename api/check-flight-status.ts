@@ -18,6 +18,8 @@ export default async function handler(req: any, res: any) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  console.log(`check-flight-status running on Node ${process.version}`);
+
   const rapidApiKey = process.env.RAPIDAPI_KEY;
   if (!rapidApiKey) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
 
