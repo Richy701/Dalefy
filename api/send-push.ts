@@ -1,4 +1,4 @@
-import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
+import { queryDocuments, queryDocumentsIn, getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
@@ -17,7 +17,7 @@ async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
 interface Person { key: string; name: string; uid: string; deviceIds: string[]; travelerIds: string[] }
 
 /** One entry per person on the trip: their account if they signed in, else their device, so two phones aren't two people */
-function peopleOf(memberDocs: any[]): Person[] {
+function peopleOf(memberDocs: FirestoreDoc[]): Person[] {
   const byKey = new Map<string, Person>();
   for (const d of memberDocs) {
     const f = d.fields ?? {};
@@ -88,7 +88,7 @@ export default async function handler(req: any, res: any) {
       chosen = everyone.filter(p => keys.has(p.key) || p.deviceIds.some(id => keys.has(id)) || (p.uid && keys.has(p.uid)));
     } else {
       // Everyone the event is assigned to; an event assigned to no one is for the whole group
-      const events: any[] = decodeValue(trip?.fields?.events) ?? [];
+      const events: { id?: string; assignedTo?: unknown }[] = decodeValue(trip?.fields?.events) ?? [];
       const ev = events.find(e => e?.id === audience.eventId);
       if (!ev) return res.status(404).json({ error: "Event not found" });
       const assigned = new Set<string>(Array.isArray(ev.assignedTo) ? ev.assignedTo : []);
@@ -136,11 +136,12 @@ export default async function handler(req: any, res: any) {
       // Urgent ones come through Focus modes, like flight alerts
       interruptionLevel: urgent ? "time-sensitive" as const : "active" as const,
       sound: "default" as const,
-      person: p.key,
     })));
 
-    const tickets = await sendPush(messages.map(({ person: _person, ...m }) => m));
-    const delivered = new Set(messages.filter((_, i) => tickets[i]?.status === "ok").map(m => m.person));
+    // Who each message is for, in send order, so tickets map back to people
+    const owners = reachable.flatMap(p => (tokensOf.get(p.key) ?? []).map(() => p.key));
+    const tickets = await sendPush(messages);
+    const delivered = new Set(owners.filter((_, i) => tickets[i]?.status === "ok"));
     const results = chosen.map(p => ({
       key: p.key,
       name: p.name,
