@@ -17,7 +17,7 @@ import { handedOffTrip } from "@/services/joinHandoff";
 import { Skeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft, Users, ShareNetwork, Check, CaretDown, CalendarBlank, Buildings, MagnifyingGlass,
   AirplaneTakeoff, AirplaneLanding, WarningCircle,
@@ -126,13 +126,12 @@ export default function SharedTripScreen() {
 
   // Joining can start from the first-run screens, which leave nothing underneath. Rebuild the stack as Home with
   // the trip on top, in one step, so Back goes Home instead of the trip being a dead end.
-  const navigation = useNavigation();
+  // By path, not route names: SDK 58's router no longer handles a reset to "(tabs)" from here
   const openJoinedTrip = useCallback((id: string) => {
-    navigation.reset({
-      index: 1,
-      routes: [{ name: "(tabs)" as never }, { name: "trip/[id]" as never, params: { id, arrived: "1" } as never }],
-    });
-  }, [navigation]);
+    if (router.canDismiss()) router.dismissAll();
+    router.replace("/(tabs)");
+    router.push({ pathname: "/trip/[id]", params: { id, arrived: "1" } });
+  }, [router]);
 
   const completeJoin = useCallback((linkedTravelerId?: string) => {
     if (!trip) return;
