@@ -3,6 +3,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { firebaseDb, firebaseAuth, waitForAuth, isFirebaseConfigured } from "./firebase";
 import { readPreferencesFromStorage } from "@/context/PreferencesContext";
 import { getDeviceId } from "./deviceId";
+import { touchLastSeen } from "./firebaseTrips";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 let Device: typeof import("expo-device") | null = null;
@@ -47,6 +48,8 @@ try {
 export async function registerForPushNotifications(
   { prompt = true }: { prompt?: boolean } = {},
 ): Promise<string | null> {
+  // Runs on every launch, so it doubles as the "last opened the app" stamp (throttled inside)
+  void touchLastSeen();
   if (!Notifications || !Device || !Device.isDevice) return null;
 
   try {

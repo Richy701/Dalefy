@@ -23,7 +23,8 @@ import { useNotifications } from "@/context/NotificationContext";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
-import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, deleteAppUsers, removeUserFromTrip, renameAppUser, updateTripMemberRole, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
+import { timeAgo } from "@/lib/timeAgo";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { apiFetch, ApiError, getIdToken } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -140,6 +141,8 @@ export function TravelersPage() {
   const [renameValue, setRenameValue] = useState("");
   const [sendingPush, setSendingPush] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
+  const [pushLog, setPushLog] = useState<PushLogEntry[] | null>(null);
+  const [pushLogReload, setPushLogReload] = useState(0);
   const [appUserPage, setAppUserPage] = useState(0);
   const APP_USERS_PER_PAGE = 10;
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -259,16 +262,27 @@ export function TravelersPage() {
     });
   }, []);
 
+  // What this person has been sent, loaded when their panel opens
+  useEffect(() => {
+    if (!detailPanelUser) { setPushLog(null); return; }
+    const mine = appUsers.filter(m => isPerson(m, detailPanelUser));
+    const keys = [detailPanelUser, ...mine.flatMap(m => [m.device_id, m.uid ?? ""])];
+    const trips = mine.map(m => m.trip_id);
+    let cancelled = false;
+    setPushLog(null);
+    fetchPushLog(keys, trips).then(log => { if (!cancelled) setPushLog(log); }).catch(() => { if (!cancelled) setPushLog([]); });
+    return () => { cancelled = true; };
+  }, [detailPanelUser, appUsers, pushLogReload]);
+
   const handleBulkDelete = useCallback(() => {
     if (selectedUsers.size === 0) return;
     setPendingConfirm({
       title: "Remove Users",
       description: `Remove ${selectedUsers.size} user${selectedUsers.size === 1 ? "" : "s"}? This deletes all their trip membership records.`,
       action: async () => {
+        // One roster read for everyone selected, not one per person
         let removed = 0;
-        for (const deviceId of selectedUsers) {
-          try { await deleteAppUser(deviceId, tripIds); removed++; } catch { /* skip */ }
-        }
+        try { removed = await deleteAppUsers([...selectedUsers], tripIds); } catch { /* skip */ }
         setAppUsers(prev => prev.filter(m => !selectedUsers.has(personKey(m))));
         setSelectedUsers(new Set());
         setBulkAction(false);
@@ -280,7 +294,7 @@ export function TravelersPage() {
 
   // One row per person: their account, or their device if they never signed in, so two phones aren't two people
   const groupedAppUsers = useMemo(() => {
-    const map = new Map<string, { name: string; avatar: string | null; email: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
+    const map = new Map<string, { name: string; avatar: string | null; email: string | null; lastSeen: string | null; platform: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
     for (const m of appUsers) {
       const existing = map.get(personKey(m));
       const tripEntry = { id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at, role: (m.role || "traveler") as TripMemberRole };
@@ -291,11 +305,14 @@ export function TravelersPage() {
           existing.avatar = m.avatar;
         }
         if (!existing.email && m.email) existing.email = m.email;
+        if (m.last_seen_at && (!existing.lastSeen || m.last_seen_at > existing.lastSeen)) { existing.lastSeen = m.last_seen_at; existing.platform = m.platform ?? null; }
       } else {
         map.set(personKey(m), {
           name: m.name,
           avatar: m.avatar,
           email: m.email || null,
+          lastSeen: m.last_seen_at ?? null,
+          platform: m.platform ?? null,
           trips: [tripEntry],
         });
       }
@@ -373,7 +390,7 @@ export function TravelersPage() {
         auth: idToken,
         body: { deviceId, title: "Dalefy", body: pushMessage.trim() },
       });
-      if (data.sent) showToast(`Notification sent to ${name || "user"}`);
+      if (data.sent) { showToast(`Notification sent to ${name || "user"}`); setPushMessage(""); setPushLogReload(n => n + 1); }
       else showToast(data.reason || "No push token found for this user");
     } catch (err) {
       showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
@@ -1326,6 +1343,7 @@ export function TravelersPage() {
                                   <div className="text-sm font-medium text-foreground truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                                   {appUser.email && <div className="text-[10px] text-muted-foreground truncate">{appUser.email}</div>}
                                   <div className="text-[11px] text-muted-foreground mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                  {appUser.lastSeen && <div className="text-[10px] text-muted-foreground">Active {timeAgo(appUser.lastSeen)}</div>}
                                 </div>
                                 {!bulkAction && <PgRight className="h-4 w-4 text-muted-foreground shrink-0" />}
                               </div>
@@ -1423,6 +1441,9 @@ export function TravelersPage() {
               ? panelUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
               : "?";
             const isRenaming = renamingUser === panelUser.deviceId;
+            const lastActive = panelUser.lastSeen
+              ? `Active ${timeAgo(panelUser.lastSeen)}${panelUser.platform === "ios" ? " on iPhone" : panelUser.platform === "android" ? " on Android" : ""}`
+              : "Not opened the app since this was added";
             return (
               <Sheet open onOpenChange={open => { if (!open) { setDetailPanelUser(null); setRenamingUser(null); } }}>
                 <SheetContent
@@ -1491,6 +1512,10 @@ export function TravelersPage() {
                         <p className="text-[10px] font-bold text-muted-foreground mt-1 flex items-center gap-1 font-mono">
                           <Fingerprint className="h-3 w-3" />
                           {panelUser.deviceId}
+                        </p>
+                        <p className="text-[10px] font-medium text-muted-foreground mt-1 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {lastActive}
                         </p>
                       </div>
                     </div>
@@ -1607,6 +1632,32 @@ export function TravelersPage() {
                           {sendingPush ? "Sending..." : "Send Notification"}
                         </button>
                       </div>
+                    </div>
+
+                    {/* What they've been sent */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Recent Messages</p>
+                      {pushLog === null ? (
+                        <p className="text-xs text-muted-foreground">Loading...</p>
+                      ) : pushLog.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Nothing sent to them yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {pushLog.map(e => (
+                            <div key={e.id} className="rounded-xl border border-border bg-secondary px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-bold text-foreground truncate">{e.title}</p>
+                                <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(e.sent_at)}</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground whitespace-pre-line line-clamp-3">{e.body}</p>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                {e.category === "flight" ? "Flight alert" : e.category === "trip_update" ? "Itinerary change" : "Message"}, {e.trip_name}
+                                {e.failed > 0 && <span className="text-amber-500">, {e.failed} not delivered</span>}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Danger zone */}

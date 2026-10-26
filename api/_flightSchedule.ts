@@ -79,7 +79,8 @@ export function isDue(
   if (group === "cancelled" || group === "arrived") return false;
 
   // Run slot: minutes since midnight UTC, so "every N minutes" means slot % N < 15
-  const slot = now.getUTCHours() * 60 + now.getUTCMinutes();
+  // Snapped to the nearest quarter hour, so a run that fires a minute late still counts as its slot
+  const slot = Math.round((now.getUTCHours() * 60 + now.getUTCMinutes()) / 15) * 15;
   const dep = departureMs(ev);
 
   if (dep === null) {

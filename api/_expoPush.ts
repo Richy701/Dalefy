@@ -80,6 +80,42 @@ export async function sendPush(messages: PushMessage[]): Promise<Ticket[]> {
   return tickets;
 }
 
+export interface PushLogEntry {
+  tripId: string;
+  tripName: string;
+  category: "message" | "flight" | "trip_update";
+  title: string;
+  body: string;
+  /** Who it went to: account uids and device ids, so the web can show one person's history */
+  recipients: string[];
+  /** The organiser's uid, or "system" for the flight cron */
+  sentBy: string;
+  tickets: Ticket[];
+}
+
+/** One push_log row per send, so organisers can see what reached whom. Never throws. */
+export async function logPush(entry: PushLogEntry): Promise<void> {
+  const sent = entry.tickets.filter(t => t.status === "ok").length;
+  // Time-first IDs so "newest first" is just descending document order, no index needed
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    await setDocument("push_log", id, {
+      trip_id: { stringValue: entry.tripId },
+      trip_name: { stringValue: entry.tripName },
+      category: { stringValue: entry.category },
+      title: { stringValue: entry.title },
+      body: { stringValue: entry.body },
+      recipients: { arrayValue: { values: [...new Set(entry.recipients.filter(Boolean))].map(v => ({ stringValue: v })) } },
+      sent_by: { stringValue: entry.sentBy },
+      sent_at: { stringValue: new Date().toISOString() },
+      sent: { integerValue: String(sent) },
+      failed: { integerValue: String(entry.tickets.length - sent) },
+    });
+  } catch (err) {
+    console.warn("push log:", err instanceof Error ? err.message : err);
+  }
+}
+
 /** Reads receipts for pushes old enough to have one; removes dead tokens and spent tickets */
 export async function checkPushReceipts(): Promise<{ checked: number; removed: number }> {
   const now = Date.now();

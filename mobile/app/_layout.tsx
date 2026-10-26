@@ -68,6 +68,10 @@ import { LaunchHandoff } from "@/components/LaunchHandoff";
 import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
+// Deep links (widget, Live Activity, shared links) always land on top of the tabs, so the trip page keeps its back button
+// eslint-disable-next-line react-refresh/only-export-components
+export const unstable_settings = { anchor: "(tabs)" };
+
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
   const { prefs } = usePreferences();

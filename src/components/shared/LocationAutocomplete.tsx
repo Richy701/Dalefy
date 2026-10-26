@@ -77,6 +77,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
   }, []);
 
   const handleChange = (val: string) => {
+    requestRef.current++; // anything still looking up an earlier pick is stale now
     onChange(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
@@ -86,6 +87,8 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
     setSuggestions([]);
     setOpen(false);
     setStatus("idle");
+    const reqId = ++requestRef.current;
+    onChange(s.place_name);
     // Suggestions are temporary results, which Mapbox doesn't allow saving; the
     // single lookup is permanent, so its coordinates are the ones that get saved
     let coords: [number, number] | undefined;
@@ -94,6 +97,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
       const c: [number, number] | null = res.ok ? (await res.json()).coord : null;
       if (c) coords = [c[1], c[0]]; // [lat, lng] -> the picker's [lng, lat]
     } catch { /* saved without coordinates; the map looks the place up when shown */ }
+    if (reqId !== requestRef.current) return; // they typed or picked again meanwhile
     onChange(s.place_name, coords);
   };
 

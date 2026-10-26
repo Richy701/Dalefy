@@ -27,7 +27,7 @@ function km([lng1, lat1]: [number, number], [lng2, lat2]: [number, number]): num
 /** The subset of the Mapbox Geocoding v6 response this module reads. */
 interface MapboxFeature {
   geometry?: { coordinates?: [number, number] };
-  properties?: { name?: string; place_formatted?: string; full_address?: string; context?: { country?: { country_code?: string } } };
+  properties?: { name?: string; place_formatted?: string; full_address?: string; feature_type?: string; context?: { country?: { country_code?: string } } };
 }
 interface MapboxResponse {
   features?: MapboxFeature[];
@@ -59,7 +59,7 @@ export async function geocode(
   proximity: string | undefined,
   token: string,
   opts: { country?: string; within?: string } = {},
-): Promise<{ coord: [number, number] | null; country: string | null }> {
+): Promise<{ coord: [number, number] | null; country: string | null; kind: string | null }> {
   const encoded = encodeURIComponent(q);
   let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encoded}&access_token=${token}&limit=1&language=en&permanent=true`;
   if (proximity) url += `&proximity=${encodeURIComponent(proximity)}`;
@@ -67,15 +67,19 @@ export async function geocode(
   const data = await mapboxFetch(url);
   const feature = data?.features?.[0];
   const point = feature?.geometry?.coordinates;
-  if (!Array.isArray(point) || point.length !== 2) return { coord: null, country: null };
+  if (!Array.isArray(point) || point.length !== 2) return { coord: null, country: null, kind: null };
 
   if (opts.within) {
     const anchors = opts.within.split(";").map(p => p.split(",").map(Number) as [number, number]);
-    if (!anchors.some(a => km(a, point) <= MAX_KM)) return { coord: null, country: null };
+    if (!anchors.some(a => km(a, point) <= MAX_KM)) return { coord: null, country: null, kind: null };
   }
 
-  // Return [lat, lng]
-  return { coord: [point[1], point[0]], country: feature?.properties?.context?.country?.country_code?.toLowerCase() ?? null };
+  // Return [lat, lng]; kind is Mapbox's feature_type ("country", "place", "address"...)
+  return {
+    coord: [point[1], point[0]],
+    country: feature?.properties?.context?.country?.country_code?.toLowerCase() ?? null,
+    kind: feature?.properties?.feature_type ?? null,
+  };
 }
 
 export async function suggest(

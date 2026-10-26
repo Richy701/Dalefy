@@ -1573,8 +1573,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
         const existingTravelerKeys = new Set((existing.travelers ?? []).flatMap(t => [t.id, t.name.toLowerCase()]));
         const mergedTravelers = [...(existing.travelers ?? []), ...(tripTravelers ?? []).filter(t => !existingTravelerKeys.has(t.id) && !existingTravelerKeys.has(t.name.toLowerCase()))];
-        // IDs follow the list itself, so the two can't drift apart
-        const mergedTravelerIds = mergedTravelers.map(t => t.id);
+        // Every ID already on the trip stays, even one whose traveller row has gone, plus the merged list's
+        const mergedTravelerIds = [...new Set([...(existing.travelerIds ?? []), ...mergedTravelers.map(t => t.id)])];
 
         const existingInfoTitles = new Set((existing.info ?? []).map(i => i.title.toLowerCase()));
         const newInfo = cleanedInfo.filter(i => !existingInfoTitles.has(i.title.toLowerCase()));

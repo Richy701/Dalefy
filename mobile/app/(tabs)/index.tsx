@@ -40,6 +40,7 @@ import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
 import { useTrips } from "@/context/TripsContext";
+import { leaveTrip } from "@/services/firebaseTrips";
 import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
 import { useNotifications } from "@/context/NotificationContext";
@@ -339,6 +340,7 @@ function shareTrip(name: string, link: string) {
 function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number }) {
   const { C } = useTheme();
   const { toast } = useToast();
+  const { deleteTrip } = useTrips();
   const start   = parseTripDate(trip.start);
   const end     = parseTripDate(trip.end);
   const days    = daysUntil(trip.start);
@@ -353,17 +355,33 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
   const photo = <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />;
   const tripLink = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${trip.id}`;
   const copyLink = () => { Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {}); };
+  const confirmLeave = () => {
+    Alert.alert(`Leave ${trip.name}?`, "It comes off this phone and the organiser's list. You'll need the PIN or link to join again.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Leave", style: "destructive", onPress: async () => {
+        try {
+          await leaveTrip(trip.id);
+          deleteTrip(trip.id);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast("You've left the trip");
+        } catch {
+          toast("Couldn't leave the trip. Check your connection and try again.");
+        }
+      } },
+    ]);
+  };
   const openActions = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (ActionSheetIOS) {
       ActionSheetIOS.showActionSheetWithOptions(
-        { title: trip.name, options: ["Share Trip", "Copy Link", "Cancel"], cancelButtonIndex: 2 },
-        (i) => { if (i === 0) shareTrip(trip.name, tripLink); else if (i === 1) copyLink(); },
+        { title: trip.name, options: ["Share Trip", "Copy Link", "Leave Trip", "Cancel"], destructiveButtonIndex: 2, cancelButtonIndex: 3 },
+        (i) => { if (i === 0) shareTrip(trip.name, tripLink); else if (i === 1) copyLink(); else if (i === 2) confirmLeave(); },
       );
     } else {
       Alert.alert(trip.name, undefined, [
         { text: "Share Trip", onPress: () => shareTrip(trip.name, tripLink) },
         { text: "Copy Link", onPress: copyLink },
+        { text: "Leave Trip", style: "destructive", onPress: confirmLeave },
         { text: "Cancel", style: "cancel" },
       ]);
     }

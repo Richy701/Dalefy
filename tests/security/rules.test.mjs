@@ -164,3 +164,24 @@ test('staff upload and read attachments; traveler gallery uploads remain scoped'
   await assertFails(traveler.ref('trips/private/media/traveler/new.jpg').put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
   await assertFails(context('outsider').storage().ref('trips/published/media/outsider/new.jpg').put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
 });
+
+test('push log: trip staff read it per trip, travellers and outsiders cannot, only the server writes', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await c.firestore().doc('push_log/1-abc').set({ trip_id: 'published', trip_name: 'Original', category: 'message', title: 'Hi', body: 'There', recipients: ['traveler', 'device'], sent_by: 'owner', sent_at: '2026-01-01T00:00:00.000Z', sent: 1, failed: 0 });
+  });
+  const byTrip = db => db.collection('push_log').where('trip_id', '==', 'published').get();
+  await assertSucceeds(byTrip(context('owner').firestore()));
+  await assertSucceeds(byTrip(context('agent').firestore()));
+  await assertFails(byTrip(context('traveler').firestore()));
+  await assertFails(byTrip(context('outsider').firestore()));
+  await assertFails(context('owner').firestore().collection('push_log').get());
+  await assertFails(context('owner').firestore().doc('push_log/2-forged').set({ trip_id: 'published', title: 'x', body: 'y', recipients: [], sent_at: 'now' }));
+  await assertSucceeds(context('server').firestore().doc('push_log/3-server').set({ trip_id: 'published', title: 'x', body: 'y', recipients: [], sent_at: 'now' }));
+});
+
+test('travellers stamp when they last opened the app, and nothing else that way', async () => {
+  const mine = context('traveler').firestore().doc('trip_members/traveler_published');
+  await assertSucceeds(mine.set({ last_seen_at: '2026-01-02T00:00:00.000Z', platform: 'ios' }, { merge: true }));
+  await assertFails(mine.set({ last_seen_at: '2026-01-02T00:00:00.000Z', role: 'leader' }, { merge: true }));
+  await assertFails(context('leader').firestore().doc('trip_members/traveler_published').set({ last_seen_at: 'x' }, { merge: true }));
+});

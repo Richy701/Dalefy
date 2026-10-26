@@ -1,9 +1,9 @@
-import { listCollection, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { queryDocumentsRange, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
-import { sendPush, checkPushReceipts } from "./_expoPush.js";
+import { sendPush, logPush, checkPushReceipts } from "./_expoPush.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on upcoming flights,
@@ -26,8 +26,9 @@ export default async function handler(req: any, res: any) {
   let flightsChecked = 0;
 
   try {
-    // 1. Fetch all trips from Firestore
-    const tripDocs = await listCollection("trips");
+    // 1. Trips still running (or ending yesterday, for overnight arrivals); the rest can't have a due flight
+    const since = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
+    const tripDocs = await queryDocumentsRange("trips", "end_date", "GREATER_THAN_OR_EQUAL", since);
     const updates: FlightUpdate[] = [];
     const tripsToUpdate: Map<string, { doc: FirestoreDoc; events: any[] }> = new Map();
 
@@ -62,6 +63,8 @@ export default async function handler(req: any, res: any) {
         // Every change is saved, but only the ones travelers act on send a push
         const statusNews = statusGroup(result.status) !== statusGroup(ev.status) && NOTIFY_GROUPS.has(statusGroup(result.status));
         const notify = statusNews || changes.some(c => !c.startsWith("Status: "));
+        // ev is rawEvents[i], so read the old status before the fields below overwrite it
+        const statusChanged = !!result.status && result.status !== ev.status;
 
         // Update event fields
         if (result.status) rawEvents[i].status = result.status;
@@ -92,7 +95,7 @@ export default async function handler(req: any, res: any) {
           flightNum: ev.flightNum,
           title: ev.title ?? "",
           eventId: ev.id ?? "",
-          status: result.status && result.status !== ev.status ? result.status : undefined,
+          status: statusChanged ? result.status : undefined,
           changes,
         });
       }
@@ -295,9 +298,11 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
   }
 
   const tokensByTrip = new Map<string, string[]>();
+  const peopleByTrip = new Map<string, string[]>();
   for (const m of memberDocs) {
     const tripId = decodeValue(m.fields?.trip_id);
     const deviceId = decodeValue(m.fields?.device_id);
+    if (tripId) peopleByTrip.set(tripId, [...(peopleByTrip.get(tripId) ?? []), String(deviceId ?? ""), String(decodeValue(m.fields?.uid) ?? "")]);
     const token = deviceId ? tokenByDevice.get(deviceId) : undefined;
     if (!tripId || !token) continue;
     const list = tokensByTrip.get(tripId) ?? [];
@@ -323,7 +328,17 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
       sound: "default" as const,
     }));
 
-    await sendPush(messages);
+    const tickets = await sendPush(messages);
+    await logPush({
+      tripId: update.tripId,
+      tripName: update.tripName,
+      category: "flight",
+      title,
+      body,
+      recipients: peopleByTrip.get(update.tripId) ?? [],
+      sentBy: "system",
+      tickets,
+    });
   }
 }
 

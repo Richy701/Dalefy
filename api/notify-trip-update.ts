@@ -16,7 +16,7 @@ import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_f
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
-import { sendPush } from "./_expoPush.js";
+import { sendPush, logPush } from "./_expoPush.js";
 import { tripUpdatedEmail } from "../src/lib/email/templates.js";
 
 const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.app").trim().replace(/\/$/, "");
@@ -117,6 +117,16 @@ export default async function handler(req: any, res: any) {
     }));
 
     const results = await sendPush(messages);
+    await logPush({
+      tripId: String(tripId),
+      tripName: String(tripName),
+      category: "trip_update",
+      title,
+      body,
+      recipients: allMembers.flatMap(d => [String(decodeValue(d.fields?.device_id) ?? ""), String(decodeValue(d.fields?.uid) ?? "")]),
+      sentBy: payload.sub ?? "",
+      tickets: results,
+    });
 
     res.json({ sent: tokens.length, emailed, results });
   } catch (err: any) {

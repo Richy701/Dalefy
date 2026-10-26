@@ -53,11 +53,12 @@ export function tripArea(destination?: string): Promise<TripArea | null> {
     const cities = (comma > 0 ? dest.slice(0, comma) : dest)
       .split(/\s*(?:&|\/|\+|\band\b)\s*/i).map(c => c.trim()).filter(Boolean).map(c => c + tail);
     areaCache.set(dest, Promise.all(cities.map(c =>
-      apiFetch<{ coord?: Coord | null; country?: string | null }>(`/api/geocode?q=${encodeURIComponent(c)}`).catch(() => null),
+      apiFetch<{ coord?: Coord | null; country?: string | null; kind?: string | null }>(`/api/geocode?q=${encodeURIComponent(c)}`).catch(() => null),
     )).then(found => {
-      const anchors = found.flatMap(f => f?.coord ? [f.coord] : []);
+      // A whole country or region is a filter, not a point: "Kenya" must not reject Mombasa for being far from Nairobi
+      const anchors = found.flatMap(f => f?.coord && f.kind !== "country" && f.kind !== "region" ? [f.coord] : []);
       const countries = [...new Set(found.flatMap(f => f?.country ? [f.country] : []))];
-      return anchors.length ? { anchors, countries } : null;
+      return anchors.length || countries.length ? { anchors, countries } : null;
     }));
   }
   return areaCache.get(dest)!;
@@ -84,7 +85,7 @@ export async function geocode(location: string, proximity?: Coord, area?: TripAr
       if (near) url += `&proximity=${near[1]},${near[0]}`;
       if (area) {
         if (area.countries.length) url += `&country=${area.countries.join(",")}`;
-        url += `&within=${area.anchors.map(a => `${a[1]},${a[0]}`).join(";")}`;
+        if (area.anchors.length) url += `&within=${area.anchors.map(a => `${a[1]},${a[0]}`).join(";")}`;
       }
       const data = await apiFetch<{ coord?: Coord }>(url);
       if (!data.coord) return null;

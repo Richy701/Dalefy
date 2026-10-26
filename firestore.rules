@@ -216,7 +216,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         (resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name', 'avatar', 'email', 'linked_traveler_id', 'joined_at', 'trip_name'
+            'name', 'avatar', 'email', 'linked_traveler_id', 'joined_at', 'trip_name', 'last_seen_at', 'platform'
           ]))
         || (isTripEditor(resource.data.trip_id)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -262,6 +262,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['organization_id', 'user_id', 'traveler_id', 'docs', 'updated_at'])
         && request.resource.data.docs is list;
       allow delete: if canWriteDirectory(resource.data);
+    }
+
+    // ── Push log: what the server sent to whom. The trip's staff read it
+    // (queries must filter on trip_id, like rosters); only the server writes.
+    match /push_log/{logId} {
+      allow read: if request.auth != null && isTripStaff(resource.data.trip_id);
+      allow write: if isCronUser();
     }
 
     // ── Trip versions: a "last changed" stamp per trip, nothing else ─────

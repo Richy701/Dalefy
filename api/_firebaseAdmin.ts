@@ -109,6 +109,25 @@ export async function queryDocuments(collection: string, field: string, value: s
   return rows.flatMap(row => row.document ? [row.document] : []);
 }
 
+/** Every document whose string field compares against the value, e.g. end_date on or after a day */
+export async function queryDocumentsRange(
+  collection: string,
+  field: string,
+  op: "GREATER_THAN" | "GREATER_THAN_OR_EQUAL" | "LESS_THAN" | "LESS_THAN_OR_EQUAL",
+  value: string,
+): Promise<FirestoreDoc[]> {
+  const response = await firestoreFetch(`${BASE}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: { fieldFilter: { field: { fieldPath: field }, op, value: { stringValue: value } } },
+    } }),
+  });
+  if (!response.ok) throw new Error(`Firestore query: ${response.status}`);
+  const rows = await response.json() as Array<{ document?: FirestoreDoc }>;
+  return rows.flatMap(row => row.document ? [row.document] : []);
+}
+
 /** Every document whose array field contains the value */
 export async function queryArrayContains(collection: string, field: string, value: string, limit = 50): Promise<FirestoreDoc[]> {
   const response = await firestoreFetch(`${BASE}:runQuery`, {

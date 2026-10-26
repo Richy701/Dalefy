@@ -7,7 +7,8 @@ import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Trip } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
@@ -142,7 +143,7 @@ export function subscribeToTrips(
     membershipUnsub();
     membershipIds = null;
     const uid = user?.uid;
-    if (cancelled || !uid) return;
+    if (cancelled || !uid) { listenToVersions([]); return; }
     membershipUnsub = onSnapshot(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)), snap => {
       const ids = [...new Set(snap.docs.map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
       listenToVersions(ids);
@@ -331,6 +332,40 @@ export async function logTripJoin(
     // disappear on next load.
     return false;
   }
+}
+
+/**
+ * Take this account off a trip. Both membership records go (account- and device-keyed), so the trip
+ * leaves every phone signed in as them and the organiser's roster no longer lists them.
+ */
+export async function leaveTrip(tripId: string): Promise<void> {
+  await waitForAuth();
+  const uid = firebaseAuth().currentUser?.uid;
+  const deviceId = await getDeviceId();
+  if (uid) await deleteDoc(doc(firebaseDb(), TRIP_MEMBERS, `${uid}_${tripId}`));
+  // Older device-keyed records may predate the account and refuse the delete; the account record is what matters
+  await deleteDoc(doc(firebaseDb(), TRIP_MEMBERS, `${deviceId}_${tripId}`)).catch((err: { code?: string }) => {
+    if (!uid || err?.code !== "permission-denied") throw err;
+  });
+}
+
+const LAST_SEEN_EVERY_MS = 6 * 60 * 60_000;
+
+/** Stamps this account's memberships with when the app was last opened, so organisers can see who is active */
+export async function touchLastSeen(): Promise<void> {
+  try {
+    await waitForAuth();
+    const uid = firebaseAuth().currentUser?.uid;
+    if (!uid) return;
+    const key = `daf-last-seen:${uid}`;
+    const last = Number(await AsyncStorage.getItem(key)) || 0;
+    if (Date.now() - last < LAST_SEEN_EVERY_MS) return;
+    const snap = await getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)));
+    if (snap.empty) return;
+    const stamp = { last_seen_at: new Date().toISOString(), platform: Platform.OS };
+    await Promise.all(snap.docs.map(d => setDoc(d.ref, stamp, { merge: true }).catch(() => {})));
+    await AsyncStorage.setItem(key, String(Date.now()));
+  } catch { /* cosmetic: the organiser just sees an older time */ }
 }
 
 /** Traveller IDs someone on the trip has already picked. Asked of the server, which never says who picked them. */

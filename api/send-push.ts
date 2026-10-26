@@ -1,7 +1,7 @@
-import { queryDocuments, getDocument, decodeValue } from "./_firebaseAdmin.js";
+import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
-import { sendPush } from "./_expoPush.js";
+import { sendPush, logPush } from "./_expoPush.js";
 
 /** True if the user owns the trip or belongs to the trip's organization. */
 async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
@@ -33,34 +33,47 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    // Only an organizer of a trip this device has joined may message it,
-    // otherwise any signed-in user (travelers included) could push to anyone.
-    const memberships = await queryDocuments("trip_members", "device_id", deviceId, 500);
+    // The key names a person: their account (uid), or their device for joins made before accounts.
+    // Only an organizer of a trip they've joined may message them, otherwise any
+    // signed-in user (travelers included) could push to anyone.
+    const memberships = [
+      ...await queryDocuments("trip_members", "uid", deviceId, 500),
+      ...await queryDocuments("trip_members", "device_id", deviceId, 500),
+    ];
     const tripIds = [...new Set(memberships.map(d => decodeValue(d.fields?.trip_id)).filter(Boolean))] as string[];
-    let allowed = false;
+    let allowedTrip: string | null = null;
     for (const tripId of tripIds) {
-      if (await canManageTrip(payload.sub!, tripId)) { allowed = true; break; }
+      if (await canManageTrip(payload.sub!, tripId)) { allowedTrip = tripId; break; }
     }
-    if (!allowed) return res.status(403).json({ error: "Not authorized to message this user" });
+    if (!allowedTrip) return res.status(403).json({ error: "Not authorized to message this user" });
 
-    const allTokens = await queryDocuments("push_tokens", "device_id", deviceId, 10);
-    let pushToken: string | null = null;
+    // Every phone this person has joined from, plus tokens saved against their account
+    const deviceIds = [...new Set([deviceId, ...memberships.map(d => String(decodeValue(d.fields?.device_id) ?? ""))].filter(Boolean))];
+    const tokenDocs = [
+      ...await queryDocumentsIn("push_tokens", "device_id", deviceIds),
+      ...await queryDocuments("push_tokens", "user_id", deviceId, 10),
+    ];
+    const tokens = [...new Set(tokenDocs.map(d => decodeValue(d.fields?.token)).filter((t): t is string => typeof t === "string" && !!t))];
 
-    for (const doc of allTokens) {
-      const fields = doc.fields ?? {};
-      if (decodeValue(fields.device_id) === deviceId) {
-        pushToken = decodeValue(fields.token);
-        break;
-      }
-    }
-
-    if (!pushToken) {
-      return res.json({ sent: 0, reason: "No push token found for this device" });
+    if (!tokens.length) {
+      return res.json({ sent: 0, reason: "No push token found for this user" });
     }
 
-    const [result] = await sendPush([{ to: pushToken, title, body, sound: "default" }]);
+    const results = await sendPush(tokens.map(to => ({ to, title, body, sound: "default" })));
+    const sent = results.filter(r => r?.status === "ok").length;
+    const tripName = memberships.find(d => decodeValue(d.fields?.trip_id) === allowedTrip)?.fields?.trip_name;
+    await logPush({
+      tripId: allowedTrip,
+      tripName: String(decodeValue(tripName) ?? ""),
+      category: "message",
+      title,
+      body,
+      recipients: [deviceId, ...deviceIds, ...memberships.map(d => String(decodeValue(d.fields?.uid) ?? ""))],
+      sentBy: payload.sub!,
+      tickets: results,
+    });
 
-    res.json({ sent: result?.status === "ok" ? 1 : 0, result });
+    res.json({ sent, result: results[0] });
   } catch (err: any) {
     console.error("[send-push] Error:", err);
     res.status(500).json({ error: "Internal error" });

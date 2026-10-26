@@ -1,5 +1,6 @@
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, deleteField, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
+  documentId, limit,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -190,6 +191,40 @@ export interface TripMember {
   linked_traveler_id?: string;
   uid?: string;
   email?: string;
+  /** When they last opened the app, stamped by the app a few times a day */
+  last_seen_at?: string;
+  platform?: string;
+}
+
+export interface PushLogEntry {
+  id: string;
+  trip_id: string;
+  trip_name: string;
+  category: "message" | "flight" | "trip_update";
+  title: string;
+  body: string;
+  recipients: string[];
+  sent_by: string;
+  sent_at: string;
+  sent: number;
+  failed: number;
+}
+
+/**
+ * Pushes one person received, newest first. Read per trip, the way the rules let staff read a trip's
+ * records; IDs are time-first, so descending document order is newest first without an index.
+ */
+export async function fetchPushLog(personKeys: string[], tripIds: string[], max = 20): Promise<PushLogEntry[]> {
+  const keys = new Set(personKeys.filter(Boolean));
+  const ids = [...new Set(tripIds.filter(Boolean))];
+  const snaps = await Promise.all(ids.map(id =>
+    getDocs(query(collection(firebaseDb(), "push_log"), where("trip_id", "==", id), orderBy(documentId(), "desc"), limit(60))).catch(() => null),
+  ));
+  return snaps.flatMap(s => s?.docs ?? [])
+    .map(d => ({ id: d.id, ...(d.data() as Omit<PushLogEntry, "id">) }))
+    .filter(e => (e.recipients ?? []).some(k => keys.has(k)))
+    .sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at)))
+    .slice(0, max);
 }
 
 /** An app user is one person whether a doc names their device or their account */
@@ -223,6 +258,7 @@ export async function fetchTripMembers(tripIds: string[]): Promise<TripMember[]>
       if (!kept.email && m.email) kept.email = m.email;
       if (!kept.uid && m.uid) kept.uid = m.uid;
       if (!kept.linked_traveler_id && m.linked_traveler_id) kept.linked_traveler_id = m.linked_traveler_id;
+      if (m.last_seen_at && (!kept.last_seen_at || m.last_seen_at > kept.last_seen_at)) { kept.last_seen_at = m.last_seen_at; kept.platform = m.platform; }
     }
     return Array.from(seen.values());
   } catch {
@@ -262,6 +298,23 @@ export async function deleteAppUser(deviceId: string, tripIds: string[]): Promis
   }
   logger.log("deleteAppUser", `deleted ${allRefs.length} docs for device ${deviceId}`);
   return allRefs.length;
+}
+
+/** Delete several people's trip_members docs on the given trips with one roster read; returns how many people had any */
+export async function deleteAppUsers(personKeys: string[], tripIds: string[]): Promise<number> {
+  const keys = new Set(personKeys);
+  const docs = (await memberDocsOfTrips(tripIds)).filter(d => keys.has(d.data().device_id) || keys.has(d.data().uid));
+  if (docs.length === 0) return 0;
+  const db = firebaseDb();
+  for (let i = 0; i < docs.length; i += 500) {
+    const batch = writeBatch(db);
+    for (const d of docs.slice(i, i + 500)) batch.delete(d.ref);
+    await batch.commit();
+  }
+  const found = new Set(docs.flatMap(d => [d.data().device_id, d.data().uid].filter(Boolean)));
+  const people = [...keys].filter(k => found.has(k)).length;
+  logger.log("deleteAppUsers", `deleted ${docs.length} docs for ${people} people`);
+  return people;
 }
 
 /** Update the role on all of a person's trip_members docs for one trip */

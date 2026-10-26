@@ -73,6 +73,7 @@ const dbModule = moduleUrl(`
   export const getDocument = (...args) => globalThis.__tripHttpTest.get(...args);
   export const queryDocuments = (...args) => globalThis.__tripHttpTest.query(...args);
   export const updateDocument = (...args) => globalThis.__tripHttpTest.update(...args);
+  export const touchTripVersion = async () => {};
   export const decodeValue = v => v;
   export const encodeValue = v => v;
 `);

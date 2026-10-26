@@ -48,12 +48,11 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
         .finally(() => { if (!cancelled) setLoading(false); });
     };
 
+    // Gates and delays only move on the day itself; other days fetch once and stop
     const getInterval = () => {
-      const dep = new Date(`${dateStr}T12:00:00Z`);
-      const hoursOut = (dep.getTime() - Date.now()) / 3_600_000;
-      if (hoursOut <= 1) return 5 * 60 * 1000;
-      if (hoursOut <= 3) return 30 * 60 * 1000;
-      return 0;
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return dateStr === today ? 5 * 60 * 1000 : 0;
     };
 
     doFetch();

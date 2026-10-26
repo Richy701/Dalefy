@@ -585,15 +585,16 @@ export function WorkspacePage() {
     if (geocoding || !trip) return;
     setGeocoding(true);
     try {
-      const { geocode: geocodeSingle, geocodeMany } = await import("@/services/geocode");
+      const { geocodeMany, tripArea } = await import("@/services/geocode");
       const withLocation = trip.events.filter(ev => ev.location);
       if (withLocation.length === 0) {
         toast.success("No event locations to geocode");
         setGeocoding(false);
         return;
       }
-      const destProximity = trip.destination ? await geocodeSingle(trip.destination) : null;
-      const coordMap = await geocodeMany(withLocation.map(ev => ev.location), destProximity ?? undefined);
+      // The trip's cities and countries, so lookups stay on the trip (a bare coordinate here broke every lookup)
+      const area = await tripArea(trip.destination);
+      const coordMap = await geocodeMany(withLocation.map(ev => ev.location), area);
       const updated = trip.events.map(ev => {
         if (ev.location && coordMap[ev.location]) {
           return { ...ev, locationCoords: coordMap[ev.location] };

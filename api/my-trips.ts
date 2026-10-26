@@ -39,6 +39,7 @@ function emailsOf(travelers: unknown): string[] {
 }
 
 let backfillDone = false;
+let backfill: Promise<void> | null = null;
 
 /** One pass over trips saved before traveler_emails existed; remembered in app_config so it runs once */
 async function ensureBackfill(): Promise<void> {
@@ -73,7 +74,11 @@ export default async function handler(req: Request, res: Response) {
   if (!email || payload.email_verified !== true) return res.json({ name: null, trips: [] });
 
   try {
-    await ensureBackfill();
+    // Shared by concurrent requests; best effort, the lookup still answers from what is already filled in
+    await (backfill ??= ensureBackfill().catch(err => {
+      backfill = null;
+      console.warn("[my-trips] backfill failed:", err instanceof Error ? err.message : err);
+    }));
     const docs = await queryArrayContains("trips", "traveler_emails", email, 50);
     const trips: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> = [];
     for (const doc of docs) {
