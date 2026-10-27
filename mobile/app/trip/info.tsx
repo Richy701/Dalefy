@@ -385,8 +385,9 @@ export default function InfoScreen() {
                     <Phone size={16} color={C.tealText} weight="fill" />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.rowTitle}>{row.name}</Text>
-                    <RichText text={row.phones.map(p => p.value).join(", ")} style={styles.contactNumber} linkColor={C.tealText} selectable={false} />
+                    {/* A number with no name of its own (the topic is the name) leads with the number */}
+                    {row.name !== (item.title || "Contact") ? <Text style={styles.rowTitle}>{row.name}</Text> : null}
+                    <RichText text={row.phones.map(p => p.value).join(", ")} style={row.name !== (item.title || "Contact") ? styles.contactNumber : styles.contactLead} linkColor={C.tealText} selectable={false} />
                     {row.note ? <Text style={styles.rowSub}>{row.note}</Text> : null}
                   </View>
                 </Pressable>
@@ -575,6 +576,7 @@ function makeStyles(C: ThemeColors) {
     stayThumb: { width: 48, height: 48, borderRadius: R.sm },
     callIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center", marginTop: 2 },
     contactNumber: { fontSize: T.base, color: C.tealText, fontVariant: ["tabular-nums"], marginTop: 2, lineHeight: 22 },
+    contactLead: { fontSize: T.md, fontWeight: T.medium, color: C.tealText, fontVariant: ["tabular-nums"], lineHeight: 22 },
     stayRange: { fontSize: T.sm, fontWeight: T.medium, color: C.textSecondary, marginTop: 2 },
     receiptRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
