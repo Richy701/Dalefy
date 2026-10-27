@@ -62,7 +62,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
-import { upsertTrip, fetchTripMembers, setMemberTraveler, unlinkTraveler, type TripMember } from "@/services/firebaseTrips";
+import { upsertTrip, fetchTripMembers, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
@@ -378,11 +378,27 @@ export function WorkspacePage() {
     [membersHere],
   );
   // Joined with "I'm not listed", or picked someone who has since come off the list
-  const unlistedMembers = useMemo(
-    () => membersHere.filter(m => !m.linked_traveler_id || !tripTravelers.some(t => t.id === m.linked_traveler_id)),
-    [membersHere, tripTravelers],
-  );
+  // One row per person: the same account on two phones (or a reinstall) joins twice, and both records
+  // must be linked or removed together
+  const unlistedMembers = useMemo(() => {
+    const unlinked = membersHere.filter(m => !m.linked_traveler_id || !tripTravelers.some(t => t.id === m.linked_traveler_id));
+    const byPerson = new Map<string, TripMember & { deviceIds: string[]; keys: string[] }>();
+    for (const m of unlinked) {
+      const person = m.uid || m.email?.trim().toLowerCase() || m.device_id;
+      const row = byPerson.get(person);
+      if (row) {
+        if (!row.deviceIds.includes(m.device_id)) row.deviceIds.push(m.device_id);
+        const key = m.uid || m.device_id;
+        if (!row.keys.includes(key)) row.keys.push(key);
+        if (m.joined_at > row.joined_at) Object.assign(row, { name: m.name || row.name, email: m.email || row.email, joined_at: m.joined_at });
+      } else {
+        byPerson.set(person, { ...m, deviceIds: [m.device_id], keys: [m.uid || m.device_id] });
+      }
+    }
+    return [...byPerson.values()];
+  }, [membersHere, tripTravelers]);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<{ keys: string[]; name: string } | null>(null);
   const [peopleSearch, setPeopleSearch] = useState("");
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [editingEmailValue, setEditingEmailValue] = useState("");
@@ -1869,7 +1885,7 @@ export function WorkspacePage() {
                         {unlistedMembers.map(m => {
                           const free = tripTravelers.filter(t => !memberByTraveler.has(t.id));
                           return (
-                            <div key={m.device_id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                            <div key={m.keys[0]} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
                               <div className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground text-xs font-black uppercase shrink-0">
                                 {(m.name || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("")}
                               </div>
@@ -1893,7 +1909,7 @@ export function WorkspacePage() {
                                       className="rounded-lg text-xs"
                                       onClick={async () => {
                                         try {
-                                          await setMemberTraveler(trip.id, m.device_id, t.id);
+                                          for (const deviceId of m.deviceIds) await setMemberTraveler(trip.id, deviceId, t.id);
                                           setMembersReload(n => n + 1);
                                           toast.success(`${m.name || "They"} now see ${t.name}'s plan`);
                                         } catch {
@@ -1906,6 +1922,15 @@ export function WorkspacePage() {
                                   ))}
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              <button
+                                type="button"
+                                title="Remove from trip"
+                                aria-label={`Remove ${m.name || "this traveller"} from the trip`}
+                                onClick={() => setRemoveMemberTarget({ keys: m.keys, name: m.name || "This traveller" })}
+                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors shrink-0"
+                              >
+                                <X className="h-3.5 w-3.5" weight="bold" />
+                              </button>
                             </div>
                           );
                         })}
@@ -3416,6 +3441,27 @@ export function WorkspacePage() {
         confirmLabel="Remove"
         destructive
         onConfirm={async () => { if (removeTarget) await removeTravelerFromTrip(removeTarget); setRemoveTarget(null); }}
+      />
+
+      <ConfirmDialog
+        open={!!removeMemberTarget}
+        onOpenChange={(open) => { if (!open) setRemoveMemberTarget(null); }}
+        title="Remove from trip"
+        description={`${removeMemberTarget?.name ?? "They"} leave this trip in the app. Their account and their other trips are untouched; they can join again with the PIN.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={async () => {
+          const target = removeMemberTarget;
+          if (!target) return;
+          try {
+            for (const key of target.keys) await removeUserFromTrip(key, trip.id);
+            setMembersReload(n => n + 1);
+            toast.success(`${target.name} removed from the app for this trip`);
+          } catch {
+            toast.error("Couldn't remove them. Only editors can do this.");
+          }
+          setRemoveMemberTarget(null);
+        }}
       />
 
       <ConfirmDialog
