@@ -67,6 +67,7 @@ import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
+import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { MessageDialog } from "@/components/shared/MessageDialog";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -433,6 +434,7 @@ export function WorkspacePage() {
   const [sendInviteOpen, setSendInviteOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [reimportOpen, setReimportOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
   const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
@@ -1942,6 +1944,13 @@ export function WorkspacePage() {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-semibold text-muted-foreground">Add travellers</h3>
+                      <button
+                        type="button"
+                        onClick={() => setBulkAddOpen(true)}
+                        className="h-7 px-2.5 rounded-lg border border-border bg-secondary text-xs font-medium text-foreground hover:border-brand/40 flex items-center gap-1.5"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" /> Add many
+                      </button>
                     </div>
                     <div className="relative mb-3">
                       <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -2809,6 +2818,24 @@ export function WorkspacePage() {
         </DialogContent>
       </Dialog>
 
+      <BulkAddPeopleDialog
+        open={bulkAddOpen}
+        onOpenChange={setBulkAddOpen}
+        existing={allTravelers}
+        tripName={trip.name}
+        onTripIds={new Set([...(trip.travelerIds ?? []), ...(trip.travelers ?? []).map(t => t.id)])}
+        onAdd={({ matched, created }) => {
+          if (created.length) setCustomTravelers(prev => [...prev, ...created]);
+          const onTrip = new Set([...(trip.travelerIds ?? []), ...(trip.travelers ?? []).map(t => t.id)]);
+          const adding = [...matched, ...created].filter(u => !onTrip.has(u.id));
+          if (!adding.length) { toast.success("Everyone was already on the trip"); return; }
+          updateTrip(trip.id, {
+            travelerIds: [...(trip.travelerIds ?? []), ...adding.map(u => u.id)],
+            travelers: [...(trip.travelers ?? []), ...adding.map(u => ({ id: u.id, name: u.name, initials: u.initials, ...(u.email ? { email: u.email } : {}) }))],
+          });
+          toast.success(`Added ${adding.length} to the trip`);
+        }}
+      />
       <ImportItineraryDialog
         open={reimportOpen}
         onOpenChange={setReimportOpen}

@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak, UsersThree } from "@phosphor-icons/react";
+import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
+import { initialsFrom } from "@/lib/names";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,7 +28,7 @@ import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import type { ComplianceDoc, User as UserType } from "@/types";
+import type { ComplianceDoc, Trip, User as UserType } from "@/types";
 
 type QuickFilter = "all" | "app" | "not-app" | "docs";
 
@@ -146,6 +148,9 @@ export function TravelersPage() {
   const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string; confirmLabel?: string; destructive?: boolean } | null>(null);
   // Someone who joined in the app under the wrong name (the app once adopted a listed traveller's name)
   const [renameTarget, setRenameTarget] = useState<Person | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  // Name and email being edited in the person panel
+  const [editingPerson, setEditingPerson] = useState<{ name: string; email: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renaming, setRenaming] = useState(false);
 
@@ -357,6 +362,42 @@ export function TravelersPage() {
     setMessage({ tripIds: shared.map(t => t.id), tripId: preferred, people: keys });
   }, [trips, tripFilter, showToast]);
 
+  /** A new name or email for a directory person reaches the directory, every trip's list, and the published copies */
+  const editPerson = useCallback((p: Person, rawName: string, rawEmail: string) => {
+    const name = rawName.trim().replace(/\s+/g, " ");
+    const email = rawEmail.trim();
+    if (!name) return;
+    const initials = initialsFrom(name);
+    setCustomTravelers(prev => prev.map(u => (u.id === p.id ? { ...u, name, email, initials } : u)));
+    for (const trip of trips) {
+      if (!trip.travelers?.some(t => t.id === p.id)) continue;
+      const travelers = trip.travelers.map(t => {
+        if (t.id !== p.id) return t;
+        const next = { ...t, name, initials };
+        if (email) next.email = email; else delete next.email;
+        return next;
+      });
+      const updates: Partial<Trip> = { travelers };
+      const snap = trip.publishedSnapshot;
+      if (snap?.travelers?.some(t => t.id === p.id)) {
+        updates.publishedSnapshot = { ...snap, travelers: snap.travelers.map(t => (t.id === p.id ? { ...t, name, initials } : t)) };
+      }
+      updateTrip(trip.id, updates);
+    }
+    setEditingPerson(null);
+    showToast(`${name} updated`);
+  }, [trips, updateTrip, setCustomTravelers, showToast]);
+
+  /** Onto a trip's traveller list from the panel, without leaving the directory */
+  const addToTrip = useCallback((p: Person, trip: Trip) => {
+    if (trip.travelers?.some(t => t.id === p.id)) return;
+    updateTrip(trip.id, {
+      travelerIds: [...(trip.travelerIds ?? []), p.id],
+      travelers: [...(trip.travelers ?? []), { id: p.id, name: p.name, initials: p.initials, ...(p.email ? { email: p.email } : {}) }],
+    });
+    showToast(`${p.name} added to ${trip.name}`);
+  }, [updateTrip, showToast]);
+
   /**
    * A directory entry and the app account that picked it part ways. The account keeps every trip and shows
    * under the name on its phone; the entry stays in the directory on its own. For when the wrong person
@@ -555,9 +596,14 @@ export function TravelersPage() {
           </div>
         ) : undefined}
         cta={!isViewer ? (
-          <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-lg bg-primary hover:opacity-90 text-primary-foreground font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
-            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add traveller</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => { if (!demoGate()) setBulkOpen(true); }} className="rounded-lg font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
+              <UsersThree className="h-4 w-4" /> <span className="hidden sm:inline">Add many</span>
+            </Button>
+            <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-lg bg-primary hover:opacity-90 text-primary-foreground font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
+              <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add traveller</span>
+            </Button>
+          </div>
         ) : undefined}
       />
 
@@ -739,10 +785,37 @@ export function TravelersPage() {
                   <SheetTitle className="sr-only">{p.name}</SheetTitle>
                   <div className="flex items-center gap-3 pr-8">
                     <Avatar person={p} size="h-12 w-12" />
-                    <div className="min-w-0">
-                      <p className="text-lg font-semibold tracking-tight text-foreground truncate">{p.name}</p>
-                      <p className="text-sm text-muted-foreground truncate">{p.email || "No email on file"}</p>
-                    </div>
+                    {editingPerson ? (
+                      <form
+                        className="min-w-0 flex-1 space-y-2"
+                        onSubmit={(e) => { e.preventDefault(); editPerson(p, editingPerson.name, editingPerson.email); }}
+                      >
+                        <Input value={editingPerson.name} onChange={e => setEditingPerson(v => v && { ...v, name: e.target.value })} placeholder="Name" aria-label="Name" autoFocus className="h-9" />
+                        <Input value={editingPerson.email} onChange={e => setEditingPerson(v => v && { ...v, email: e.target.value })} placeholder="Email" aria-label="Email" type="email" className="h-9" />
+                        <div className="flex gap-2">
+                          <Button type="submit" size="sm" disabled={!editingPerson.name.trim()} className="bg-primary text-primary-foreground">Save</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setEditingPerson(null)}>Cancel</Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="min-w-0 flex-1 flex items-start gap-2">
+                        <div className="min-w-0">
+                          <p className="text-lg font-semibold tracking-tight text-foreground truncate">{p.name}</p>
+                          <p className="text-sm text-muted-foreground truncate">{p.email || "No email on file"}</p>
+                        </div>
+                        {!isViewer && !p.appOnly && (
+                          <button
+                            type="button"
+                            aria-label={`Edit ${p.name}`}
+                            title="Edit name and email"
+                            onClick={() => setEditingPerson({ name: p.name, email: p.email })}
+                            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0"
+                          >
+                            <PencilSimple className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <p className={cn("text-sm mt-3 flex items-center gap-1.5", TONE_TEXT[status.tone])}>
                     <DeviceMobile className="h-4 w-4" /> {status.label}
@@ -774,7 +847,21 @@ export function TravelersPage() {
 
                 <div className="px-5 py-4 space-y-6 flex-1">
                   <section>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Trips</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground">Trips</p>
+                      {!isViewer && !p.appOnly && trips.some(t => !p.trips.some(x => x.id === t.id)) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="h-7 px-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center gap-1">
+                            <UserPlus className="h-3.5 w-3.5" /> Add to a trip
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-64 max-h-72 overflow-y-auto">
+                            {trips.filter(t => !p.trips.some(x => x.id === t.id)).map(t => (
+                              <DropdownMenuItem key={t.id} onClick={() => addToTrip(p, t)}>{t.name}</DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                     {allTrips.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Not on any trip.</p>
                     ) : (
@@ -1095,6 +1182,15 @@ export function TravelersPage() {
         confirmLabel={pendingConfirm?.confirmLabel ?? "Remove"}
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
         destructive={pendingConfirm?.destructive ?? true}
+      />
+      <BulkAddPeopleDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        existing={travelers}
+        onAdd={({ matched, created }) => {
+          if (created.length) setCustomTravelers(prev => [...prev, ...created]);
+          showToast(created.length ? `${created.length} added to the directory${matched.length ? `, ${matched.length} already there` : ""}` : "Everyone was already in the directory");
+        }}
       />
       <Dialog open={!!renameTarget} onOpenChange={(open) => { if (!open && !renaming) setRenameTarget(null); }}>
         <DialogContent className="max-w-md bg-card rounded-xl border border-border p-6 shadow-2xl">
