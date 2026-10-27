@@ -181,6 +181,17 @@ export interface ComplianceDoc {
   date?: string; // last updated / signed date
 }
 
+export interface TravelerProfile {
+  phone?: string;
+  /** YYYY-MM-DD */
+  dateOfBirth?: string;
+  nationality?: string;
+  dietary?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  notes?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -190,6 +201,8 @@ export interface User {
   initials: string;
   status: "Active" | "Away" | "Offline";
   compliance?: ComplianceDoc[];
+  /** Travel details kept by the organiser: dietary needs, who to call. No passport data, by choice. */
+  profile?: TravelerProfile;
 }
 
 export interface Notification {

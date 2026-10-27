@@ -4,6 +4,8 @@ import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, Pape
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
 import { AddPhotosDialog } from "@/components/shared/AddPhotosDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { TravelerDetails } from "@/components/shared/TravelerDetails";
+import { cleanProfile } from "@/lib/travelerProfile";
 import { uploadTravelerPhoto, tripUpdatesForAvatar } from "@/lib/travelerPhotos";
 import { tripTravelerOf } from "@/lib/travelerSync";
 import { initialsFrom } from "@/lib/names";
@@ -32,7 +34,7 @@ import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import type { ComplianceDoc, Trip, User as UserType } from "@/types";
+import type { ComplianceDoc, Trip, TravelerProfile, User as UserType } from "@/types";
 
 type QuickFilter = "all" | "app" | "not-app" | "docs";
 
@@ -67,6 +69,7 @@ interface Person {
   avatar: string | null;
   /** Joined in the app without picking their name from a trip's list */
   appOnly: boolean;
+  profile?: TravelerProfile;
 }
 
 function appFacts(members: TripMember[]) {
@@ -236,6 +239,7 @@ export function TravelersPage() {
       if (existing) {
         if (cu.email && !existing.email) existing.email = cu.email;
         if (cu.avatar) existing.avatar = cu.avatar;
+        if (cu.profile) existing.profile = cu.profile;
         if (cu.role && cu.role !== "Traveler") existing.role = cu.role;
         if (cu.compliance?.length) existing.compliance = cu.compliance;
       } else {
@@ -281,6 +285,7 @@ export function TravelersPage() {
         ...facts,
         avatar: t.avatar || facts.avatar,
         appOnly: false,
+        profile: t.profile,
       };
     });
     // App accounts that never picked a name are still people on the trip
@@ -415,6 +420,18 @@ export function TravelersPage() {
     }
   }, [travelers, trips, updateTrip, setCustomTravelers]);
 
+  /** Passport, dietary needs and the rest live on the directory entry; people known only from a trip join it as they go */
+  const saveProfile = useCallback((p: Person, profile: TravelerProfile | undefined) => {
+    const next = profile ? cleanProfile(profile) : undefined;
+    setCustomTravelers(prev => {
+      const have = prev.some(u => u.id === p.id);
+      if (have) return prev.map(u => (u.id === p.id ? { ...u, profile: next } : u));
+      const base = travelers.find(u => u.id === p.id);
+      return base ? [...prev, { ...base, profile: next }] : prev;
+    });
+    showToast(`${p.name}'s details saved`);
+  }, [travelers, setCustomTravelers, showToast]);
+
   const changePhoto = useCallback(async (p: Person, file: File | null) => {
     if (!user?.id) return;
     setPhotoBusy(true);
@@ -539,9 +556,10 @@ export function TravelersPage() {
 
   const exportCSV = useCallback(() => {
     if (!visible.length) return;
-    const rows = [["Name", "Email", "Trips", "App", "Documents"]];
+    const rows = [["Name", "Email", "Phone", "Date of birth", "Nationality", "Dietary", "Emergency contact", "Trips", "App", "Documents"]];
     for (const p of visible) {
-      rows.push([p.name, p.email, [...new Set([...p.trips, ...p.appTrips].map(t => t.name))].join("; "), appStatus(p).label, docSummary(p.compliance).label]);
+      const pr = p.profile ?? {};
+      rows.push([p.name, p.email, pr.phone ?? "", pr.dateOfBirth ?? "", pr.nationality ?? "", pr.dietary ?? "", [pr.emergencyName, pr.emergencyPhone].filter(Boolean).join(" "), [...new Set([...p.trips, ...p.appTrips].map(t => t.name))].join("; "), appStatus(p).label, docSummary(p.compliance).label]);
     }
     const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -969,6 +987,13 @@ export function TravelersPage() {
                       </div>
                     )}
                   </section>
+
+                  {!p.appOnly && (
+                    <section>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Travel details</p>
+                      <TravelerDetails profile={p.profile} canEdit={!isViewer} onSave={profile => saveProfile(p, profile)} />
+                    </section>
+                  )}
 
                   {!p.appOnly && (
                     <section>
