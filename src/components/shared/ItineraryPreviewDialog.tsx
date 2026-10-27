@@ -289,7 +289,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Description */}
           {ev.description && (
-            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-muted-foreground line-clamp-3" : "text-muted-foreground line-clamp-3")}>{ev.description}</p>
+            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-muted-foreground line-clamp-3" : "text-muted-foreground line-clamp-3")}><Linkify text={ev.description} /></p>
           )}
 
           {/* Time + location */}
@@ -387,7 +387,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
           {/* Notes */}
           {ev.notes && (
             <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-muted-foreground line-clamp-2" : "text-muted-foreground line-clamp-2")}>
-              {ev.notes}
+              <Linkify text={ev.notes} />
             </p>
           )}
         </div>
