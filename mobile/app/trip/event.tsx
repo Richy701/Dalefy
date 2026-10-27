@@ -42,6 +42,7 @@ import { Pill } from "@/components/ui/Pill";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import { MicroLabel } from "@/components/ui/MicroLabel";
+import { RichText } from "@/components/ui/RichText";
 
 // Airline logo plate stays white in both themes so carrier marks render as designed
 const HERO_H = 460;
@@ -655,8 +656,11 @@ export default function EventDetailScreen() {
           <Animated.View>
             <Pressable
               onPress={() => openInMaps(ev.location, locationCoords)}
+              // The full address copies for a taxi app or a message
+              onLongPress={() => { Clipboard.setStringAsync(tidyLocation(ev.location!)).then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)).catch(() => {}); }}
               accessibilityRole="button"
               accessibilityLabel="Open location in Maps"
+              accessibilityHint="Long press to copy the address"
               style={({ pressed }) => [styles.locationCard, { opacity: pressed ? 0.85 : 1 }]}
             >
               {route ? (
@@ -668,7 +672,7 @@ export default function EventDetailScreen() {
                   <Text style={styles.sectionLabel}>{isHotel ? "Address" : "Where"}</Text>
                   <View style={styles.locationRow}>
                     <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[styles.locationValue, { color: C.textPrimary }]} numberOfLines={3}>{tidyLocation(ev.location)}</Text>
+                      <Text style={[styles.locationValue, { color: C.textPrimary }]}>{tidyLocation(ev.location)}</Text>
                       {atYourHotel ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>At your hotel, no transfer needed</Text> : null}
                     </View>
                     <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.tealText }}>Directions</Text>
@@ -715,11 +719,11 @@ export default function EventDetailScreen() {
           <Animated.View style={styles.infoCard}>
             <MicroLabel color={C.textPrimary} style={{ marginBottom: S.sm }}>Good to know</MicroLabel>
             {ev.description && (
-              <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{ev.description}</Text>
+              <RichText text={ev.description} style={[styles.infoValue, { color: C.textPrimary }]} linkColor={C.tealText} />
             )}
             {ev.description && ev.notes && <View style={{ height: S.sm }} />}
             {ev.notes && (
-              <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{ev.notes}</Text>
+              <RichText text={ev.notes} style={[styles.infoValue, { color: C.textPrimary }]} linkColor={C.tealText} />
             )}
           </Animated.View>
         )}

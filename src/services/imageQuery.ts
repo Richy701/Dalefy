@@ -59,6 +59,15 @@ export function buildImageQueryCandidates(opts: {
     if (t && !out.includes(t)) out.push(t);
   };
 
+  // Hotels: the property name plus "hotel" finds the property; a street address or a stray
+  // word from the title finds cafés and road signs
+  if (type === "hotel" && title.trim()) {
+    const name = title.split(/\s+[–—-]\s+/)[0].trim();
+    const town = location.split(",").map(s => s.trim()).filter(s => s && !/\d/.test(s)).pop() ?? "";
+    push(`${name} hotel ${town}`);
+    push(`${name} hotel`);
+  }
+
   // Location-based candidates
   if (location.trim()) {
     const first = location.split(",")[0].trim();

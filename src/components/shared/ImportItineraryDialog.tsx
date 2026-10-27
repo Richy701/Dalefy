@@ -1579,12 +1579,31 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
       if (importMode === "merge" && existing) {
         // Merge: add new events/travelers/info alongside existing ones
-        const normalizeKey = (e: { date: string; title: string; time?: string }) =>
-          `${e.date}|${e.title.toLowerCase().replace(/\s+/g, " ").trim()}`;
-        const normalizeKeyWithTime = (e: { date: string; title: string; time?: string }) =>
-          `${e.date}|${e.time || ""}|${e.title.toLowerCase().replace(/\s+/g, " ").trim()}`;
-        const existingKeys = new Set(existing.events.flatMap(e => [normalizeKey(e), normalizeKeyWithTime(e)]));
-        const newEvents = events.filter(e => !existingKeys.has(normalizeKey(e)) && !existingKeys.has(normalizeKeyWithTime(e)));
+        // The parser rewords on every run ("Arrival & Transfer" / "Arrival and Connection"), so a plain
+        // title match let near-copies through. Same day plus either a near-identical title or the same
+        // real start time and type counts as the same event.
+        const words = (s: string) => new Set(
+          s.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+            .filter(w => w.length > 2 && !["the", "and", "for", "with", "from"].includes(w)),
+        );
+        const similar = (a: string, b: string) => {
+          const wa = words(a), wb = words(b);
+          if (!wa.size || !wb.size) return a.trim().toLowerCase() === b.trim().toLowerCase();
+          let shared = 0;
+          for (const w of wa) if (wb.has(w)) shared++;
+          return shared / Math.min(wa.size, wb.size) >= 0.6;
+        };
+        // "7:45 PM" and "19:45" are the same start time
+        const realTime = (t?: string) => {
+          const m = (t || "").trim().match(/^(\d{1,2}):(\d{2})\s*([ap]m)?$/i);
+          if (!m) return "";
+          let h = Number(m[1]);
+          if (m[3]) { const pm = m[3].toLowerCase() === "pm"; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+          return `${String(h).padStart(2, "0")}:${m[2]}`;
+        };
+        const sameEvent = (a: { date: string; title: string; time?: string; type?: string }, b: typeof a) =>
+          a.date === b.date && (similar(a.title, b.title) || (!!realTime(a.time) && realTime(a.time) === realTime(b.time) && a.type === b.type));
+        const newEvents = events.filter(e => !existing.events.some(x => sameEvent(x, e)));
         const mergedEvents = [...existing.events, ...newEvents];
 
         const existingTravelerKeys = new Set((existing.travelers ?? []).flatMap(t => [t.id, t.name.toLowerCase()]));

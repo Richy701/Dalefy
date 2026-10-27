@@ -7,9 +7,11 @@ import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  CaretRight, Calendar, Clock, Check,
+  CaretRight, Calendar, Clock, Check, Phone,
   Warning, WarningCircle, ArrowSquareOut, Paperclip, FileText,
 } from "phosphor-react-native";
+import { RichText } from "@/components/ui/RichText";
+import { parseContacts } from "@/shared/richText";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
@@ -27,35 +29,8 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 import type { TravelEvent } from "@/shared/types";
 
-const URL_RE = /(https?:\/\/[^\s),]+)/g;
-
-function LinkedText({ text, style, linkColor, stripUrls, numberOfLines }: { text: string; style: any; linkColor: string; stripUrls?: string[]; numberOfLines?: number }) {
-  let cleaned = text;
-  if (stripUrls) {
-    for (const u of stripUrls) cleaned = cleaned.replace(u, "").trim();
-  }
-  cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
-  if (!cleaned) return null;
-
-  const parts = cleaned.split(URL_RE);
-  return (
-    <Text style={style} selectable numberOfLines={numberOfLines}>
-      {parts.map((part, i) =>
-        URL_RE.test(part) ? (
-          <Text
-            key={i}
-            style={{ color: linkColor, textDecorationLine: "underline" }}
-            onPress={() => Linking.openURL(part)}
-          >
-            {part}
-          </Text>
-        ) : (
-          <Text key={i}>{part}</Text>
-        )
-      )}
-    </Text>
-  );
-}
+// Phone numbers, emails and links in organiser text are tappable; long press copies
+const LinkedText = RichText;
 
 type InfoStatus = "overdue" | "urgent" | "upcoming" | "done" | null;
 
@@ -83,12 +58,16 @@ function nonMoneySentences(body: string): string {
   return body.split(/(?<=[.!?])\s+/).filter(sn => !/(?:£|\$|€)\s?\d/.test(sn)).join(" ").trim();
 }
 
-type TopicKind = "costs" | "stay" | "todo" | "text";
+type TopicKind = "costs" | "stay" | "todo" | "contacts" | "text";
 
 /** What a topic is about decides how it is laid out. */
 function topicKind(title: string): TopicKind {
   const t = title.toLowerCase();
   if (/cost|price|budget|payment|invoice|deposit|balance/.test(t)) return "costs";
+  // People and offices to ring: one row per number, a call away
+  if (/contact|emergency|24\/7|24-hour|24 hour|helpline|hotline|assistance|\bteam\b/.test(t)) return "contacts";
+  // A rooming note is about people, not a place to stay
+  if (/rooming/.test(t)) return "text";
   if (/hotel|accommodation|room|resort|stay|lodg|camp/.test(t)) return "stay";
   if (/outstanding|to do|todo|pending|action|checklist|remaining|to sort|tbc|tba/.test(t)) return "todo";
   return "text";
@@ -129,7 +108,8 @@ function stayDates(detail: string): { range: string; nights: number | null; rest
   if (!m) return { range: "", nights: null, rest: detail };
   const from = Number(m[1]), to = Number(m[2]);
   const nights = MONTHS[m[3].toLowerCase()] !== undefined && to > from ? to - from : null;
-  const rest = detail.replace(m[0], "").replace(/\(\s*\d+\s+nights?,?\s*/i, "(").replace(/\(\s*\)/g, "")
+  // The night count is shown with the dates, so it comes out of the detail wherever it was written
+  const rest = detail.replace(m[0], "").replace(/\(\s*\d+\s+nights?,?\s*/i, "(").replace(/,?\s*\b\d+\s+nights?\b/i, "").replace(/\(\s*\)/g, "")
     .replace(/,\s*,/g, ",").replace(/,\s*\(/g, " (").replace(/\s{2,}/g, " ").replace(/[,\s]+$/, "").replace(/^[,\s]+/, "").trim();
   return { range: `${m[1]}–${m[2]} ${m[3]}`, nights, rest };
 }
@@ -144,19 +124,21 @@ function matchEvent(line: string, events: TravelEvent[], type?: TravelEvent["typ
   });
 }
 
-const TOPIC_HEADING: Record<TopicKind, string | null> = { costs: "Costs", stay: "Where you're staying", todo: "Still to sort", text: null };
+const TOPIC_HEADING: Record<TopicKind, string | null> = { costs: "Costs", stay: "Where you're staying", todo: "Still to sort", contacts: null, text: null };
 
 /** Lines the organiser wrote, or failing that, sentences. */
 function splitLines(body: string): string[] {
   const lines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  const parts = lines.length > 1 ? lines : body.split(/(?<=[.!?])\s+(?=[A-Z])/);
+  // "Hotel A (7 Nov); Hotel B (8–10 Nov); Hotel C" on one line is a list too
+  const semi = lines.length === 1 && (body.match(/;/g) ?? []).length >= 1 ? body.split(/;\s*/) : null;
+  const parts = lines.length > 1 ? lines : semi ?? body.split(/(?<=[.!?])\s+(?=[A-Z])/);
   return parts.map(l => l.replace(/[.\s]+$/, "").trim()).filter(Boolean);
 }
 
 /** "Anantara Resort: 14 rooms, 7–8 Nov" -> name and details */
 function splitNamed(line: string): { name: string; detail: string } {
-  // The colon in "https://" is part of a link, not a label
-  const i = line.search(/:(?!\/\/)/);
+  // The colon in "https://" is part of a link and the one in "08:35" is part of a time, not a label
+  const i = line.search(/:(?!\/\/)(?!\d{2}\b)/);
   return i > 0 && i < 70 ? { name: line.slice(0, i).trim(), detail: line.slice(i + 1).trim() } : { name: line, detail: "" };
 }
 
@@ -229,7 +211,7 @@ export default function InfoScreen() {
   // Essentials first: what's due (soonest at the top), what's still to sort, where you're staying,
   // then everything else, with costs last
   const ordered = useMemo(() => {
-    const rank: Record<TopicKind, number> = { todo: 1, stay: 2, text: 3, costs: 4 };
+    const rank: Record<TopicKind, number> = { todo: 1, stay: 2, contacts: 2, text: 3, costs: 4 };
     const score = (i: TripInfo) => (!i.completed && i.deadline ? 0 : rank[topicKind(i.title || "")]);
     return [...infoItems].sort((x, y) => score(x) - score(y) || (x.deadline ?? "").localeCompare(y.deadline ?? ""));
   }, [infoItems]);
@@ -289,13 +271,20 @@ export default function InfoScreen() {
     const totalIdx = facts.findIndex(f => /total/i.test(f.label));
     const receipt = totalIdx >= 0 ? [...facts.filter((_, i) => i !== totalIdx), facts[totalIdx]] : facts;
     const lines = (kind === "stay" || kind === "todo") && body ? splitLines(body) : [];
-    // Essentials: "Currency: Thai baht" lines become label/value rows; several separate lines become rows
-    const textLines = kind === "text" && body ? body.split(/\n+/).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean) : [];
+    // Numbers to ring, one row each; anything else in the topic stays as text underneath
+    const contacts = kind === "contacts" && body ? parseContacts(body, item.title || "Contact") : null;
+    // Essentials: "Currency: Thai baht" lines become label/value rows; several separate lines become rows.
+    // A single line of "QR10 LHR-DOH …; QR830 …; PG223 …" is a list written with semicolons.
+    const rawLines = (kind === "text" || (kind === "contacts" && !contacts?.rows.length)) && body
+      ? body.split(/\n+/).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean) : [];
+    const textLines = rawLines.length === 1 && (body.match(/;/g) ?? []).length >= 2
+      ? body.split(/;\s*/).map(l => l.replace(/[.\s]+$/, "").trim()).filter(Boolean) : rawLines;
     const pairs = textLines.length >= 2 && textLines.filter(l => { const n = splitNamed(l); return !!n.detail && n.name.length <= 32; }).length >= Math.ceil(textLines.length * 0.6)
       ? textLines.map(splitNamed) : [];
     const textRows = pairs.length === 0 && textLines.length >= 2 ? textLines : [];
     const prose = kind === "costs" && facts.length > 0 ? dropShorthand(nonMoneySentences(body))
       : (kind === "stay" || kind === "todo") && lines.length > 0 ? ""
+      : contacts?.rows.length ? ""
       : pairs.length > 0 || textRows.length > 0 ? ""
       : body;
 
@@ -344,6 +333,11 @@ export default function InfoScreen() {
             <View style={styles.card}>
               {lines.map((line, i) => {
                 const named = kind === "stay" ? splitNamed(line) : { name: line, detail: "" };
+                // "Anantara Chiang Mai Resort (7 Nov, 1 night)": the bracket is the detail
+                if (kind === "stay" && !named.detail) {
+                  const m = named.name.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+                  if (m) { named.name = m[1]; named.detail = m[2]; }
+                }
                 const dates = kind === "stay" ? stayDates(named.detail) : null;
                 const name = named.name;
                 const detail = dates ? dates.rest : named.detail;
@@ -375,6 +369,38 @@ export default function InfoScreen() {
                 );
               })}
             </View>
+          )}
+
+          {contacts && contacts.rows.length > 0 && (
+            <View style={styles.card}>
+              {contacts.rows.map((row, i) => (
+                <Pressable
+                  key={i}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(row.phones[0].href).catch(() => {}); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Call ${row.name}, ${row.phones[0].value}`}
+                  style={({ pressed }) => [styles.listRow, { alignItems: "flex-start" }, i > 0 && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}
+                >
+                  <View style={styles.callIcon}>
+                    <Phone size={16} color={C.tealText} weight="fill" />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.rowTitle}>{row.name}</Text>
+                    <RichText text={row.phones.map(p => p.value).join(", ")} style={styles.contactNumber} linkColor={C.tealText} selectable={false} />
+                    {row.note ? <Text style={styles.rowSub}>{row.note}</Text> : null}
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          {contacts && contacts.notes.length > 0 && (
+            contacts.notes.join(" ").length > 160 ? (
+              <View style={[styles.card, { padding: S.md }]}>
+                <LinkedText text={contacts.notes.join(". ") + "."} style={styles.bodyText} linkColor={C.tealText} />
+              </View>
+            ) : (
+              <LinkedText text={contacts.notes.join(". ") + "."} style={styles.caption} linkColor={C.tealText} />
+            )
           )}
 
           {pairs.length > 0 && (
@@ -547,6 +573,8 @@ function makeStyles(C: ThemeColors) {
     totalLabel: { fontSize: T.sm, color: C.textTertiary },
     totalValue: { fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.5, marginTop: 2 },
     stayThumb: { width: 48, height: 48, borderRadius: R.sm },
+    callIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center", marginTop: 2 },
+    contactNumber: { fontSize: T.base, color: C.tealText, fontVariant: ["tabular-nums"], marginTop: 2, lineHeight: 22 },
     stayRange: { fontSize: T.sm, fontWeight: T.medium, color: C.textSecondary, marginTop: 2 },
     receiptRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
