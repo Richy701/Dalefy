@@ -1654,9 +1654,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         if (parsed.organizer) {
           updates.organizer = parsed.organizer;
         }
-        updates.info = cleanedInfo.length > 0
-          ? cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }))
-          : undefined;
+        // A document with no information sections leaves the trip's existing cards alone: replacing the
+        // itinerary should never silently wipe contacts, dress codes and the rest.
+        if (cleanedInfo.length > 0) updates.info = cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }));
         if (tripMedia.length > 0) {
           const existingMedia = existing?.media || [];
           const newUrls = new Set(tripMedia.map(m => m.url));
