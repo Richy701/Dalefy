@@ -130,6 +130,15 @@ export interface TripTask {
   createdAt: string;
 }
 
+export interface TripHistoryEntry {
+  id: string;
+  /** ISO time */
+  at: string;
+  /** Who made the change, by display name */
+  by: string;
+  summary: string;
+}
+
 export interface PublishedSnapshot {
   events: TravelEvent[];
   info?: TripInfo[];
@@ -172,6 +181,8 @@ export interface Trip {
   documents?: EventDocument[];
   tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
+  /** Newest first, capped: who changed what and when */
+  history?: TripHistoryEntry[];
   archivedAt?: string;
 }
 

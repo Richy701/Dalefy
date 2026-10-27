@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet,
+  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { TripHistorySheet } from "@/components/workspace/TripHistorySheet";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -280,6 +282,7 @@ export function WorkspacePage() {
   const [showMap, setShowMap] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [showCosts, setShowCosts] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -1267,6 +1270,7 @@ export function WorkspacePage() {
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Import from document</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setHistoryOpen(true)} className={item}><ClockCounterClockwise className="h-4 w-4" /> History</DropdownMenuItem>
                     <DropdownMenuItem onClick={toggleArchived} className={item}>{trip.archivedAt ? <ArrowCounterClockwise className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {trip.archivedAt ? "Unarchive trip" : "Archive trip"}</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-secondary" />
                     <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
@@ -1315,6 +1319,9 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <Upload className="h-4 w-4" /> Import from document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setHistoryOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+                <ClockCounterClockwise className="h-4 w-4" /> History
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode Locations"}
@@ -2860,6 +2867,15 @@ export function WorkspacePage() {
         </DialogContent>
       </Dialog>
 
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md bg-card border-l border-border p-0 overflow-y-auto">
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border">
+            <SheetTitle className="text-lg font-semibold tracking-tight text-foreground">History</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">Who changed what on {trip.name}, newest first.</SheetDescription>
+          </SheetHeader>
+          <TripHistorySheet history={trip.history ?? []} />
+        </SheetContent>
+      </Sheet>
       <BulkAddPeopleDialog
         open={bulkAddOpen}
         onOpenChange={setBulkAddOpen}

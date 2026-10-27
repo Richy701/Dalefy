@@ -130,6 +130,15 @@ export interface TripTask {
   createdAt: string;
 }
 
+export interface TripHistoryEntry {
+  id: string;
+  /** ISO time */
+  at: string;
+  /** Who made the change, by display name */
+  by: string;
+  summary: string;
+}
+
 export interface PublishedSnapshot {
   travelers?: Array<{ id: string; name: string; initials: string; avatar?: string }>;
   events: TravelEvent[];
@@ -175,6 +184,8 @@ export interface Trip {
   documents?: EventDocument[];
   tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
+  /** Newest first, capped: who changed what and when */
+  history?: TripHistoryEntry[];
   /** Set when the trip is put away after it's over: hidden from the dashboard and reports, never deleted */
   archivedAt?: string;
 }

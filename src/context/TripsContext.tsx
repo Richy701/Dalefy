@@ -7,6 +7,7 @@ import { isFirebaseConfigured } from "@/services/firebase";
 import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, repairTripOwnership } from "@/services/firebaseTrips";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { deriveAttendeesString } from "@/lib/travelerSync";
+import { describeTripChange, withHistory } from "@/lib/tripHistory";
 import { useOrg } from "@/context/OrgContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { STORAGE } from "@/config/storageKeys";
@@ -370,11 +371,15 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   // ── CRUD operations ────────────────────────────────────────────────────────
 
+  // Every change is signed with the editor's name on the trip's history
+  const editor = user?.name || "Someone";
+
   const addTrip = useCallback((trip: Trip) => {
-    const tripWithOrg = currentOrg ? { ...trip, organizationId: trip.organizationId ?? currentOrg.id } : trip;
+    const withOrg = currentOrg ? { ...trip, organizationId: trip.organizationId ?? currentOrg.id } : trip;
+    const tripWithOrg = withHistory(withOrg, "Created the trip", editor);
     setTrips(prev => [tripWithOrg, ...prev]);
     if (useCloud) flushLocal(prev => [tripWithOrg, ...prev]);
-  }, [setTrips, useCloud, flushLocal, currentOrg]);
+  }, [setTrips, useCloud, flushLocal, currentOrg, editor]);
 
   const deleteTrip = useCallback((id: string) => {
     // Track deletion so useMergedTrips never re-adds from stale localStorage
@@ -411,20 +416,20 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         merged.attendees = deriveAttendeesString(merged.travelers ?? []);
         merged.paxCount = String((merged.travelers ?? []).length);
       }
-      return merged;
+      return withHistory(merged, describeTripChange(t, updates), editor);
     });
     setTrips(updater);
     if (useCloud) flushLocal(updater);
-  }, [setTrips, useCloud, flushLocal]);
+  }, [setTrips, useCloud, flushLocal, editor]);
 
   const addEvent = useCallback((tripId: string, event: TravelEvent) => {
     const updater = (prev: Trip[]) => prev.map(t => {
       if (t.id !== tripId) return t;
-      return { ...t, events: [...t.events, event] };
+      return withHistory({ ...t, events: [...t.events, event] }, `Added ${event.title}`, editor);
     });
     setTrips(updater);
     if (useCloud) flushLocal(updater);
-  }, [setTrips, useCloud, flushLocal]);
+  }, [setTrips, useCloud, flushLocal, editor]);
 
   const updateEvent = useCallback((tripId: string, event: TravelEvent) => {
     const updater = (prev: Trip[]) => prev.map(t => {
@@ -433,20 +438,21 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       const newEvents = exists
         ? t.events.map(e => e.id === event.id ? event : e)
         : [...t.events, event];
-      return { ...t, events: newEvents };
+      return withHistory({ ...t, events: newEvents }, describeTripChange(t, { events: newEvents }), editor);
     });
     setTrips(updater);
     if (useCloud) flushLocal(updater);
-  }, [setTrips, useCloud, flushLocal]);
+  }, [setTrips, useCloud, flushLocal, editor]);
 
   const deleteEvent = useCallback((tripId: string, eventId: string) => {
     const updater = (prev: Trip[]) => prev.map(t => {
       if (t.id !== tripId) return t;
-      return { ...t, events: t.events.filter(e => e.id !== eventId) };
+      const gone = t.events.find(e => e.id === eventId);
+      return withHistory({ ...t, events: t.events.filter(e => e.id !== eventId) }, gone ? `Removed ${gone.title}` : null, editor);
     });
     setTrips(updater);
     if (useCloud) flushLocal(updater);
-  }, [setTrips, useCloud, flushLocal]);
+  }, [setTrips, useCloud, flushLocal, editor]);
 
   const value = useMemo(
     () => ({ trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent }),
