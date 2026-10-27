@@ -15,6 +15,7 @@ import { BRAND } from "@/config/brand";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripStats } from "@/hooks/useTripStats";
+import { liveTrips } from "@/lib/tripLifecycle";
 import { MOCK_USERS } from "@/data/mock-users";
 import { AIRLINE_COLORS, airlineLogoUrl } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -38,7 +39,9 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string;
 }
 
 export function ReportsPage() {
-  const { trips, ready: tripsReady } = useTrips();
+  const { trips: allTrips, ready: tripsReady } = useTrips();
+  // Archived trips are over and put away: they stay out of every count and chart here
+  const trips = useMemo(() => liveTrips(allTrips), [allTrips]);
   const { user } = useAuth();
   const { resolvedAccent } = usePreferences();
   const { theme } = useTheme();

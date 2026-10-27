@@ -172,6 +172,7 @@ export interface Trip {
   documents?: EventDocument[];
   tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
+  archivedAt?: string;
 }
 
 export interface ComplianceDoc {

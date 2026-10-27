@@ -175,6 +175,8 @@ export interface Trip {
   documents?: EventDocument[];
   tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
+  /** Set when the trip is put away after it's over: hidden from the dashboard and reports, never deleted */
+  archivedAt?: string;
 }
 
 export interface ComplianceDoc {

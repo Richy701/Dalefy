@@ -7,6 +7,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
+import { liveTrips } from "@/lib/tripLifecycle";
 import { useBrand } from "@/context/BrandContext";
 import { useOrg } from "@/context/OrgContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -33,7 +34,9 @@ import {
 } from "@/components/ui/sidebar"
 
 function SidebarExtras() {
-  const { trips } = useTrips();
+  const { trips: allTrips } = useTrips();
+  // Archived trips stay off the quick list; they're under Archived on the dashboard
+  const trips = React.useMemo(() => liveTrips(allTrips), [allTrips]);
   const { pathname } = useLocation();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;

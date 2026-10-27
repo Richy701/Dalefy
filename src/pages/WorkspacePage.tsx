@@ -13,8 +13,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple,
+  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise,
 } from "@phosphor-icons/react";
+import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
 import { Badge } from "@/components/ui/badge";
@@ -1068,6 +1069,18 @@ export function WorkspacePage() {
     } catch { toast.error("Upload failed", { id: toastId }); }
   };
 
+  const lifecycle = lifecycleLabel(trip);
+  /** Put a finished trip away, or bring it back. Travellers keep it on their phones either way. */
+  const toggleArchived = () => {
+    if (trip.archivedAt) {
+      updateTrip(trip.id, { archivedAt: undefined });
+      toast.success(`${trip.name} is back on the dashboard`);
+    } else {
+      updateTrip(trip.id, { archivedAt: new Date().toISOString() });
+      toast.success(`${trip.name} archived. Find it under Archived on the dashboard.`);
+    }
+  };
+
   const handleOpenEditTrip = () => {
     if (demoGate()) return;
     setEditingTrip({
@@ -1249,6 +1262,7 @@ export function WorkspacePage() {
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Import from document</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={toggleArchived} className={item}>{trip.archivedAt ? <ArrowCounterClockwise className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {trip.archivedAt ? "Unarchive trip" : "Archive trip"}</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-secondary" />
                     <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
                     {(!isOrgMember || canDeleteTrip) && (
@@ -1405,8 +1419,8 @@ export function WorkspacePage() {
 
               {/* Top row: status + event count pill */}
               <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
-                <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${trip.status === "Published" ? "bg-brand text-black" : trip.status === "In Progress" ? "bg-brand text-black" : "bg-white/20 text-white"}`}>
-                  {trip.status === "In Progress" ? "Active" : trip.status === "Published" ? "Published" : "Draft"}
+                <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${lifecycle === "Published" || lifecycle === "Active" ? "bg-brand text-black" : "bg-white/20 text-white"}`}>
+                  {lifecycle}
                 </Badge>
                 <span className="text-xs font-medium text-white/80 tabular-nums">{trip.events.length} events · {groupedEvents.length} days</span>
               </div>

@@ -622,6 +622,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     info: trip.info ?? null,
     documents: trip.documents ?? null,
     published_snapshot: trip.publishedSnapshot ?? null,
+    archived_at: trip.archivedAt ?? null,
   });
   // Deep-clean: Firestore rejects undefined at any nesting depth.
   // JSON round-trip drops undefined values and deep-clones everything.
@@ -653,5 +654,6 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     documents: (data.documents as Trip["documents"]) ?? undefined,
     organizationId: (data.organization_id as string) ?? undefined,
     publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
+    archivedAt: (data.archived_at as string) ?? undefined,
   };
 }
