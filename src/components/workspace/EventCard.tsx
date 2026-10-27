@@ -5,21 +5,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import type { TravelEvent } from "@/types";
 import { tzAbbr, eventTz } from "@/lib/timezone";
+import { PersonAvatar } from "@/components/shared/PersonAvatar";
 
-interface AssignedPerson { initials: string; name: string }
+interface AssignedPerson { initials: string; name: string; avatar?: string }
 
 function AssignedDots({ people }: { people?: AssignedPerson[] }) {
   if (!people || people.length === 0) return null;
   return (
     <div className="flex items-center -space-x-1.5 shrink-0">
       {people.slice(0, 4).map((p, i) => (
-        <div
-          key={i}
-          title={p.name}
-          className="h-5 w-5 rounded-full bg-secondary border-2 border-card flex items-center justify-center text-[8px] font-bold text-foreground uppercase"
-        >
-          {p.initials}
-        </div>
+        <PersonAvatar key={i} avatar={p.avatar} initials={p.initials} name={p.name} className="h-5 w-5 ring-2 ring-card" fallbackClassName="text-[8px] font-bold text-foreground" />
       ))}
       {people.length > 4 && (
         <div className="h-5 w-5 rounded-full bg-secondary border-2 border-card flex items-center justify-center text-[8px] font-bold text-muted-foreground">

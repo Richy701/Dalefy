@@ -9,7 +9,7 @@ interface SortableEventCardProps {
   onClick: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  assignedPeople?: Array<{ initials: string; name: string }>;
+  assignedPeople?: Array<{ initials: string; name: string; avatar?: string }>;
   tripTz?: string;
 }
 

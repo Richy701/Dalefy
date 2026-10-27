@@ -351,13 +351,15 @@ export function WorkspacePage() {
   const tripTravelers = useMemo(() => {
     if (!trip) return [];
     // Resolve from allTravelers by ID
-    const resolved = allTravelers.filter(u => trip.travelerIds?.includes(u.id));
+    const photoOf = (id: string) => trip.travelers?.find(tv => tv.id === id)?.avatar ?? "";
+    const resolved = allTravelers.filter(u => trip.travelerIds?.includes(u.id)).map(u => (u.avatar ? u : { ...u, avatar: photoOf(u.id) }));
     if (resolved.length > 0) return resolved;
     // Fallback: use trip.travelers denormalized array (covers timing gaps after re-import)
     if (trip.travelers?.length) {
       return trip.travelers.map(t => {
         const full = allTravelers.find(u => u.id === t.id);
-        return full ?? { id: t.id, name: t.name, email: t.email || "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const } satisfies UserType;
+        if (full) return full.avatar ? full : { ...full, avatar: t.avatar ?? "" };
+        return { id: t.id, name: t.name, email: t.email || "", role: "Traveler" as const, avatar: t.avatar ?? "", initials: t.initials, status: "Active" as const } satisfies UserType;
       });
     }
     return [];
@@ -1218,7 +1220,7 @@ export function WorkspacePage() {
                       viewAsId === t.id ? "bg-brand/10 text-brand" : "text-muted-foreground hover:bg-secondary"
                     }`}
                   >
-                    <div className="h-7 w-7 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
+                    <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-7 w-7" fallbackClassName="bg-brand/10 text-brand text-[9px] font-black" />
                     <span className="truncate">{t.name}</span>
                     {viewAsId === t.id && <Check className="h-3 w-3 ml-auto shrink-0" />}
                   </button>
@@ -1703,7 +1705,7 @@ export function WorkspacePage() {
                                       event.assignedTo?.length
                                         ? event.assignedTo.map(id => {
                                             const t = allTravelers.find(u => u.id === id);
-                                            return t ? { initials: t.initials, name: t.name } : { initials: "?", name: "Unknown" };
+                                            return t ? { initials: t.initials, name: t.name, avatar: t.avatar } : { initials: "?", name: "Unknown" };
                                           })
                                         : undefined
                                     }
@@ -2802,7 +2804,7 @@ export function WorkspacePage() {
                                     : "bg-background border-border text-muted-foreground hover:border-brand/30"
                                 }`}
                               >
-                                <span className="h-5 w-5 rounded-md bg-secondary flex items-center justify-center text-[8px] font-black shrink-0">{t.initials}</span>
+                                <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-5 w-5" fallbackClassName="text-[8px] font-black" />
                                 {t.name.split(" ")[0]}
                                 {isAssigned && <Check className="h-3 w-3" />}
                               </button>

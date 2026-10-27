@@ -481,7 +481,7 @@ export default function TripScreen() {
                 <View style={styles.avatars}>
                   {travellers.slice(0, 5).map((t, i) => (
                     <View key={t.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -6 }]}>
-                      <Avatar size={26} uri={t.avatar} initials={t.initials} color="#fff" ringColor="rgba(0,0,0,0.28)" />
+                      <Avatar size={26} uri={t.avatar} initials={t.initials} color="rgba(255,255,255,0.92)" solid ringColor="rgba(0,0,0,0.28)" />
                     </View>
                   ))}
                   {travellerCount > 5 && (
@@ -565,7 +565,10 @@ export default function TripScreen() {
           C={C}
           docCount={(trip.info ?? []).filter(i => isLeader || !i.leaderOnly).length}
           onDocs={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
-          organizer={trip.organizer}
+          // The organiser is usually on the trip too, so their traveller photo stands in when they have none of their own
+          organizer={trip.organizer && !trip.organizer.avatar
+            ? { ...trip.organizer, avatar: trip.travelers?.find(t => t.name.trim().toLowerCase() === trip.organizer!.name.trim().toLowerCase())?.avatar }
+            : trip.organizer}
           onAsk={() => router.push({ pathname: "/trip/ask", params: { tripId: trip.id } })}
         />
 
@@ -799,13 +802,14 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
     flag: { fontSize: 24, lineHeight: 30 },
     groupRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.sm },
     avatars: { flexDirection: "row", alignItems: "center" },
-    avatarSlot: { borderRadius: 13, backgroundColor: "rgba(255,255,255,0.22)" },
+    // Every circle opaque, photo or initials, so a stack of headshots and fallbacks reads as one row
+    avatarSlot: { borderRadius: 13, backgroundColor: "rgba(255,255,255,0.92)" },
     avatarMore: {
       width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.12)",
+      backgroundColor: "rgba(255,255,255,0.92)",
       borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
-    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "#fff" },
+    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "rgba(0,0,0,0.82)" },
     groupText: { fontSize: T.sm, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.94)" : C.textPrimary, flexShrink: 1 },
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
