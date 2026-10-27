@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise,
+  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import { DaySection } from "@/components/workspace/DaySection";
 import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
 import { TaskChecklist } from "@/components/workspace/TaskChecklist";
+import { CostSummary } from "@/components/workspace/CostSummary";
 import { ItineraryAssistant } from "@/components/workspace/ItineraryAssistant";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -278,6 +279,7 @@ export function WorkspacePage() {
 
   const [showMap, setShowMap] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const [showCosts, setShowCosts] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -1224,17 +1226,20 @@ export function WorkspacePage() {
             return (
               <>
                 <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-0.5 rounded-lg bg-secondary">
-                  <button type="button" aria-pressed={showTasks} title="Tasks" onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); setShowAssistant(false); } }} className={panelBtn(showTasks)}>
+                  <button type="button" aria-pressed={showTasks} title="Tasks" onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); setShowAssistant(false); setShowCosts(false); } }} className={panelBtn(showTasks)}>
                     <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">Tasks</span>
                   </button>
-                  <button type="button" aria-pressed={showMap} title="Map" onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); } }} className={panelBtn(showMap)}>
+                  <button type="button" aria-pressed={showCosts} title="Costs" onClick={() => { setShowCosts(!showCosts); if (!showCosts) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); } }} className={panelBtn(showCosts)}>
+                    <Wallet className="h-4 w-4" /> <span className="hidden lg:inline">Costs</span>
+                  </button>
+                  <button type="button" aria-pressed={showMap} title="Map" onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); setShowCosts(false); } }} className={panelBtn(showMap)}>
                     <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">Map</span>
                   </button>
-                  <button type="button" aria-pressed={showMobilePreview} title="Phone preview" onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); setShowAssistant(false); } }} className={panelBtn(showMobilePreview)}>
+                  <button type="button" aria-pressed={showMobilePreview} title="Phone preview" onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); setShowAssistant(false); setShowCosts(false); } }} className={panelBtn(showMobilePreview)}>
                     <DeviceMobileCamera className="h-4 w-4" /> <span className="hidden lg:inline">Phone</span>
                   </button>
                   {!isViewer && (
-                    <button type="button" aria-pressed={showAssistant} title="Trip assistant" onClick={() => { setShowAssistant(!showAssistant); if (!showAssistant) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); } }} className={panelBtn(showAssistant)}>
+                    <button type="button" aria-pressed={showAssistant} title="Trip assistant" onClick={() => { setShowAssistant(!showAssistant); if (!showAssistant) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); setShowCosts(false); } }} className={panelBtn(showAssistant)}>
                       <ChatCircleText className="h-4 w-4" /> <span className="hidden lg:inline">Assistant</span>
                     </button>
                   )}
@@ -1285,17 +1290,20 @@ export function WorkspacePage() {
                 <DotsThreeVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card border border-border shadow-2xl rounded-xl p-1">
-              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); setShowAssistant(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); setShowAssistant(false); setShowCosts(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <ListChecks className="h-4 w-4 text-brand" /> {showTasks ? "Hide Tasks" : "Tasks"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowCosts(!showCosts); if (!showCosts) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+                <Wallet className="h-4 w-4 text-brand" /> {showCosts ? "Hide Costs" : "Costs"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); setShowAssistant(false); setShowCosts(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <MapIcon className="h-4 w-4 text-brand" /> {showMap ? "Hide Map" : "Show Map"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); setShowAssistant(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); setShowAssistant(false); setShowCosts(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <DeviceMobileCamera className="h-4 w-4 text-brand" /> {showMobilePreview ? "Hide Mobile" : "Mobile Preview"}
               </DropdownMenuItem>
               {!isViewer && (
-                <DropdownMenuItem onClick={() => { setShowAssistant(!showAssistant); if (!showAssistant) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+                <DropdownMenuItem onClick={() => { setShowAssistant(!showAssistant); if (!showAssistant) { setShowMap(false); setShowTasks(false); setShowMobilePreview(false); setShowCosts(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                   <ChatCircleText className="h-4 w-4 text-brand" /> {showAssistant ? "Hide Assistant" : "Trip Assistant"}
                 </DropdownMenuItem>
               )}
@@ -1409,7 +1417,7 @@ export function WorkspacePage() {
         </aside>
 
         <div className="flex-1 flex flex-row overflow-hidden relative">
-          <main ref={printRef} className={`flex-1 flex flex-col relative bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview || showAssistant ? "lg:w-[60%]" : "w-full"}`}>
+          <main ref={printRef} className={`flex-1 flex flex-col relative bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showCosts || showMobilePreview || showAssistant ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover" style={{ objectPosition: objectPosition(trip.imagePosition) }} alt={trip.name} />
@@ -1702,7 +1710,7 @@ export function WorkspacePage() {
                   </div>
                 </div>
                 {!isViewer && (
-                  <div className={showMap || showTasks || showMobilePreview || showAssistant ? "hidden lg:block" : ""}>
+                  <div className={showMap || showTasks || showCosts || showMobilePreview || showAssistant ? "hidden lg:block" : ""}>
                     <DockBar onAddEvent={handleAddEvent} />
                   </div>
                 )}
@@ -2087,6 +2095,24 @@ export function WorkspacePage() {
                 onUpdate={(tasks) => updateTrip(trip.id, { tasks })}
                 travelers={trip.travelers}
               />
+            </aside>
+          )}
+          {showCosts && (
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-border bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card/95/95 backdrop-blur-sm shrink-0 z-50">
+                <div className="flex items-center gap-2.5">
+                  <Wallet className="h-4 w-4 text-brand" />
+                  <span className="text-xs font-medium text-foreground">Costs</span>
+                </div>
+                <button
+                  onClick={() => setShowCosts(false)}
+                  className="h-8 w-8 rounded-lg bg-secondary border border-border flex items-center justify-center active:scale-95 transition-transform"
+                  aria-label="Close costs"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+              <CostSummary trip={trip} onOpenEvent={handleEditEvent} onEditBudget={handleOpenEditTrip} />
             </aside>
           )}
           {showMobilePreview && (
