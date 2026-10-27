@@ -1,7 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak, UsersThree } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak, UsersThree, Images, Camera } from "@phosphor-icons/react";
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
+import { AddPhotosDialog } from "@/components/shared/AddPhotosDialog";
+import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { uploadTravelerPhoto, tripUpdatesForAvatar } from "@/lib/travelerPhotos";
+import { tripTravelerOf } from "@/lib/travelerSync";
 import { initialsFrom } from "@/lib/names";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -108,12 +112,7 @@ const TONE_TEXT = {
 } as const;
 
 function Avatar({ person, size = "h-9 w-9" }: { person: Pick<Person, "initials" | "avatar" | "name">; size?: string }) {
-  const [broken, setBroken] = useState(false);
-  return person.avatar && /^https?:\/\//.test(person.avatar) && !broken ? (
-    <img src={person.avatar} alt="" onError={() => setBroken(true)} className={cn(size, "rounded-full object-cover shrink-0")} />
-  ) : (
-    <div className={cn(size, "rounded-full bg-secondary text-muted-foreground flex items-center justify-center text-xs font-semibold shrink-0")}>{person.initials}</div>
-  );
+  return <PersonAvatar avatar={person.avatar} initials={person.initials} name={person.name} className={size} />;
 }
 
 export function TravelersPage() {
@@ -149,6 +148,8 @@ export function TravelersPage() {
   // Someone who joined in the app under the wrong name (the app once adopted a listed traveller's name)
   const [renameTarget, setRenameTarget] = useState<Person | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   // Name and email being edited in the person panel
   const [editingPerson, setEditingPerson] = useState<{ name: string; email: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -220,7 +221,7 @@ export function TravelersPage() {
           name: tv.name,
           email: tv.email || "",
           role: "Traveler",
-          avatar: "",
+          avatar: tv.avatar ?? "",
           initials: tv.initials,
           // Worked out below from the trips they're actually on
           status: "Offline",
@@ -234,6 +235,7 @@ export function TravelersPage() {
       );
       if (existing) {
         if (cu.email && !existing.email) existing.email = cu.email;
+        if (cu.avatar) existing.avatar = cu.avatar;
         if (cu.role && cu.role !== "Traveler") existing.role = cu.role;
         if (cu.compliance?.length) existing.compliance = cu.compliance;
       } else {
@@ -267,6 +269,7 @@ export function TravelersPage() {
     }
     const rows: Person[] = travelers.map(t => {
       const onTrips = trips.filter(tr => tr.travelers?.some(tv => tv.id === t.id) || tr.travelerIds?.includes(t.id));
+      const facts = appFacts(linkedBy.get(t.id) ?? []);
       return {
         id: t.id,
         name: t.name,
@@ -275,7 +278,8 @@ export function TravelersPage() {
         role: t.role,
         trips: onTrips.map(tr => ({ id: tr.id, name: tr.name, start: tr.start, invitedAt: tr.travelers?.find(tv => tv.id === t.id)?.invitedAt })),
         compliance: t.compliance ?? [],
-        ...appFacts(linkedBy.get(t.id) ?? []),
+        ...facts,
+        avatar: t.avatar || facts.avatar,
         appOnly: false,
       };
     });
@@ -388,12 +392,49 @@ export function TravelersPage() {
     showToast(`${name} updated`);
   }, [trips, updateTrip, setCustomTravelers, showToast]);
 
+  /**
+   * A photo (or none) for each person reaches the directory, every trip's traveller list and the published copies,
+   * which is how the phone picks it up. People known only from a trip's list are added to the directory as they go.
+   */
+  const applyPhotos = useCallback((photos: Array<{ personId: string; url: string | null }>) => {
+    const byId = new Map(photos.map(p => [p.personId, p.url]));
+    setCustomTravelers(prev => {
+      const have = new Set(prev.map(u => u.id));
+      const updated = prev.map(u => (byId.has(u.id) ? { ...u, avatar: byId.get(u.id) ?? "" } : u));
+      const added = travelers.filter(u => byId.has(u.id) && !have.has(u.id)).map(u => ({ ...u, avatar: byId.get(u.id) ?? "" }));
+      return [...updated, ...added];
+    });
+    for (const trip of trips) {
+      let updates: Partial<Trip> = {};
+      let touched = false;
+      for (const [personId, url] of byId) {
+        const next = tripUpdatesForAvatar({ ...trip, ...updates }, personId, url);
+        if (next) { updates = { ...updates, ...next }; touched = true; }
+      }
+      if (touched) updateTrip(trip.id, updates);
+    }
+  }, [travelers, trips, updateTrip, setCustomTravelers]);
+
+  const changePhoto = useCallback(async (p: Person, file: File | null) => {
+    if (!user?.id) return;
+    setPhotoBusy(true);
+    try {
+      const url = file ? await uploadTravelerPhoto(user.id, p.id, file) : null;
+      applyPhotos([{ personId: p.id, url }]);
+      showToast(url ? `Photo added for ${p.name}` : `Photo removed for ${p.name}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Couldn't upload that photo");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }, [user, applyPhotos, showToast]);
+
   /** Onto a trip's traveller list from the panel, without leaving the directory */
   const addToTrip = useCallback((p: Person, trip: Trip) => {
     if (trip.travelers?.some(t => t.id === p.id)) return;
     updateTrip(trip.id, {
       travelerIds: [...(trip.travelerIds ?? []), p.id],
-      travelers: [...(trip.travelers ?? []), { id: p.id, name: p.name, initials: p.initials, ...(p.email ? { email: p.email } : {}) }],
+      travelers: [...(trip.travelers ?? []), tripTravelerOf(p)],
     });
     showToast(`${p.name} added to ${trip.name}`);
   }, [updateTrip, showToast]);
@@ -597,6 +638,9 @@ export function TravelersPage() {
         ) : undefined}
         cta={!isViewer ? (
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => { if (!demoGate()) setPhotosOpen(true); }} className="rounded-lg font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
+              <Images className="h-4 w-4" /> <span className="hidden sm:inline">Add photos</span>
+            </Button>
             <Button variant="outline" onClick={() => { if (!demoGate()) setBulkOpen(true); }} className="rounded-lg font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
               <UsersThree className="h-4 w-4" /> <span className="hidden sm:inline">Add many</span>
             </Button>
@@ -784,7 +828,28 @@ export function TravelersPage() {
                 <div className="px-5 pt-5 pb-4 border-b border-border">
                   <SheetTitle className="sr-only">{p.name}</SheetTitle>
                   <div className="flex items-center gap-3 pr-8">
-                    <Avatar person={p} size="h-12 w-12" />
+                    {!isViewer && !p.appOnly ? (
+                      <div className="relative shrink-0">
+                        <label
+                          title={p.avatar ? "Change photo" : "Add a photo"}
+                          className={cn("group/photo relative block cursor-pointer rounded-full", photoBusy && "pointer-events-none opacity-60")}
+                        >
+                          <Avatar person={p} size="h-12 w-12" />
+                          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover/photo:opacity-100 group-focus-within/photo:opacity-100">
+                            {photoBusy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            aria-label={p.avatar ? `Change ${p.name}'s photo` : `Add a photo for ${p.name}`}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) void changePhoto(p, f); e.target.value = ""; }}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <Avatar person={p} size="h-12 w-12" />
+                    )}
                     {editingPerson ? (
                       <form
                         className="min-w-0 flex-1 space-y-2"
@@ -820,6 +885,11 @@ export function TravelersPage() {
                   <p className={cn("text-sm mt-3 flex items-center gap-1.5", TONE_TEXT[status.tone])}>
                     <DeviceMobile className="h-4 w-4" /> {status.label}
                   </p>
+                  {!isViewer && !p.appOnly && p.avatar && (
+                    <button type="button" onClick={() => void changePhoto(p, null)} disabled={photoBusy} className="mt-1 text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+                      Remove photo
+                    </button>
+                  )}
                   {!isViewer && (
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground" disabled={!p.appKeys.length} onClick={() => messagePeople([p])}>
@@ -1182,6 +1252,13 @@ export function TravelersPage() {
         confirmLabel={pendingConfirm?.confirmLabel ?? "Remove"}
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
         destructive={pendingConfirm?.destructive ?? true}
+      />
+      <AddPhotosDialog
+        open={photosOpen}
+        onOpenChange={setPhotosOpen}
+        people={travelers}
+        uid={user?.id ?? ""}
+        onUploaded={photos => { applyPhotos(photos); showToast(`${photos.length} photo${photos.length === 1 ? "" : "s"} added`); }}
       />
       <BulkAddPeopleDialog
         open={bulkOpen}

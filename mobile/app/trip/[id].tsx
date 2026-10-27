@@ -481,7 +481,7 @@ export default function TripScreen() {
                 <View style={styles.avatars}>
                   {travellers.slice(0, 5).map((t, i) => (
                     <View key={t.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -6 }]}>
-                      <Avatar size={26} initials={t.initials} color="#fff" ringColor="rgba(0,0,0,0.28)" />
+                      <Avatar size={26} uri={t.avatar} initials={t.initials} color="#fff" ringColor="rgba(0,0,0,0.28)" />
                     </View>
                   ))}
                   {travellerCount > 5 && (

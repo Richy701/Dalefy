@@ -68,6 +68,8 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
+import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { tripTravelerOf } from "@/lib/travelerSync";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { MessageDialog } from "@/components/shared/MessageDialog";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -643,7 +645,7 @@ export function WorkspacePage() {
       start: trip.start,
       end: trip.end,
       paxCount: trip.paxCount,
-      travelers: trip.travelers?.map(({ id, name, initials }) => ({ id, name, initials })),
+      travelers: trip.travelers?.map(({ id, name, initials, avatar }) => ({ id, name, initials, ...(avatar ? { avatar } : {}) })),
       publishedAt: new Date().toISOString(),
     };
     const published = { ...trip, status: "Published" as const, publishedSnapshot: snapshot };
@@ -1740,7 +1742,7 @@ export function WorkspacePage() {
                         <div className="divide-y divide-slate-100 dark:divide-border">
                           {tripTravelers.map(t => (
                             <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand text-[10px] font-black uppercase shrink-0">{t.initials}</div>
+                              <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-8 w-8" fallbackClassName="bg-brand/10 text-brand text-[10px] font-black" />
                               <p className="text-xs font-bold text-foreground/80 w-32 sm:w-40 truncate shrink-0">{t.name}</p>
                               <Input
                                 type="email"
@@ -1782,7 +1784,7 @@ export function WorkspacePage() {
                           const isEditing = editingEmailId === t.id;
                           return (
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border group hover:border-brand/30 transition-colors">
-                              <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-xs font-black uppercase shrink-0">{t.initials}</div>
+                              <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-10 w-10" fallbackClassName="bg-brand/10 text-brand text-xs font-black" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
@@ -1973,13 +1975,13 @@ export function WorkspacePage() {
                               type="button"
                               onClick={() => {
                                 const newIds = [...(trip.travelerIds || []), t.id];
-                                const newTravelers = [...(trip.travelers || []), { id: t.id, name: t.name, initials: t.initials, ...(t.email ? { email: t.email } : {}) }];
+                                const newTravelers = [...(trip.travelers || []), tripTravelerOf(t)];
                                 updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
                                 toast.success(`Added ${t.name} to trip`);
                               }}
                               className="w-full flex items-center gap-3 p-3 rounded-xl bg-background border border-border hover:border-brand/30 hover:bg-brand/5 transition-all group text-left"
                             >
-                              <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
+                              <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-9 w-9" fallbackClassName="text-[10px] font-black group-hover:bg-brand/10 group-hover:text-brand transition-colors" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-foreground/80 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
                                 <p className="text-[10px] text-muted-foreground truncate">{t.email || <span className="italic text-muted-foreground">No email</span>}</p>
@@ -2831,7 +2833,7 @@ export function WorkspacePage() {
           if (!adding.length) { toast.success("Everyone was already on the trip"); return; }
           updateTrip(trip.id, {
             travelerIds: [...(trip.travelerIds ?? []), ...adding.map(u => u.id)],
-            travelers: [...(trip.travelers ?? []), ...adding.map(u => ({ id: u.id, name: u.name, initials: u.initials, ...(u.email ? { email: u.email } : {}) }))],
+            travelers: [...(trip.travelers ?? []), ...adding.map(tripTravelerOf)],
           });
           toast.success(`Added ${adding.length} to the trip`);
         }}

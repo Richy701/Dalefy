@@ -398,7 +398,7 @@ export default function SharedTripScreen() {
                   <View style={styles.arriveFaces}>
                     {trip.travelers.slice(0, 4).map((t, i) => (
                       <View key={t.id} style={{ marginLeft: i ? -8 : 0 }}>
-                        <Avatar size={26} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} solid ringColor="rgba(30,30,34,1)" />
+                        <Avatar size={26} uri={t.avatar} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} solid ringColor="rgba(30,30,34,1)" />
                       </View>
                     ))}
                   </View>
