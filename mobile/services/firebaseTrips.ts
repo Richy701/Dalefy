@@ -351,20 +351,31 @@ export async function leaveTrip(tripId: string): Promise<void> {
 
 const LAST_SEEN_EVERY_MS = 15 * 60_000;
 
-/** Stamps this account's memberships with when the app was last opened, so organisers can see who is active */
-export async function touchLastSeen(): Promise<void> {
+/**
+ * Stamps this account's memberships with when the app was last opened, so organisers can see who is active.
+ * The phone's own profile goes with it: what the person sees on their Profile tab is what organisers see,
+ * so a name that once got overwritten (a listed traveller's, say) is put right on the next open.
+ */
+export async function touchLastSeen(profile?: { name?: string; avatar?: string | null }): Promise<void> {
   try {
     await waitForAuth();
     const uid = firebaseAuth().currentUser?.uid;
     if (!uid) return;
     const key = `daf-last-seen:${uid}`;
+    const nameKey = `daf-synced-name:${uid}`;
+    const name = profile?.name?.trim() || "";
     const last = Number(await AsyncStorage.getItem(key)) || 0;
-    if (Date.now() - last < LAST_SEEN_EVERY_MS) return;
+    const nameChanged = !!name && (await AsyncStorage.getItem(nameKey)) !== name;
+    if (Date.now() - last < LAST_SEEN_EVERY_MS && !nameChanged) return;
     const snap = await getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)));
     if (snap.empty) return;
-    const stamp = { last_seen_at: new Date().toISOString(), platform: Platform.OS };
+    const stamp: Record<string, unknown> = { last_seen_at: new Date().toISOString(), platform: Platform.OS };
+    if (name) stamp.name = name;
+    const avatar = remoteAvatar(profile?.avatar);
+    if (avatar) stamp.avatar = avatar;
     await Promise.all(snap.docs.map(d => setDoc(d.ref, stamp, { merge: true }).catch(() => {})));
     await AsyncStorage.setItem(key, String(Date.now()));
+    if (name) await AsyncStorage.setItem(nameKey, name);
   } catch { /* cosmetic: the organiser just sees an older time */ }
 }
 

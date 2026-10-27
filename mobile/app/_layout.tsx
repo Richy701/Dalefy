@@ -348,11 +348,14 @@ function DeferredServices() {
     registerForPushNotifications({ prompt: hasTrips && seenTourAtLaunch });
   }, [hasTrips, seenTourAtLaunch]);
 
-  // Most opens are resumes from the background, not launches; stamp those too (throttled inside)
+  // Most opens are resumes from the background, not launches; stamp those too (throttled inside). The profile
+  // rides along so organisers always see the name and photo this person has on their phone.
   useEffect(() => {
-    const sub = AppState.addEventListener("change", state => { if (state === "active") void touchLastSeen(); });
+    const profile = { name: prefs.name, avatar: prefs.avatar };
+    void touchLastSeen(profile);
+    const sub = AppState.addEventListener("change", state => { if (state === "active") void touchLastSeen(profile); });
     return () => sub.remove();
-  }, []);
+  }, [prefs.name, prefs.avatar]);
 
   useEffect(() => {
     let Upd: typeof import("expo-updates") | null = null;
