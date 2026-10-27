@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { pdfLinks, docxLinks, formatLinks, type DocLink } from "@/lib/documentLinks";
+import { withAccommodation } from "@/lib/stays";
 import { Upload, FileText, Check, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -1331,6 +1332,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       setParserUsed("heuristic");
     }
 
+    // Hotels in the itinerary but no accommodation section: write the card ourselves so the phone's
+    // "Where you're staying" never depends on how the document was laid out
+    result.info = withAccommodation(result.info.map(i => ({ id: "", ...i })), result.events as unknown as TravelEvent[], result.start).map(i => ({ title: i.title, body: i.body }));
     logger.log("Import", "parsed info:", result.info.length, result.info.map(i => i.title), "organizer:", result.organizer);
     setParsed(result);
     setEditInfo(result.info.map(i => ({ ...i })));

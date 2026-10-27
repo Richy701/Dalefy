@@ -103,6 +103,7 @@ Info sections — extract ALL of these if present, and rewrite into clear, well-
 - Any other useful reference info for travelers
 
 Info section rules:
+- ALWAYS include an info entry titled "Accommodation" when the trip has any hotel stays, as well as the hotel events: one line per stay, numbered from the trip's first night, "Night 1: Hotel name — one-line description" or "Nights 3–4: Hotel name — description" (use the document's own description of each property when it gives one).
 - ONE info entry per heading in the document, titled as the document titles it. Never merge two headings into one entry and never drop a heading because it looks minor. A document with 15 reference headings gives 15 entries.
 - Contact lists stay complete and separate: every name, role and number, one entry per heading (e.g. "Contacts - Chiang Mai" and "Contacts - Phuket" are two entries).
 - Keep phone numbers, policy numbers, reference codes and addresses exactly as written.

@@ -28,6 +28,7 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 
 const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 import type { TravelEvent } from "@/shared/types";
+import { withAccommodation } from "@/shared/stays";
 
 // Phone numbers, emails and links in organiser text are tappable; long press copies
 const LinkedText = RichText;
@@ -204,9 +205,10 @@ export default function InfoScreen() {
   const { isLeader } = useTripRole(tripId);
   const trip = trips.find(t => t.id === tripId);
   const infoItems = useMemo(() => {
-    const all = trip?.info ?? [];
+    // No accommodation card from the document: build "Where you're staying" from the hotel events instead
+    const all = withAccommodation(trip?.info ?? [], trip?.events ?? [], trip?.start ?? "");
     return isLeader ? all : all.filter(i => !i.leaderOnly);
-  }, [trip?.info, isLeader]);
+  }, [trip?.info, trip?.events, trip?.start, isLeader]);
 
   // Essentials first: what's due (soonest at the top), what's still to sort, where you're staying,
   // then everything else, with costs last
