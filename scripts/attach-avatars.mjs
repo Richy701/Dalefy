@@ -1,7 +1,11 @@
 /**
  * Attach a folder of headshots to the traveller directory, matched by file name.
  *
- *   node scripts/attach-avatars.mjs --project=<VITE_FIREBASE_PROJECT_ID> [--folder="/Volumes/My Passport for Mac/Avatars"] [--org=<orgId>] [--replace] [--apply]
+ *   node scripts/attach-avatars.mjs --project=<VITE_FIREBASE_PROJECT_ID> [--folder="/Volumes/My Passport for Mac/Avatars"] [--org=<orgId>] [--from-trips] [--only="Name, Name"] [--replace] [--apply]
+ *
+ * Staff travel too, so --from-trips adds anyone a photo names who is on a trip but not yet in the directory,
+ * using the trip's own entry for them. A person's photo goes onto every trip entry with their id or full name,
+ * and onto the organiser card of trips they organise.
  *
  * Without --apply it only prints what would happen. Each matched photo is shrunk to 512px JPEG with sips,
  * uploaded under avatars/directory/, and the URL is written on the directory entry, on every trip's traveller
@@ -40,6 +44,9 @@ const folder = flag('folder') ?? '/Volumes/My Passport for Mac/Avatars';
 const orgFilter = flag('org') ?? null;
 const apply = has('apply');
 const replace = has('replace');
+const fromTrips = has('from-trips');
+// Just these people, by full name, when the rest of a match list is still under review
+const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
 
 const require = createRequire(new URL('../functions/package.json', import.meta.url));
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
@@ -75,13 +82,43 @@ const people = dirSnap.docs
   .filter(p => !orgFilter || p.org === orgFilter);
 console.log(`${people.length} people in the directory${orgFilter ? ` for org ${orgFilter}` : ''}`);
 
+// ── People on trips, by full name, with every id they have been given ───────
+const tripSnap = await db.collection('trips').get();
+const trips = tripSnap.docs.map(d => ({ ref: d.ref, data: d.data() }));
+const tripPeople = new Map();
+for (const trip of trips) {
+  const org = trip.data.organization_id ?? null;
+  if (orgFilter && org !== orgFilter) continue;
+  for (const t of trip.data.travelers ?? []) {
+    if (!t?.id || typeof t.name !== 'string' || !t.name.trim()) continue;
+    const key = norm(t.name);
+    const entry = tripPeople.get(key) ?? { name: t.name.trim(), ids: [], email: '', initials: t.initials ?? '', org };
+    if (!entry.ids.includes(t.id)) entry.ids.push(t.id);
+    if (!entry.email && t.email) entry.email = t.email.trim();
+    tripPeople.set(key, entry);
+  }
+}
+const idsFor = (person) => [...new Set([person.id, ...(tripPeople.get(norm(person.name))?.ids ?? [])])];
+// The directory doc id and the uploader on record follow the existing entries of the same organisation
+const userIdFor = (org) => dirSnap.docs.find(d => d.data().organization_id === org)?.data().user_id ?? null;
+
+function matchTripPerson(file) {
+  const stem = stemOf(file);
+  const exact = tripPeople.get(stem);
+  if (exact) return exact;
+  if (stem.includes(' ')) return null;
+  const byFirst = [...tripPeople.values()].filter(p => norm(p.name).split(' ')[0] === stem);
+  return byFirst.length === 1 ? byFirst[0] : null;
+}
+
 function matchPerson(file) {
   const stem = stemOf(file);
   const exact = people.filter(p => norm(p.name) === stem);
   if (exact.length === 1) return { person: exact[0] };
   if (exact.length > 1) return { ambiguous: exact };
-  const first = stem.split(' ')[0];
-  const byFirst = people.filter(p => norm(p.name).split(' ')[0] === first);
+  // "Lee Graham.png" must not land on Lee Birkett: a first name alone only stands in when that is all the file gives
+  if (stem.includes(' ')) return {};
+  const byFirst = people.filter(p => norm(p.name).split(' ')[0] === stem);
   if (byFirst.length === 1) return { person: byFirst[0] };
   return byFirst.length ? { ambiguous: byFirst } : {};
 }
@@ -89,11 +126,23 @@ function matchPerson(file) {
 const plan = [];
 const skipped = { ambiguous: [], unmatched: [], hasPhoto: [], duplicate: [] };
 const taken = new Set();
-for (const file of photos.sort()) {
+// A traveller's own photo wins over a same-named staff photo in Admin/, so staff folders are looked at last
+const depth = (f) => path.relative(folder, f).split(path.sep).length;
+for (const file of photos.sort((a, b) => depth(a) - depth(b) || a.localeCompare(b))) {
   const m = matchPerson(file);
   const label = path.relative(folder, file);
   if (m.ambiguous) { skipped.ambiguous.push(`${label} -> ${m.ambiguous.map(p => p.name).join(' | ')}`); continue; }
+  if (!m.person && fromTrips) {
+    const tp = matchTripPerson(file);
+    if (tp && !people.some(p => norm(p.name) === norm(tp.name))) {
+      const id = tp.ids[0];
+      const org = tp.org;
+      if (!org || !userIdFor(org)) { skipped.unmatched.push(`${label} -> ${tp.name} (trip has no organisation on record)`); continue; }
+      m.person = { id, name: tp.name, email: tp.email, initials: tp.initials, org, create: true, ref: db.collection('directory_travelers').doc(`${org}__${id}`) };
+    }
+  }
   if (!m.person) { skipped.unmatched.push(label); continue; }
+  if (only.length && !only.includes(norm(m.person.name))) continue;
   if (taken.has(m.person.id)) { skipped.duplicate.push(`${label} -> ${m.person.name} (already matched by another file)`); continue; }
   if (m.person.avatar && !replace) { skipped.hasPhoto.push(`${label} -> ${m.person.name}`); continue; }
   taken.add(m.person.id);
@@ -101,7 +150,7 @@ for (const file of photos.sort()) {
 }
 
 console.log(`\n${plan.length} to attach:`);
-for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}`);
+for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}${p.person.create ? '  (new in the directory, from their trips)' : ''}`);
 const show = (title, list) => { if (list.length) { console.log(`\n${title} (${list.length}):`); for (const l of list) console.log(`  ${l}`); } };
 show('Ambiguous, pick by renaming the file to the full name', skipped.ambiguous);
 show('No one by that name', skipped.unmatched);
@@ -112,8 +161,6 @@ if (!apply) { console.log('\nDry run. Add --apply to upload and attach.'); proce
 
 // ── Shrink, upload, write ───────────────────────────────────────────────────
 const tmp = mkdtempSync(path.join(tmpdir(), 'avatars-'));
-const tripSnap = await db.collection('trips').get();
-const trips = tripSnap.docs.map(d => ({ ref: d.ref, data: d.data() }));
 let done = 0;
 for (const { file, person } of plan) {
   const small = path.join(tmp, `${person.id}.jpg`);
@@ -124,18 +171,36 @@ for (const { file, person } of plan) {
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(dest)}?alt=media&token=${token}`;
 
   const batch = db.batch();
-  batch.update(person.ref, { 'traveler.avatar': url, updated_at: new Date().toISOString() });
+  if (person.create) {
+    const initials = person.initials || person.name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2);
+    batch.set(person.ref, {
+      organization_id: person.org,
+      user_id: userIdFor(person.org),
+      updated_at: new Date().toISOString(),
+      traveler: { id: person.id, name: person.name, email: person.email ?? '', role: 'Traveler', initials, status: 'Active', avatar: url },
+    });
+  } else {
+    batch.update(person.ref, { 'traveler.avatar': url, updated_at: new Date().toISOString() });
+  }
+  const ids = idsFor(person);
   for (const trip of trips) {
-    const withPhoto = (list) => Array.isArray(list) && list.some(t => t?.id === person.id)
-      ? list.map(t => (t?.id === person.id ? { ...t, avatar: url } : t))
+    const withPhoto = (list) => Array.isArray(list) && list.some(t => ids.includes(t?.id))
+      ? list.map(t => (ids.includes(t?.id) ? { ...t, avatar: url } : t))
       : null;
     const travelers = withPhoto(trip.data.travelers);
     const snapTravelers = withPhoto(trip.data.published_snapshot?.travelers);
-    if (!travelers && !snapTravelers) continue;
+    // Staff travel too: a trip they organise shows their face on the organiser card as well
+    const organiser = trip.data.organizer?.name && norm(trip.data.organizer.name) === norm(person.name) && (!trip.data.organizer.avatar || replace)
+      ? { ...trip.data.organizer, avatar: url } : null;
+    if (!travelers && !snapTravelers && !organiser) continue;
     const updates = {};
+    if (organiser) { updates.organizer = organiser; trip.data.organizer = organiser; }
     if (travelers) updates.travelers = travelers;
     if (snapTravelers) updates['published_snapshot.travelers'] = snapTravelers;
     batch.update(trip.ref, updates);
+    // Keep the local copy current, so the next person's write carries this one's photo too
+    if (travelers) trip.data.travelers = travelers;
+    if (snapTravelers) trip.data.published_snapshot = { ...trip.data.published_snapshot, travelers: snapTravelers };
   }
   await batch.commit();
   done += 1;

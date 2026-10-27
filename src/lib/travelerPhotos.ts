@@ -55,8 +55,9 @@ export function matchPhotoToPerson(fileName: string, people: User[]): PhotoMatch
   const exact = people.filter(p => norm(p.name) === stem);
   if (exact.length === 1) return { person: exact[0], candidates: exact };
   if (exact.length > 1) return { person: null, candidates: exact };
-  const first = stem.split(" ")[0];
-  const byFirst = people.filter(p => norm(p.name).split(" ")[0] === first);
+  // "Lee Graham.png" must not land on Lee Birkett: a first name alone only stands in when that is all the file gives
+  if (stem.includes(" ")) return { person: null, candidates: [] };
+  const byFirst = people.filter(p => norm(p.name).split(" ")[0] === stem);
   if (byFirst.length === 1) return { person: byFirst[0], candidates: byFirst };
   return { person: null, candidates: byFirst };
 }

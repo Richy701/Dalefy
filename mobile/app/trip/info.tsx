@@ -143,6 +143,25 @@ function splitNamed(line: string): { name: string; detail: string } {
   return i > 0 && i < 70 ? { name: line.slice(0, i).trim(), detail: line.slice(i + 1).trim() } : { name: line, detail: "" };
 }
 
+/** "UK passport holders: British citizens… Visa: British passport holders…" is two short notes written
+ * as one paragraph. Two or more labels mid-text split it into a labelled paragraph each. */
+function splitInlineLabels(text: string): { label: string; body: string }[] | null {
+  // A label is a few words at the start or straight after a sentence, ending in a colon that is
+  // not part of a time (08:35) or a link (https://)
+  const re = /(?:^|(?<=[.!?])\s+)([A-Z][^.!?:\n]{1,40}?):(?!\/\/)(?!\d{2}\b)\s+/g;
+  const hits = [...text.matchAll(re)];
+  if (hits.length < 2) return null;
+  const out: { label: string; body: string }[] = [];
+  const lead = text.slice(0, hits[0].index).trim();
+  if (lead) out.push({ label: "", body: lead });
+  hits.forEach((h, i) => {
+    const end = i + 1 < hits.length ? hits[i + 1].index : text.length;
+    const body = text.slice((h.index ?? 0) + h[0].length, end).trim();
+    if (body) out.push({ label: h[1].trim(), body });
+  });
+  return out.length >= 2 ? out : null;
+}
+
 function getStatus(item: TripInfo, now = new Date()): InfoStatus {
   if (item.completed) return "done";
   if (!item.deadline) return null;
@@ -398,7 +417,7 @@ export default function InfoScreen() {
           )}
           {contacts && contacts.notes.length > 0 && (
             contacts.notes.join(" ").length > 160 ? (
-              <View style={[styles.card, { padding: S.md }]}>
+              <View style={styles.prose}>
                 <LinkedText text={contacts.notes.join(". ") + "."} style={styles.bodyText} linkColor={C.tealText} />
               </View>
             ) : (
@@ -450,13 +469,18 @@ export default function InfoScreen() {
           )}
 
           {prose && kind === "text" ? (
-            <View style={[styles.card, { padding: S.md }]}>
-              <LinkedText
-                text={prose}
-                style={styles.bodyText}
-                linkColor={C.tealText}
-                stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
-              />
+            <View style={styles.prose}>
+              {(splitInlineLabels(prose) ?? [{ label: "", body: prose }]).map((para, i) => (
+                <View key={i} style={i > 0 && styles.paragraph}>
+                  {para.label ? <Text style={styles.proseLabel}>{para.label}</Text> : null}
+                  <LinkedText
+                    text={para.body}
+                    style={styles.bodyText}
+                    linkColor={C.tealText}
+                    stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+                  />
+                </View>
+              ))}
             </View>
           ) : prose ? (
             <LinkedText
@@ -546,7 +570,7 @@ function makeStyles(C: ThemeColors) {
     safe: { flex: 1, backgroundColor: C.bg },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.xl },
+    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S["2xl"] },
     intro: { gap: S.xs2 },
     introName: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
     introSub: { fontSize: T.base, color: C.textSecondary },
@@ -595,6 +619,11 @@ function makeStyles(C: ThemeColors) {
     },
     noteCalloutText: { flex: 1, fontSize: T.sm, color: C.amberText, lineHeight: 20 },
 
-    bodyText: { fontSize: T.md, color: C.textPrimary, lineHeight: 25 },
+    // Quiet running text: the heading leads, links and numbers carry the teal
+    bodyText: { fontSize: T.base, color: C.textSecondary, lineHeight: 22 },
+    // A paragraph sits closer to its heading than the topic gap, so the two read as one
+    prose: { marginTop: S.xs - S.sm },
+    paragraph: { marginTop: S.sm },
+    proseLabel: { fontSize: T.base, fontWeight: T.medium, color: C.textPrimary, lineHeight: 22 },
   });
 }

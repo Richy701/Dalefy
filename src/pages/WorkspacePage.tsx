@@ -1515,10 +1515,14 @@ export function WorkspacePage() {
                         <div className="group/org rounded-xl bg-card border border-border overflow-hidden hover:border-brand/30 transition-colors">
                           <div className="flex items-center gap-4 p-5">
                             {/* Avatar */}
-                            <div className="shrink-0 w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
-                              <span className="text-lg font-bold text-brand tracking-tight">
-                                {trip.organizer.name.split(" ").slice(0, 2).map(w => w[0]).join("")}
-                              </span>
+                            <div className="shrink-0 w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center overflow-hidden">
+                              {trip.organizer.avatar ? (
+                                <img src={trip.organizer.avatar} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-lg font-bold text-brand tracking-tight">
+                                  {trip.organizer.name.split(" ").slice(0, 2).map(w => w[0]).join("")}
+                                </span>
+                              )}
                             </div>
                             {/* Name + meta */}
                             <div className="flex-1 min-w-0">
