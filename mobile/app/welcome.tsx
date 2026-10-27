@@ -199,14 +199,17 @@ export default function WelcomeScreen() {
   const asksName = useCallback((trip: Trip | null) => needsName && !travellerFor(trip)?.name?.trim(), [needsName, travellerFor]);
 
   const afterCode = useCallback((trip: Trip | null) => {
-    // The organiser already has their name: use it rather than asking
+    // The organiser already has their name: use it rather than asking. But an account that has picked
+    // a name keeps it; a listed name only fills in on the first sign-in. Otherwise adding yourself to a
+    // trip under another name for a test renames your account on every trip you have joined.
+    const keptName = prefs.name?.trim() || "";
     const listedName = travellerFor(trip)?.name?.trim() || "";
     if (asksName(trip)) {
       setStep("profile");
       return;
     }
-    finishOnboarding(listedName || providerName, auth.user?.avatar || "", trip, travellerFor(trip)?.id ?? null);
-  }, [asksName, finishOnboarding, providerName, auth.user?.avatar, travellerFor]);
+    finishOnboarding(keptName || listedName || providerName, auth.user?.avatar || "", trip, travellerFor(trip)?.id ?? null);
+  }, [asksName, finishOnboarding, prefs.name, providerName, auth.user?.avatar, travellerFor]);
 
   // "Join this trip": the card's photo grows into the trip page's hero, then the joining screen takes over in place
   const cardPhotoRef = useRef<HostInstance>(null);
