@@ -7,9 +7,8 @@ import {
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown
 } from "@phosphor-icons/react";
-import { lifecycleLabel, liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import NumberFlow from "@number-flow/react";
@@ -181,11 +180,7 @@ function buttonA11y(label: string, onActivate: () => void) {
 }
 
 export function DashboardPage() {
-  const { trips: allTrips, ready: tripsReady, addTrip, deleteTrip, updateTrip } = useTrips();
-  // Archived trips are put away: out of the cards, counts and attention list unless asked for
-  const trips = useMemo(() => liveTrips(allTrips), [allTrips]);
-  const archivedTrips = useMemo(() => allTrips.filter(t => !!t.archivedAt), [allTrips]);
-  const [showArchived, setShowArchived] = useState(false);
+  const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
   useTheme();
   useAuth();
   const { addNotification } = useNotifications();
@@ -239,24 +234,14 @@ export function DashboardPage() {
 
   const filteredTrips = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return [...(showArchived ? archivedTrips : trips)]
+    return [...trips]
       .sort((a, b) => a.start.localeCompare(b.start))
       .filter(t =>
         t.name.toLowerCase().includes(q) ||
         t.attendees.toLowerCase().includes(q) ||
         (t.destination?.toLowerCase().includes(q) ?? false)
       );
-  }, [trips, archivedTrips, showArchived, searchQuery]);
-
-  const toggleArchived = (trip: Trip) => {
-    if (trip.archivedAt) {
-      updateTrip(trip.id, { archivedAt: undefined });
-      toast.success(`${trip.name} is back on the dashboard`);
-    } else {
-      updateTrip(trip.id, { archivedAt: new Date().toISOString() });
-      toast.success(`${trip.name} archived`);
-    }
-  };
+  }, [trips, searchQuery]);
 
   // Next 2 upcoming trips for cards
   const upcomingCards = useMemo(() =>
@@ -1114,20 +1099,10 @@ export function DashboardPage() {
           <section className="space-y-4">
             <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">{showArchived ? "Archived trips" : "All trips"}</h3>
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">All trips</h3>
                 <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-md tabular-nums">{filteredTrips.length}</span>
               </div>
               <div className="flex items-center gap-2">
-                {(archivedTrips.length > 0 || showArchived) && (
-                  <button
-                    type="button"
-                    aria-pressed={showArchived}
-                    onClick={() => setShowArchived(v => !v)}
-                    className={`h-9 px-3 rounded-xl border shadow-sm flex items-center gap-1.5 text-xs font-medium transition-colors ${showArchived ? "bg-brand text-primary-foreground border-brand" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <Archive className="h-4 w-4" /> <span className="hidden sm:inline">Archived</span> <span className="tabular-nums">{archivedTrips.length}</span>
-                  </button>
-                )}
                 <div className="md:hidden relative">
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-card border border-border shadow-sm rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-foreground" />
@@ -1146,9 +1121,8 @@ export function DashboardPage() {
                   const endDate = parseTripDate(trip.end);
                   const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const daysLeft = daysUntil(trip.start);
-                  const label = lifecycleLabel(trip);
-                  const isActive = label === "Active";
-                  const isUpcoming = daysLeft > 0 && !trip.archivedAt;
+                  const isActive = trip.status === "In Progress";
+                  const isUpcoming = daysLeft > 0;
                   return (
                     <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden bg-secondary flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 h-full w-full object-cover" />
@@ -1166,7 +1140,6 @@ export function DashboardPage() {
                           <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
                             <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) toggleArchived(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80">{trip.archivedAt ? <ArrowCounterClockwise className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />} {trip.archivedAt ? "Unarchive" : "Archive"}</DropdownMenuItem>
                             {(!isOrgMember || canDeleteTrip) && (
                               <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                             )}
@@ -1178,7 +1151,7 @@ export function DashboardPage() {
                       <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
                         <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
                           {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                          {label}
+                          {isActive ? "Active" : trip.status}
                         </span>
                         {isUpcoming && (
                           <span className="text-[10px] font-semibold tabular-nums text-white/90 bg-black/45 backdrop-blur-md px-2 py-1 rounded-md">
@@ -1223,8 +1196,8 @@ export function DashboardPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-medium text-muted-foreground">{showArchived ? "Nothing archived" : "No trips yet"}</p>
-                    {!showArchived && <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>}
+                    <p className="text-xs font-medium text-muted-foreground">No trips yet</p>
+                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
                 {filteredTrips.map(trip => {
@@ -1232,8 +1205,7 @@ export function DashboardPage() {
                   const tEnd = parseTripDate(trip.end);
                   const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const dLeft = daysUntil(trip.start);
-                  const label = lifecycleLabel(trip);
-                  const isActive = label === "Active";
+                  const isActive = trip.status === "In Progress";
                   return (
                     <div
                       key={trip.id}
@@ -1266,7 +1238,7 @@ export function DashboardPage() {
                               : trip.status === "Published" ? "bg-brand"
                               : "bg-slate-400 dark:bg-slate-500"
                             }`} />
-                            {label}
+                            {isActive ? "Active" : trip.status}
                           </span>
                         </div>
 
@@ -1300,7 +1272,6 @@ export function DashboardPage() {
                             <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) toggleArchived(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-foreground/80">{trip.archivedAt ? <ArrowCounterClockwise className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />} {trip.archivedAt ? "Unarchive" : "Archive"}</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
                                 <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
