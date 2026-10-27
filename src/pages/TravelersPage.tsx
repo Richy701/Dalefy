@@ -733,6 +733,11 @@ export function TravelersPage() {
                           <Envelope className="h-4 w-4" /> Email
                         </Button>
                       )}
+                      {p.appOnly && p.appKeys.length > 0 && (
+                        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setRenameValue(p.name); setRenameTarget(p); }}>
+                          <PencilSimple className="h-4 w-4" /> Rename
+                        </Button>
+                      )}
                     </div>
                   )}
                   {!p.appKeys.length && <p className="text-xs text-muted-foreground mt-2">Messages reach people once they join a trip in the app.</p>}
