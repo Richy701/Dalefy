@@ -2210,6 +2210,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   </TabsList>
                 </Tabs>
               )}
+              {isReimport && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {importMode === "merge"
+                    ? "Adds only what this trip doesn't have yet. An event with the same date and title is skipped, and existing events, travellers, photos and the cover stay as they are. To change details on an event that is already here, edit it or ask the Assistant."
+                    : "Clears every event and rebuilds the trip and its traveller list from this document. Photos stay, and you can undo once it finishes."}
+                </p>
+              )}
               {importError && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-600 dark:text-red-400">
                   Import didn't finish: {importError}. Nothing was changed. You can try again.
