@@ -280,7 +280,7 @@ export function MessageDialog({ open, onOpenChange, trips, initialTripId, initia
                   <Label className="text-xs font-medium text-muted-foreground">Tapping it opens</Label>
                   <Select value={target} onValueChange={v => setTarget(v ?? "trip")} items={targetItems}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>{targetItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+                    <SelectContent align="start" className="w-[min(28rem,var(--available-width))]">{targetItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">

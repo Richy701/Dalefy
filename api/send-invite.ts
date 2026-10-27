@@ -186,6 +186,30 @@ export default async function handler(req: any, res: any) {
     }
   }
 
+  // Expired invitations cannot have their expiry edited under the rules.
+  // Atomically revoke the old record and create a fresh seven-day invitation.
+  if (resent && !(Date.parse(expiresAt) > Date.now())) {
+    const oldToken = inviteToken;
+    inviteToken = randomUUID();
+    const expiresMs = Date.now() + INVITE_TTL_MS;
+    expiresAt = new Date(expiresMs).toISOString();
+    const refreshed = await fetch(`${BASE}:commit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ writes: [
+        { update: { name: `${BASE.replace("https://firestore.googleapis.com/v1/", "")}/org_invites/${oldToken}`, fields: { status: { stringValue: "revoked" } } }, updateMask: { fieldPaths: ["status"] }, currentDocument: { exists: true } },
+        { update: { name: `${BASE.replace("https://firestore.googleapis.com/v1/", "")}/org_invites/${inviteToken}`, fields: {
+          email: { stringValue: email }, role: { stringValue: role }, organization_id: { stringValue: orgId },
+          org_name: { stringValue: orgName }, invited_by: { stringValue: callerUid }, inviter_name: { stringValue: inviterName },
+          token: { stringValue: inviteToken }, status: { stringValue: "pending" },
+          created_at: { stringValue: new Date().toISOString() }, expires_at: { stringValue: expiresAt },
+          expires_at_ms: { integerValue: String(expiresMs) },
+        } }, currentDocument: { exists: false } },
+      ] }),
+    });
+    if (!refreshed.ok) return res.status(500).json({ error: "Couldn't renew this invitation. Please try again." });
+  }
+
   const acceptUrl = `${APP_URL}/#/invite/${inviteToken}`;
 
   // Deliver: Firebase mints a sign-in link that lands on the invite, we send it on our own template.

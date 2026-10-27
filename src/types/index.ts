@@ -78,6 +78,8 @@ export interface TripMedia {
 }
 
 export interface TripOrganizer {
+  /** Stable identity of a selected trip traveller; contact fields are a saved copy. */
+  travelerId?: string;
   name: string;
   role?: string;
   company?: string;

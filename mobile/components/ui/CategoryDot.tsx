@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "phosphor-react-native";
+import { Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "@/components/ui/OnboardingIcons";
 import { useTheme } from "@/context/ThemeContext";
 import { categoryTone, type ThemeColors } from "@/constants/theme";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";

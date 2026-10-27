@@ -24,7 +24,7 @@ import {
 import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
-import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
+import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";

@@ -1,4 +1,5 @@
 import { renderItineraryEmail } from '../../src/lib/itineraryEmail';
+import { inviteEmail, verifyEmail, resetPasswordEmail, magicLinkEmail, tripUpdatedEmail, DALEFY_BRAND } from '../../src/lib/email/templates';
 import { EMAIL_TEMPLATES } from '../../src/data/emailTemplates';
 
 const toolbar = document.createElement('div');
@@ -6,19 +7,31 @@ toolbar.style.cssText = 'padding:16px;display:flex;gap:12px;flex-wrap:wrap;font:
 const templates = document.createElement('select');
 templates.setAttribute('aria-label', 'Email template');
 for (const item of EMAIL_TEMPLATES) templates.add(new Option(item.label, item.id));
+for (const [label, id] of [['Team invitation', 'team'], ['Verify email address', 'verify'], ['Password reset', 'reset'], ['App sign-in link', 'signin'], ['Automatic itinerary update', 'automatic']]) templates.add(new Option(label, id));
 const widths = document.createElement('select');
 widths.setAttribute('aria-label', 'Preview width');
 for (const [label, value] of [['Desktop', '720'], ['Mobile', '375']]) widths.add(new Option(label, value));
-toolbar.append(templates, widths);
+const note = document.createElement('span');
+ note.textContent = 'Sample content · Preview only — no emails sent';
+ note.style.cssText = 'align-self:center;color:#616875;font-size:12px';
+ toolbar.append(templates, widths, note);
 const frame = document.createElement('iframe');
-frame.title = 'Itinerary email';
+frame.title = 'Dalefy email preview';
 frame.style.cssText = 'border:0;max-width:100%;height:calc(100vh - 64px);display:block;margin:0 auto;background:white';
 frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
 function render() {
-  const selected = EMAIL_TEMPLATES.find(item => item.id === templates.value)!;
+  const selected = EMAIL_TEMPLATES.find(item => item.id === templates.value) ?? EMAIL_TEMPLATES[0];
   const values: Record<string, string> = { tripName: 'Barbados', dates: '25 November – 1 December 2026', destination: 'Barbados', brandName: 'Dalefy' };
   const message = selected.body.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] || key);
-  const email = renderItineraryEmail({ template: selected.id, brandName: 'Dalefy', platformName: 'Dalefy', tripName: 'Barbados', destination: 'Barbados', start: '2026-11-25', end: '2026-12-01', message: message || 'A personal note about your upcoming trip.', shareUrl: 'https://dalefy.app/#/shared/sample', shortCode: 'ABC123', organizer: { name: 'Your organiser', role: 'Travel coordinator' } });
+  let email: {html: string; text: string} = renderItineraryEmail({ template: selected.id, brandName: 'Dalefy', platformName: 'Dalefy', tripName: 'Barbados', destination: 'Barbados', start: '2026-11-25', end: '2026-12-01', message: message || 'A personal note about your upcoming trip.', shareUrl: 'https://dalefy.app/#/shared/sample', shortCode: 'ABC123', organizer: { name: 'Your organiser', role: 'Travel coordinator' } });
+  const previewLink = 'https://dalefy.app/#email-preview-only';
+  const brand = DALEFY_BRAND;
+  if (templates.value === 'team') email = inviteEmail({ brand, inviterName: 'Alex Morgan', orgName: 'Example Travel', role: 'agent', acceptUrl: previewLink, expiresAt: '2026-11-03T12:00:00Z' });
+  if (templates.value === 'verify') email = verifyEmail({ name: 'Alex', verifyUrl: previewLink });
+  if (templates.value === 'reset') email = resetPasswordEmail({ resetUrl: previewLink });
+  if (templates.value === 'signin') email = magicLinkEmail({ signInUrl: previewLink });
+  if (templates.value === 'automatic') email = tripUpdatedEmail({ brand, tripName: 'Barbados', destination: 'Barbados', changes: ['Airport transfer now departs at 14:30.', 'Welcome dinner meeting point changed to the hotel lobby.'], shareUrl: previewLink, shortCode: 'ABC123' });
+  email.html = email.html.replaceAll('https://dalefy.app/dalefy-email-logo.png', `${location.origin}/dalefy-email-logo.png`);
   frame.srcdoc = email.html.replace('<head>', '<head><base target="_blank">');
   frame.style.width = `${widths.value}px`;
 }

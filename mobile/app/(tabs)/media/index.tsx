@@ -32,7 +32,7 @@ import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
-import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
+import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import * as ImagePicker from "expo-image-picker";
@@ -726,20 +726,21 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C }: {
+const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onDelete, C }: {
   item: TripMedia;
+  tripId: string;
   size: number;
-  onPress: (origin: OriginRect | null) => void;
-  onDelete?: () => void;
+  onPress: (id: string, origin: OriginRect | null) => void;
+  onDelete?: (item: TripMedia & { tripId: string }) => void;
   C: ThemeColors;
 }) {
   const tileRef = useRef<HostInstance>(null);
   const aspectRef = useRef<number | undefined>(undefined);
   const open = () => {
     const node = tileRef.current;
-    if (!node) { onPress(null); return; }
+    if (!node) { onPress(item.id, null); return; }
     node.measureInWindow((x, y, w, h) => {
-      onPress(w > 0 && h > 0 ? { x, y, width: w, height: h, aspect: aspectRef.current } : null);
+      onPress(item.id, w > 0 && h > 0 ? { x, y, width: w, height: h, aspect: aspectRef.current } : null);
     });
   };
   return (
@@ -753,7 +754,7 @@ const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C
       onPress={(e: any) => {
         if (e.nativeEvent.index === 0) open();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
-        else if (e.nativeEvent.index === 2) onDelete?.();
+        else if (e.nativeEvent.index === 2) onDelete?.({ ...item, tripId });
       }}
     >
     <Pressable
@@ -956,6 +957,7 @@ export default function MediaScreen() {
     return sorted.find(t => parseTripDate(t.end) >= new Date()) ?? sorted[sorted.length - 1] ?? null;
   }, [trips, resolvedTripFilter]);
 
+  const [galleryHeaderHeight, setGalleryHeaderHeight] = useState(0);
   const rowOffsets = useMemo(() => {
     const out: number[] = [];
     let y = 0;
@@ -963,8 +965,8 @@ export default function MediaScreen() {
     return out;
   }, [galleryRows]);
   const getItemLayout = useCallback((_: any, index: number) => (
-    { length: rowHeight(galleryRows[index]), offset: rowOffsets[index] ?? 0, index }
-  ), [galleryRows, rowOffsets]);
+    { length: rowHeight(galleryRows[index]), offset: galleryHeaderHeight + (rowOffsets[index] ?? 0), index }
+  ), [galleryRows, rowOffsets, galleryHeaderHeight]);
 
   const isMine = useCallback((item: TripMedia) =>
     !!item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid), [deviceId]);
@@ -1003,6 +1005,11 @@ export default function MediaScreen() {
       },
     ]);
   }, [trips, updateTrip, toast, deviceId, setPendingMedia]);
+
+  const openMedia = useCallback((id: string, origin: OriginRect | null) => {
+    setViewerOrigin(origin);
+    setViewerIndex(allItemsIndex.get(id) ?? -1);
+  }, [allItemsIndex]);
 
   const renderGalleryRow = useCallback(({ item: row }: { item: GalleryRow }) => {
     if (row.type === "trip-header") {
@@ -1043,15 +1050,16 @@ export default function MediaScreen() {
           <GridItem
             key={m.id}
             item={m}
+            tripId={row.tripId}
             size={GRID_ITEM_SIZE}
-            onPress={(origin) => { setViewerOrigin(origin); setViewerIndex(allItemsIndex.get(m.id) ?? -1); }}
-            onDelete={isMine(m) ? () => handleDelete({ ...m, tripId: row.tripId }) : undefined}
+            onPress={openMedia}
+            onDelete={isMine(m) ? handleDelete : undefined}
             C={C}
           />
         ))}
       </View>
     );
-  }, [C, styles, allItemsIndex, handleDelete, isMine]);
+  }, [C, styles, openMedia, handleDelete, isMine]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     const trip = trips.find(t => t.id === tripId);
@@ -1253,7 +1261,7 @@ export default function MediaScreen() {
         keyExtractor={r => r.key}
         getItemLayout={getItemLayout}
         ListHeaderComponent={
-          <View>
+          <View onLayout={e => setGalleryHeaderHeight(e.nativeEvent.layout.height)}>
             {trips.length === 0 ? (
               <NoTripsPage screen="gallery" ready={ready} offline={offline} onRetry={onRefresh} retrying={refreshing} />
             ) : (

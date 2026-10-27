@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
-import { View, Image, StyleSheet, useWindowDimensions } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AppState, View, Image, StyleSheet, useWindowDimensions } from "react-native";
 import Animated, {
-  Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue,
+  Easing, cancelAnimation, useAnimatedStyle, useSharedValue, useReducedMotion, withRepeat, withTiming, type SharedValue,
 } from "react-native-reanimated";
 
 /**
@@ -16,22 +16,29 @@ export const HERO_PHOTOS = [
 /** Each photo holds for a few seconds, then the next fades in over it, all slowly pushing in */
 export function HeroSlideshow({ active = true }: { active?: boolean }) {
   const { width, height } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
+  const [foreground, setForeground] = useState(AppState.currentState === "active");
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", state => setForeground(state === "active"));
+    return () => subscription.remove();
+  }, []);
   const zoom = useSharedValue(1);
   // step counts up by one per photo; between whole numbers the next photo is part way through fading in
   const step = useSharedValue(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !foreground || reduceMotion) return;
     zoom.value = withRepeat(withTiming(1.08, { duration: 9000, easing: Easing.inOut(Easing.quad) }), -1, true);
     timer.current = setInterval(() => {
       step.value = withTiming(Math.round(step.value) + 1, { duration: 1400, easing: Easing.inOut(Easing.quad) });
     }, 5200);
     return () => {
       cancelAnimation(zoom);
+      cancelAnimation(step);
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
     };
-  }, [active, zoom, step]);
+  }, [active, foreground, reduceMotion, zoom, step]);
   const kenBurns = useAnimatedStyle(() => ({ transform: [{ scale: zoom.value }] }));
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">

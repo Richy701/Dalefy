@@ -54,7 +54,7 @@ export function inviteEmail(input: {
   const bodyHtml =
     paragraph(`${escapeHtml(who)} to join <strong style="color:${PALETTE.ink};">${escapeHtml(input.orgName)}</strong> on ${escapeHtml(brand.platformName)} as ${escapeHtml(article(input.role))} <strong style="color:${PALETTE.ink};">${escapeHtml(input.role)}</strong>.`) +
     (roleCopy ? paragraph(escapeHtml(roleCopy)) : "") +
-    paragraph(`Tap the button to sign in. There's no password to set, the link signs you in on its own.`);
+    paragraph(`Accept the invitation below to join your team. The secure link signs you in without a password.`);
   const bodyText = [
     `${who} to join ${input.orgName} on ${brand.platformName} as ${article(input.role)} ${input.role}.`,
     roleCopy,
@@ -87,8 +87,8 @@ export function verifyEmail(input: { name?: string | null; verifyUrl: string }):
   const greeting = input.name?.trim() ? `Hi ${input.name.trim()},` : "Hi,";
   const bodyHtml =
     paragraph(escapeHtml(greeting)) +
-    paragraph(`Confirm this is your address and you're all set. Verified accounts can accept team invitations and send itineraries.`);
-  const bodyText = `${greeting}\n\nConfirm this is your address and you're all set. Verified accounts can accept team invitations and send itineraries.`;
+    paragraph(`Please confirm your email address to finish setting up your account. You can then accept team invitations and send itineraries.`);
+  const bodyText = `${greeting}\n\nPlease confirm your email address to finish setting up your account. You can then accept team invitations and send itineraries.`;
   const fb = linkFallback(input.verifyUrl, "This link expires in 24 hours.");
   const { html, text } = renderEmailShell({
     brand,
@@ -159,11 +159,13 @@ export function tripUpdatedEmail(input: {
   shortCode?: string | null;
 }): RenderedEmail {
   const brand = input.brand;
-  const changes = input.changes.map(c => c.trim()).filter(Boolean).slice(0, 12);
+  const allChanges = input.changes.map(c => c.trim()).filter(Boolean);
+  const changes = allChanges.slice(0, 12);
+  const remaining = allChanges.length - changes.length;
   const list = listCard(changes);
   const introduction = changes.length ? `${brand.brandName} has updated your itinerary. Here's what changed:` : `${brand.brandName} has updated your itinerary. Open it below to review the latest details.`;
-  const bodyHtml = paragraph(escapeHtml(introduction)) + (changes.length ? list.html : "");
-  const bodyText = `${introduction}\n\n${list.text}`;
+  const bodyHtml = paragraph(escapeHtml(introduction)) + (changes.length ? list.html : "") + (remaining ? paragraph(`${remaining} more update${remaining === 1 ? "" : "s"} in your itinerary.`) : "");
+  const bodyText = `${introduction}\n\n${list.text}${remaining ? `\n\n${remaining} more update${remaining === 1 ? "" : "s"} in your itinerary.` : ""}`;
   const pin = input.shortCode ? pinLine(brand.platformName, input.shortCode) : null;
   const note = {
     html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Your itinerary is live, so this link always shows the latest version.</p>${pin?.html ?? ""}`,
@@ -175,7 +177,7 @@ export function tripUpdatedEmail(input: {
     eyebrow: "Itinerary update",
     title: input.tripName,
     subtitle: input.destination ?? null,
-    image: input.image ?? null,
+    // Keep time-sensitive changes above the action; omit the decorative cover.
     bodyHtml, bodyText,
     cta: { label: "View updated itinerary", url: input.shareUrl },
     ctaNoteHtml: note.html, ctaNoteText: note.text,

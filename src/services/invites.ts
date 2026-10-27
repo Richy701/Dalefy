@@ -145,10 +145,13 @@ export async function acceptInvite(token: string): Promise<AcceptInviteResult> {
   const orgId: string = data.organization_id;
   const role = data.role as OrgRole;
   const memberRef = doc(db, "org_members", `${user.uid}_${orgId}`);
-  const existing = await getDoc(memberRef);
+  // Query our own membership: reading a nonexistent document is denied by
+  // resource-based rules for someone who has not joined the organisation yet.
+  const existing = await getDocs(query(collection(db, "org_members"),
+    where("user_id", "==", user.uid), where("organization_id", "==", orgId)));
 
   const batch = writeBatch(db);
-  if (!existing.exists()) {
+  if (existing.empty) {
     batch.set(memberRef, {
       organization_id: orgId,
       user_id: user.uid,
@@ -161,5 +164,5 @@ export async function acceptInvite(token: string): Promise<AcceptInviteResult> {
   batch.set(doc(db, "profiles", user.uid), { current_org_id: orgId }, { merge: true });
   await batch.commit();
 
-  return { orgId, orgName: data.org_name, alreadyMember: existing.exists() };
+  return { orgId, orgName: data.org_name, alreadyMember: !existing.empty };
 }

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Platform, Text, Pressable, DynamicColorIOS } from "react-native";
 import { Tabs } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
+import type { Icon } from "phosphor-react-native";
+import { House, Clock, Camera, User } from "@/components/ui/OnboardingIcons";
 import * as Haptics from "@/services/haptics";
 import { useTheme } from "@/context/ThemeContext";
 import { useBrand } from "@/context/BrandContext";
@@ -10,13 +11,13 @@ import { darkColors, lightColors } from "@/constants/theme";
 const TABS: {
   name: string;
   label: string;
-  materialIcon: keyof typeof MaterialIcons.glyphMap;
+  Icon: Icon;
   hidden?: boolean;
 }[] = [
-  { name: "index",        label: "Home",         materialIcon: "home"         },
-  { name: "destinations", label: "Today",        materialIcon: "today"        },
-  { name: "media",        label: "Gallery",      materialIcon: "photo-camera" },
-  { name: "profile",      label: "Profile",      materialIcon: "person"       },
+  { name: "index",        label: "Home",         Icon: House  },
+  { name: "destinations", label: "Today",        Icon: Clock  },
+  { name: "media",        label: "Gallery",      Icon: Camera },
+  { name: "profile",      label: "Profile",      Icon: User   },
 ];
 
 // iOS: use NativeTabs for liquid glass + SF Symbols
@@ -117,15 +118,15 @@ function AndroidTabLayout() {
         sceneStyle: { backgroundColor: C.bg },
       }}
     >
-      {TABS.map(({ name, label, materialIcon, hidden }) => (
+      {TABS.map(({ name, label, Icon, hidden }) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
             title: label,
             href: hidden ? null : undefined,
-            tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name={materialIcon} size={size} color={color as string} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Icon size={size} color={color as string} weight={focused ? "fill" : "regular"} />
             ),
             tabBarLabel: ({ focused, color }) => (
               <Text style={{ fontSize: 11, fontWeight: focused ? "700" : "500", color }}>{label}</Text>

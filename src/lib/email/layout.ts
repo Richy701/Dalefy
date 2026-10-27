@@ -104,7 +104,16 @@ export function resolveAccent(accent?: string | null): string {
 export function paragraphs(message: string): { html: string; text: string; first: string } {
   const parts = message.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
   const html = parts
-    .map(p => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${PALETTE.body};">${escapeHtml(p).replace(/\n/g, "<br />")}</p>`)
+    .map(p => {
+      const lines = p.split("\n");
+      const bulletStart = lines.findIndex(line => /^\s*[•*-]\s+/.test(line));
+      if (bulletStart < 0 || !lines.slice(bulletStart).every(line => /^\s*[•*-]\s+/.test(line))) {
+        return paragraph(escapeHtml(p).replace(/\n/g, "<br />"));
+      }
+      const introduction = lines.slice(0, bulletStart).join("\n");
+      const items = lines.slice(bulletStart).map(line => `<li style="padding:0 0 8px;">${escapeHtml(line.replace(/^\s*[•*-]\s+/, ""))}</li>`).join("");
+      return (introduction ? paragraph(escapeHtml(introduction).replace(/\n/g, "<br />")) : "") + `<ul style="margin:0 0 18px;padding-left:22px;font-size:15px;line-height:1.6;color:${PALETTE.body};">${items}</ul>`;
+    })
     .join("");
   return { html, text: parts.join("\n\n"), first: parts[0] ?? "" };
 }
@@ -125,7 +134,7 @@ export function detailStrip(items: Array<{ label: string; value: string }>, layo
     for (let index = 0; index < values.length; index += 2) {
       const pair = values.slice(index, index + 2);
       rows.push(`<tr>${pair.map((item, column) => `<td width="50%" valign="top" style="padding:14px 16px;${index ? `border-top:1px solid ${PALETTE.border};` : ""}${column ? `border-left:1px solid ${PALETTE.border};` : ""}overflow-wrap:anywhere;word-wrap:break-word;">
-        <div style="font-family:${FONT_BODY};font-size:11px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(item.label)}</div>
+        <div style="font-family:${FONT_BODY};font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(item.label)}</div>
         <div style="margin-top:4px;font-family:${FONT_BODY};font-size:15px;font-weight:600;line-height:1.4;color:${PALETTE.ink};">${escapeHtml(item.value)}</div>
       </td>`).join("")}${pair.length === 1 ? '<td width="50%"></td>' : ""}</tr>`);
     }
@@ -199,40 +208,61 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
   const accentFg = readableOn(accent);
   const brandName = input.brand.brandName.trim() || input.brand.platformName;
 
-  const masthead = editorial
-    ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>${input.brand.logoUrl ? `<td style="padding-right:14px;vertical-align:middle;"><img src="${escapeHtml(input.brand.logoUrl)}" alt="" height="32" style="height:32px;width:auto;max-width:120px;display:block;" /></td>` : ""}<td style="font-family:${FONT_BODY};font-size:22px;font-weight:600;letter-spacing:-0.5px;line-height:1.3;color:${PALETTE.ink};">${escapeHtml(brandName)}</td></tr></table>`
-    : input.brand.logoUrl
-    ? `<img src="${escapeHtml(input.brand.logoUrl)}" alt="${escapeHtml(brandName)}" height="28" style="height:28px;width:auto;max-width:160px;display:block;" />`
-    : `<span style="font-family:${FONT_BODY};font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${PALETTE.ink};">${escapeHtml(brandName)}</span>`;
+  const defaultLogo = brandName.toLowerCase() === "dalefy";
+  const logoUrl = input.brand.logoUrl || (defaultLogo ? `${SITE_URL}/dalefy-email-logo.png` : null);
+  const isDalefyMark = logoUrl === `${SITE_URL}/dalefy-email-logo.png`;
+  const masthead = `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+    ${logoUrl ? `<td style="padding-right:12px;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="${editorial || defaultLogo ? "" : escapeHtml(brandName)}" width="${isDalefyMark ? "36" : "120"}" ${isDalefyMark ? 'height="36"' : ""} style="height:${isDalefyMark ? "36px" : "auto"};width:${isDalefyMark ? "36px" : "120px"};max-width:160px;display:block;border-radius:${defaultLogo ? "8px" : "0"};" /></td>` : ""}
+    ${editorial || defaultLogo || !logoUrl ? `<td style="font-family:${FONT_BODY};font-size:24px;font-weight:700;letter-spacing:-0.5px;line-height:1.3;color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(brandName)}</td>` : ""}
+  </tr></table>`;
 
   const cta = input.cta ? `
       <tr><td class="content-pad" style="padding:28px 40px 0;">
+        <!--[if mso]>
+        <v:roundrect href="${escapeHtml(input.cta.url)}" style="height:52px;v-text-anchor:middle;width:260px;" arcsize="15%" stroke="f" fillcolor="${accent}">
+          <w:anchorlock/>
+          <center style="color:${accentFg};font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">${escapeHtml(input.cta.label)}</center>
+        </v:roundrect>
+        <![endif]-->
+        <!--[if !mso]><!-->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="border-radius:8px;background:${accent};mso-padding-alt:16px 28px;">
             <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:16px 28px;font-family:${FONT_BODY};font-size:14px;font-weight:600;color:${accentFg};text-decoration:none;border:1px solid ${accent};border-radius:8px;">${escapeHtml(input.cta.label)}</a>
           </td>
         </tr></table>
+        <!--<![endif]-->
         ${input.ctaNoteHtml ?? ""}
       </td></tr>` : "";
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="light" />
 <meta name="supported-color-schemes" content="light" />
 <title>${escapeHtml(input.title)}</title>
+<!--[if !mso]><!-->
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+<!--<![endif]-->
+<!--[if mso]>
+<xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
 <style>
-  table { border-collapse:separate; border-spacing:0; }
+  table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  td, p, a, h1, div, li { font-family:Arial,Helvetica,sans-serif !important; }
+  .itinerary-image { height:auto !important; }
+</style>
+<![endif]-->
+<style>
+  table { border-collapse:separate; border-spacing:0; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
   a { text-underline-offset:3px; }
   @media only screen and (max-width:620px) {
     .outer-pad { padding:16px 8px !important; }
     .content-pad { padding-left:24px !important; padding-right:24px !important; }
     .email-title { font-size:26px !important; }
     .itinerary-title { font-size:34px !important; }
-    .itinerary-image { height:220px !important; }
+    .itinerary-image { height:auto !important; }
     .email-card { border-radius:12px !important; }
   }
 </style>
@@ -241,9 +271,10 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(input.preheader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PALETTE.page};">
   <tr><td class="outer-pad" align="center" style="padding:40px 12px;">
+    <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td width="600"><![endif]-->
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="email-card" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:${editorial ? "0" : `1px solid ${PALETTE.border}`};border-radius:${editorial ? "0" : "16px"};overflow:hidden;">
 
-      ${editorial ? `<tr><td style="height:4px;background:${accent};font-size:0;line-height:0;">&nbsp;</td></tr>` : ""}
+      ${editorial ? `<tr><td height="4" style="height:4px;background:${accent};font-size:1px;line-height:4px;mso-line-height-rule:exactly;">&nbsp;</td></tr>` : ""}
       <tr><td class="content-pad" style="padding:${editorial ? "32px 40px 16px" : "32px 40px"};${editorial ? "" : `border-bottom:1px solid ${PALETTE.border};`}">
         ${masthead}
       </td></tr>
@@ -258,7 +289,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
         ${input.subtitle ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
       </td></tr>
 
-      ${input.image && input.imageAfterTitle ? `<tr><td class="${editorial ? "" : "content-pad"}" style="padding:${editorial ? "28px 0 0" : "24px 40px 0"};"><img class="${editorial ? "itinerary-image" : ""}" src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:100%;height:${editorial ? "300px" : "240px"};object-fit:cover;display:block;border-radius:${editorial ? "0" : "8px"};background:${PALETTE.raised};" /></td></tr>` : ""}
+      ${input.image && input.imageAfterTitle ? `<tr><td class="${editorial ? "" : "content-pad"}" style="padding:${editorial ? "28px 0 0" : "24px 40px 0"};"><img class="itinerary-image" src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:100%;height:${editorial ? "300px" : "240px"};object-fit:cover;display:block;border-radius:${editorial ? "0" : "8px"};background:${PALETTE.raised};" /></td></tr>` : ""}
 
       ${input.contextHtml ? `<tr><td class="content-pad" style="padding:16px 40px;border-bottom:1px solid ${PALETTE.border};">${input.contextHtml}</td></tr>` : ""}
 
@@ -271,11 +302,12 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
       <tr><td class="content-pad" style="padding:32px 40px 36px;">
         <div style="height:1px;background:${PALETTE.border};margin-bottom:22px;"></div>
         ${editorial ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:18px;letter-spacing:-0.5px;font-weight:700;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></p>` : ""}
-        <p style="margin:0;font-size:11px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText)}</p>
-        <p style="margin:6px 0 0;font-size:11px;line-height:1.5;color:${PALETTE.muted};"><a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a></p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText.replace("Sent by Dalefy using Dalefy.", "Sent by Dalefy."))}</p>
+        <p style="margin:6px 0 0;font-size:12px;line-height:1.5;color:${PALETTE.muted};"><a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a></p>
       </td></tr>
 
     </table>
+    <!--[if mso]></td></tr></table><![endif]-->
   </td></tr>
 </table>
 </body>

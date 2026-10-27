@@ -36,7 +36,12 @@ interface Props {
   recyclingKey?: string;
 }
 
-export function CachedImage({
+export function CachedImage(props: Props) {
+  // A recycled gallery cell must not inherit another photo's errors or retry timers.
+  return <ImageRequest key={props.uri} {...props} />;
+}
+
+function ImageRequest({
   uri,
   style,
   transition = 300,

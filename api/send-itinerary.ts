@@ -1,3 +1,4 @@
+import { canEditTrip } from "./_tripPermissions.js";
 /**
  * Send the branded itinerary email to travellers through Resend.
  *
@@ -61,13 +62,8 @@ export default async function handler(req: any, res: any) {
   const trip = await getDocument("trips", tripId).catch(() => null);
   if (!trip) return res.status(404).json({ error: "Trip not found" });
   const f = trip.fields ?? {};
-  const ownerId = decodeValue(f.user_id);
   const orgId = decodeValue(f.organization_id);
-  let allowed = payload.sub === ownerId;
-  if (!allowed && typeof orgId === "string" && orgId) {
-    const member = await getDocument("org_members", `${payload.sub}_${orgId}`).catch(() => null);
-    allowed = !!member;
-  }
+  const allowed = await canEditTrip(payload.sub!, f);
   if (!allowed) return res.status(403).json({ error: "Not authorized for this trip" });
 
   const branding = typeof orgId === "string" && orgId

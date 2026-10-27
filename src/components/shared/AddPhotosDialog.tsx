@@ -18,7 +18,7 @@ interface Props {
   /** Whose Storage folder the photos go in: the signed-in user's */
   uid: string;
   /** Called once with every photo that uploaded, for the page to save on the person and their trips */
-  onUploaded: (photos: Array<{ personId: string; url: string }>) => void;
+  onUploaded: (photos: Array<{ personId: string; url: string }>) => void | Promise<void>;
 }
 
 interface Row {
@@ -126,7 +126,14 @@ export function AddPhotosDialog({ open, onOpenChange, people, uid, onUploaded }:
       }
     };
     await Promise.all(Array.from({ length: 4 }, worker));
-    if (done.length) onUploaded(done);
+    if (done.length) {
+      setProgress({ done: 0, total: 1, failed: [] });
+      try { await onUploaded(done); } catch (error) {
+        setProgress({ done: 1, total: 1, failed: [error instanceof Error ? error.message : 'Could not save photo links. Please retry.'] });
+        return;
+      }
+    }
+    if (failed.length) setProgress({ done: ticked.length, total: ticked.length, failed });
     if (!failed.length) { reset(); onOpenChange(false); }
   };
 

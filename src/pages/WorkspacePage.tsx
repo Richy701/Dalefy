@@ -1,3 +1,8 @@
+import { useSavePerson } from "@/hooks/useSavePerson";
+import { combinePeople } from "@/lib/peopleDirectory";
+import { OrganizerPersonSelect } from "@/components/workspace/OrganizerPersonSelect";
+import { useBulkPeopleImport } from "@/hooks/useBulkPeopleImport";
+import { formatTimeInput, isValidTimeInput, TIME_INPUT_ERROR } from "@/lib/timeInput";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   DndContext,
@@ -66,7 +71,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
-import { upsertTrip, fetchTripMembers, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
@@ -90,57 +95,6 @@ import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } f
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatTimeInput(raw: string): string {
-  const s = raw.trim();
-  if (!s) return "";
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  // Already 24h "HH:MM"
-  const hhmm = s.match(/^(\d{1,2}):(\d{2})$/);
-  if (hhmm) { const h = parseInt(hhmm[1]); return h <= 23 ? `${pad(h)}:${hhmm[2]}` : s; }
-  // "9:30am" / "9:30 PM"
-  const colonAmPm = s.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (colonAmPm) {
-    let h = parseInt(colonAmPm[1]);
-    const isPm = colonAmPm[3].toUpperCase() === "PM";
-    if (isPm && h !== 12) h += 12;
-    if (!isPm && h === 12) h = 0;
-    return `${pad(h)}:${colonAmPm[2]}`;
-  }
-  // "930am" / "1030pm"
-  const noColonAmPm = s.match(/^(\d{1,2})(\d{2})\s*(am|pm)$/i);
-  if (noColonAmPm) {
-    let h = parseInt(noColonAmPm[1]);
-    const isPm = noColonAmPm[3].toUpperCase() === "PM";
-    if (isPm && h !== 12) h += 12;
-    if (!isPm && h === 12) h = 0;
-    return `${pad(h)}:${noColonAmPm[2]}`;
-  }
-  // "9am" / "2pm"
-  const hourAmPm = s.match(/^(\d{1,2})\s*(am|pm)$/i);
-  if (hourAmPm) {
-    let h = parseInt(hourAmPm[1]);
-    const isPm = hourAmPm[2].toUpperCase() === "PM";
-    if (isPm && h !== 12) h += 12;
-    if (!isPm && h === 12) h = 0;
-    return `${pad(h)}:00`;
-  }
-  // "0930" / "1430"
-  const mil = s.match(/^(\d{3,4})$/);
-  if (mil) {
-    const v = mil[1].padStart(4, "0");
-    const h = parseInt(v.slice(0, 2));
-    const m = v.slice(2);
-    if (h <= 23) return `${pad(h)}:${m}`;
-  }
-  // Bare hour: "9" / "14"
-  const bare = s.match(/^(\d{1,2})$/);
-  if (bare) {
-    const h = parseInt(bare[1]);
-    if (h <= 23) return `${pad(h)}:00`;
-  }
-  return s;
-}
-
 function timeToMinutes(t: string): number {
   const ampm = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (ampm) {
@@ -156,19 +110,14 @@ function timeToMinutes(t: string): number {
   return 720;
 }
 
-function isValidTimeInput(raw: string | undefined): boolean {
-  if (!raw || !raw.trim()) return true;
-  return /^\d{2}:\d{2}$/.test(formatTimeInput(raw));
-}
-
 type EventErrors = Partial<Record<"title" | "date" | "time" | "endTime" | "checkout", string>>;
 
 function validateEvent(ev: TravelEvent): EventErrors {
   const errors: EventErrors = {};
   if (!ev.title?.trim()) errors.title = "Give this event a title";
   if (!ev.date) errors.date = "Pick a date";
-  if (!isValidTimeInput(ev.time)) errors.time = "Use a time like 09:30 or 2pm";
-  if (!isValidTimeInput(ev.endTime)) errors.endTime = "Use a time like 11:00 or 4pm";
+  if (!isValidTimeInput(ev.time)) errors.time = TIME_INPUT_ERROR;
+  if (!isValidTimeInput(ev.endTime)) errors.endTime = TIME_INPUT_ERROR;
   if (ev.type === "hotel" && ev.checkin && ev.checkout && ev.checkout < ev.checkin) {
     errors.checkout = "Check-out must be after check-in";
   }
@@ -195,10 +144,11 @@ function SortableItem({ id, children, handleClass }: { id: string; children: Rea
 }
 
 export function WorkspacePage() {
+  const saveBulkPeople = useBulkPeopleImport();
   const { tripId } = useParams<{ tripId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
+  const { trips, ready, updateTrip, saveTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { addNotification } = useNotifications();
@@ -293,6 +243,9 @@ export function WorkspacePage() {
   const [editingEvent, setEditingEvent] = useState<TravelEvent | null>(null);
   const [eventErrors, setEventErrors] = useState<EventErrors>({});
   useEffect(() => { editingEventIdRef.current = isEditPanelOpen && editingEvent ? editingEvent.id : null; }, [isEditPanelOpen, editingEvent]);
+  const editBaseline = useRef<Trip | undefined>(undefined);
+  const saveBusy = useRef(false);
+  const [savingChanges, setSavingChanges] = useState(false);
   const editingOriginalRef = useRef<string | null>(null);
   const [discardPromptOpen, setDiscardPromptOpen] = useState(false);
   const [imageSeed, setImageSeed] = useState(0);
@@ -306,6 +259,8 @@ export function WorkspacePage() {
   const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
+  const savePerson = useSavePerson();
+  const [emailSaving, setEmailSaving] = useState(false);
   const [customTravelers, setCustomTravelers] = useDirectoryTravelers();
   const allTravelers = useMemo(() => {
     const seen = new Set<string>();
@@ -320,49 +275,24 @@ export function WorkspacePage() {
     for (const t of trips) {
       if (!t.travelers) continue;
       for (const tv of t.travelers) {
-        if (seen.has(tv.id)) continue;
-        seen.add(tv.id);
         fromTrips.push({
           id: tv.id,
           name: tv.name,
           email: tv.email || "",
           role: "Traveler",
-          avatar: "",
+          avatar: tv.avatar || "",
           initials: tv.initials,
           status: "Active",
         });
       }
     }
-    for (const cu of customTravelers) {
-      if (seen.has(cu.id)) continue;
-      const nameKey = cu.name.trim().toLowerCase();
-      const dup = fromTrips.find(v => v.name.trim().toLowerCase() === nameKey);
-      if (dup) {
-        if (cu.email && !dup.email) dup.email = cu.email;
-        if (cu.role && cu.role !== "Traveler") dup.role = cu.role;
-      } else {
-        seen.add(cu.id);
-        fromTrips.push(cu);
-      }
-    }
-    return fromTrips;
+    return combinePeople([...fromTrips, ...customTravelers]);
   }, [customTravelers, trips, isDemo]);
 
   const tripTravelers = useMemo(() => {
     if (!trip) return [];
-    // Resolve from allTravelers by ID
-    const photoOf = (id: string) => trip.travelers?.find(tv => tv.id === id)?.avatar ?? "";
-    const resolved = allTravelers.filter(u => trip.travelerIds?.includes(u.id)).map(u => (u.avatar ? u : { ...u, avatar: photoOf(u.id) }));
-    if (resolved.length > 0) return resolved;
-    // Fallback: use trip.travelers denormalized array (covers timing gaps after re-import)
-    if (trip.travelers?.length) {
-      return trip.travelers.map(t => {
-        const full = allTravelers.find(u => u.id === t.id);
-        if (full) return full.avatar ? full : { ...full, avatar: t.avatar ?? "" };
-        return { id: t.id, name: t.name, email: t.email || "", role: "Traveler" as const, avatar: t.avatar ?? "", initials: t.initials, status: "Active" as const } satisfies UserType;
-      });
-    }
-    return [];
+    const ids = new Set([...(trip.travelerIds || []), ...(trip.travelers || []).map(person => person.id)]);
+    return allTravelers.filter(person => ids.has(person.id));
   }, [trip, allTravelers]);
   const availableTravelers = useMemo(() => {
     if (!trip) return allTravelers;
@@ -423,17 +353,14 @@ export function WorkspacePage() {
   const [editingEmailValue, setEditingEmailValue] = useState("");
   const [bulkEmailMode, setBulkEmailMode] = useState(false);
   const [bulkEmails, setBulkEmails] = useState<Record<string, string>>({});
-  const saveTravelerEmail = useCallback((travelerId: string, email: string) => {
-    if (!trip) return;
-    const trimmed = email.trim();
-    const newTravelers = (trip.travelers || []).map(t =>
-      t.id === travelerId ? { ...t, email: trimmed || undefined } : t,
-    );
-    updateTrip(trip.id, { travelers: newTravelers });
-    setCustomTravelers(prev => prev.map(c =>
-      c.id === travelerId ? { ...c, email: trimmed } : c,
-    ));
-  }, [trip, updateTrip, setCustomTravelers]);
+  const saveTravelerEmail = async (travelerId: string, email: string) => {
+    const original = allTravelers.find(person => person.id === travelerId);
+    if (!original) return false;
+    setEmailSaving(true);
+    try { await savePerson(original, { email: email.trim().toLowerCase() }); return true; }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save email. Please retry.'); return false; }
+    finally { setEmailSaving(false); }
+  };
 
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const viewAsTraveler = useMemo(() => viewAsId ? allTravelers.find(u => u.id === viewAsId) ?? null : null, [viewAsId, allTravelers]);
@@ -646,6 +573,15 @@ export function WorkspacePage() {
     setGeocoding(false);
   };
 
+  const commitChanges = async (updates: Partial<Trip>, before?: Trip) => {
+    if (saveBusy.current) return false;
+    saveBusy.current = true; setSavingChanges(true);
+    const message = toast.loading('Saving changes…');
+    try { await saveTrip(trip.id, updates, before); toast.dismiss(message); return true; }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save. Your changes are still here.', { id: message }); return false; }
+    finally { saveBusy.current = false; setSavingChanges(false); }
+  };
+
   const handlePublish = async () => {
     if (publishing) return;
     setPublishing(true);
@@ -664,14 +600,12 @@ export function WorkspacePage() {
       travelers: trip.travelers?.map(({ id, name, initials, avatar }) => ({ id, name, initials, ...(avatar ? { avatar } : {}) })),
       publishedAt: new Date().toISOString(),
     };
-    const published = { ...trip, status: "Published" as const, publishedSnapshot: snapshot };
     const wasPublished = trip.status === "Published";
-    updateTrip(trip.id, { status: "Published", publishedSnapshot: snapshot });
     try {
-      await upsertTrip(published);
+      await saveTrip(trip.id, { status: "Published", publishedSnapshot: snapshot }, trip);
     } catch {
       setPublishing(false);
-      toast.error("Couldn't publish to the cloud. Your changes are saved on this device; check your connection and try again.");
+      toast.error("Couldn't publish. Check your connection and review the trip before retrying.");
       return;
     }
     setPublishing(false);
@@ -692,12 +626,13 @@ export function WorkspacePage() {
     setImageResults([]);
     setImageSearchSource(null);
     const activeDate = groupedEvents[activeDayIdx]?.[0] || trip.start || new Date().toISOString().split("T")[0];
+    editBaseline.current = trip;
     setEditingEvent({
       id: crypto.randomUUID(),
       type,
       date: activeDate,
       title: "",
-      time: "12:00 PM",
+      time: "",
       location: "",
       status: "Proposed",
     });
@@ -713,6 +648,7 @@ export function WorkspacePage() {
     setImageSearch("");
     setImageResults([]);
     setImageSearchSource(null);
+    editBaseline.current = trip;
     setEditingEvent({ ...event });
     setEventErrors({});
     editingOriginalRef.current = JSON.stringify(event);
@@ -720,7 +656,7 @@ export function WorkspacePage() {
     if (event.date) updateActivity(event.date, event.id);
   };
 
-  const handleSaveEvent = (e: React.FormEvent) => {
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     if (!editingEvent) return;
@@ -738,7 +674,9 @@ export function WorkspacePage() {
       endTime: editingEvent.endTime ? formatTimeInput(editingEvent.endTime) : editingEvent.endTime,
     };
     const isNew = !trip.events.some(ev => ev.id === normalised.id);
-    updateEvent(trip.id, normalised);
+    const baseline = editBaseline.current || trip;
+    const events = baseline.events.some(ev => ev.id === normalised.id) ? baseline.events.map(ev => ev.id === normalised.id ? normalised : ev) : [...baseline.events, normalised];
+    if (!await commitChanges({ events }, baseline)) return;
     setEventErrors({});
     editingOriginalRef.current = null;
     setIsEditPanelOpen(false);
@@ -965,28 +903,30 @@ export function WorkspacePage() {
 
   const handleOpenEditOrg = () => {
     if (demoGate()) return;
+    editBaseline.current = trip;
     setEditOrgData({ ...(trip.organizer ?? {}) });
     setEditOrgOpen(true);
   };
-  const handleSaveOrg = (e: React.FormEvent) => {
+  const handleSaveOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     const org = editOrgData.name?.trim() ? editOrgData as Trip["organizer"] : undefined;
-    updateTrip(trip.id, { organizer: org });
+    if (!await commitChanges({ organizer: org }, editBaseline.current)) return;
     setEditOrgOpen(false);
     toast.success(org ? "Organizer updated" : "Organizer removed");
   };
 
   const handleOpenEditInfo = () => {
     if (demoGate()) return;
+    editBaseline.current = trip;
     setEditInfoData(trip.info ? trip.info.map(i => ({ ...i, documents: i.documents ? [...i.documents] : undefined })) : []);
     setEditInfoOpen(true);
   };
-  const handleSaveInfo = (e: React.FormEvent) => {
+  const handleSaveInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
-    updateTrip(trip.id, { info: cleaned.length > 0 ? cleaned : undefined });
+    if (!await commitChanges({ info: cleaned.length > 0 ? cleaned : undefined }, editBaseline.current)) return;
     setEditInfoOpen(false);
     toast.success("Information updated");
   };
@@ -1098,6 +1038,7 @@ export function WorkspacePage() {
 
   const handleOpenEditTrip = () => {
     if (demoGate()) return;
+    editBaseline.current = trip;
     setEditingTrip({
       name: trip.name,
       destination: trip.destination ?? "",
@@ -1116,7 +1057,7 @@ export function WorkspacePage() {
     setEditTripOpen(true);
   };
 
-  const handleSaveTrip = (e: React.FormEvent) => {
+  const handleSaveTrip = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     // Clean up organizer: null out if name is empty
@@ -1129,7 +1070,7 @@ export function WorkspacePage() {
       cleaned.info = cleaned.info.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
       if (cleaned.info.length === 0) cleaned.info = undefined;
     }
-    updateTrip(trip.id, cleaned);
+    if (!await commitChanges(cleaned, editBaseline.current)) return;
     setEditTripOpen(false);
     toast.success("Trip updated");
   };
@@ -1802,11 +1743,12 @@ export function WorkspacePage() {
                             Cancel
                           </button>
                           <button
-                            onClick={() => {
+                            disabled={emailSaving}
+                            onClick={async () => {
                               for (const t of tripTravelers) {
                                 const newEmail = (bulkEmails[t.id] || "").trim();
                                 if (newEmail !== (t.email || "")) {
-                                  saveTravelerEmail(t.id, newEmail);
+                                  if (!await saveTravelerEmail(t.id, newEmail)) return;
                                 }
                               }
                               setBulkEmailMode(false);
@@ -1849,9 +1791,9 @@ export function WorkspacePage() {
                                 {isEditing ? (
                                   <form
                                     className="flex items-center gap-1.5 mt-1"
-                                    onSubmit={e => {
+                                    onSubmit={async e => {
                                       e.preventDefault();
-                                      saveTravelerEmail(t.id, editingEmailValue);
+                                      if (emailSaving || !await saveTravelerEmail(t.id, editingEmailValue)) return;
                                       setEditingEmailId(null);
                                       toast.success("Email saved");
                                     }}
@@ -1884,7 +1826,7 @@ export function WorkspacePage() {
                                 {!isEditing && memberByTraveler.get(t.id)?.email && memberByTraveler.get(t.id)!.email!.toLowerCase() !== (t.email || "").toLowerCase() ? (
                                   <button
                                     type="button"
-                                    onClick={() => { saveTravelerEmail(t.id, memberByTraveler.get(t.id)!.email!); toast.success("Email saved"); }}
+                                    disabled={emailSaving} onClick={async () => { if (await saveTravelerEmail(t.id, memberByTraveler.get(t.id)!.email!)) toast.success("Email saved"); }}
                                     className="text-[10px] font-medium text-brand hover:underline mt-0.5 text-left block truncate max-w-full"
                                   >
                                     Use {memberByTraveler.get(t.id)!.email} from the app
@@ -2301,7 +2243,8 @@ export function WorkspacePage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in time" : "Start time"}</Label>
-                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
+                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
+                      <p className="text-[11px] text-muted-foreground">Leave blank if the time is not confirmed.</p>
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>
                   </div>
@@ -2364,7 +2307,9 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Check-out time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="11:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
+                        {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
                     </div>
                   )}
@@ -2374,7 +2319,9 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">End time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="14:00" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="14:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
+                        {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
@@ -2459,7 +2406,9 @@ export function WorkspacePage() {
                             ))}
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Arrival time</Label>
-                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="e.g., 14:30" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
+                              {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
@@ -2876,7 +2825,7 @@ export function WorkspacePage() {
             {/* Footer */}
             <div className="px-4 sm:px-8 py-4 sm:py-5 bg-card border-t border-border flex items-center justify-between gap-3 shrink-0">
               <Button type="button" variant="ghost" onClick={() => setIsEditPanelOpen(false)} className="h-10 px-4 text-[13px] font-medium text-muted-foreground">Cancel</Button>
-              <Button type="submit" className="h-10 px-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] shadow-lg shadow-brand/20">
+              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] shadow-lg shadow-brand/20">
                 Save event
               </Button>
             </div>
@@ -2899,16 +2848,9 @@ export function WorkspacePage() {
         existing={allTravelers}
         tripName={trip.name}
         onTripIds={new Set([...(trip.travelerIds ?? []), ...(trip.travelers ?? []).map(t => t.id)])}
-        onAdd={({ matched, created }) => {
-          if (created.length) setCustomTravelers(prev => [...prev, ...created]);
-          const onTrip = new Set([...(trip.travelerIds ?? []), ...(trip.travelers ?? []).map(t => t.id)]);
-          const adding = [...matched, ...created].filter(u => !onTrip.has(u.id));
-          if (!adding.length) { toast.success("Everyone was already on the trip"); return; }
-          updateTrip(trip.id, {
-            travelerIds: [...(trip.travelerIds ?? []), ...adding.map(u => u.id)],
-            travelers: [...(trip.travelers ?? []), ...adding.map(tripTravelerOf)],
-          });
-          toast.success(`Added ${adding.length} to the trip`);
+        onAdd={async selection => {
+          await saveBulkPeople({ ...selection, tripId: trip.id });
+          toast.success(`Saved ${selection.matched.length + selection.created.length} people and their trip details`);
         }}
       />
       <ImportItineraryDialog
@@ -3116,11 +3058,12 @@ export function WorkspacePage() {
                   <Users className="h-3.5 w-3.5 text-brand" />
                   <h4 className="text-xs font-medium text-muted-foreground">Organizer / Agent</h4>
                 </div>
+                <OrganizerPersonSelect people={tripTravelers} value={editingTrip.organizer || {}} onChange={organizer => setEditingTrip(prev => ({ ...prev, organizer: { ...organizer, name: organizer.name || "" } }))} />
                 <div className="flex gap-5">
                   {/* Avatar preview */}
                   <div className="shrink-0 flex flex-col items-center gap-2">
                     <div className="w-16 h-16 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
-                      {editingTrip.organizer?.name ? (
+                      {editingTrip.organizer?.avatar ? <img src={editingTrip.organizer.avatar} alt="" className="w-full h-full rounded-xl object-cover" /> : editingTrip.organizer?.name ? (
                         <span className="text-lg font-bold text-brand">
                           {editingTrip.organizer.name.split(" ").slice(0, 2).map((w: string) => w[0]).join("")}
                         </span>
@@ -3142,6 +3085,7 @@ export function WorkspacePage() {
                       <div key={f.key} className={`space-y-1 ${f.span === 2 ? "col-span-2" : ""}`}>
                         <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
                         <Input
+                          disabled={savingChanges || (!!editingTrip.organizer?.travelerId && (f.key === "name" || f.key === "email"))}
                           value={editingTrip.organizer?.[f.key] ?? ""}
                           onChange={e => setEditingTrip(prev => ({ ...prev, organizer: { ...(prev.organizer ?? { name: "" }), [f.key]: e.target.value } }))}
                           placeholder={f.placeholder}
@@ -3276,7 +3220,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-8 py-5 border-t border-border flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-medium text-xs shadow-lg shadow-brand/20">Save Changes</Button>
+              <Button disabled={savingChanges} type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-medium text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3284,7 +3228,7 @@ export function WorkspacePage() {
 
       {/* ── Organizer mini-dialog ── */}
       <Dialog open={editOrgOpen} onOpenChange={setEditOrgOpen}>
-        <DialogContent className="max-w-md bg-card rounded-xl border border-border shadow-2xl overflow-hidden p-0">
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto bg-card rounded-xl border border-border shadow-2xl p-0">
           <form onSubmit={handleSaveOrg}>
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
               <div className="flex items-center gap-3">
@@ -3298,6 +3242,7 @@ export function WorkspacePage() {
               </div>
             </DialogHeader>
             <div className="p-6 space-y-3">
+              <OrganizerPersonSelect people={tripTravelers} value={editOrgData} onChange={setEditOrgData} />
               {([
                 { key: "name" as const, label: "Full Name", placeholder: "e.g., Jane Smith" },
                 { key: "role" as const, label: "Role", placeholder: "e.g., Travel Consultant" },
@@ -3308,6 +3253,7 @@ export function WorkspacePage() {
                 <div key={f.key} className="space-y-1">
                   <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
                   <Input
+                    disabled={savingChanges || (!!editOrgData.travelerId && (f.key === "name" || f.key === "email"))}
                     value={editOrgData[f.key] ?? ""}
                     onChange={e => setEditOrgData(prev => ({ ...prev, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
@@ -3318,7 +3264,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-6 py-4 border-t border-border flex items-center justify-between">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3529,7 +3475,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-border flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,6 +1,6 @@
 import { Platform, type StyleProp, type ViewStyle } from "react-native";
 import { SymbolView } from "expo-symbols";
-import { Airplane } from "phosphor-react-native";
+import { Airplane } from "@/components/ui/OnboardingIcons";
 
 /**
  * The plane used everywhere a flight appears: Apple's own SF Symbol on iOS,

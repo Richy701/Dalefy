@@ -10,7 +10,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { ArrowUp, Bed, Bell, CalendarDots, ChatsTeardrop, Export, FileText, Info, User } from "phosphor-react-native";
+import { ArrowUp, Bed, Bell, CalendarDots, ChatsTeardrop, Export, FileText, Info, User } from "@/components/ui/OnboardingIcons";
 import { CachedImage } from "@/components/CachedImage";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { photoPalette } from "@/components/ui/PhotoBackdrop";
@@ -281,6 +281,8 @@ export default function TourScreen() {
         ref={scrollRef}
         horizontal
         pagingEnabled
+        // Keep animated preview children mounted as pages enter from offscreen.
+        removeClippedSubviews={false}
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={e => onPosition(e.nativeEvent.contentOffset.x / width)}

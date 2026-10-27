@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { CaretLeft, Camera, User, Ticket, Check, X, ClipboardText } from "phosphor-react-native";
+import { CaretLeft, Camera, User, Ticket, Check, X, ClipboardText } from "@/components/ui/OnboardingIcons";
 import { TripPreviewCard } from "@/components/TripPreviewCard";
 import Animated, {
   FadeIn, FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSequence, withTiming,

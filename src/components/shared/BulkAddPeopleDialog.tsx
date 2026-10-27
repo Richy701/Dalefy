@@ -1,204 +1,144 @@
-import { useMemo, useRef, useState } from "react";
-import { FileArrowUp, UsersThree } from "@phosphor-icons/react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { parsePeople } from "@/lib/parsePeople";
-import { initialsFrom } from "@/lib/names";
-import { cn } from "@/lib/utils";
-import type { User } from "@/types";
+import { useMemo, useRef, useState } from 'react';
+import { FileArrowUp, UsersThree, SpinnerGap, CheckCircle } from '@phosphor-icons/react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { parsePeople } from '@/lib/parsePeople';
+import { assessPeople, type PeopleRow, type PeopleRowStatus } from '@/lib/bulkPeople';
+import { initialsFrom } from '@/lib/names';
+import type { BulkPeopleSelection } from '@/hooks/useBulkPeopleImport';
+import type { Trip, User } from '@/types';
 
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Everyone already in the directory, so pasted people can be matched instead of duplicated */
-  existing: User[];
-  /** When adding to a trip: its name, and who is already on it */
-  tripName?: string;
-  onTripIds?: ReadonlySet<string>;
-  /** Called once with everyone ticked: directory people matched by email or name, and the new ones to create */
-  onAdd: (people: { matched: User[]; created: User[] }) => void;
+  open: boolean; onOpenChange: (open: boolean) => void; existing: User[];
+  tripName?: string; onTripIds?: ReadonlySet<string>;
+  trips?: Trip[]; initialTripId?: string;
+  onAdd: (people: BulkPeopleSelection) => Promise<void> | void;
 }
-
-type RowStatus = "new" | "matched" | "onTrip" | "duplicate" | "noName";
-
-interface Row {
-  key: number;
-  name: string;
-  email: string;
-  include: boolean;
-}
-
-const STATUS_LABEL: Record<RowStatus, string> = {
-  new: "New",
-  matched: "In directory",
-  onTrip: "Already on trip",
-  duplicate: "Duplicate",
-  noName: "Needs a name",
+const LABELS: Record<PeopleRowStatus, string> = {
+  sync: 'Refresh trip email', new: 'New person', matched: 'Existing person', update: 'Add missing email', onTrip: 'Already on trip',
+  duplicate: 'Duplicate — skipped', noName: 'Enter a name', invalidEmail: 'Check email', conflict: 'Match needs review',
 };
+const MAX_PEOPLE = 250;
 
-const STATUS_TONE: Record<RowStatus, string> = {
-  new: "text-emerald-700 dark:text-emerald-400",
-  matched: "text-foreground",
-  onTrip: "text-muted-foreground",
-  duplicate: "text-amber-700 dark:text-amber-400",
-  noName: "text-amber-700 dark:text-amber-400",
-};
-
-const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
-
-/**
- * Paste a list or drop a CSV, check the preview, add everyone in one go. Matches people already in the
- * directory by email first, then by exact name, so re-pasting a list never creates copies.
- */
-export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, onTripIds, onAdd }: Props) {
-  const [text, setText] = useState("");
-  const [rows, setRows] = useState<Row[] | null>(null);
+export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, onTripIds, trips, initialTripId, onAdd }: Props) {
+  const [text, setText] = useState('');
+  const [rows, setRows] = useState<PeopleRow[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'reading' | 'parsing' | 'saving'>('idle');
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState<{ count: number; target: string } | null>(null);
+  const [destination, setDestination] = useState(initialTripId || 'directory');
+  const busy = phase !== 'idle';
+  const busyRef = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
-
-  const byEmail = useMemo(() => new Map(existing.filter(u => u.email).map(u => [norm(u.email), u])), [existing]);
-  const byName = useMemo(() => new Map(existing.map(u => [norm(u.name), u])), [existing]);
-
-  const match = (r: Row): User | undefined => (r.email && byEmail.get(norm(r.email))) || (r.name ? byName.get(norm(r.name)) : undefined);
-
-  const statusOf = (r: Row, i: number, all: Row[]): RowStatus => {
-    if (!r.name.trim()) return "noName";
-    const earlier = all.slice(0, i).some(o => (r.email && norm(o.email) === norm(r.email)) || norm(o.name) === norm(r.name));
-    if (earlier) return "duplicate";
-    const m = match(r);
-    if (m && onTripIds?.has(m.id)) return "onTrip";
-    return m ? "matched" : "new";
-  };
-
-  const preview = (source: string) => {
+  const createdIds = useRef(new Map<number, string>());
+  const chosenTrip = trips?.find(trip => trip.id === destination);
+  const idsOnTrip = useMemo(() => chosenTrip ? new Set([...(chosenTrip.travelerIds || []), ...(chosenTrip.travelers || []).map(person => person.id)]) : onTripIds, [chosenTrip, onTripIds]);
+  const assessments = useMemo(() => assessPeople(rows || [], existing, idsOnTrip), [rows, existing, idsOnTrip]);
+  const selected = (rows || []).filter((row, i) => row.include && assessments[i].eligible);
+  const updates = selected.filter(row => assessments[rows!.indexOf(row)].status === 'update').length;
+  const target = tripName || chosenTrip?.name || 'the directory';
+  const destinationItems = [{ value: 'directory', label: 'Directory only' }, ...(trips || []).map(trip => ({ value: trip.id, label: trip.name }))];
+  const reset = () => { setSaved(null); setText(''); setRows(null); setFileName(null); setError(''); setDestination(initialTripId || 'directory'); createdIds.current.clear(); };
+  const close = (next: boolean) => { if (busyRef.current) return; if (!next) reset(); onOpenChange(next); };
+  const nextPaint = () => new Promise<void>(resolve => setTimeout(resolve, 30));
+  const parse = (source: string) => {
     const parsed = parsePeople(source);
-    const next: Row[] = parsed.map((p, i) => ({ key: i, name: p.name, email: p.email, include: true }));
-    // Rows that can't or shouldn't be added start unticked
-    next.forEach((r, i) => { const s = statusOf(r, i, next); r.include = s === "new" || s === "matched"; });
-    setRows(next);
+    if (!parsed.length) throw new Error('No people found. Paste a name and email per line, or choose a CSV.');
+    if (parsed.length > MAX_PEOPLE) throw new Error(`Please import up to ${MAX_PEOPLE} people at a time.`);
+    createdIds.current.clear();
+    const next = parsed.map((person, key) => ({ key, name: person.name, email: person.email, include: true }));
+    const results = assessPeople(next, existing, idsOnTrip);
+    setRows(next.map((row, i) => ({ ...row, include: results[i].eligible })));
   };
-
-  const readFile = async (file: File) => {
-    setFileName(file.name);
-    const source = await file.text();
-    setText(source);
-    preview(source);
+  const preview = async (file?: File) => {
+    if (busyRef.current) return;
+    busyRef.current = true; setError(''); setFileName(file?.name || null); setPhase(file ? 'reading' : 'parsing');
+    try {
+      await nextPaint();
+      if (file && !/\.(csv|txt)$/i.test(file.name)) throw new Error('Choose a CSV or text file. For Excel, save as CSV or copy and paste the cells.');
+      if ((file?.size || text.length) > 2 * 1024 * 1024) throw new Error('Choose a file smaller than 2 MB.');
+      const source = file ? await file.text() : text;
+      if (file) { setText(source); setFileName(file.name); }
+      setPhase('parsing'); await nextPaint(); parse(source);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not read this list. Please try again.'); }
+    finally { busyRef.current = false; setPhase('idle'); }
   };
-
-  const reset = () => { setText(""); setRows(null); setFileName(null); };
-
-  const statuses = rows ? rows.map((r, i) => statusOf(r, i, rows)) : [];
-  const ticked = rows ? rows.filter((r, i) => r.include && statuses[i] !== "noName" && statuses[i] !== "onTrip") : [];
-  const target = tripName ? `to ${tripName}` : "to the directory";
-
-  const add = () => {
-    if (!rows) return;
-    const matched: User[] = [];
-    const created: User[] = [];
-    const seen = new Set<string>();
-    const stamp = Date.now();
-    rows.forEach((r, i) => {
-      if (!r.include || statuses[i] === "noName" || statuses[i] === "onTrip" || statuses[i] === "duplicate") return;
-      const m = match(r);
-      if (m) { if (!seen.has(m.id)) { seen.add(m.id); matched.push(m); } return; }
-      const name = r.name.trim().replace(/\s+/g, " ");
-      created.push({ id: `custom-${stamp}-${i}`, name, email: r.email.trim(), role: "Traveler", avatar: "", initials: initialsFrom(name), status: "Active" });
-    });
-    onAdd({ matched, created });
-    reset();
-    onOpenChange(false);
+  const add = async () => {
+    if (!rows || busyRef.current || !selected.length) return;
+    busyRef.current = true; setPhase('saving'); setError('');
+    try {
+      const matched: User[] = [], created: User[] = [];
+      rows.forEach((row, i) => {
+        const assessment = assessments[i];
+        if (!row.include || !assessment.eligible) return;
+        if (assessment.matched) {
+          matched.push({ ...assessment.matched, email: row.email.trim().toLowerCase() || assessment.matched.email });
+        } else {
+          const name = row.name.trim().replace(/\s+/g, ' ');
+          if (!createdIds.current.has(row.key)) createdIds.current.set(row.key, `custom-${crypto.randomUUID()}`);
+          created.push({ id: createdIds.current.get(row.key)!, name, email: row.email.trim().toLowerCase(), role: 'Traveler', avatar: '', initials: initialsFrom(name), status: 'Active' });
+        }
+      });
+      await nextPaint();
+      await onAdd({ matched, created, tripId: chosenTrip?.id });
+      setSaved({ count: selected.length, target });
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save these people. Your list is still here; please try again.'); }
+    finally { busyRef.current = false; setPhase('idle'); }
   };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col bg-card rounded-xl border border-border p-6 shadow-2xl">
-        <DialogHeader className="space-y-2 text-left">
-          <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Add many people</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Paste from a spreadsheet or an email, one person per line, or choose a CSV. Names and emails are picked out for you to check before anything is added {target}.
-          </DialogDescription>
-        </DialogHeader>
-
-        {!rows ? (
-          <div className="space-y-3 mt-2">
-            <Textarea
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder={"Ama Mensah, ama@example.com\nKofi Boateng <kofi@example.com>\nYaw Darko"}
-              className="min-h-40 font-mono text-sm"
-              aria-label="People to add"
-            />
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2">
-              <input ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void readFile(f); e.target.value = ""; }} />
-              <Button type="button" variant="outline" className="gap-1.5" onClick={() => fileInput.current?.click()}>
-                <FileArrowUp className="h-4 w-4" /> Choose a CSV
-              </Button>
-              <span className="text-xs text-muted-foreground sm:ml-auto">A header row like Name, Email is fine.</span>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-2 min-h-0 flex-1 overflow-y-auto rounded-xl border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="w-32">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r, i) => {
-                  const s = statuses[i];
-                  const blocked = s === "noName" || s === "onTrip";
-                  return (
-                    <TableRow key={r.key} className={cn(blocked && "opacity-60")}>
-                      <TableCell>
-                        <Checkbox
-                          aria-label={`Include ${r.name || r.email}`}
-                          checked={r.include && !blocked}
-                          disabled={blocked}
-                          onCheckedChange={c => setRows(prev => prev && prev.map(x => x.key === r.key ? { ...x, include: !!c } : x))}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input value={r.name} aria-label="Name" placeholder="Name" className="h-8" onChange={e => setRows(prev => prev && prev.map(x => x.key === r.key ? { ...x, name: e.target.value, include: true } : x))} />
-                      </TableCell>
-                      <TableCell>
-                        <Input value={r.email} aria-label="Email" placeholder="Email" className="h-8" onChange={e => setRows(prev => prev && prev.map(x => x.key === r.key ? { ...x, email: e.target.value } : x))} />
-                      </TableCell>
-                      <TableCell className={cn("text-xs font-medium whitespace-nowrap", STATUS_TONE[s])}>{STATUS_LABEL[s]}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        <DialogFooter className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center gap-3">
-          {rows ? (
-            <>
-              <span className="text-xs text-muted-foreground sm:mr-auto">
-                {rows.length} found{fileName ? ` in ${fileName}` : ""}. {ticked.length} will be added.
-              </span>
-              <Button type="button" variant="ghost" onClick={() => setRows(null)} className="rounded-xl h-10 px-6 font-bold text-muted-foreground hover:bg-secondary">Back</Button>
-              <Button type="button" onClick={add} disabled={!ticked.length} className="rounded-xl h-10 px-8 font-bold bg-primary text-primary-foreground hover:opacity-90 gap-1.5">
-                <UsersThree className="h-4 w-4" /> Add {ticked.length} {target}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-6 font-bold text-muted-foreground hover:bg-secondary">Cancel</Button>
-              <Button type="button" onClick={() => preview(text)} disabled={!text.trim()} className="rounded-xl h-10 px-8 font-bold bg-primary text-primary-foreground hover:opacity-90">Preview</Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+  if (saved) return <Dialog open={open} onOpenChange={close}><DialogContent className="max-w-md"><DialogHeader><CheckCircle className="h-10 w-10 text-emerald-600" weight="fill" /><DialogTitle>People saved</DialogTitle><DialogDescription role="status">{saved.count} {saved.count === 1 ? 'person has' : 'people have'} been saved to {saved.target}. Existing profile photos and details have been kept.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => close(false)}>Done</Button></DialogFooter></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={close}>
+    <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col bg-card rounded-xl border border-border p-6 shadow-2xl" aria-busy={busy}>
+      <DialogHeader className="space-y-2 text-left">
+        <DialogTitle className="text-2xl font-semibold tracking-tight">Add or update people</DialogTitle>
+        <DialogDescription>Paste names and emails from Excel or Outlook, or upload a CSV. Review the matches before saving. Missing emails are added to existing people and their trips.</DialogDescription>
+      </DialogHeader>
+      {trips && <div className="space-y-1.5"><label className="text-xs font-medium" id="bulk-destination">Add people to</label>
+        <Select value={destination} onValueChange={value => setDestination(value || 'directory')} items={destinationItems} disabled={busy}>
+          <SelectTrigger className="w-full" aria-labelledby="bulk-destination"><SelectValue /></SelectTrigger>
+          <SelectContent>{destinationItems.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>}
+      {tripName && <p className="text-sm text-muted-foreground">Adding to <strong className="text-foreground">{tripName}</strong></p>}
+      {fileName && <div role="status" className="rounded-lg border border-border bg-muted/40 p-3 flex items-start gap-3"><FileArrowUp className="h-5 w-5 shrink-0 mt-0.5" /><div className="min-w-0"><p className="text-sm font-medium break-all">{fileName}</p><p className="text-xs text-muted-foreground mt-1">{busy ? 'Processing your file…' : rows ? `${rows.length} rows loaded. Review below, then save. Nothing has been saved yet.` : 'File selected. Check any error below.'}</p></div></div>}
+      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {busy && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><SpinnerGap className="h-4 w-4 animate-spin" />{phase === 'reading' ? 'Reading your file…' : phase === 'parsing' ? 'Finding names and emails…' : 'Saving people and trip details… Keep this window open.'}</p>}
+      {!rows ? <div className="space-y-3 mt-2">
+        <Textarea value={text} disabled={busy} onChange={event => setText(event.target.value)} placeholder={'Name, Email\nAma Mensah, ama@example.com\nKofi Boateng <kofi@example.com>'} className="min-h-40 font-mono text-sm" aria-label="People to add" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void preview(file); event.target.value = ''; }} />
+          <Button type="button" variant="outline" disabled={busy} onClick={() => fileInput.current?.click()} className="gap-1.5"><FileArrowUp className="h-4 w-4" /> Choose CSV or text</Button>
+          <span className="text-xs text-muted-foreground">Up to 250 people · 2 MB</span>
+        </div>
+        <p className="text-xs text-muted-foreground">CSV headers can include Name, Email, First name and Last name in any order. Other columns are ignored. Email is optional for new people.</p>
+      </div> : <>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>{rows.length} found{fileName ? ` in ${fileName}` : ''} · {selected.length} selected · {updates} missing {updates === 1 ? "email" : "emails"} to add</span>
+          <div className="flex gap-3"><button type="button" disabled={busy} className="underline" onClick={() => setRows(prev => prev?.map(row => ({ ...row, include: true })) || null)}>Select all valid</button><button type="button" disabled={busy} className="underline" onClick={() => setRows(prev => prev?.map(row => ({ ...row, include: false })) || null)}>Clear selection</button></div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border"><Table>
+          <TableHeader><TableRow><TableHead className="w-10" /><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+          <TableBody>{rows.map((row, i) => { const assessment = assessments[i]; return <TableRow key={row.key}>
+            <TableCell><Checkbox aria-label={`Include ${row.name || row.email}`} checked={row.include && assessment.eligible} disabled={busy || !assessment.eligible} onCheckedChange={checked => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, include: !!checked } : value) || null)} /></TableCell>
+            <TableCell><Input value={row.name} disabled={busy} aria-label={`Name on row ${i + 1}`} placeholder={assessment.matched?.name || 'Name'} className="h-9 min-w-36" onChange={event => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, name: event.target.value, include: true } : value) || null)} /></TableCell>
+            <TableCell><Input value={row.email} disabled={busy} aria-label={`Email on row ${i + 1}`} aria-invalid={assessment.status === 'invalidEmail' || assessment.status === 'conflict'} placeholder="Email (optional)" className="h-9 min-w-48" onChange={event => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, email: event.target.value, include: true } : value) || null)} /></TableCell>
+            <TableCell className="text-xs min-w-36"><span className={assessment.eligible ? 'text-foreground' : 'text-muted-foreground'}>{LABELS[assessment.status]}</span>{assessment.status === 'conflict' && <p className="mt-1 text-muted-foreground">A different email or more than one matching person exists. Review their details before importing.</p>}</TableCell>
+          </TableRow>; })}</TableBody>
+        </Table></div>
+        <p className="text-xs text-muted-foreground">Only selected, valid rows are saved. Existing emails are never replaced automatically. This does not send invitations or messages.</p>
+      </>}
+      <DialogFooter className="pt-3 flex flex-wrap gap-2">
+        <Button type="button" variant="ghost" disabled={busy} onClick={() => rows ? setRows(null) : close(false)}>{rows ? 'Back' : 'Cancel'}</Button>
+        <Button type="button" disabled={busy || (rows ? !selected.length : !text.trim())} onClick={() => rows ? void add() : void preview()} className="gap-1.5 max-w-full h-auto min-h-10 whitespace-normal py-2">
+          {busy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : rows ? <UsersThree className="h-4 w-4" /> : null}
+          {phase === 'saving' ? 'Saving…' : rows ? `Save ${selected.length} to ${target}` : 'Review people'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }

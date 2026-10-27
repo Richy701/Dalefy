@@ -26,6 +26,7 @@ interface TripsContextType {
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
   updateTrip: (id: string, updates: Partial<Trip>) => void;
+  saveTrip: (id: string, updates: Partial<Trip>, before?: Trip) => Promise<void>;
   addEvent: (tripId: string, event: TravelEvent) => void;
   updateEvent: (tripId: string, event: TravelEvent) => void;
   deleteEvent: (tripId: string, eventId: string) => void;
@@ -38,6 +39,7 @@ const TripsContext = createContext<TripsContextType>({
   addTrip: () => {},
   deleteTrip: () => {},
   updateTrip: () => {},
+  saveTrip: async () => {},
   addEvent: () => {},
   updateEvent: () => {},
   deleteEvent: () => {},
@@ -109,7 +111,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
     setTimeout(() => recentLocalEdits.current.clear(), 5000);
 
     qc.setQueryData<Trip[]>(queryKey, next);
-    syncToCloud(prev, next, orgId);
+    syncToCloud(prev, next, orgId, () => { recentLocalEdits.current.clear(); void qc.invalidateQueries({ queryKey }); });
   }, [qc, uid, orgId]);
 
   return { trips, setTrips, ready: isSuccess };
@@ -159,7 +161,7 @@ function detectTripChanges(old: Trip, next: Trip): string[] {
   return changes;
 }
 
-function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
+function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailure?: () => void) {
   const prevIds = new Set(prev.map(t => t.id));
   const nextIds = new Set(next.map(t => t.id));
 
@@ -168,7 +170,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
     const old = prev.find(t => t.id === trip.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
       logger.log("syncToCloud", "upserting trip:", trip.id, trip.name, "events:", trip.events.length);
-      upsertTrip(trip, orgId).then((cleaned) => {
+      upsertTrip(trip, orgId, old).then((cleaned) => {
         // Write download URLs back to localStorage so images survive refresh
         if (JSON.stringify(cleaned) !== JSON.stringify(trip)) {
           try {
@@ -194,6 +196,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
       }).catch(err => {
         console.error("[syncToCloud] upsert failed:", err);
         toast.error(`Sync failed: ${err?.message || err}`);
+        onFailure?.();
       });
     }
   }
@@ -293,6 +296,7 @@ function useMergedTrips(
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function TripsProvider({ children }: { children: ReactNode }) {
+  const qc = useQueryClient();
   const firebaseOn = isFirebaseConfigured();
   const { user, isLoading: authLoading } = useAuth();
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
@@ -422,6 +426,18 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     if (useCloud) flushLocal(updater);
   }, [setTrips, useCloud, flushLocal, editor]);
 
+  const saveTrip = useCallback(async (id: string, updates: Partial<Trip>, before?: Trip) => {
+    const original = before || trips.find(t => t.id === id);
+    if (!original) throw new Error('Trip no longer available');
+    if (!useCloud) { updateTrip(id, updates); return; }
+    const next = withHistory({ ...original, ...updates }, describeTripChange(original, updates), editor);
+    const saved = await upsertTrip(next, orgId, original);
+    qc.setQueryData<Trip[]>(['trips', orgId || user?.id], prev => prev?.map(trip => trip.id === id ? saved : trip));
+    flushLocal(prev => prev.map(trip => trip.id === id ? saved : trip));
+    const changes = detectTripChanges(original, saved);
+    if (saved.status !== 'Draft' && changes.length) void notifyTripUpdate(id, saved.name, changes);
+  }, [trips, useCloud, updateTrip, editor, orgId, qc, user?.id, flushLocal]);
+
   const addEvent = useCallback((tripId: string, event: TravelEvent) => {
     const updater = (prev: Trip[]) => prev.map(t => {
       if (t.id !== tripId) return t;
@@ -455,8 +471,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [setTrips, useCloud, flushLocal, editor]);
 
   const value = useMemo(
-    () => ({ trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent }),
-    [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent],
+    () => ({ trips, ready, setTrips, addTrip, deleteTrip, updateTrip, saveTrip, addEvent, updateEvent, deleteEvent }),
+    [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, saveTrip, addEvent, updateEvent, deleteEvent],
   );
 
   return (

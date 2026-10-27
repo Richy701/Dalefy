@@ -15,54 +15,47 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: "invite",
     label: "Trip Invitation",
     subject: "Your Itinerary: {{tripName}}",
-    body: `I hope you are all looking forward to your forthcoming trip, {{tripName}}.
+    body: `Your itinerary for {{tripName}} is ready.
 
-Your live itinerary is available on the web and in the {{brandName}} app.
+Open your itinerary below to review the schedule, travel arrangements and organiser details. You can view it in your browser or join the trip in the Dalefy app using the PIN in this email.
 
-Open it with the button below, or enter the trip PIN in the Dalefy app on your phone. Please let me know if you have any trouble viewing it.
+If anything needs clarifying before you travel, please get in touch.
 
-Have a great trip!`,
+We look forward to welcoming you.`,
   },
   {
     id: "reminder",
     label: "Pre-Departure Reminder",
     subject: "Reminder: {{tripName}} - {{dates}}",
-    body: `Just a friendly reminder that {{tripName}} is coming up soon!
+    body: `Your trip to {{destination}} is coming up. Please take a moment to review your itinerary and check the latest timings before departure.
 
-Trip dates: {{dates}}
-Destination: {{destination}}
+Before you travel:
+• Check your passport meets your destination's validity requirements
+• Confirm any visa and entry requirements that apply to you
+• Keep your travel insurance details and booking confirmations handy
+• Review your meeting points, transfers and organiser contact details
 
-Please make sure you have:
-• Check passport validity requirements for your destination
-• Any required visas or travel documents
-• Travel insurance details
-• Copies of your booking confirmations
+If you have a question or a change to your plans, please get in touch before departure.
 
-Your full itinerary is one tap away below. If you have any questions or need to make changes, please don't hesitate to reach out.
-
-Looking forward to a great trip!`,
+We look forward to seeing you.`,
   },
   {
     id: "dresscode",
     label: "Dress Code Notice",
     subject: "Dress Code - {{tripName}}",
-    body: `Please remember to follow the appropriate dress code for all flights and hosted events on the itinerary:
+    body: `As you prepare for {{tripName}}, please check your itinerary for any dress requirements at hosted events, restaurants and activities.
 
-• Smart casual clothing for flights and hosted events
-• Smart trainers are welcome; no ripped jeans
-• Gentlemen: a collared shirt or polo shirt for flights
+Choose clothing and footwear suited to the weather and the activities planned. Where a venue or host has a specific dress code, follow the guidance in your itinerary.
 
-For evening events, please dress smart casual or as specified in your itinerary.
-
-If you have any questions about what's appropriate, please don't hesitate to ask.`,
+If you are unsure what to bring, please contact your organiser before you travel.`,
   },
   {
     id: "update",
     label: "Itinerary Update",
     subject: "Updated Itinerary: {{tripName}}",
-    body: `Your itinerary for {{tripName}} has been updated with some changes.
+    body: `There is an update to your itinerary for {{tripName}}.
 
-Please review the latest version below to see what's new.
+Please open the itinerary below and check the latest timings, locations and travel arrangements before your next activity.
 
 If you have any questions about the updates, please get in touch.`,
   },

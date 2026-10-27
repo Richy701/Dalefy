@@ -9,7 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Envelope, LockKey, CaretLeft,
-} from "phosphor-react-native";
+} from "@/components/ui/OnboardingIcons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";

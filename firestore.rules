@@ -26,8 +26,8 @@ service cloud.firestore {
 
     function isTripEditor(tripId) {
       let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
-      return request.auth != null && (t.user_id == request.auth.uid
-        || (t.get('organization_id', null) != null && isOrgEditor(t.organization_id)));
+      return request.auth != null && (t.get('organization_id', null) == null
+        ? t.user_id == request.auth.uid : isOrgEditor(t.organization_id));
     }
 
     function isTripStaff(tripId) {
@@ -188,9 +188,9 @@ service cloud.firestore {
                 && resource.data.get('organization_id', null) == null
                 && isOrgEditor(request.resource.data.organization_id)));
       allow delete: if request.auth != null && (
-        resource.data.user_id == request.auth.uid || isCronUser()
-        || (resource.data.get('organization_id', null) != null
-            && isOrgAdmin(resource.data.organization_id)));
+        isCronUser() || (resource.data.get('organization_id', null) == null
+          ? resource.data.user_id == request.auth.uid
+          : isOrgAdmin(resource.data.organization_id)));
     }
 
     match /trip_members/{docId} {

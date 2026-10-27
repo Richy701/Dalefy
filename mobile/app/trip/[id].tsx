@@ -1,5 +1,6 @@
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
 import { heroPosition } from "@/shared/imagePosition";
+import { mergeMeasuredPositions } from "@/shared/measuredPositions";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { Skeleton, ListSkeleton } from "@/components/Skeleton";
 import * as Clipboard from "expo-clipboard";
@@ -116,10 +117,24 @@ export default function TripScreen() {
   const [dotY, setDotY] = useState<Record<string, number>>({});
   const evWrapY = useRef<Record<string, number>>({});
   const evRowMid = useRef<Record<string, number>>({});
+  const pendingDots = useRef<Record<string, number>>({});
+  const dotFrame = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (dotFrame.current !== null) cancelAnimationFrame(dotFrame.current);
+    dotFrame.current = null;
+    pendingDots.current = {};
+  }, []);
   const syncDot = useCallback((id: string) => {
     const y = (evWrapY.current[id] ?? NaN) + (evRowMid.current[id] ?? NaN);
     if (!Number.isFinite(y)) return;
-    setDotY(prev => (Math.abs((prev[id] ?? -1) - y) < 0.5 ? prev : { ...prev, [id]: y }));
+    pendingDots.current[id] = y;
+    if (dotFrame.current !== null) return;
+    dotFrame.current = requestAnimationFrame(() => {
+      dotFrame.current = null;
+      const measured = pendingDots.current;
+      pendingDots.current = {};
+      setDotY(prev => mergeMeasuredPositions(prev, measured));
+    });
   }, []);
 
   const scrollY = useSharedValue(0);
@@ -204,6 +219,7 @@ export default function TripScreen() {
   // Day positions inside the scroll content, for the week strip to jump to
   const timelineY = useRef(0);
   const dayY = useRef<Record<string, number>>({});
+  const orderedDayY = useRef<[string, number][]>([]);
   // A tapped or linked day stays highlighted even when the page can't scroll it to the top
   // (the last days sit near the end); scrolling by hand hands control back to the scroll position
   const chosenDay = useRef<string | null>(null);
@@ -231,7 +247,7 @@ export default function TripScreen() {
     if (chosenDay.current) return;
     if (y <= 0) { shownDay.current = null; setActiveDay(null); return; }
     const line = y + insets.top + HEADER_H + stripH.current + S.md;
-    const ordered = Object.entries(dayY.current).sort((a, b) => a[1] - b[1]);
+    const ordered = orderedDayY.current;
     let cur: string | null = null;
     for (const [date, dy] of ordered) {
       if (timelineY.current + dy <= line) cur = date;
@@ -598,7 +614,14 @@ export default function TripScreen() {
             return (
               <View
                 key={date}
-                onLayout={e => { dayY.current[date] = e.nativeEvent.layout.y; landOnPendingDate(); }}
+                onLayout={e => {
+                  const y = e.nativeEvent.layout.y;
+                  if (dayY.current[date] !== y) {
+                    dayY.current[date] = y;
+                    orderedDayY.current = Object.entries(dayY.current).sort((a, b) => a[1] - b[1]);
+                  }
+                  landOnPendingDate();
+                }}
                 // Past days stay full strength (fading the whole block fails contrast); only the date dims
                 style={styles.dayBlock}
               >

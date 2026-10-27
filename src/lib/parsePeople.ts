@@ -43,16 +43,39 @@ export function parsePeople(text: string): ParsedPerson[] {
   const people: ParsedPerson[] = [];
   const lines = text.split(/\r?\n/);
   let firstLastColumns = false;
+  let columns: string[] | null = null;
 
   lines.forEach((raw, i) => {
     if (!raw.trim()) return;
     const cells = splitCells(raw);
-    if (i === 0 && isHeader(cells)) {
+    if (!people.length && !columns && (isHeader(cells) || cells.some(c => /^(e-?mail|email address)$/i.test(clean(c))))) {
       const labels = cells.map(c => clean(c).toLowerCase());
+      columns = labels;
       firstLastColumns = labels.some(l => /^first/.test(l)) && labels.some(l => /^(last|surname)/.test(l));
       return;
     }
 
+    if (columns) {
+      const field = (pattern: RegExp) => clean(cells[columns!.findIndex(label => pattern.test(label))] || "");
+      const email = field(/^(e-?mail|email address)$/).toLowerCase();
+      const full = field(/^(full\s*name|name)$/);
+      const first = field(/^(first\s*name|given\s*name)$/);
+      const last = field(/^(last\s*name|surname|family\s*name)$/);
+      const name = (full || [first, last].filter(Boolean).join(" ")).replace(/\s+/g, " ").trim();
+      if (name || email) people.push({ name, email, line: i + 1 });
+      return;
+    }
+    // Outlook recipient lists often contain several Name <email> entries on one line.
+    const recipients = [...raw.matchAll(/([^;<>]*?)<([^<>]+)>\s*(?:;|,|$)/g)];
+    if (recipients.length > 1) {
+      for (const recipient of recipients) people.push({ name: clean(recipient[1]), email: clean(recipient[2]).toLowerCase(), line: i + 1 });
+      return;
+    }
+    const bareEmails = cells.map(clean).filter(Boolean);
+    if (bareEmails.length > 1 && bareEmails.every(cell => /^[^\s@]+@[^\s@]+$/.test(cell))) {
+      bareEmails.forEach(email => people.push({ name: "", email: email.toLowerCase(), line: i + 1 }));
+      return;
+    }
     let email = "";
     const words: string[] = [];
     for (const cell of cells) {
@@ -63,6 +86,8 @@ export function parsePeople(text: string): ParsedPerson[] {
         email = m[0].toLowerCase();
         const rest = clean(c.replace(m[0], "").replace(/[<>()]/g, " "));
         if (rest) words.push(rest);
+      } else if (!m && c.includes("@") && !email) {
+        email = c.toLowerCase();
       } else if (!m) {
         words.push(c);
       }

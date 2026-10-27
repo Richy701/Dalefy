@@ -1,3 +1,4 @@
+import { canEditTrip } from "./_tripPermissions.js";
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
@@ -7,11 +8,7 @@ import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
   const trip = await getDocument("trips", tripId).catch(() => null);
   if (!trip) return false;
-  const fields = trip.fields ?? {};
-  if (decodeValue(fields.user_id) === uid) return true;
-  const orgId = decodeValue(fields.organization_id);
-  if (!orgId) return false;
-  return !!(await getDocument("org_members", `${uid}_${orgId}`).catch(() => null));
+  return canEditTrip(uid, trip.fields ?? {});
 }
 
 interface Person { key: string; name: string; uid: string; deviceIds: string[]; travelerIds: string[] }

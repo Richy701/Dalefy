@@ -30,9 +30,11 @@ const FIELDS: Field[] = [
 export function TravelerDetails({ profile, canEdit, onSave }: {
   profile: TravelerProfile | undefined;
   canEdit: boolean;
-  onSave: (profile: TravelerProfile | undefined) => void;
+  onSave: (profile: TravelerProfile | undefined) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<TravelerProfile | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const age = ageOn(profile?.dateOfBirth);
   const has = (k: keyof TravelerProfile) => !!profile?.[k];
   const empty = !profile || Object.keys(profile).length === 0;
@@ -41,8 +43,10 @@ export function TravelerDetails({ profile, canEdit, onSave }: {
     return (
       <form
         className="space-y-3"
-        onSubmit={e => { e.preventDefault(); onSave(cleanProfile(draft)); setDraft(null); }}
+        onSubmit={async e => { e.preventDefault(); if (saving) return; setSaving(true); setError(""); try { await onSave(cleanProfile(draft)); setDraft(null); } catch (e) { setError(e instanceof Error ? e.message : "Could not save details. Please retry."); } finally { setSaving(false); } }}
       >
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        <fieldset disabled={saving} className="contents">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {FIELDS.map(f => (
             <div key={f.key} className={cn("space-y-1", f.wide && "sm:col-span-2")}>
@@ -63,9 +67,10 @@ export function TravelerDetails({ profile, canEdit, onSave }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="submit" size="sm" className="bg-primary text-primary-foreground">Save details</Button>
+          <Button type="submit" size="sm" className="bg-primary text-primary-foreground">{saving ? "Saving…" : "Save details"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>
         </div>
+        </fieldset>
       </form>
     );
   }

@@ -1,5 +1,7 @@
+import { tripPatch, syncLinkedOrganizer } from "@/lib/tripSave";
+import { deriveAttendeesString } from "@/lib/travelerSync";
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, deleteField, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
+  runTransaction, collection, doc, getDoc, getDocs, setDoc, deleteDoc, deleteField, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
   documentId, limit,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -105,7 +107,14 @@ export async function backfillOrgId(orgId: string): Promise<number> {
   return count;
 }
 
-export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Trip> {
+const tripSaves = new Map<string, Promise<unknown>>();
+export async function upsertTrip(trip: Trip, orgId?: string | null, before?: Trip): Promise<Trip> {
+  const previous = tripSaves.get(trip.id) || Promise.resolve();
+  const save = previous.catch(() => {}).then(() => persistTrip(trip, orgId, before));
+  tripSaves.set(trip.id, save);
+  try { return await save; } finally { if (tripSaves.get(trip.id) === save) tripSaves.delete(trip.id); }
+}
+async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Promise<Trip> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
@@ -132,12 +141,26 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
   if (orgId) data.organization_id = orgId;
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org", isNew ? "(new)" : "(update)");
-  await setDoc(tripRef, data, { merge: true });
+  const saved = await runTransaction(firebaseDb(), async tx => {
+    const latest = await tx.get(tripRef);
+    const current = latest.data() || {};
+    const patch = before ? tripPatch(tripToDoc(before), data, current) : data;
+    const merged = syncLinkedOrganizer({ ...current, ...patch });
+    if ('travelers' in patch) {
+      const travelers = (merged.travelers || []) as Array<{ name: string; email?: string }>;
+      merged.attendees = deriveAttendeesString(travelers);
+      merged.pax_count = String(travelers.length);
+      merged.traveler_emails = [...new Set(travelers.map(person => (person.email || '').trim().toLowerCase()).filter(Boolean))];
+    }
+    tx.set(tripRef, merged, { merge: true });
+    tx.set(doc(firebaseDb(), 'trip_versions', trip.id), { updated_at: serverTimestamp() });
+    return docToTrip(trip.id, merged);
+  });
   // Travellers' apps listen to this stamp and reload the filtered trip when it moves.
   // Best-effort: a missed stamp only delays their update to the app's next check.
   setDoc(doc(firebaseDb(), "trip_versions", trip.id), { updated_at: serverTimestamp() })
     .catch((err) => logger.error("upsertTrip", "trip_versions stamp failed:", err));
-  return cleanTrip;
+  return saved;
 }
 
 export async function removeTrip(id: string): Promise<void> {

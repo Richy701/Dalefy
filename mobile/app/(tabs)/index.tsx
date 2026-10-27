@@ -42,7 +42,7 @@ import { Logo } from "@/components/Logo";
 import { useTrips } from "@/context/TripsContext";
 import { leaveTrip } from "@/services/firebaseTrips";
 import { useTheme } from "@/context/ThemeContext";
-import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
+import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow, categoryTone } from "@/constants/theme";

@@ -46,7 +46,7 @@ function fmt(date: Date, opts: Intl.DateTimeFormatOptions): string {
 function dateRange(start: string, end: string): string {
   const s = parseDate(start);
   const e = parseDate(end);
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) return `${start} - ${end}`;
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return "Dates to be confirmed";
   const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
   const first = sameMonth ? fmt(s, { day: "numeric" }) : fmt(s, { day: "numeric", month: "long" });
   return `${first} - ${fmt(e, { day: "numeric", month: "long", year: "numeric" })}`;
@@ -63,6 +63,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
   const variant = ["invite", "reminder", "dresscode", "update", "custom"].includes(input.template ?? "") ? input.template! : "invite";
   const headings: Record<string, string> = { invite: "Travel itinerary", reminder: "Before you travel", dresscode: "Dress code", update: "Itinerary updated", custom: "A message from your organiser" };
   const showDetails = variant === "invite" || variant === "reminder";
+  const datesConfirmed = !isNaN(parseDate(input.start).getTime()) && !isNaN(parseDate(input.end).getTime()) && parseDate(input.end) >= parseDate(input.start);
   const nights = nightsBetween(input.start, input.end);
   const org = input.organizer && input.organizer.name?.trim() ? input.organizer : null;
   const body = paragraphs(input.message);
@@ -72,7 +73,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     { label: "Departure", value: fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "short" }) },
     { label: "Return", value: fmt(parseDate(input.end), { weekday: "short", day: "numeric", month: "short" }) },
     { label: "Destination", value: input.destination ?? "" },
-    { label: "Duration", value: `${nights} night${nights === 1 ? "" : "s"}` },
+    { label: "Duration", value: datesConfirmed ? (nights === 0 ? "Day trip" : `${nights} night${nights === 1 ? "" : "s"}`) : "" },
   ], "grid");
 
   const sig = org ? signature({
@@ -101,7 +102,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
       accentColor: input.accentColor,
       platformName: input.platformName,
     },
-    preheader: body.first || input.tripName,
+    preheader: `${headings[variant]} · ${input.tripName} · ${dateRange(input.start, input.end)}`,
     presentation: "itinerary",
     eyebrow: headings[variant],
     title: input.tripName,
@@ -110,7 +111,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     imageAfterTitle: true,
     bodyHtml: body.html,
     bodyText: `${body.text}${showDetails ? `\n\n${details.text}` : ""}`,
-    contextHtml: showDetails ? `<p style="margin:0;font-size:13px;line-height:1.7;color:${PALETTE.muted};">${escapeHtml(input.destination || input.tripName)} &nbsp; / &nbsp; ${nights} night${nights === 1 ? "" : "s"}</p>` : undefined,
+    contextHtml: showDetails ? details.html : undefined,
     cta: { label: variant === "update" ? "Review updated itinerary" : variant === "reminder" ? "Check your travel plans" : "View your itinerary", url: input.shareUrl },
     ctaNoteHtml: ctaNote.html,
     ctaNoteText: ctaNote.text,

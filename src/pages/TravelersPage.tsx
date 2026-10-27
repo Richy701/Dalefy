@@ -1,3 +1,7 @@
+import { useSavePerson } from "@/hooks/useSavePerson";
+import { MergePeopleDialog } from "@/components/shared/MergePeopleDialog";
+import { combinePeople, removePeopleById } from "@/lib/peopleDirectory";
+import { useBulkPeopleImport } from "@/hooks/useBulkPeopleImport";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Drawer } from "vaul";
 import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak, UsersThree, Images, Camera } from "@phosphor-icons/react";
@@ -6,9 +10,8 @@ import { AddPhotosDialog } from "@/components/shared/AddPhotosDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { TravelerDetails } from "@/components/shared/TravelerDetails";
 import { cleanProfile } from "@/lib/travelerProfile";
-import { uploadTravelerPhoto, tripUpdatesForAvatar } from "@/lib/travelerPhotos";
+import { uploadTravelerPhoto } from "@/lib/travelerPhotos";
 import { tripTravelerOf } from "@/lib/travelerSync";
-import { initialsFrom } from "@/lib/names";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -119,6 +122,11 @@ function Avatar({ person, size = "h-9 w-9" }: { person: Pick<Person, "initials" 
 }
 
 export function TravelersPage() {
+  const saveBulkPeople = useBulkPeopleImport();
+  const savePerson = useSavePerson();
+  const [personSaving, setPersonSaving] = useState(false);
+  const [personError, setPersonError] = useState("");
+  const [mergePeople, setMergePeople] = useState<UserType[] | null>(null);
   const { trips, updateTrip, updateEvent } = useTrips();
   // App users are read per trip (the rules only show staff the people on their own trips)
   const tripIds = useMemo(() => trips.map(t => t.id), [trips]);
@@ -214,12 +222,11 @@ export function TravelersPage() {
       });
     }
 
-    const travelerMap = new Map<string, UserType>();
+    const copies: UserType[] = [];
     for (const t of trips) {
       if (!t.travelers) continue;
       for (const tv of t.travelers) {
-        if (travelerMap.has(tv.id)) continue;
-        travelerMap.set(tv.id, {
+        copies.push({
           id: tv.id,
           name: tv.name,
           email: tv.email || "",
@@ -231,23 +238,7 @@ export function TravelersPage() {
         });
       }
     }
-    for (const cu of customTravelers) {
-      const nameKey = cu.name.trim().toLowerCase();
-      const existing = [...travelerMap.values()].find(
-        v => v.name.trim().toLowerCase() === nameKey,
-      );
-      if (existing) {
-        if (cu.email && !existing.email) existing.email = cu.email;
-        if (cu.avatar) existing.avatar = cu.avatar;
-        if (cu.profile) existing.profile = cu.profile;
-        if (cu.role && cu.role !== "Traveler") existing.role = cu.role;
-        if (cu.compliance?.length) existing.compliance = cu.compliance;
-      } else {
-        travelerMap.set(cu.id, cu);
-      }
-    }
-
-    return [...travelerMap.values()].map(user => {
+    return combinePeople([...copies, ...customTravelers]).map(user => {
       const assignedTrips: string[] = [];
       trips.forEach(t => {
         const byId = t.travelerIds?.includes(user.id);
@@ -372,72 +363,35 @@ export function TravelersPage() {
   }, [trips, tripFilter, showToast]);
 
   /** A new name or email for a directory person reaches the directory, every trip's list, and the published copies */
-  const editPerson = useCallback((p: Person, rawName: string, rawEmail: string) => {
-    const name = rawName.trim().replace(/\s+/g, " ");
-    const email = rawEmail.trim();
-    if (!name) return;
-    const initials = initialsFrom(name);
-    setCustomTravelers(prev => prev.map(u => (u.id === p.id ? { ...u, name, email, initials } : u)));
-    for (const trip of trips) {
-      if (!trip.travelers?.some(t => t.id === p.id)) continue;
-      const travelers = trip.travelers.map(t => {
-        if (t.id !== p.id) return t;
-        const next = { ...t, name, initials };
-        if (email) next.email = email; else delete next.email;
-        return next;
-      });
-      const updates: Partial<Trip> = { travelers };
-      const snap = trip.publishedSnapshot;
-      if (snap?.travelers?.some(t => t.id === p.id)) {
-        updates.publishedSnapshot = { ...snap, travelers: snap.travelers.map(t => (t.id === p.id ? { ...t, name, initials } : t)) };
-      }
-      updateTrip(trip.id, updates);
+  const editPerson = async (p: Person, rawName: string, rawEmail: string) => {
+    if (personSaving) return;
+    const original = travelers.find(t => t.id === p.id); if (!original) return;
+    setPersonSaving(true); setPersonError('');
+    try {
+      await savePerson(original, { name: rawName.trim().replace(/\s+/g, ' '), email: rawEmail.trim().toLowerCase() });
+      setEditingPerson(null); showToast(`${rawName.trim()} updated`);
+    } catch (error) { setPersonError(error instanceof Error ? error.message : 'Could not save. Your changes are still here.'); }
+    finally { setPersonSaving(false); }
+  };
+  const applyPhotos = async (photos: Array<{ personId: string; url: string | null }>) => {
+    for (const photo of photos) {
+      const original = travelers.find(t => t.id === photo.personId);
+      if (!original) throw new Error('This person is no longer available. Refresh and try again.');
+      await savePerson(original, { avatar: photo.url || '' });
     }
-    setEditingPerson(null);
-    showToast(`${name} updated`);
-  }, [trips, updateTrip, setCustomTravelers, showToast]);
-
-  /**
-   * A photo (or none) for each person reaches the directory, every trip's traveller list and the published copies,
-   * which is how the phone picks it up. People known only from a trip's list are added to the directory as they go.
-   */
-  const applyPhotos = useCallback((photos: Array<{ personId: string; url: string | null }>) => {
-    const byId = new Map(photos.map(p => [p.personId, p.url]));
-    setCustomTravelers(prev => {
-      const have = new Set(prev.map(u => u.id));
-      const updated = prev.map(u => (byId.has(u.id) ? { ...u, avatar: byId.get(u.id) ?? "" } : u));
-      const added = travelers.filter(u => byId.has(u.id) && !have.has(u.id)).map(u => ({ ...u, avatar: byId.get(u.id) ?? "" }));
-      return [...updated, ...added];
-    });
-    for (const trip of trips) {
-      let updates: Partial<Trip> = {};
-      let touched = false;
-      for (const [personId, url] of byId) {
-        const next = tripUpdatesForAvatar({ ...trip, ...updates }, personId, url);
-        if (next) { updates = { ...updates, ...next }; touched = true; }
-      }
-      if (touched) updateTrip(trip.id, updates);
-    }
-  }, [travelers, trips, updateTrip, setCustomTravelers]);
-
-  /** Passport, dietary needs and the rest live on the directory entry; people known only from a trip join it as they go */
-  const saveProfile = useCallback((p: Person, profile: TravelerProfile | undefined) => {
-    const next = profile ? cleanProfile(profile) : undefined;
-    setCustomTravelers(prev => {
-      const have = prev.some(u => u.id === p.id);
-      if (have) return prev.map(u => (u.id === p.id ? { ...u, profile: next } : u));
-      const base = travelers.find(u => u.id === p.id);
-      return base ? [...prev, { ...base, profile: next }] : prev;
-    });
+  };
+  const saveProfile = async (p: Person, profile: TravelerProfile | undefined) => {
+    const original = travelers.find(t => t.id === p.id); if (!original) throw new Error('Person no longer available');
+    await savePerson(original, { profile: profile ? cleanProfile(profile) || {} : {} });
     showToast(`${p.name}'s details saved`);
-  }, [travelers, setCustomTravelers, showToast]);
+  };
 
   const changePhoto = useCallback(async (p: Person, file: File | null) => {
     if (!user?.id) return;
     setPhotoBusy(true);
     try {
       const url = file ? await uploadTravelerPhoto(user.id, p.id, file) : null;
-      applyPhotos([{ personId: p.id, url }]);
+      await applyPhotos([{ personId: p.id, url }]);
       showToast(url ? `Photo added for ${p.name}` : `Photo removed for ${p.name}`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Couldn't upload that photo");
@@ -511,7 +465,6 @@ export function TravelersPage() {
       description: `They come off every trip's traveller list and events, out of your directory, and their app access ends. This can't be undone.`,
       action: async () => {
         const ids = new Set(ps.filter(p => !p.appOnly).map(p => p.id));
-        const names = new Set(ps.filter(p => !p.appOnly).map(p => p.name.trim().toLowerCase()));
         for (const trip of trips) {
           const onIt = (trip.travelers ?? []).some(t => ids.has(t.id)) || (trip.travelerIds ?? []).some(id => ids.has(id))
             || (trip.publishedSnapshot?.travelers ?? []).some(t => ids.has(t.id));
@@ -520,8 +473,7 @@ export function TravelersPage() {
           updateTrip(trip.id, updates);
           for (const ev of events) updateEvent(trip.id, ev);
         }
-        // The directory merges people by name, so a same-named entry would bring them back
-        setCustomTravelers(prev => prev.filter(u => !ids.has(u.id) && !names.has(u.name.trim().toLowerCase())));
+        setCustomTravelers(prev => removePeopleById(prev, ids));
         setComplianceOverrides(prev => {
           const next = { ...prev };
           for (const id of ids) delete next[id];
@@ -571,7 +523,7 @@ export function TravelersPage() {
     showToast(`Exported ${visible.length} ${visible.length === 1 ? "person" : "people"}`);
   }, [visible, showToast]);
 
-  const handleAddTraveler = useCallback((e: React.FormEvent) => {
+  const handleAddTraveler = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     if (!drawerForm.name.trim() || !drawerForm.email.trim()) return;
@@ -585,11 +537,15 @@ export function TravelersPage() {
       status: drawerForm.status,
       compliance: [],
     };
-    setCustomTravelers(prev => [...prev, newUser]);
+    if (personSaving) return;
+    setPersonSaving(true); setPersonError('');
+    try { await savePerson(newUser, {}); }
+    catch (error) { setPersonError(error instanceof Error ? error.message : 'Could not save this person.'); return; }
+    finally { setPersonSaving(false); }
     setDrawerForm({ name: "", email: "", role: "", status: "Active" });
     setInviteOpen(false);
     showToast(`${newUser.name} added to team`);
-  }, [drawerForm, setCustomTravelers, showToast, demoGate]);
+  }, [drawerForm, savePerson, showToast, demoGate, personSaving]);
 
   const openDocSheet = useCallback((userId: string, userName: string, doc: ComplianceDoc) => {
     setSheetUserId(userId);
@@ -683,7 +639,7 @@ export function TravelersPage() {
             <div className="flex items-center gap-2">
               <Select value={tripFilter} onValueChange={v => setTripFilter(v ?? "all")} items={tripItems}>
                 <SelectTrigger className="w-56 bg-card" aria-label="Trip"><SelectValue /></SelectTrigger>
-                <SelectContent>{tripItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+                <SelectContent align="start" className="w-[min(28rem,var(--available-width))]">{tripItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
               </Select>
               {!isViewer && (
                 <DropdownMenu>
@@ -736,6 +692,7 @@ export function TravelersPage() {
               <p className="text-sm text-foreground">{selectedPeople.length} selected</p>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => messagePeople(selectedPeople)}><ChatCircleText className="h-4 w-4" /> Message</Button>
+                {selectedPeople.length === 2 && selectedPeople.every(p => !p.appOnly) && <Button size="sm" variant="outline" onClick={() => setMergePeople(selectedPeople.map(p => travelers.find(t => t.id === p.id)!).filter(Boolean))}>Merge duplicates</Button>}
                 <Button size="sm" variant="outline" className="gap-1.5 text-red-600 dark:text-red-400" onClick={() => deletePeople(selectedPeople)}><Trash className="h-4 w-4" /> Delete</Button>
                 <button onClick={() => setSelected(new Set())} className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground" aria-label="Clear selection"><X className="h-4 w-4" /></button>
               </div>
@@ -873,10 +830,11 @@ export function TravelersPage() {
                         className="min-w-0 flex-1 space-y-2"
                         onSubmit={(e) => { e.preventDefault(); editPerson(p, editingPerson.name, editingPerson.email); }}
                       >
-                        <Input value={editingPerson.name} onChange={e => setEditingPerson(v => v && { ...v, name: e.target.value })} placeholder="Name" aria-label="Name" autoFocus className="h-9" />
-                        <Input value={editingPerson.email} onChange={e => setEditingPerson(v => v && { ...v, email: e.target.value })} placeholder="Email" aria-label="Email" type="email" className="h-9" />
+                        {personError && <p role="alert" className="text-sm text-red-600">{personError}</p>}
+                        <Input disabled={personSaving} value={editingPerson.name} onChange={e => setEditingPerson(v => v && { ...v, name: e.target.value })} placeholder="Name" aria-label="Name" autoFocus className="h-9" />
+                        <Input disabled={personSaving} value={editingPerson.email} onChange={e => setEditingPerson(v => v && { ...v, email: e.target.value })} placeholder="Email" aria-label="Email" type="email" className="h-9" />
                         <div className="flex gap-2">
-                          <Button type="submit" size="sm" disabled={!editingPerson.name.trim()} className="bg-primary text-primary-foreground">Save</Button>
+                          <Button type="submit" size="sm" disabled={personSaving || !editingPerson.name.trim()} className="bg-primary text-primary-foreground">{personSaving ? "Saving…" : "Save"}</Button>
                           <Button type="button" size="sm" variant="ghost" onClick={() => setEditingPerson(null)}>Cancel</Button>
                         </div>
                       </form>
@@ -909,7 +867,7 @@ export function TravelersPage() {
                     </button>
                   )}
                   {!isViewer && (
-                    <div className="flex gap-2 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-4">
                       <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground" disabled={!p.appKeys.length} onClick={() => messagePeople([p])}>
                         <ChatCircleText className="h-4 w-4" /> Message
                       </Button>
@@ -924,7 +882,7 @@ export function TravelersPage() {
                         </Button>
                       )}
                       {!p.appOnly && p.appKeys.length > 0 && (
-                        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => unlinkApp(p)}>
+                        <Button size="sm" variant="outline" className="gap-1.5 max-w-full h-auto min-h-8 whitespace-normal text-left py-1.5" onClick={() => unlinkApp(p)}>
                           <LinkBreak className="h-4 w-4" /> Unlink app account
                         </Button>
                       )}
@@ -1105,6 +1063,7 @@ export function TravelersPage() {
               </div>
 
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
+                {personError && <p role="alert" className="text-sm text-red-600">{personError}</p>}
                 {/* Name */}
                 <div className="space-y-2">
                   <Label className="text-xs font-medium text-muted-foreground">
@@ -1166,7 +1125,7 @@ export function TravelersPage() {
                     type="submit"
                     className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="h-4 w-4" /> Add to Team
+                    <UserPlus className="h-4 w-4" /> {personSaving ? "Saving…" : "Add to Team"}
                   </button>
                 </div>
               </form>
@@ -1283,15 +1242,19 @@ export function TravelersPage() {
         onOpenChange={setPhotosOpen}
         people={travelers}
         uid={user?.id ?? ""}
-        onUploaded={photos => { applyPhotos(photos); showToast(`${photos.length} photo${photos.length === 1 ? "" : "s"} added`); }}
+        onUploaded={async photos => { await applyPhotos(photos); showToast(`${photos.length} photo${photos.length === 1 ? "" : "s"} added`); }}
       />
+      {mergePeople && <MergePeopleDialog people={mergePeople} onClose={() => setMergePeople(null)} onMerge={async (keep, other, patch) => { await savePerson(keep, patch, other); setSelected(new Set()); setAppUsersReload(n => n + 1); setOpenPersonId(keep.id); showToast('People merged — trips and app links preserved'); }} />}
       <BulkAddPeopleDialog
+        key={tripFilter}
         open={bulkOpen}
         onOpenChange={setBulkOpen}
         existing={travelers}
-        onAdd={({ matched, created }) => {
-          if (created.length) setCustomTravelers(prev => [...prev, ...created]);
-          showToast(created.length ? `${created.length} added to the directory${matched.length ? `, ${matched.length} already there` : ""}` : "Everyone was already in the directory");
+        trips={trips}
+        initialTripId={tripFilter === "all" ? undefined : tripFilter}
+        onAdd={async selection => {
+          await saveBulkPeople(selection);
+          showToast(`Saved ${selection.matched.length + selection.created.length} people${selection.tripId ? " to the trip" : " to the directory"}`);
         }}
       />
       <Dialog open={!!renameTarget} onOpenChange={(open) => { if (!open && !renaming) setRenameTarget(null); }}>

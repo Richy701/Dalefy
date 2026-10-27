@@ -2,13 +2,12 @@ import React, { useEffect, useCallback, useRef, useState, useMemo } from "react"
 import { Appearance, Platform, View, AppState, Text, TextInput, Linking } from "react-native";
 import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { NavigationBar } from "expo-navigation-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
-let NavigationBar: any = null;
-try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available */ }
 
 // Read saved theme preference and set native root background BEFORE React mounts.
 // This prevents the flash when the user's saved theme differs from the system theme.
@@ -35,11 +34,6 @@ AsyncStorage.getItem("daf-prefs").then((raw) => {
   } catch { /* ignore */ }
 }).catch(() => {});
 
-// Android: transparent nav bar so content extends edge-to-edge
-if (Platform.OS === "android" && NavigationBar) {
-  NavigationBar.setBackgroundColorAsync("#09090b").catch(() => {});
-  NavigationBar.setButtonStyleAsync("light").catch(() => {});
-}
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
@@ -127,14 +121,6 @@ function AppStack() {
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(isDark ? "#09090b" : "#f5f6fa");
   }, [isDark]);
-
-  // Android: sync nav bar color with theme
-  useEffect(() => {
-    if (Platform.OS === "android" && NavigationBar) {
-      NavigationBar.setBackgroundColorAsync(C.bg).catch(() => {});
-      NavigationBar.setButtonStyleAsync(isDark ? "light" : "dark").catch(() => {});
-    }
-  }, [isDark, C.bg]);
 
   // Quick actions — long-press app icon shortcuts
   useQuickActionRouting();
@@ -292,6 +278,7 @@ function AppStack() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
+      {Platform.OS === "android" && <NavigationBar style={isDark ? "light" : "dark"} />}
       {settled && <DeferredServices />}
       <ErrorBoundary>
         <NavThemeProvider value={navTheme}>
