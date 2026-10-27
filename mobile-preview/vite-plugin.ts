@@ -35,6 +35,15 @@ export function mobilePreviewPlugin(root:string):Plugin {
       if (source.includes('require("expo-image")')) {
         source = `import * as PreviewImage from ${JSON.stringify(path.join(root, 'mobile-preview/image.tsx'))};\n` + source.replaceAll('require("expo-image")', 'PreviewImage');
       }
+      // Metro's require() of a bundled image (airline logos) has no browser equivalent: hoist each
+      // one into a static import so Vite serves the file and the screen gets a URL instead of throwing.
+      const assetImports = new Map<string, string>();
+      source = source.replace(/require\((["'])(\/mobile\/assets\/[^"']+\.(?:png|jpe?g|webp|gif))\1\)/g, (_match, _quote, file: string) => {
+        let name = assetImports.get(file);
+        if (!name) { name = `__previewAsset${assetImports.size}`; assetImports.set(file, name); }
+        return name;
+      });
+      if (assetImports.size) source = [...assetImports].map(([file, name]) => `import ${name} from ${JSON.stringify(file)};`).join('\n') + '\n' + source;
       const result = await transformAsync(source, {
         filename: id, configFile: false, babelrc: false, sourceMaps: true,
         parserOpts: { plugins: ['typescript', 'jsx'] },

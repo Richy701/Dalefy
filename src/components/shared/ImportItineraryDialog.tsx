@@ -1709,7 +1709,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           <DialogDescription className="text-sm text-muted-foreground">
             {step === "upload" && (
               hasExisting
-                ? `Upload a document. You'll see what's new against the ${plural(existingEventCount, "event")} already on ${existingTrip?.name ?? "this trip"}, then decide whether to add it or start over.`
+                ? "Upload a document. You'll see what's new before anything on the trip changes."
                 : isReimport
                   ? "Fill this trip from a document. Nothing is on it yet, so there's nothing to merge or replace."
                   : "Turn a document into a trip"
@@ -1717,7 +1717,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
               {hasExisting
-                ? `${plural(parsed?.events.length ?? 0, "event")} found, ${newEventCount} new and ${duplicateCount} already on this trip. Choose how they go in, then untick anything wrong.`
+                ? `${plural(parsed?.events.length ?? 0, "event")} found, ${duplicateCount > 0 ? `${newEventCount} new and ${duplicateCount} already on this trip` : "all new"}. Choose how they go in, then untick anything wrong.`
                 : `${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
               {parserUsed && (
                 <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
@@ -1732,6 +1732,29 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {/* ── STEP 1: UPLOAD ── */}
         {step === "upload" && (
           <div className="space-y-4">
+            {/* The trip this document lands in, so its size is in view before the file is chosen */}
+            {isReimport && existingTrip && (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+                {existingTrip.image ? (
+                  <img src={existingTrip.image} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-11 w-11 shrink-0 rounded-lg bg-secondary" aria-hidden="true" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Importing into</p>
+                  <p className="truncate text-sm font-bold text-foreground">{existingTrip.name}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {(() => {
+                      const fmt = (iso?: string) => { if (!iso || iso === "TBD") return null; const d = new Date(iso + "T12:00:00"); return isNaN(d.getTime()) ? null : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+                      const range = fmt(existingTrip.start) && fmt(existingTrip.end) ? `${fmt(existingTrip.start)} to ${fmt(existingTrip.end)}` : null;
+                      const travellerCount = existingTrip.travelers?.length ?? 0;
+                      return [hasExisting ? plural(existingEventCount, "event") : "No events yet", travellerCount > 0 ? plural(travellerCount, "traveller") : null, range].filter(Boolean).join(", ");
+                    })()}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Two equal paths rather than one buried under a divider — halves
                 the height of this step and stops the paste box being an
                 afterthought. */}
@@ -1827,9 +1850,18 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             )}
 
-            <p className="text-[11px] text-muted-foreground text-center">
-              Everything is parsed into a draft you review before anything is saved.
-            </p>
+            {hasExisting ? (
+              <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground text-center">
+                <span>Next you'll review what was found, then pick</span>
+                <span className="rounded-md bg-secondary px-1.5 py-0.5 font-semibold text-foreground">Add what's new</span>
+                <span>or</span>
+                <span className="rounded-md bg-secondary px-1.5 py-0.5 font-semibold text-foreground">Start over</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground text-center">
+                Everything is parsed into a draft you review before anything is saved.
+              </p>
+            )}
           </div>
         )}
 
@@ -2160,7 +2192,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                               <p className={`text-[13px] sm:text-xs font-bold text-foreground line-clamp-2 leading-snug ${excluded ? "line-through" : ""}`}>
                                 {ev.title}
                               </p>
-                              {hasExisting && (
+                              {hasExisting && duplicateCount > 0 && (
                                 <span className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${onTrip ? "bg-secondary text-muted-foreground" : "bg-brand/10 text-brand"}`}>
                                   {onTrip ? "Already on this trip" : "New"}
                                 </span>
