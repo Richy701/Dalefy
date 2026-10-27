@@ -309,7 +309,7 @@ export async function logTripJoin(
       trip_id: tripId,
       trip_name: tripName,
       name: userName,
-      avatar: avatar || null,
+      avatar: remoteAvatar(avatar),
       joined_at: new Date().toISOString(),
       ...(uid ? { uid } : {}),
       ...(authEmail ? { email: authEmail } : {}),
@@ -409,6 +409,11 @@ export async function updateLinkedTraveler(
 }
 
 /** Update name/avatar on all existing trip_members docs for this device */
+/** Only an uploaded photo belongs in the roster; a phone-local picker path would be unreadable everywhere else. */
+function remoteAvatar(avatar?: string | null): string | null {
+  return avatar && /^https:\/\//.test(avatar) ? avatar : null;
+}
+
 export async function updateMemberProfile(name: string, avatar: string | null): Promise<void> {
   try {
     await waitForAuth();
@@ -427,7 +432,7 @@ export async function updateMemberProfile(name: string, avatar: string | null): 
     const tripIds = new Set<string>();
 
     for (const d of snap.docs) {
-      await setDoc(d.ref, { name, avatar: avatar || null }, { merge: true });
+      await setDoc(d.ref, { name, avatar: remoteAvatar(avatar) }, { merge: true });
       const data = d.data();
       if (data.trip_id) tripIds.add(data.trip_id);
     }
@@ -438,7 +443,7 @@ export async function updateMemberProfile(name: string, avatar: string | null): 
       const deviceRef = doc(firebaseDb(), TRIP_MEMBERS, deviceDocId);
       const deviceSnap = await getDoc(deviceRef);
       if (deviceSnap.exists()) {
-        await setDoc(deviceRef, { name, avatar: avatar || null, uid }, { merge: true });
+        await setDoc(deviceRef, { name, avatar: remoteAvatar(avatar), uid }, { merge: true });
       }
     }
     console.log("[updateMemberProfile] done");
@@ -471,6 +476,7 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     end: data.end_date as string,
     status: data.status as Trip["status"],
     image: data.image as string,
+    imagePosition: (data.image_position as Trip["imagePosition"]) ?? undefined,
     events: (data.events as Trip["events"]) ?? [],
     media: (data.media as Trip["media"]) ?? undefined,
     shortCode: (data.short_code as string) ?? undefined,
@@ -489,7 +495,7 @@ function legacyDocToTrip(id: string, data: Record<string, unknown>): Trip {
   const trip = docToTrip(id, data);
   const snap = data.published_snapshot as Trip["publishedSnapshot"];
   const published = snap ? {
-    ...trip, name: snap.name, image: snap.image, destination: snap.destination,
+    ...trip, name: snap.name, image: snap.image, imagePosition: snap.imagePosition, destination: snap.destination,
     start: snap.start, end: snap.end, paxCount: snap.paxCount, events: snap.events,
     info: snap.info, organizer: snap.organizer, documents: snap.documents,
   } : trip;

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
+import { objectPosition } from "@/lib/imagePosition";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -656,7 +657,7 @@ export function DashboardPage() {
                           onClick={() => handleOpenTrip(trip)}
                           className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
-                          <img src={trip.image} alt="" decoding="async" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
+                          <img src={trip.image} alt="" decoding="async" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
                             <p className="text-sm font-semibold tracking-tight text-foreground leading-none truncate">
                               {trip.name}
@@ -783,7 +784,7 @@ export function DashboardPage() {
                             {/* Top/Left: image */}
                             <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden bg-secondary">
                               {hasImg ? (
-                                <img src={ev.image} alt={ev.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={ev.image} alt={ev.title} style={{ objectPosition: objectPosition(ev.imagePosition) }} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               ) : (
                                 <div className={`h-full w-full flex items-center justify-center ${cfg.bg}`}>
                                   <cfg.Icon className={`h-8 w-8 ${cfg.text} opacity-60`} />
@@ -1124,7 +1125,7 @@ export function DashboardPage() {
                   const isUpcoming = daysLeft > 0;
                   return (
                     <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden bg-secondary flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
-                      <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                      <img src={trip.image} alt={trip.name} loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 h-full w-full object-cover" />
                       {/* Light wash for the top chips, then a dedicated scrim behind the
                           text block so legibility never depends on the photo. */}
                       <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/45 to-transparent" />
@@ -1215,7 +1216,7 @@ export function DashboardPage() {
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden bg-secondary">
-                        <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={trip.image} alt={trip.name} style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10" />
                       </div>
 
@@ -1522,7 +1523,7 @@ export function DashboardPage() {
                       coverResults.map((url, i) => (
                         <button key={i} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
                           className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                          <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
                         </button>
                       ))
                     ) : (

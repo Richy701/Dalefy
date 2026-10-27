@@ -1,4 +1,5 @@
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { heroPosition } from "@/shared/imagePosition";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { Skeleton, ListSkeleton } from "@/components/Skeleton";
 import * as Clipboard from "expo-clipboard";
@@ -430,10 +431,10 @@ export default function TripScreen() {
               <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
                 {Platform.OS === "ios" && Link.AppleZoomTarget ? (
                   <Link.AppleZoomTarget>
-                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
                   </Link.AppleZoomTarget>
                 ) : (
-                  <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                  <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
                 )}
               </Animated.View>
                 <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
@@ -443,10 +444,10 @@ export default function TripScreen() {
               <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
                 {Platform.OS === "ios" && Link.AppleZoomTarget ? (
                   <Link.AppleZoomTarget>
-                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
                   </Link.AppleZoomTarget>
                 ) : (
-                  <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                  <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
                 )}
               </Animated.View>
               </PhotoBlend>

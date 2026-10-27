@@ -106,7 +106,7 @@ const TONE_TEXT = {
 
 function Avatar({ person, size = "h-9 w-9" }: { person: Pick<Person, "initials" | "avatar" | "name">; size?: string }) {
   const [broken, setBroken] = useState(false);
-  return person.avatar && !broken ? (
+  return person.avatar && /^https?:\/\//.test(person.avatar) && !broken ? (
     <img src={person.avatar} alt="" onError={() => setBroken(true)} className={cn(size, "rounded-full object-cover shrink-0")} />
   ) : (
     <div className={cn(size, "rounded-full bg-secondary text-muted-foreground flex items-center justify-center text-xs font-semibold shrink-0")}>{person.initials}</div>

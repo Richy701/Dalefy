@@ -28,7 +28,19 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 }
 
 /** The subsets of each image provider's response this module reads. */
-interface SerpApiResponse { images_results?: { original?: string }[] }
+interface SerpApiResponse { images_results?: { original?: string; original_width?: number }[] }
+
+/** Hosts whose "original" URL is a web page (or a tracking endpoint) rather than an image file. */
+const NON_IMAGE_HOSTS = new Set(["lookaside.instagram.com", "lookaside.fbsbx.com"]);
+const MIN_WIDTH = 600;
+
+/** Google Images returns originals that are not usable as pictures: HTML pages, tiny thumbnails, non-HTTPS. */
+function isUsableOriginal(r: { original?: string; original_width?: number }): r is { original: string } {
+  const u = r.original;
+  if (!u || !u.startsWith("https://")) return false;
+  if (r.original_width !== undefined && r.original_width < MIN_WIDTH) return false;
+  try { return !NON_IMAGE_HOSTS.has(new URL(u).hostname); } catch { return false; }
+}
 interface UnsplashResponse { results?: { urls?: { regular?: string } }[] }
 interface PexelsResponse { photos?: { src?: { landscape?: string; large?: string } }[] }
 
@@ -39,12 +51,15 @@ export async function searchImages(
   const tryGoogle = async () => {
     if (!keys.serpapi) return null;
     try {
-      const start = (parseInt(page) - 1) * parseInt(perPage);
+      const per = parseInt(perPage);
+      const start = (parseInt(page) - 1) * per;
+      // Google Images pages are 100 results each (ijn); pick the requested window inside that page.
+      const offset = start % 100;
       const params = new URLSearchParams({ engine: "google_images", q, num: perPage, ijn: String(Math.floor(start / 100)), api_key: keys.serpapi });
       const resp = await fetchWithTimeout(`https://serpapi.com/search.json?${params}`);
       if (resp.ok) {
         const data = await resp.json() as SerpApiResponse;
-        const urls = (data.images_results ?? []).slice(0, parseInt(perPage)).map(i => i.original).filter((u): u is string => !!u);
+        const urls = (data.images_results ?? []).filter(isUsableOriginal).slice(offset, offset + per).map(i => i.original);
         if (urls.length) return { urls, source: "google" };
       }
     } catch { /* fall through to the next provider */ }

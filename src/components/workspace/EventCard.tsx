@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { objectPosition } from "@/lib/imagePosition";
 import { AirplaneTakeoff, AirplaneLanding, DotsThreeVertical, Gear, Trash, Copy, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
@@ -155,7 +156,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
           )}
         </div>
         {event.image && (
-          <img src={event.image} alt="" className="h-9 w-12 rounded-md object-cover shrink-0 hidden sm:block" />
+          <img src={event.image} alt="" style={{ objectPosition: objectPosition(event.imagePosition) }} className="h-9 w-12 rounded-md object-cover shrink-0 hidden sm:block" />
         )}
         <MediaBadge media={event.media} documents={event.documents} />
         <AssignedDots people={assignedPeople} />

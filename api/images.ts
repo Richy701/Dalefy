@@ -18,6 +18,7 @@ export default async function handler(req: any, res: any) {
       pexels: process.env.PEXELS_API_KEY,
     },
   );
-  res.setHeader("Cache-Control", "public, max-age=600, s-maxage=3600");
+  // Only Google answers are worth pinning at the CDN; a fallback (or empty) result must not stick for an hour.
+  res.setHeader("Cache-Control", payload.source === "google" ? "public, max-age=600, s-maxage=3600" : "public, max-age=60, s-maxage=60");
   res.json(payload);
 }

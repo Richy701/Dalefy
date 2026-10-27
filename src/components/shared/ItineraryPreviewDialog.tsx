@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { objectPosition } from "@/lib/imagePosition";
 import {
   CalendarDots, MapPin, Users, Compass,
   Clock, X, CurrencyDollar, User,
@@ -58,7 +59,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
       {/* ── Hero ── */}
       <div className={cn("relative overflow-hidden shrink-0", forPrint ? "h-[160px]" : "h-[180px] sm:h-[280px] rounded-t-xl sm:rounded-t-xl")}>
         {trip.image ? (
-          <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={trip.image} alt={trip.name} style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 bg-linear-to-br from-brand/30 via-[#111] to-[#050505]" />
         )}
@@ -396,6 +397,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
       {ev.image && (
         <img
           src={ev.image}
+          style={{ objectPosition: objectPosition(ev.imagePosition) }}
           alt={ev.title}
           className="h-20 w-full sm:h-20 sm:w-28 rounded-xl object-cover shrink-0"
         />

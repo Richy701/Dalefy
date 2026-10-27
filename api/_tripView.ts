@@ -27,6 +27,13 @@ export function membershipMatches(member: Data, uid: string, tripId: string): bo
   return member.uid === uid && member.trip_id === tripId;
 }
 
+/** A cover or event photo focal point: two percentages, nothing else gets through. */
+function focalPoint(v: unknown): { x: number; y: number } | null {
+  const p = record(v);
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100;
+  return ok(p.x) && ok(p.y) ? { x: p.x, y: p.y } : null;
+}
+
 /** Explicit allowlists keep new internal fields private by default. */
 export function publishedTripView(tripId: string, trip: Data, leader = false, member = false): Data | null {
   if (!["Published", "published"].includes(String(trip.status))) return null;
@@ -51,6 +58,8 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
       if (Array.isArray(data[key]) && data[key].length === 2 && data[key].every(n => typeof n === "number" && Number.isFinite(n))) result[key] = data[key];
     }
     if (typeof data.isOvernight === "boolean") result.isOvernight = data.isOvernight;
+    const focal = focalPoint(data.imagePosition);
+    if (focal) result.imagePosition = focal;
     result.assignedTo = list(data.assignedTo).filter(v => typeof v === "string");
     result.documents = documents(data.documents);
     result.media = list(data.media).map(v => strings(v, ["type", "url", "name"]));
@@ -59,8 +68,11 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
   return {
     id: tripId,
     ...strings(snap, ["name", "destination", "start", "image"]),
+    ...(focalPoint(snap.imagePosition) ? { imagePosition: focalPoint(snap.imagePosition) } : {}),
     end_date: typeof snap.end === "string" ? snap.end : "",
-    pax_count: typeof snap.paxCount === "string" ? snap.paxCount : "",
+    // An explicit traveller list, even one emptied since publishing, is the head count; the typed number only
+    // serves trips that never had a list. Otherwise the app keeps saying "1 traveller" after the last one is removed.
+    pax_count: Array.isArray(snap.travelers) ? String(snap.travelers.length) : typeof snap.paxCount === "string" ? snap.paxCount : "",
     organization_id: typeof trip.organization_id === "string" ? trip.organization_id : null,
     status: "Published",
     events,

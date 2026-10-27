@@ -1,4 +1,5 @@
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { heroPosition } from "@/shared/imagePosition";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
@@ -562,13 +563,13 @@ export default function EventDetailScreen() {
               {photoPage ? (
                 // The dissolve alone carries the photo into the blur; PhotoBlend's own fade and dark band would fight it
                 <>
-                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={heroPosition(ev.imagePosition)} accessible={false} />
                   <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
                   <PhotoDissolve uri={ev.image!} scrollY={scrollY} />
                 </>
               ) : (
                 <PhotoBlend>
-                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={heroPosition(ev.imagePosition)} accessible={false} />
                 </PhotoBlend>
               )}
             </Animated.View>

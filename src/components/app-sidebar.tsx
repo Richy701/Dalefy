@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { objectPosition } from "@/lib/imagePosition";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -105,7 +106,7 @@ function SidebarExtras() {
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-accent text-sidebar-muted-foreground">
                     {trip.image ? (
-                      <img src={trip.image} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      <img src={trip.image} alt="" loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="h-full w-full object-cover" />
                     ) : <MapPin className="size-4" />}
                   </div>
                   <div className="min-w-0 flex-1">

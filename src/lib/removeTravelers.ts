@@ -13,9 +13,12 @@ export function withoutTravelers(trip: Trip, ids: Set<string>): { updates: Parti
   };
   const snap = trip.publishedSnapshot;
   if (snap && ((snap.travelers ?? []).some(t => ids.has(t.id)) || snap.events.some(e => e.assignedTo?.some(id => ids.has(id))))) {
+    const remaining = (snap.travelers ?? []).filter(t => keep(t.id));
     updates.publishedSnapshot = {
       ...snap,
-      travelers: (snap.travelers ?? []).filter(t => keep(t.id)),
+      travelers: remaining,
+      // The app falls back to this count when the list is empty, so it must shrink with the list
+      paxCount: String(remaining.length),
       events: snap.events.map(e => (e.assignedTo?.some(id => ids.has(id)) ? { ...e, assignedTo: e.assignedTo.filter(keep) } : e)),
     };
   }

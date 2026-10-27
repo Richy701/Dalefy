@@ -1,4 +1,5 @@
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
+import { heroPosition } from "@/shared/imagePosition";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
@@ -359,7 +360,7 @@ export default function SharedTripScreen() {
         <PhotoBackdrop uri={trip.image} />
         {/* Join's card photo grew into exactly this spot, and the trip page's hero sits here too */}
         <View style={styles.joinHero} pointerEvents="none">
-          <CachedImage uri={trip.image} transition={0} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+          <CachedImage uri={trip.image} transition={0} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
           <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
           <PhotoDissolve uri={trip.image} />
         </View>
@@ -488,7 +489,7 @@ export default function SharedTripScreen() {
         {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={heroPosition(trip.imagePosition)} />
             <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <PhotoDissolve uri={trip.image} scrollY={scrollY} />
 

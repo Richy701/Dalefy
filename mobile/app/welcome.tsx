@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { heroPosition } from "@/shared/imagePosition";
 import * as Clipboard from "expo-clipboard";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -35,7 +36,7 @@ import { useToast } from "@/context/ToastContext";
 import { fetchOrgByCode, type OrgBranding } from "@/services/firebaseBranding";
 import { fetchTripByShortCode, fetchTripById, fetchMyTrips } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/shared/dates";
-import type { Trip } from "@/shared/types";
+import type { ImageFocalPoint, Trip } from "@/shared/types";
 import { T, R, S, SHEET_BAR_H, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
 
@@ -71,7 +72,7 @@ const TRIP_HERO_H = 380;
  * The card's photo leaves the card and grows into the top of the screen, exactly where the trip page shows it,
  * while the blurred cover fills in behind. The joining screen then fades in over an identical frame.
  */
-function JoinLaunch({ uri, from, onDone }: { uri: string; from: LaunchFrame; onDone: () => void }) {
+function JoinLaunch({ uri, position, from, onDone }: { uri: string; position?: ImageFocalPoint; from: LaunchFrame; onDone: () => void }) {
   const { width } = useWindowDimensions();
   const p = useSharedValue(0);
   useEffect(() => {
@@ -97,7 +98,7 @@ function JoinLaunch({ uri, from, onDone }: { uri: string; from: LaunchFrame; onD
         <PhotoBackdrop uri={uri} />
       </Animated.View>
       <Animated.View style={[{ position: "absolute", overflow: "hidden" }, box]}>
-        <CachedImage uri={uri} transition={0} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+        <CachedImage uri={uri} transition={0} style={StyleSheet.absoluteFill} contentPosition={heroPosition(position)} accessible={false} />
         {/* As it lands: the same top shade and melt into the blur as the trip page's hero */}
         <Animated.View style={[StyleSheet.absoluteFill, settle]} pointerEvents="none">
           <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
@@ -145,6 +146,8 @@ export default function WelcomeScreen() {
   const [name, setName] = useState(prefs.name || providerName);
   const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
   const uploadedUrlRef = useRef<string | null>(null);
+  // Save awaits this, so a half-uploaded photo never reaches the trip roster as a phone-local path
+  const uploadPromiseRef = useRef<Promise<string | null> | null>(null);
   const [, setUploading] = useState(false);
   const nameRef = useRef<TextInputInstance>(null);
   const styles = useMemo(() => makeStyles(C, !isEdit), [C, isEdit]);
@@ -385,12 +388,13 @@ export default function WelcomeScreen() {
           })
           .catch(() => {});
 
-        uploadAvatar(tempUri).then((url) => {
+        uploadPromiseRef.current = uploadAvatar(tempUri).then((url) => {
           if (url) {
             uploadedUrlRef.current = url;
             setAvatar(url);
             setPref("avatar", url);
           }
+          return url;
         }).finally(() => setUploading(false));
       }
     };
@@ -419,6 +423,7 @@ export default function WelcomeScreen() {
   const submit = async () => {
     if (!canSubmit) return;
     haptic.selection();
+    if (uploadPromiseRef.current) await uploadPromiseRef.current;
     const finalAvatar = uploadedUrlRef.current || avatar;
 
     if (isEdit) {
@@ -585,7 +590,7 @@ export default function WelcomeScreen() {
             </Animated.View>
           </KeyboardAvoidingView>
         </SafeAreaView>
-        {launchFrom && matchedTrip ? <JoinLaunch uri={matchedTrip.image} from={launchFrom} onDone={() => afterCode(matchedTrip)} /> : null}
+        {launchFrom && matchedTrip ? <JoinLaunch uri={matchedTrip.image} position={matchedTrip.imagePosition} from={launchFrom} onDone={() => afterCode(matchedTrip)} /> : null}
       </View>
     );
   }

@@ -1,5 +1,9 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import * as ImageManipulator from "expo-image-manipulator";
 import { firebaseStorage, firebaseAuth, waitForAuth } from "./firebase";
+
+/** Avatars show at 100px or less; 512px keeps them crisp and well under the 2 MB Storage cap. */
+const AVATAR_EDGE = 512;
 
 /**
  * Read a local file URI into a Blob via XMLHttpRequest.
@@ -38,7 +42,14 @@ export async function uploadAvatar(localUri: string): Promise<string | null> {
       return null;
     }
 
-    const blob = await uriToBlob(localUri);
+    let uri = localUri;
+    try {
+      const shrunk = await ImageManipulator.manipulateAsync(localUri, [{ resize: { width: AVATAR_EDGE } }], { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG });
+      uri = shrunk.uri;
+    } catch (err) {
+      console.warn("[AvatarUpload] Resize failed, uploading original:", err);
+    }
+    const blob = await uriToBlob(uri);
 
     // Validate size client-side (2MB limit)
     if (blob.size > 2 * 1024 * 1024) {

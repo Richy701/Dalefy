@@ -480,9 +480,14 @@ function isFirebaseStorageUrl(url?: string): boolean {
   return !!url && url.includes("firebasestorage");
 }
 
-/** Returns true for external HTTP URLs that should be re-uploaded to Firebase Storage */
+/** Google Places photos arrive as same-origin proxy paths, which the mobile app cannot load */
+function isProxyPath(url?: string): boolean {
+  return !!url && url.startsWith("/api/image-proxy?");
+}
+
+/** Returns true for external HTTP URLs (or proxy paths) that should be re-uploaded to Firebase Storage */
 function isExternalUrl(url?: string): boolean {
-  return !!url && url.startsWith("http") && !isFirebaseStorageUrl(url);
+  return !!url && ((url.startsWith("http") && !isFirebaseStorageUrl(url)) || isProxyPath(url));
 }
 
 function base64ToBlob(dataUri: string): Blob {
@@ -504,7 +509,7 @@ async function uploadBase64Image(dataUri: string, path: string, shrink = false):
 /** Fetch an external image via proxy and re-upload to Firebase Storage for reliable mobile access */
 async function reuploadExternalImage(url: string, path: string): Promise<string> {
   // Use the image proxy to avoid CORS issues when fetching from the browser
-  const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  const proxyUrl = isProxyPath(url) ? url : `/api/image-proxy?url=${encodeURIComponent(url)}`;
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status}`);
   const blob = await shrinkImage(await res.blob());
@@ -603,6 +608,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     end_date: trip.end,
     status: trip.status,
     image: trip.image ?? "",
+    image_position: trip.imagePosition ?? null,
     events: trip.events ?? [],
     media: trip.media ?? null,
     short_code: trip.shortCode ?? null,
@@ -636,6 +642,7 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     end: data.end_date as string,
     status: data.status as Trip["status"],
     image: data.image as string,
+    imagePosition: (data.image_position as Trip["imagePosition"]) ?? undefined,
     events: (data.events as Trip["events"]) ?? [],
     media: (data.media as Trip["media"]) ?? undefined,
     shortCode: (data.short_code as string) ?? undefined,

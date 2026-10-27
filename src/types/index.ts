@@ -11,6 +11,12 @@ export interface EventDocument {
   uploadedAt: string;
 }
 
+/** Which part of a photo stays in view when it is cropped, as percentages of its width and height */
+export interface ImageFocalPoint {
+  x: number;
+  y: number;
+}
+
 export interface TravelEvent {
   id: string;
   type: "flight" | "hotel" | "activity" | "dining" | "transfer";
@@ -25,6 +31,7 @@ export interface TravelEvent {
   price?: string;
   confNumber?: string;
   image?: string;
+  imagePosition?: ImageFocalPoint;
   roomType?: string;
   airline?: string;
   flightNum?: string;
@@ -130,6 +137,7 @@ export interface PublishedSnapshot {
   documents?: EventDocument[];
   organizer?: TripOrganizer;
   image: string;
+  imagePosition?: ImageFocalPoint;
   name: string;
   destination?: string;
   start: string;
@@ -157,6 +165,7 @@ export interface Trip {
   end: string;
   status: "Draft" | "Published" | "In Progress";
   image: string;
+  imagePosition?: ImageFocalPoint;
   events: TravelEvent[];
   media?: TripMedia[];
   shortCode?: string;

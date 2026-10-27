@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { objectPosition } from "@/lib/imagePosition";
 import { useParams } from "react-router-dom";
 import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, CalendarBlank, Moon, Flag, Info, Bed, ListChecks } from "@phosphor-icons/react";
 import { tabsListVariants } from "@/components/ui/tabs";
@@ -164,7 +165,7 @@ function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string
           {ev.roomType && <p className="mt-2 text-sm text-foreground">{ev.roomType}</p>}
         </div>
         {ev.image && (
-          <img src={ev.image} alt="" className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover shrink-0 print:hidden" />
+          <img src={ev.image} alt="" style={{ objectPosition: objectPosition(ev.imagePosition) }} className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover shrink-0 print:hidden" />
         )}
       </div>
       <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
@@ -228,7 +229,7 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
         {eventMeta(ev) && <p className="mt-0.5 text-sm text-muted-foreground">{eventMeta(ev)}</p>}
         {ev.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80"><Linkify text={ev.description} /></p>}
         {ev.image && ev.type !== "hotel" && (
-          <img src={ev.image} alt="" className="mt-3 mx-auto sm:mx-0 w-full aspect-[16/9] sm:max-h-80 rounded-lg object-cover print:hidden" />
+          <img src={ev.image} alt="" style={{ objectPosition: objectPosition(ev.imagePosition) }} className="mt-3 mx-auto sm:mx-0 w-full aspect-[16/9] sm:max-h-80 rounded-lg object-cover print:hidden" />
         )}
         {ev.documents && ev.documents.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
@@ -340,7 +341,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
             {trip.destination && <p className="mt-4 text-base sm:text-lg text-muted-foreground">{trip.destination}</p>}
             <p className="mt-2 text-sm sm:text-base text-muted-foreground">{fmtRange(trip.start, trip.end)}</p>
           </div>
-          {trip.image && <img src={trip.image} alt="" className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[3/1] max-h-[420px] rounded-xl object-cover bg-secondary print:hidden" />}
+          {trip.image && <img src={trip.image} alt="" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[3/1] max-h-[420px] rounded-xl object-cover bg-secondary print:hidden" />}
         </section>
 
         {/* Overview */}

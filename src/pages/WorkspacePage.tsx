@@ -31,6 +31,8 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Label } from "@/components/ui/label";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { objectPosition } from "@/lib/imagePosition";
+import { FocalPointPicker } from "@/components/shared/FocalPointPicker";
 import type { TravelEvent, Trip, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
@@ -617,6 +619,7 @@ export function WorkspacePage() {
       documents: trip.documents,
       organizer: trip.organizer,
       image: trip.image,
+      imagePosition: trip.imagePosition,
       name: trip.name,
       destination: trip.destination,
       start: trip.start,
@@ -811,7 +814,7 @@ export function WorkspacePage() {
       const ext = image === file ? file.name.split(".").pop() : "jpg";
       const path = `trips/${tripId}/cover-${Date.now()}.${ext}`;
       const url = await uploadToStorage(image === file ? file : new File([image], `cover.${ext}`, { type: image.type }), path);
-      setEditingTrip(prev => ({ ...prev, image: url }));
+      setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }));
     } catch { toast.error("Cover upload failed"); }
     e.target.value = "";
   };
@@ -1055,6 +1058,7 @@ export function WorkspacePage() {
       end: trip.end,
       status: trip.status,
       image: trip.image,
+      imagePosition: trip.imagePosition,
       currency: trip.currency ?? "USD",
       organizer: trip.organizer ?? undefined,
       info: trip.info ? trip.info.map(i => ({ ...i })) : [],
@@ -1374,7 +1378,7 @@ export function WorkspacePage() {
           <main ref={printRef} className={`flex-1 flex flex-col relative bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview || showAssistant ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
-              <img src={trip.image} className="h-full w-full object-cover" alt={trip.name} />
+              <img src={trip.image} className="h-full w-full object-cover" style={{ objectPosition: objectPosition(trip.imagePosition) }} alt={trip.name} />
               {/* Multi-layer gradient for depth */}
               <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
               <div className="absolute inset-0 bg-linear-to-r from-black/30 to-transparent" />
@@ -2469,8 +2473,8 @@ export function WorkspacePage() {
                 {/* Selected image preview */}
                 <div className="relative h-28 sm:h-44 shrink-0 bg-secondary dark:bg-card overflow-hidden">
                   {editingEvent?.image ? (
-                    <>
-                      <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" />
+                    <FocalPointPicker src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} value={editingEvent.imagePosition}
+                      onChange={imagePosition => setEditingEvent(prev => prev ? { ...prev, imagePosition } : null)} className="absolute inset-0">
                       <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
                       <div className="absolute bottom-2 sm:bottom-3 left-3 right-3">
                         {editingEvent.title && <p className="text-white font-extrabold uppercase text-xs sm:text-base leading-tight drop-shadow-lg line-clamp-1 sm:line-clamp-2">{editingEvent.title}</p>}
@@ -2486,7 +2490,7 @@ export function WorkspacePage() {
                           <X className="h-3 w-3" />
                         </button>
                       </div>
-                    </>
+                    </FocalPointPicker>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
                       <Camera className="h-7 w-7 text-muted-foreground" />
@@ -2509,13 +2513,13 @@ export function WorkspacePage() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {imageResults.map((url, i) => (
                           <button key={i} type="button"
-                            onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: url } : null); setImageIsAuto(false); }}
+                            onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: url, imagePosition: undefined } : null); setImageIsAuto(false); }}
                             className={`relative h-[72px] rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-transparent hover:border-brand/50"}`}>
                             <img src={url} alt={`Image option ${i + 1}${imageSearch ? ` for ${imageSearch}` : ""}`} className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
                           </button>
                         ))}
                       </div>
-                      {(imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
+                      {(imageSearchSource === "google" || imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
                         <div className="flex items-center gap-1.5 pt-1">
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
                             className="flex-1 h-7 rounded-lg bg-secondary border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
@@ -2571,7 +2575,7 @@ export function WorkspacePage() {
                       {editingEvent!.media!.map((m, i) => (
                         <div key={i} className="relative group">
                           {m.type === "image" ? (
-                            <button type="button" onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: m.url } : null); setImageIsAuto(false); }}
+                            <button type="button" onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: m.url, imagePosition: undefined } : null); setImageIsAuto(false); }}
                               className={`block w-full h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === m.url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-border hover:border-brand/50"}`}>
                               <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
                             </button>
@@ -2833,10 +2837,9 @@ export function WorkspacePage() {
                   <label className="text-xs font-medium text-muted-foreground">Cover Image</label>
                 </div>
                 {editingTrip.image && (
-                  <div className="h-36 rounded-xl overflow-hidden relative">
-                    <img src={editingTrip.image} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
-                  </div>
+                  <FocalPointPicker src={editingTrip.image} value={editingTrip.imagePosition} onChange={imagePosition => setEditingTrip(prev => ({ ...prev, imagePosition }))} className="h-36 rounded-xl">
+                    <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent pointer-events-none" />
+                  </FocalPointPicker>
                 )}
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                 <div className="flex gap-2">
@@ -2884,14 +2887,14 @@ export function WorkspacePage() {
                     </div>
                   ) : tripImageResults.length > 0 ? (
                     tripImageResults.map((url, i) => (
-                      <button key={i} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
+                      <button key={i} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }))}
                         className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                        <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
                       </button>
                     ))
                   ) : (
                     COVER_IMAGES.map(({ url, label }) => (
-                      <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
+                      <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }))}
                         className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                         <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
                         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
