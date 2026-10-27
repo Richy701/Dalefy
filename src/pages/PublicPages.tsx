@@ -1,4 +1,4 @@
-import { Info, Sparkle, ChatCircle, Shield, FileText, UserMinus, Sun, Moon, ArrowUpRight } from "@phosphor-icons/react";
+import { Info, Sparkle, ChatCircle, Shield, FileText, UserMinus, Sun, Moon } from "@phosphor-icons/react";
 import { useTheme } from "@/context/ThemeContext";
 import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export function PublicPages() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border p-4">
-          <Button render={<a href="/#/login" />} className="w-full">Open Dalefy <ArrowUpRight /></Button>
+          <Button render={<a href="/#/login" />} className="w-full">Open Dalefy</Button>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
@@ -83,7 +83,7 @@ export function PublicPages() {
                           <AccordionContent><div className={prose} dangerouslySetInnerHTML={{ __html: faq.answer }} /></AccordionContent>
                         </AccordionItem>
                       ))}</Accordion>}
-                      {section.signIn && <div><Button render={<a href="/#/login" />}>Sign in to Dalefy <ArrowUpRight /></Button></div>}
+                      {section.signIn && <div><Button render={<a href="/#/login" />}>Sign in to Dalefy</Button></div>}
                     </CardContent>
                   </Card>
                 </section>

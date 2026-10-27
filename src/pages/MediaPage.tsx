@@ -13,7 +13,6 @@ import {
   X,
   Image as ImageIcon,
   FilmStrip,
-  ArrowUpRight,
   Download,
   CheckSquare,
   Square,
@@ -510,7 +509,6 @@ export function MediaPage() {
                     className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
                   >
                     Open Trip
-                    <ArrowUpRight className="h-3 w-3" />
                   </button>
                 ) : currentCarouselTrip ? (
                   <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
@@ -837,7 +835,6 @@ export function MediaPage() {
                       className="flex items-center gap-1 text-xs font-medium text-brand hover:opacity-70 transition-opacity shrink-0"
                     >
                       View Trip
-                      <ArrowUpRight className="h-3 w-3" />
                     </button>
                   </div>
 
