@@ -1227,7 +1227,7 @@ export function WorkspacePage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-card border border-border shadow-2xl rounded-xl p-1">
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Re-import itinerary</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Import from document</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-secondary" />
                     <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
@@ -1272,7 +1272,7 @@ export function WorkspacePage() {
                 <Pencil className="h-4 w-4" /> Edit Trip
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
-                <Upload className="h-4 w-4" /> Re-import
+                <Upload className="h-4 w-4" /> Import from document
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode Locations"}

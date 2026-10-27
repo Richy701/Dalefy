@@ -1362,6 +1362,22 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   const includedEvents = (parsed?.events ?? []).filter(e => !excludedIds.has(e.id));
 
+  // Add-or-replace only means something once the trip has events. An empty trip
+  // (typed in by hand, or just created) is simply filled, with no choice to make.
+  const existingTrip = existingTripId ? trips.find(t => t.id === existingTripId) : undefined;
+  const existingEventCount = existingTrip?.events.length ?? 0;
+  const hasExisting = isReimport && existingEventCount > 0;
+  // Same date + title rule the merge uses, so what the list marks as "already here" is exactly what gets skipped.
+  const eventKey = (e: { date: string; title: string }) => `${e.date}|${e.title.toLowerCase().replace(/\s+/g, " ").trim()}`;
+  const existingEventKeys = new Set((existingTrip?.events ?? []).map(eventKey));
+  const alreadyOnTrip = (e: { date: string; title: string }) => hasExisting && existingEventKeys.has(eventKey(e));
+  const duplicateCount = (parsed?.events ?? []).filter(alreadyOnTrip).length;
+  const newEventCount = (parsed?.events.length ?? 0) - duplicateCount;
+  const skipsDuplicates = hasExisting && importMode === "merge";
+  const eventsToApply = skipsDuplicates ? includedEvents.filter(e => !alreadyOnTrip(e)) : includedEvents;
+  const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? "s" : ""}`;
+  const hasOtherContent = editInfo.length > 0 || (parsed?.parsedTravelerNames.length ?? 0) > 0;
+
   const toggleExcluded = (id: string) => setExcludedIds(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -1601,8 +1617,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           updates.media = [...existingMedia.filter(m => !newUrls.has(m.url)), ...tripMedia];
         }
         updateTrip(existingTripId, updates);
-        showToast(`Merged ${newEvents.length} new events into "${existing.name}"`);
-        addNotification({ message: "Itinerary updated (merged)", detail: existing.name, time: "Just now", type: "success" });
+        showToast(`Added ${plural(newEvents.length, "new event")} to "${existing.name}"`);
+        addNotification({ message: "Itinerary updated", detail: existing.name, time: "Just now", type: "success" });
       } else {
         // Replace: full overwrite (old behavior)
         const updates: Partial<Trip> = {
@@ -1688,13 +1704,21 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-card rounded-xl border border-border p-5 sm:p-6 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-            {step === "done" ? "Import complete" : isReimport ? "Re-import itinerary" : "Import itinerary"}
+            {step === "done" ? "Import complete" : "Import itinerary"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            {step === "upload" && (isReimport ? "Add to or replace this trip" : "Turn a document into a trip")}
+            {step === "upload" && (
+              hasExisting
+                ? `Upload a document. You'll see what's new against the ${plural(existingEventCount, "event")} already on ${existingTrip?.name ?? "this trip"}, then decide whether to add it or start over.`
+                : isReimport
+                  ? "Fill this trip from a document. Nothing is on it yet, so there's nothing to merge or replace."
+                  : "Turn a document into a trip"
+            )}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
-              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
+              {hasExisting
+                ? `${plural(parsed?.events.length ?? 0, "event")} found, ${newEventCount} new and ${duplicateCount} already on this trip. Choose how they go in, then untick anything wrong.`
+                : `${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
               {parserUsed && (
                 <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
                   {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
@@ -1898,6 +1922,36 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "review" && parsed && (
           <div className="flex flex-col min-h-0 flex-1">
           <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
+            {/* Add or replace, chosen with the real counts in view. Only shown once the trip has events. */}
+            {hasExisting && (
+              <div role="radiogroup" aria-label="How the document goes into this trip" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {([
+                  { value: "merge", title: `Add the ${plural(newEventCount, "new event")}`, body: `Your ${plural(existingEventCount, "event")} stay as they are` },
+                  { value: "replace", title: `Replace all ${existingEventCount} with these ${includedEvents.length}`, body: "Photos stay, undo available once" },
+                ] as const).map(opt => {
+                  const selected = importMode === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setImportMode(opt.value)}
+                      className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${selected ? "border-brand bg-brand/5" : "border-border bg-card hover:border-brand/40"}`}
+                    >
+                      <span aria-hidden="true" className={`h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? "border-brand" : "border-muted-foreground/50"}`}>
+                        {selected && <span className="h-2 w-2 rounded-full bg-brand" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold text-foreground leading-snug">{opt.title}</span>
+                        <span className="block text-[11px] text-muted-foreground mt-0.5">{opt.body}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Trip summary */}
             <div className="rounded-xl border border-border overflow-hidden bg-card">
               {/* Teal accent strip + back */}
@@ -2042,7 +2096,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[11px] font-medium text-muted-foreground">
-                    {includedEvents.length} of {parsed.events.length} selected
+                    {skipsDuplicates
+                      ? `${eventsToApply.length} of ${newEventCount} new selected${duplicateCount > 0 ? `, ${duplicateCount} already on this trip skipped` : ""}`
+                      : `${includedEvents.length} of ${parsed.events.length} selected`}
                   </p>
                   <Button
                     size="xs"
@@ -2071,6 +2127,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     {dayEvents.map(ev => {
                       const Icon = EVENT_TYPE_ICONS[ev.type];
                       const excluded = excludedIds.has(ev.id);
+                      const onTrip = alreadyOnTrip(ev);
+                      // In add mode a duplicate is skipped whatever its checkbox says, so the row shows it as out
+                      const dup = skipsDuplicates && onTrip;
                       const editing = editingEventId === ev.id;
                       return (
                         <div
@@ -2079,13 +2138,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                             editing
                               ? "border-brand/40 bg-card"
                               : "border-border bg-card"
-                          } ${excluded && !editing ? "opacity-45" : ""}`}
+                          } ${(excluded || dup) && !editing ? "opacity-45" : ""}`}
                         >
                           <div className="flex items-start gap-3 p-3">
                             <Checkbox
-                              checked={!excluded}
+                              checked={!excluded && !dup}
+                              disabled={dup}
                               onCheckedChange={() => toggleExcluded(ev.id)}
-                              aria-label={`Include ${ev.title}`}
+                              aria-label={dup ? `${ev.title}, already on this trip` : `Include ${ev.title}`}
                               className="mt-0.5 shrink-0"
                             />
                             <div className={`h-9 w-9 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
@@ -2100,6 +2160,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                               <p className={`text-[13px] sm:text-xs font-bold text-foreground line-clamp-2 leading-snug ${excluded ? "line-through" : ""}`}>
                                 {ev.title}
                               </p>
+                              {hasExisting && (
+                                <span className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${onTrip ? "bg-secondary text-muted-foreground" : "bg-brand/10 text-brand"}`}>
+                                  {onTrip ? "Already on this trip" : "New"}
+                                </span>
+                              )}
                               <p className="text-[11px] sm:text-[10px] text-muted-foreground mt-1 wrap-break-word">
                                 <span className="font-mono tabular-nums">{ev.time || "No time"}</span>
                                 {ev.location ? ` · ${ev.location}` : ""}
@@ -2202,21 +2267,6 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
           </div>
             <div className="shrink-0 bg-card border-t border-border mt-2 pt-4 space-y-3">
-              {isReimport && (
-                <Tabs value={importMode} onValueChange={v => setImportMode(v as "merge" | "replace")}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="merge" className="flex-1 text-xs font-medium">Add new items</TabsTrigger>
-                    <TabsTrigger value="replace" className="flex-1 text-xs font-medium">Replace everything</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-              {isReimport && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {importMode === "merge"
-                    ? "Adds only what this trip doesn't have yet. An event with the same date and title is skipped, and existing events, travellers, photos and the cover stay as they are. To change details on an event that is already here, edit it or ask the Assistant."
-                    : "Clears every event and rebuilds the trip and its traveller list from this document. Photos stay, and you can undo once it finishes."}
-                </p>
-              )}
               {importError && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-600 dark:text-red-400">
                   Import didn't finish: {importError}. Nothing was changed. You can try again.
@@ -2224,14 +2274,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               )}
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-muted-foreground">Cancel</Button>
-                {isReimport && importMode === "replace" ? (
+                {hasExisting && importMode === "replace" ? (
                   <AlertDialog>
                     <AlertDialogTrigger
-                      disabled={parsed.events.length > 0 && includedEvents.length === 0}
+                      disabled={includedEvents.length === 0}
                       className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl h-10 font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Replace with {includedEvents.length} Events
+                      Replace with {plural(includedEvents.length, "event")}
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
@@ -2254,14 +2304,18 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 ) : (
                   <Button
                     onClick={handleImport}
-                    disabled={parsed.events.length > 0 && includedEvents.length === 0}
+                    disabled={isReimport
+                      ? eventsToApply.length === 0 && !hasOtherContent
+                      : parsed.events.length > 0 && includedEvents.length === 0}
                     className="flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg gap-2 bg-brand shadow-brand/20"
                   >
                     <CheckCircle className="h-4 w-4" />
                     {parsed.events.length === 0
-                      ? "Create Blank Trip"
-                      : `${isReimport ? "Merge" : "Import"} ${includedEvents.length} Event${includedEvents.length !== 1 ? "s" : ""}`}
-                    {parsed.events.length > 0 && parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
+                      ? (isReimport ? (hasOtherContent ? "Add details to trip" : "Nothing to import") : "Create Blank Trip")
+                      : skipsDuplicates
+                        ? (eventsToApply.length === 0 ? (hasOtherContent ? "Add details to trip" : "Nothing new to add") : `Add ${plural(eventsToApply.length, "event")} to trip`)
+                        : `Import ${plural(includedEvents.length, "event")}`}
+                    {eventsToApply.length > 0 && parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} media` : ""}
                   </Button>
                 )}
               </div>

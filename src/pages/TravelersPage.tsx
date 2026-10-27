@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap, LinkBreak } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { MessageDialog } from "@/components/shared/MessageDialog";
-import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, renameAppUser, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, renameAppUser, unlinkTraveler, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
 import { timeAgo } from "@/lib/timeAgo";
 import { cn } from "@/lib/utils";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -143,7 +143,7 @@ export function TravelersPage() {
   const [appUsersReload, setAppUsersReload] = useState(0);
   const [pushLogFor, setPushLogFor] = useState<{ personId: string; entries: PushLogEntry[] } | null>(null);
   const [pushLogReload, setPushLogReload] = useState(0);
-  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string } | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string; confirmLabel?: string; destructive?: boolean } | null>(null);
   // Someone who joined in the app under the wrong name (the app once adopted a listed traveller's name)
   const [renameTarget, setRenameTarget] = useState<Person | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -356,6 +356,30 @@ export function TravelersPage() {
     const preferred = tripFilter !== "all" && shared.some(t => t.id === tripFilter) ? tripFilter : shared[0].id;
     setMessage({ tripIds: shared.map(t => t.id), tripId: preferred, people: keys });
   }, [trips, tripFilter, showToast]);
+
+  /**
+   * A directory entry and the app account that picked it part ways. The account keeps every trip and shows
+   * under the name on its phone; the entry stays in the directory on its own. For when the wrong person
+   * picked a name, or someone listed themselves under another name to test the app.
+   */
+  const unlinkApp = useCallback((p: Person) => {
+    setPendingConfirm({
+      title: "Unlink app account",
+      description: `${p.name} in your directory and the app account linked to it become separate people. The app account keeps all its trips and appears under the name on its phone.`,
+      confirmLabel: "Unlink",
+      destructive: false,
+      action: async () => {
+        try {
+          for (const t of p.appTrips) await unlinkTraveler(t.id, p.id);
+          setAppUsers(prev => prev.map(m => (m.linked_traveler_id === p.id ? { ...m, linked_traveler_id: undefined } : m)));
+          setOpenPersonId(null);
+          showToast(`App account unlinked from ${p.name}`);
+        } catch {
+          showToast("Couldn't unlink the app account");
+        }
+      },
+    });
+  }, [showToast]);
 
   /** Off one trip: its traveller list, its events, and their app membership there */
   const removeFromTrip = useCallback((p: Person, tripId: string) => {
@@ -738,6 +762,11 @@ export function TravelersPage() {
                           <PencilSimple className="h-4 w-4" /> Rename
                         </Button>
                       )}
+                      {!p.appOnly && p.appKeys.length > 0 && (
+                        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => unlinkApp(p)}>
+                          <LinkBreak className="h-4 w-4" /> Unlink app account
+                        </Button>
+                      )}
                     </div>
                   )}
                   {!p.appKeys.length && <p className="text-xs text-muted-foreground mt-2">Messages reach people once they join a trip in the app.</p>}
@@ -1063,9 +1092,9 @@ export function TravelersPage() {
         onOpenChange={(open) => { if (!open) setPendingConfirm(null); }}
         title={pendingConfirm?.title ?? ""}
         description={pendingConfirm?.description ?? ""}
-        confirmLabel="Remove"
+        confirmLabel={pendingConfirm?.confirmLabel ?? "Remove"}
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
-        destructive
+        destructive={pendingConfirm?.destructive ?? true}
       />
       <Dialog open={!!renameTarget} onOpenChange={(open) => { if (!open && !renaming) setRenameTarget(null); }}>
         <DialogContent className="max-w-md bg-card rounded-xl border border-border p-6 shadow-2xl">
