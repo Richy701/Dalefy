@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, X, User, Envelope, Briefcase, Upload, Check, Trash, DotsThree, DownloadSimple, ChatCircleText, DeviceMobile, Crown, SignOut, PencilSimple, SpinnerGap } from "@phosphor-icons/react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -15,7 +16,7 @@ import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { MessageDialog } from "@/components/shared/MessageDialog";
-import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, renameAppUser, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
 import { timeAgo } from "@/lib/timeAgo";
 import { cn } from "@/lib/utils";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -143,6 +144,10 @@ export function TravelersPage() {
   const [pushLogFor, setPushLogFor] = useState<{ personId: string; entries: PushLogEntry[] } | null>(null);
   const [pushLogReload, setPushLogReload] = useState(0);
   const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string } | null>(null);
+  // Someone who joined in the app under the wrong name (the app once adopted a listed traveller's name)
+  const [renameTarget, setRenameTarget] = useState<Person | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -675,6 +680,9 @@ export function TravelersPage() {
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem onClick={() => setOpenPersonId(p.id)}><Eye className="h-4 w-4" /> View details</DropdownMenuItem>
                             {!isViewer && <DropdownMenuItem onClick={() => messagePeople([p])} disabled={!p.appKeys.length}><ChatCircleText className="h-4 w-4" /> Message</DropdownMenuItem>}
+                            {!isViewer && p.appOnly && p.appKeys.length > 0 && (
+                              <DropdownMenuItem onClick={() => { setRenameValue(p.name); setRenameTarget(p); }}><PencilSimple className="h-4 w-4" /> Rename on the app</DropdownMenuItem>
+                            )}
                             {!isViewer && (
                               <>
                                 <DropdownMenuSeparator />
@@ -1054,6 +1062,47 @@ export function TravelersPage() {
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
         destructive
       />
+      <Dialog open={!!renameTarget} onOpenChange={(open) => { if (!open && !renaming) setRenameTarget(null); }}>
+        <DialogContent className="max-w-md bg-card rounded-xl border border-border p-6 shadow-2xl">
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Rename on the app</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-sm">
+              Changes the name on every trip {renameTarget?.name ?? "they"} joined in the app. The name on their phone is theirs to change under Edit profile.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const p = renameTarget;
+              const name = renameValue.trim();
+              if (!p || !name || renaming) return;
+              setRenaming(true);
+              try {
+                const tripIds = p.appTrips.map(t => t.id);
+                for (const key of p.appKeys) await renameAppUser(key, name, tripIds);
+                setAppUsers(prev => prev.map(m => (p.appKeys.includes(personKey(m)) ? { ...m, name } : m)));
+                showToast(`${p.name} is now ${name} on the app`);
+                setRenameTarget(null);
+              } catch {
+                showToast("Couldn't rename them on the app");
+              } finally {
+                setRenaming(false);
+              }
+            }}
+          >
+            <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="Name" autoFocus aria-label="Name on the app" />
+            <DialogFooter className="flex gap-3">
+              <Button type="button" variant="ghost" disabled={renaming} onClick={() => setRenameTarget(null)} className="rounded-xl h-10 px-6 font-bold text-muted-foreground hover:bg-secondary">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={renaming || !renameValue.trim()} className="rounded-xl h-10 px-8 font-bold bg-primary text-primary-foreground hover:opacity-90">
+                {renaming ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Rename"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
