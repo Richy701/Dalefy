@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { parseTripDate } from "@/lib/dates";
-import { AirplaneTilt, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, FileText, Warning, WarningCircle, CheckCircle, Download } from "@phosphor-icons/react";
+import { AirplaneTilt, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, FileText, Warning, WarningCircle, CheckCircle, Download, Storefront } from "@phosphor-icons/react";
 import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,19 @@ export function ReportsPage() {
   const tickFill = theme === "dark" ? "#aaaaaa" : "#64748b";
   const navigate = useNavigate();
   const stats = useTripStats(trips);
+  // Everyone booked through, from the supplier typed on each event: how often, and on how many trips
+  const suppliers = useMemo(() => {
+    const byKey = new Map<string, { name: string; bookings: number; trips: Set<string>; kinds: Set<string> }>();
+    for (const t of trips) for (const e of t.events) {
+      const name = e.supplier?.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      const row = byKey.get(key) ?? { name, bookings: 0, trips: new Set<string>(), kinds: new Set<string>() };
+      row.bookings += 1; row.trips.add(t.id); row.kinds.add(e.type);
+      byKey.set(key, row);
+    }
+    return [...byKey.values()].sort((a, b) => b.bookings - a.bookings).slice(0, 8);
+  }, [trips]);
   const [tab, setTab] = useState<Tab>("operations");
   const [complianceOverrides] = useComplianceRecords();
   const [customTravelers] = useDirectoryTravelers();
@@ -432,6 +445,35 @@ export function ReportsPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <p className="text-sm text-muted-foreground">No airline data</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Suppliers */}
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
+                  <div className="mb-5">
+                    <div>
+                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Suppliers</h3>
+                      <p className="text-xs text-muted-foreground mt-1">Most booked, from the supplier on each event</p>
+                    </div>
+                  </div>
+                  {suppliers.length > 0 ? (
+                    <div className="space-y-3">
+                      {suppliers.map((s, i) => (
+                        <div key={s.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-background">
+                          <span className="text-sm font-medium text-muted-foreground w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
+                          <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-brand/10 text-brand"><Storefront className="h-4 w-4" /></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{[...s.kinds].join(", ")}, {s.trips.size} {s.trips.size === 1 ? "trip" : "trips"}</p>
+                          </div>
+                          <span className="text-xs font-medium tabular-nums text-foreground shrink-0">{s.bookings}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <p className="text-sm text-muted-foreground">No suppliers on events yet</p>
                     </div>
                   )}
                 </div>

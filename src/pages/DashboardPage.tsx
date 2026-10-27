@@ -7,7 +7,7 @@ import {
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks
 } from "@phosphor-icons/react";
 import { lifecycleLabel, liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
@@ -341,6 +341,14 @@ export function DashboardPage() {
     });
     return items.slice(0, 3);
   }, [trips, complianceOverrides, customTravelers, isDemo]);
+
+  // Unfinished tasks on every live trip: overdue first, then by due date, then the undated ones
+  const openTasks = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = trips.flatMap(t => (t.tasks ?? []).filter(task => !task.completed).map(task => ({ tripId: t.id, tripName: t.name, task, overdue: !!task.dueDate && task.dueDate < today })));
+    rows.sort((a, b) => Number(b.overdue) - Number(a.overdue) || (a.task.dueDate ?? "9999").localeCompare(b.task.dueDate ?? "9999"));
+    return { rows: rows.slice(0, 5), total: rows.length, overdue: rows.filter(r => r.overdue).length };
+  }, [trips]);
 
   const [coverNotice, setCoverNotice] = useState<string | null>(null);
   const [newTripDateError, setNewTripDateError] = useState<string | null>(null);
@@ -941,6 +949,41 @@ export function DashboardPage() {
                         <CaretRight className="h-3 w-3 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                       </button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Open tasks */}
+              {openTasks.total > 0 && (
+                <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden">
+                  <div data-compact-card-head className="flex items-center gap-2.5 px-5 pt-5 pb-3">
+                    <ListChecks className="h-4 w-4 text-brand shrink-0" />
+                    <div>
+                      <p className="text-base font-semibold tracking-tight text-foreground leading-none">Open tasks</p>
+                      <p className="text-xs text-muted-foreground mt-1">{openTasks.total} to do{openTasks.overdue ? `, ${openTasks.overdue} overdue` : ""}</p>
+                    </div>
+                  </div>
+                  <div className="px-3 pb-4 space-y-1">
+                    {openTasks.rows.map(({ tripId, tripName, task, overdue }) => {
+                      const due = task.dueDate ? parseTripDate(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null;
+                      return (
+                        <button
+                          key={task.id}
+                          type="button"
+                          onClick={() => navigate(`/trip/${tripId}?panel=tasks`)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary transition-colors text-left group"
+                        >
+                          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", overdue ? "bg-red-500" : "bg-slate-400 dark:bg-muted-foreground/60")} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate group-hover:text-brand transition-colors">{task.title}</p>
+                            <p className={cn("text-[10px] font-medium mt-0.5 truncate", overdue ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
+                              {[tripName, overdue ? `Overdue, was due ${due}` : due ? `Due ${due}` : null, task.assignee].filter(Boolean).join(", ")}
+                            </p>
+                          </div>
+                          <CaretRight className="h-3 w-3 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

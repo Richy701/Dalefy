@@ -74,6 +74,7 @@ import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { tripTravelerOf } from "@/lib/travelerSync";
+import { timeAgo } from "@/lib/timeAgo";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { MessageDialog } from "@/components/shared/MessageDialog";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -280,7 +281,7 @@ export function WorkspacePage() {
   }, [trip, updateEvent]);
 
   const [showMap, setShowMap] = useState(false);
-  const [showTasks, setShowTasks] = useState(false);
+  const [showTasks, setShowTasks] = useState(() => searchParams.get("panel") === "tasks");
   const [showCosts, setShowCosts] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
@@ -382,6 +383,13 @@ export function WorkspacePage() {
   }, [tripId, isDemo, membersReload]);
   const membersLoaded = !!tripId && membersLoadedFor === tripId;
   const membersHere = useMemo(() => (membersLoaded ? tripMembers.filter(m => m.trip_id === tripId) : []), [membersLoaded, tripMembers, tripId]);
+  // Suppliers typed on any trip, so the same hotel or coach company is spelled the same way next time
+  const knownSuppliers = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const t of trips) for (const e of t.events) { const s = e.supplier?.trim(); if (s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s); }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [trips]);
+
   const memberByTraveler = useMemo(
     () => new Map(membersHere.filter(m => m.linked_traveler_id).map(m => [m.linked_traveler_id!, m])),
     [membersHere],
@@ -1819,7 +1827,7 @@ export function WorkspacePage() {
                                   <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
                                   {memberByTraveler.has(t.id) ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
-                                      <DeviceMobile className="h-3 w-3" weight="bold" /> In the app
+                                      <DeviceMobile className="h-3 w-3" weight="bold" /> In the app{memberByTraveler.get(t.id)?.last_seen_at ? `, opened ${timeAgo(memberByTraveler.get(t.id)!.last_seen_at)}` : ""}
                                     </span>
                                   ) : membersLoaded ? (
                                     <span className="text-[10px] font-medium text-muted-foreground shrink-0">
@@ -2403,7 +2411,10 @@ export function WorkspacePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">Supplier</Label>
-                      <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Input list="known-suppliers" value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <datalist id="known-suppliers">
+                        {knownSuppliers.map(name => <option key={name} value={name} />)}
+                      </datalist>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">Confirmation number</Label>
