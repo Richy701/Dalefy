@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { pdfLinks, docxLinks, formatLinks, type DocLink } from "@/lib/documentLinks";
 import { Upload, FileText, Check, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,8 @@ interface ExtractedMedia {
 interface ExtractionResult {
   text: string;
   media: ExtractedMedia[];
+  /** Hyperlinks found in the file, with the words they sit under */
+  links?: DocLink[];
 }
 
 /** Convert a raw binary + MIME type to a data-URL */
@@ -140,6 +143,9 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
     pages.push(pageLines.filter(l => l.length > 0).join("\n"));
   }
 
+  // ── Hyperlinks: the URL lives in an annotation, not in the page text ──
+  const links = await pdfLinks(doc).catch(() => [] as DocLink[]);
+
   // ── Extract embedded file attachments (booking confirmations, vouchers) ──
   let attachmentText = "";
   try {
@@ -219,7 +225,7 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
   } catch { /* image extraction not critical */ }
 
   const text = pages.join("\n") + (attachmentText ? "\n" + attachmentText : "");
-  return { text, media };
+  return { text, media, links };
 }
 
 async function extractFromDocx(file: File): Promise<ExtractionResult> {
@@ -252,6 +258,7 @@ async function extractFromDocx(file: File): Promise<ExtractionResult> {
 
   // ── Extract text from embedded documents in word/embeddings/ ──
   let embeddedText = "";
+  let links: DocLink[] = [];
   try {
     const zip = await JSZip.loadAsync(buffer);
     const embedFiles = Object.keys(zip.files)
@@ -261,9 +268,12 @@ async function extractFromDocx(file: File): Promise<ExtractionResult> {
         embeddedText += "\n" + await zip.files[name].async("text");
       }
     }
+    const docXml = zip.files["word/document.xml"] ? await zip.files["word/document.xml"].async("text") : "";
+    const relsXml = zip.files["word/_rels/document.xml.rels"] ? await zip.files["word/_rels/document.xml.rels"].async("text") : "";
+    if (docXml && relsXml) links = docxLinks(docXml, relsXml);
   } catch { /* not critical */ }
 
-  return { text: result.value + embeddedText, media };
+  return { text: result.value + embeddedText, media, links };
 }
 
 async function extractFromPptx(file: File): Promise<ExtractionResult> {
@@ -1050,7 +1060,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 
 // ─── AI-powered parser (Claude Haiku 4.5) ────────────────────────────────────
 
-async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string): Promise<ParsedTrip> {
+async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string, links: DocLink[] = []): Promise<ParsedTrip> {
   const images = extractedMedia
     .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
     .map(m => m.dataUrl);
@@ -1061,9 +1071,11 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
   // When we have the original PDF, send it alone — Claude reads the document
   // natively (layout, tables, embedded images), so the extracted text/images
   // would only duplicate tokens.
+  // The link list rides along as text either way: the PDF's own words don't carry the URLs.
+  const linkBlock = formatLinks(links);
   const payload = pdfDataUrl
-    ? { pdf: pdfDataUrl }
-    : { text: text || undefined, images: images.length > 0 ? images : undefined };
+    ? { pdf: pdfDataUrl, text: linkBlock || undefined }
+    : { text: [text, linkBlock].filter(Boolean).join("\n\n") || undefined, images: images.length > 0 ? images : undefined };
 
   const resp = await fetch("/api/parse-itinerary", {
     method: "POST",
@@ -1303,14 +1315,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   const [parserUsed, setParserUsed] = useState<"ai" | "heuristic" | null>(null);
 
-  const processText = async (text: string, media: ExtractedMedia[] = [], pdfDataUrl?: string) => {
+  const processText = async (text: string, media: ExtractedMedia[] = [], pdfDataUrl?: string, links: DocLink[] = []) => {
     setRawText(text);
     setExtractStage("parsing");
     let result: ParsedTrip;
 
     // Try AI parser first, fall back to heuristic
     try {
-      result = await parseItineraryAI(text, media, pdfDataUrl);
+      result = await parseItineraryAI(text, media, pdfDataUrl, links);
       setParserUsed("ai");
       logger.log("Import", "AI parsed:", result.events.length, "events,", result.parsedTravelerNames.length, "travelers");
     } catch (aiErr) {
@@ -1332,7 +1344,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setExtractProgress(0);
     setStep("extracting");
     try {
-      const { text, media } = await extractContent(file);
+      const { text, media, links } = await extractContent(file);
       // Keep the original PDF for the AI parser — it reads documents natively.
       // 20MB cap keeps the request under the AI API's size limit.
       let pdfDataUrl: string | undefined;
@@ -1345,7 +1357,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         }).catch(() => undefined);
       }
       if (!text.trim() && media.length === 0 && !pdfDataUrl) throw new Error("No readable text found in this file.");
-      await processText(text, media, pdfDataUrl);
+      await processText(text, media, pdfDataUrl, links);
     } catch (e: any) {
       setError(e.message ?? "Could not read this file.");
       setStep("upload");

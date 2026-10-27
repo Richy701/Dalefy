@@ -100,7 +100,13 @@ Info sections — extract ALL of these if present, and rewrite into clear, well-
 - Visa information
 - Guide/contact details
 - Important notes, luggage policy, transfer notes
-- Any other useful reference info for travelers`;
+- Any other useful reference info for travelers
+
+Info section rules:
+- ONE info entry per heading in the document, titled as the document titles it. Never merge two headings into one entry and never drop a heading because it looks minor. A document with 15 reference headings gives 15 entries.
+- Contact lists stay complete and separate: every name, role and number, one entry per heading (e.g. "Contacts - Chiang Mai" and "Contacts - Phuket" are two entries).
+- Keep phone numbers, policy numbers, reference codes and addresses exactly as written.
+- Hyperlinks: when the message lists "Hyperlinks in the document", put each URL into the body right after the words it belongs to, as "words: https://..." (for example "Thailand travel advice on GOV.UK: https://www.gov.uk/foreign-travel-advice/thailand"). Never leave link words without their URL, and never invent a URL that isn't listed.`;
 
 const ASSIST_PROMPT = `You are a travel planning assistant. Given details about a travel event (type, title, location, date, time), generate a polished public-facing description and internal agent notes.
 
