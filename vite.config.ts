@@ -151,6 +151,19 @@ function apiRoutesPlugin(env: Record<string, string>) {
 
             const { text, images, pdf } = parsed
             if (!text && !pdf && (!images || !Array.isArray(images) || images.length === 0)) { res.statusCode = 400; res.end(JSON.stringify({ error: "Missing 'text', 'images', or 'pdf' in body" })); return }
+            if (url.searchParams.get("stream") === "1") {
+              res.setHeader("Content-Type", "application/x-ndjson")
+              const line = (data: unknown) => res.write(`${JSON.stringify(data)}\n`)
+              try {
+                const result = await runParse(client, { text, images, pdf }, partial => line({ type: "partial", partial }))
+                line({ type: "done", result })
+              } catch (err: any) {
+                console.error("parse-itinerary error:", err)
+                line({ type: "error", ...aiErrorToHttp(err) })
+              }
+              res.end()
+              return
+            }
             try {
               const result = await runParse(client, { text, images, pdf })
               res.end(JSON.stringify(result))

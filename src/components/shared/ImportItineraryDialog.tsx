@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { motion } from "motion/react";
 import { createPortal } from "react-dom";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { pdfLinks, docxLinks, formatLinks, type DocLink } from "@/lib/documentLinks";
@@ -1064,7 +1065,16 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 
 // ─── AI-powered parser (Claude Haiku 4.5) ────────────────────────────────────
 
-async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string, links: DocLink[] = []): Promise<ParsedTrip> {
+/** The trip as the AI writes it, for the live import screen */
+interface LivePartial {
+  name: string;
+  destination: string;
+  start: string;
+  end: string;
+  events: Array<{ type: string; date: string; time: string; title: string }>;
+}
+
+async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string, links: DocLink[] = [], onPartial?: (partial: LivePartial) => void): Promise<ParsedTrip> {
   const images = extractedMedia
     .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
     .map(m => m.dataUrl);
@@ -1081,7 +1091,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     ? { pdf: pdfDataUrl, text: linkBlock || undefined }
     : { text: [text, linkBlock].filter(Boolean).join("\n\n") || undefined, images: images.length > 0 ? images : undefined };
 
-  const resp = await fetch("/api/parse-itinerary", {
+  const resp = await fetch("/api/parse-itinerary?stream=1", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
     body: JSON.stringify(payload),
@@ -1091,7 +1101,32 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     const body = await resp.json().catch(() => ({}));
     throw new Error(body.error || `AI parse failed: ${resp.status}`);
   }
-  const data = await resp.json();
+  // One JSON line per update while the trip is written, then the result; a plain JSON reply still works
+  let data: Awaited<ReturnType<Response["json"]>>;
+  if (resp.headers.get("content-type")?.includes("ndjson") && resp.body) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = "";
+    const handle = (line: string) => {
+      if (!line.trim()) return;
+      const msg = JSON.parse(line);
+      if (msg.type === "partial") onPartial?.(msg.partial);
+      else if (msg.type === "done") data = msg.result;
+      else if (msg.type === "error") throw new Error(msg.error || "AI parse failed");
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      buffered += decoder.decode(value, { stream: !done });
+      const lines = buffered.split("\n");
+      buffered = lines.pop() ?? "";
+      lines.forEach(handle);
+      if (done) break;
+    }
+    handle(buffered);
+    if (!data) throw new Error("AI parse ended without a result");
+  } else {
+    data = await resp.json();
+  }
 
   // Map AI response to ParsedTrip shape
   const travelers: string[] = (data.travelers ?? []).map((t: any) => t.name);
@@ -1253,6 +1288,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // jumping to a fixed value and sitting there. Eases toward 90, never completes
   // on its own: the review step is the real 100%.
   const [extractProgress, setExtractProgress] = useState(0);
+  // What the AI has written so far, shown as it arrives
+  const [livePartial, setLivePartial] = useState<LivePartial | null>(null);
+  const liveListRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const el = liveListRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [livePartial?.events.length]);
   useEffect(() => {
     if (step !== "extracting") return;
     const startedAt = Date.now();
@@ -1329,7 +1371,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
     // Try AI parser first, fall back to heuristic
     try {
-      result = await parseItineraryAI(text, media, pdfDataUrl, links);
+      result = await parseItineraryAI(text, media, pdfDataUrl, links, setLivePartial);
       setParserUsed("ai");
       logger.log("Import", "AI parsed:", result.events.length, "events,", result.parsedTravelerNames.length, "travelers");
     } catch (aiErr) {
@@ -1352,6 +1394,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setExtractFile({ name: file.name, size: file.size });
     setExtractStage("reading");
     setExtractProgress(0);
+    setLivePartial(null);
     setStep("extracting");
     try {
       const { text, media, links } = await extractContent(file);
@@ -1787,7 +1830,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   ? "Fill this trip from a document. Nothing is on it yet, so there's nothing to merge or replace."
                   : "Turn a document into a trip"
             )}
-            {step === "extracting" && "Reading document..."}
+            {step === "extracting" && (livePartial?.events.length ? `${plural(livePartial.events.length, "event")} found so far` : "Reading document...")}
             {step === "review" && <>
               {hasExisting
                 ? `${plural(parsed?.events.length ?? 0, "event")} found, ${duplicateCount > 0 ? `${newEventCount} new and ${duplicateCount} already on this trip` : "all new"}. Choose how they go in, then untick anything wrong.`
@@ -1889,6 +1932,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     setExtractFile(null);
                     setExtractStage("parsing");
                     setExtractProgress(0);
+                    setLivePartial(null);
                     setStep("extracting");
                     try {
                       await processText(text);
@@ -1942,23 +1986,90 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "extracting" && (() => {
           const stages = [
             { key: "reading", title: "Read the document", hint: "Text, images and attachments come out of the file." },
-            { key: "parsing", title: "Build the itinerary", hint: "Dates, flights, hotels and activities get picked out. Usually 10 to 30 seconds." },
+            { key: "parsing", title: "Build the itinerary", hint: "Dates, flights, hotels and activities get picked out. Longer documents take a minute or two." },
             { key: "review", title: "Review", hint: "You check every event before anything is saved." },
           ] as const;
           const activeIndex = extractStage === "reading" ? 0 : 1;
+          const fileCard = extractFile && (
+            <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-background px-3.5 py-3">
+              <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                <FileText className="h-4 w-4 text-brand" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground truncate">{extractFile.name}</p>
+                <p className="text-[10px] font-mono text-muted-foreground">{formatBytes(extractFile.size)}</p>
+              </div>
+            </div>
+          );
+          // Live build: the events appear day by day as the AI writes them
+          if (extractStage === "parsing" && livePartial && livePartial.events.length > 0) {
+            const live = livePartial;
+            const dayIndex = (iso: string) => {
+              const a = new Date(live.start + "T12:00:00").getTime(), b = new Date(iso + "T12:00:00").getTime();
+              return isNaN(a) || isNaN(b) ? -1 : Math.round((b - a) / 86_400_000);
+            };
+            const totalDays = Math.max(1, dayIndex(live.end) + 1);
+            const lastDate = live.events[live.events.length - 1].date;
+            const currentDay = Math.min(totalDays, Math.max(1, dayIndex(lastDate) + 1));
+            const days: Array<[string, typeof live.events]> = [];
+            for (const ev of live.events) {
+              const group = days[days.length - 1];
+              if (group && group[0] === ev.date) group[1].push(ev);
+              else days.push([ev.date, [ev]]);
+            }
+            return (
+              <div className="py-4 sm:py-6 max-w-md mx-auto w-full" role="status" aria-live="polite">
+                {fileCard}
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-bold tracking-tight text-foreground">Building your itinerary</p>
+                  {dayIndex(live.end) >= 0 && (
+                    <p className="text-xs text-muted-foreground tabular-nums shrink-0">Day {currentDay} of {totalDays}</p>
+                  )}
+                </div>
+                {live.name && <p className="mt-0.5 text-[11px] text-muted-foreground truncate">{live.name}</p>}
+                <Progress value={dayIndex(live.end) >= 0 ? (currentDay / totalDays) * 90 : extractProgress} className="mt-3 h-1.5" />
+                <ol ref={liveListRef} className="mt-5 max-h-80 overflow-y-auto space-y-4 pr-1 -mr-1 pt-2 [mask-image:linear-gradient(to_bottom,transparent,black_24px)]">
+                  {days.map(([date, evs]) => (
+                    <li key={date || "undated"}>
+                      <div className="flex items-center gap-2 px-0.5 mb-1.5">
+                        <p className="text-xs font-medium text-foreground">{dayLabel(date)}</p>
+                        <div className="h-px flex-1 bg-secondary dark:bg-border" />
+                      </div>
+                      <ul className="space-y-1">
+                        {evs.map((ev, i) => {
+                          const type = (ev.type in EVENT_TYPE_ICONS ? ev.type : "activity") as EventType;
+                          const Icon = EVENT_TYPE_ICONS[type];
+                          return (
+                            <motion.li
+                              key={`${date}-${i}`}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
+                              className="flex items-center gap-3 rounded-lg bg-card border border-border px-3 py-2"
+                            >
+                              <Icon className={`h-4 w-4 shrink-0 ${EVENT_TEXT_COLORS[type]}`} />
+                              <span className="flex-1 min-w-0 truncate text-sm text-foreground">{toTitleCase(ev.title)}</span>
+                              {ev.time && ev.time !== "TBD" && (
+                                <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ev.time}</span>
+                              )}
+                            </motion.li>
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  ))}
+                  <li className="flex items-center gap-2 px-0.5 text-[11px] text-muted-foreground">
+                    <Spinner className="size-3 text-brand" />
+                    Reading the next part
+                  </li>
+                </ol>
+                <p className="mt-4 text-[11px] text-muted-foreground text-center">You'll review everything before it's saved.</p>
+              </div>
+            );
+          }
           return (
             <div className="py-4 sm:py-6 max-w-md mx-auto w-full" role="status" aria-live="polite">
-              {extractFile && (
-                <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-background px-3.5 py-3">
-                  <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                    <FileText className="h-4 w-4 text-brand" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{extractFile.name}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">{formatBytes(extractFile.size)}</p>
-                  </div>
-                </div>
-              )}
+              {fileCard}
               <ol className="relative">
                 {stages.map((st, i) => {
                   const done = i < activeIndex;

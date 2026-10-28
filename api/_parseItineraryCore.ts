@@ -7,6 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { partialParse } from "@anthropic-ai/sdk/_vendor/partial-json-parser/parser.js";
 
 export const PARSE_MODEL = "claude-sonnet-5-5";
 export const ASSIST_MODEL = "claude-haiku-5-5";
@@ -193,7 +194,34 @@ export interface AssistInput {
   destination?: string;
 }
 
-export async function runParse(client: Anthropic, input: ParseInput) {
+/** What the importer has written so far: the trip header and every event it has finished */
+export interface ParsePartial {
+  name: string;
+  destination: string;
+  start: string;
+  end: string;
+  events: Array<{ type: string; date: string; time: string; title: string }>;
+}
+
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** The trip so far from half-written JSON; the event still being written is left out until it's done */
+function partialItinerary(snapshot: string): ParsePartial | null {
+  let p: unknown;
+  try { p = partialParse(snapshot); } catch { return null; }
+  if (!p || typeof p !== "object") return null;
+  const o = p as Record<string, unknown>;
+  const all = Array.isArray(o.events) ? o.events : [];
+  // Keys arrive in schema order, so once the organiser starts the event list is closed
+  const closed = "organizer" in o || "info" in o;
+  const events = (closed ? all : all.slice(0, -1)).map(e => {
+    const ev = (e ?? {}) as Record<string, unknown>;
+    return { type: str(ev.type), date: str(ev.date) || str(ev.checkin), time: str(ev.time), title: str(ev.title) };
+  });
+  return { name: str(o.name), destination: str(o.destination), start: str(o.start), end: str(o.end), events };
+}
+
+export async function runParse(client: Anthropic, input: ParseInput, onPartial?: (partial: ParsePartial) => void) {
   const contentBlocks: Anthropic.ContentBlockParam[] = [];
 
   if (input.pdf && typeof input.pdf === "string") {
@@ -235,7 +263,7 @@ export async function runParse(client: Anthropic, input: ParseInput) {
 
   // Streamed so a long document's thinking and output have room without the request timing out
   // A declined document is retried on a backup model inside the same call, chosen by the API
-  const message = await client.beta.messages.stream({
+  const stream = client.beta.messages.stream({
     model: PARSE_MODEL,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -246,7 +274,26 @@ export async function runParse(client: Anthropic, input: ParseInput) {
     messages: [{ role: "user", content: contentBlocks }],
     // High effort: importing happens rarely and a missed time or a duplicated event costs the organiser far more
     output_config: { effort: "high", format: betaZodOutputFormat(ItinerarySchema) },
-  }).finalMessage();
+  });
+
+  // Live import screen: report the trip as it's written, each time another event is finished
+  if (onPartial) {
+    let sent = "";
+    let lastAt = 0;
+    stream.on("text", (_delta, snapshot) => {
+      const now = Date.now();
+      if (now - lastAt < 250) return;
+      const partial = partialItinerary(snapshot);
+      if (!partial) return;
+      const key = `${partial.name}|${partial.start}|${partial.end}|${partial.events.length}`;
+      if (key === sent) return;
+      sent = key;
+      lastAt = now;
+      onPartial(partial);
+    });
+  }
+
+  const message = await stream.finalMessage();
 
   if (message.stop_reason === "refusal") {
     throw new ParseHttpError(422, "AI couldn't process this itinerary. Try pasting the text instead");
