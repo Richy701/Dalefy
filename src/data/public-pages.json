@@ -219,7 +219,7 @@
     "title": "Privacy policy",
     "eyebrow": "Legal",
     "description": "What Dalefy collects, why, and how to get it removed.",
-    "updated": "Last updated: 15 September 2026",
+    "updated": "Last updated: 28 October 2026",
     "sections": [
       {
         "heading": "Who we are",
@@ -235,13 +235,13 @@
       },
       {
         "heading": "How we use it",
-        "html": "<ul>\n          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>\n          <li>To send trip reminders and itinerary updates you have opted into, by push notification or email.</li>\n          <li>To send sign-in links, verification and password reset emails when you ask for them.</li>\n          <li>To share your name and avatar with the other people on the same trip.</li>\n          <li>To answer support requests you send us.</li>\n        </ul>\n        <p>We do not sell your personal information, and we do not use it for advertising.</p>",
+        "html": "<ul>\n          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>\n          <li>To send trip reminders and itinerary updates you have opted into, by push notification or email.</li>\n          <li>To send sign-in links, verification and password reset emails when you ask for them.</li>\n          <li>To share your name and avatar with the other people on the same trip.</li>\n          <li>To answer the questions you ask Dale, the trip assistant in the app, and to help organisers import and edit itineraries.</li>\n          <li>To answer support requests you send us.</li>\n        </ul>\n        <p>We do not sell your personal information, and we do not use it for advertising.</p>",
         "faqs": [],
         "signIn": false
       },
       {
         "heading": "Who we share it with",
-        "html": "<ul>\n          <li><strong>Your trip organiser</strong> can see who has joined their trip and which traveller you linked to.</li>\n          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>\n          <li><strong>Resend</strong> delivers the emails Dalefy sends, such as itineraries, invitations and sign-in links.</li>\n          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>\n          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>\n          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>\n          <li><strong>Vercel</strong> hosts the website and the services behind the app.</li>\n        </ul>\n        <p>All of this data travels over encrypted connections. Each provider only receives what it needs for its job.</p>",
+        "html": "<ul>\n          <li><strong>Your trip organiser</strong> can see who has joined their trip and which traveller you linked to.</li>\n          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>\n          <li><strong>Resend</strong> delivers the emails Dalefy sends, such as itineraries, invitations and sign-in links.</li>\n          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>\n          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>\n          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>\n          <li><strong>Vercel</strong> hosts the website and the services behind the app.</li>\n          <li><strong>Anthropic</strong> provides the Claude AI behind Dale and the organiser's itinerary tools. When you ask Dale something, your question and your trip's details, including the names of people on the trip, are sent to Anthropic to write the answer. The app asks before Dale is used for the first time. Anthropic doesn't use this data to train its models.</li>\n        </ul>\n        <p>All of this data travels over encrypted connections. Each provider only receives what it needs for its job.</p>",
         "faqs": [],
         "signIn": false
       },

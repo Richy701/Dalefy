@@ -90,7 +90,9 @@ export default function AskScreen() {
   const isDark = photoPage || themeDark;
   const styles = useMemo(() => makeStyles(C), [C]);
   const linkedTravelerId = useLinkedTravelerId(tripId);
-  const { prefs } = usePreferences();
+  const { prefs, setPref } = usePreferences();
+  // Apple requires asking before personal data goes to a third-party AI; nothing is sent until they agree
+  const consented = prefs.daleConsent;
   const firstName = (prefs.name || "").trim().split(/\s+/)[0].replace(/^./, c => c.toUpperCase());
 
   const [turns, setTurns] = useState<ChatTurn[]>(() => sessions.get(tripId ?? "") ?? []);
@@ -129,7 +131,7 @@ export default function AskScreen() {
 
   const ask = useCallback(async (base: ChatTurn[], text: string) => {
     const question = text.trim();
-    if (!question || pending || !tripId) return;
+    if (!question || pending || !tripId || !consented) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const history = [...base.filter(t => !t.error), { role: "user" as const, content: question }];
     setTurns(history);
@@ -212,6 +214,23 @@ export default function AskScreen() {
               </View>
               <Text style={styles.helloTitle}>{firstName ? `Hi ${firstName}, I'm Dale` : "Hi, I'm Dale"}</Text>
               <Text style={styles.helloSub}>Ask me anything about {trip.name}. I answer from your itinerary and your organiser's notes.</Text>
+              {!consented && (
+                <View style={styles.consent}>
+                  <Text style={styles.consentText}>
+                    To answer, Dale sends your questions and this trip's details, including names on the trip, to Anthropic's Claude AI. They aren't used to train it. You can read more in the privacy policy.
+                  </Text>
+                  <Pressable
+                    onPress={() => { Haptics.selectionAsync(); setPref("daleConsent", true); }}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.consentButton, { backgroundColor: C.teal, opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <Text style={[styles.consentButtonText, { color: C.onAccent }]}>Agree and start</Text>
+                  </Pressable>
+                  <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, minHeight: 44, justifyContent: "center" })}>
+                    <Text style={styles.consentNotNow}>Not now</Text>
+                  </Pressable>
+                </View>
+              )}
             </FadeIn>
           ) : (
             turns.map((t, i) => t.role === "user" ? (
@@ -259,7 +278,7 @@ export default function AskScreen() {
             and the composer's measured height keeps the last message clear of it. It stays in the layout
             (pulled up by its own height) so the keyboard still lifts it. */}
         <View onLayout={e => setComposerH(e.nativeEvent.layout.height)} style={{ marginTop: -composerH }}>
-        {turns.length === 0 ? (
+        {turns.length === 0 && consented ? (
           <ScrollView
             horizontal
             // ScrollView grows by default; this one only takes its cards' height, right on the composer
@@ -284,7 +303,7 @@ export default function AskScreen() {
             ))}
           </ScrollView>
         ) : null}
-        <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Math.max(insets.bottom, S.sm) }]}>
+        <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Math.max(insets.bottom, S.sm) }, !consented && { display: "none" }]}>
           {/* One rounded glass field with the send button inside it */}
           <View style={styles.field}>
             {GLASS
@@ -332,6 +351,11 @@ function makeStyles(C: ThemeColors) {
     hello: { alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingBottom: S["2xl"] },
     mark: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: S.xs },
     helloTitle: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4, textAlign: "center" },
+    consent: { marginTop: S.md, alignItems: "center", gap: S.sm, maxWidth: 320 },
+    consentText: { fontSize: T.sm, lineHeight: 20, color: C.textSecondary, textAlign: "center" },
+    consentButton: { minHeight: 48, paddingHorizontal: S.xl, borderRadius: R.lg, alignItems: "center", justifyContent: "center", alignSelf: "stretch" },
+    consentButtonText: { fontSize: T.md, fontWeight: T.semibold },
+    consentNotNow: { fontSize: T.base, fontWeight: T.medium, color: C.textSecondary },
     helloSub: { fontSize: T.base, lineHeight: 21, color: C.textSecondary, textAlign: "center", maxWidth: 300 },
     sub: { fontSize: T.base, color: C.textSecondary, lineHeight: 21 },
 

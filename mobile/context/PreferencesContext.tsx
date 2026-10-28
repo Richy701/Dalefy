@@ -23,6 +23,8 @@ export interface Preferences {
   seenTour: boolean;
   /** Trips that have had their intro on this phone; a trip not in here gets one the first time it shows up */
   introducedTrips: string[];
+  /** Agreed that Dale sends their questions and trip details to Anthropic's AI to answer them */
+  daleConsent: boolean;
 }
 
 const DEFAULT_PREFS: Preferences = {
@@ -39,6 +41,7 @@ const DEFAULT_PREFS: Preferences = {
   themeMode: "system",
   seenTour: false,
   introducedTrips: [],
+  daleConsent: false,
 };
 
 interface PreferencesContextType {

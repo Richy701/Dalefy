@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "scheme": "dafadventures",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.dafadventures.app",
       "buildNumber": "27",
       "infoPlist": {
