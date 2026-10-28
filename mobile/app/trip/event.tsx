@@ -20,7 +20,7 @@ import {
   Clock, Hash, FileText,
   Calendar, Users, Copy, CaretRight, CaretLeft,
   AirplaneTakeoff, AirplaneLanding, Armchair, Door,
-  Ruler,
+  Ruler, MapPin, Phone,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
@@ -478,6 +478,17 @@ export default function EventDetailScreen() {
   };
 
   const detailRows: Array<{ icon: React.ComponentType<any>; label: string; value: string; onPress?: () => void }> = [];
+  // Transfers: where to meet and who to look for, first, as that's what travellers need on the day
+  if (ev.type === "transfer" && ev.meetingPoint?.trim()) detailRows.push({ icon: MapPin, label: "Meet at", value: ev.meetingPoint.trim() });
+  if (ev.type === "transfer" && (ev.contactName?.trim() || ev.contactPhone?.trim())) {
+    const phone = ev.contactPhone?.trim() ?? "";
+    detailRows.push({
+      icon: Phone,
+      label: "Driver or guide",
+      value: [ev.contactName?.trim(), phone].filter(Boolean).join(", "),
+      onPress: phone ? () => { Linking.openURL(`tel:${phone.replace(/[^\d+]/g, "")}`).catch(() => {}); } : undefined,
+    });
+  }
   if (ev.roomType) detailRows.push({ icon: Bed, label: "Room type", value: ev.roomType });
   if (ev.seatDetails) detailRows.push({ icon: Armchair, label: "Seat", value: ev.seatDetails });
   if (ev.terminal) detailRows.push({ icon: Door, label: "Terminal", value: ev.terminal });

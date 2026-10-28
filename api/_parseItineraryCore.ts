@@ -91,6 +91,9 @@ Time rules:
 - Look for an event's time everywhere the document mentions it: the schedule line, its description ("meet in the lobby at 2:50 PM"), a day summary, or a transfer note ("pick-up 08:00"). Use the start of the event itself, not the meeting time, when both are given.
 - Use "TBD" only when the document gives no time for that event anywhere.
 
+Transfers:
+- "meetingPoint": where travellers meet the driver or guide, as the document says it ("Exit B, Arrivals hall", "hotel lobby"). "contactName" and "contactPhone": the driver, guide or rep for that transfer when the document names them. Empty strings when the document doesn't say. Travellers see these, so keep internal notes out of them.
+
 One event per thing:
 - When the document describes the same activity, meal, transfer or stay in more than one place (a day-by-day schedule and a summary, or a heading and a note), create one event and merge the details into it.
 
@@ -139,6 +142,9 @@ const EventSchema = z.object({
   notes: z.string(),
   checkin: z.string(),
   checkout: z.string(),
+  meetingPoint: z.string(),
+  contactName: z.string(),
+  contactPhone: z.string(),
 });
 
 const ItinerarySchema = z.object({

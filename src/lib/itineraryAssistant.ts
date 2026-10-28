@@ -3,7 +3,8 @@ import type { TravelEvent, Trip, TripInfo } from "@/types";
 export type AssistantFieldKey =
   | "type" | "date" | "time" | "endTime" | "endDate" | "title"
   | "location" | "description" | "notes" | "checkin" | "checkout"
-  | "body" | "assignedTo" | "airline" | "flightNum" | "depAirport" | "arrAirport" | "transferType" | "supplier";
+  | "body" | "assignedTo" | "airline" | "flightNum" | "depAirport" | "arrAirport" | "transferType" | "supplier"
+  | "meetingPoint" | "contactName" | "contactPhone";
 
 /** assignedTo is a list of traveller ids (empty means everyone); every other field is text */
 export type AssistantFields = { [K in Exclude<AssistantFieldKey, "assignedTo">]: string | null } & { assignedTo: string[] | null };
@@ -57,6 +58,9 @@ export function compactTripForAssistant(trip: Trip) {
       depAirport: ev.depAirport,
       arrAirport: ev.arrAirport,
       transferType: ev.transferType,
+      meetingPoint: ev.meetingPoint,
+      contactName: ev.contactName,
+      contactPhone: ev.contactPhone,
       assignedTo: ev.assignedTo?.length ? ev.assignedTo : undefined,
     })),
     info: (trip.info ?? []).map(i => ({ id: i.id, title: i.title, body: i.body && i.body.length > 2000 ? `${i.body.slice(0, 2000)}…` : i.body, leaderOnly: i.leaderOnly || undefined })),
@@ -176,6 +180,9 @@ export const FIELD_LABELS: Record<AssistantFieldKey, string> = {
   arrAirport: "To",
   transferType: "Transfer",
   supplier: "Supplier",
+  meetingPoint: "Meet at",
+  contactName: "Driver",
+  contactPhone: "Their phone",
 };
 
 /**

@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { Suitcase } from "phosphor-react-native";
+import { Suitcase, Phone } from "phosphor-react-native";
 import type { TravelEvent } from "@/shared/types";
 import { eventTiming } from "@/shared/today";
 import { tidyLocation } from "@/shared/eventTitle";
@@ -92,7 +92,10 @@ export function ArrivalSection({ tripId, flight, live, landedAt, then, place, ti
     Haptics.selectionAsync();
     router.push({ pathname: "/trip/event", params: { tripId, eventId } });
   };
-  const thenDetail = then?.type === "transfer" ? (then.description ?? "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim() : "";
+  // The organiser's pickup details beat the general description: where to go and who to look for
+  const meet = then?.type === "transfer" ? then.meetingPoint?.trim() ?? "" : "";
+  const contact = then?.type === "transfer" ? { name: then.contactName?.trim() ?? "", phone: then.contactPhone?.trim() ?? "" } : { name: "", phone: "" };
+  const thenDetail = then?.type === "transfer" && !meet ? (then.description ?? "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim() : "";
 
   return (
     <FadeIn delay={0}>
@@ -135,7 +138,20 @@ export function ArrivalSection({ tripId, flight, live, landedAt, then, place, ti
                 <Text style={{ color: C.tealText, fontWeight: T.semibold }}>{then.time}</Text>
                 {then.location ? `, ${tidyLocation(then.location)}` : ""}
               </Text>
+              {meet ? <Text style={[ps.rowSub, { color: C.textPrimary }]} numberOfLines={2}>Meet at {meet}</Text> : null}
               {thenDetail ? <Text style={[ps.rowSub, { color: C.textSecondary }]} numberOfLines={2}>{thenDetail}</Text> : null}
+              {contact.phone ? (
+                <Pressable
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`tel:${contact.phone.replace(/[^\d+]/g, "")}`).catch(() => {}); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Call ${contact.name || "your driver"}, ${contact.phone}`}
+                  hitSlop={6}
+                  style={({ pressed }) => [s.call, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Phone size={14} color={C.tealText} weight="fill" />
+                  <Text style={[s.callText, { color: C.tealText }]}>Call {contact.name || "your driver"}</Text>
+                </Pressable>
+              ) : contact.name ? <Text style={[ps.rowSub, { color: C.textSecondary }]}>Look for {contact.name}</Text> : null}
             </View>
           </View>
         </ScalePress>
@@ -146,4 +162,6 @@ export function ArrivalSection({ tripId, flight, live, landedAt, then, place, ti
 
 const s = StyleSheet.create({
   lede: { fontSize: T.base, lineHeight: 22, paddingHorizontal: S.md, marginBottom: S.xs },
+  call: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: S.xs, alignSelf: "flex-start", minHeight: 32 },
+  callText: { fontSize: T.base, fontWeight: T.semibold },
 });

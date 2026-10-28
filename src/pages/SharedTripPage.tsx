@@ -229,6 +229,13 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
           </div>
         </div>
         {eventMeta(ev) && <p className="mt-0.5 text-sm text-muted-foreground">{eventMeta(ev)}</p>}
+        {ev.type === "transfer" && (ev.meetingPoint || ev.contactName || ev.contactPhone) && (
+          <p className="mt-1.5 text-sm text-foreground">
+            {ev.meetingPoint && <>Meet at {ev.meetingPoint}</>}
+            {ev.meetingPoint && (ev.contactName || ev.contactPhone) && ", "}
+            {(ev.contactName || ev.contactPhone) && <>{ev.contactName || "your driver"}{ev.contactPhone && <> <a href={`tel:${ev.contactPhone.replace(/[^\d+]/g, "")}`} className="text-link hover:underline">{ev.contactPhone}</a></>}</>}
+          </p>
+        )}
         {ev.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80"><Linkify text={ev.description} /></p>}
         {ev.image && ev.type !== "hotel" && (
           <img src={ev.image} alt="" style={{ objectPosition: objectPosition(ev.imagePosition) }} className="mt-3 mx-auto sm:mx-0 w-full aspect-[16/9] sm:max-h-80 rounded-lg object-cover print:hidden" />

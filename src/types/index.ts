@@ -58,6 +58,10 @@ export interface TravelEvent {
   checkout?: string;
   isOvernight?: boolean;
   transferType?: "car" | "train" | "bus" | "ferry" | "cruise" | "other";
+  /** Transfers: where travellers meet the driver or guide, and who that is. Travellers see these, unlike notes and supplier. */
+  meetingPoint?: string;
+  contactName?: string;
+  contactPhone?: string;
   endDate?: string;
   aircraft?: string;
   notes?: string;

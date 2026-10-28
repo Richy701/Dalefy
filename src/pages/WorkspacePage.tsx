@@ -2333,6 +2333,27 @@ export function WorkspacePage() {
                     </div>
                   )}
 
+                  {/* Who meets them and where: travellers see these on the phone and in arrival mode */}
+                  {editingEvent?.type === "transfer" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">Meeting point</Label>
+                        <Input value={editingEvent?.meetingPoint || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, meetingPoint: e.target.value } : null)} placeholder="e.g., Exit B, Arrivals hall" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Driver or guide</Label>
+                          <Input value={editingEvent?.contactName || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactName: e.target.value } : null)} placeholder="e.g., Somchai" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Their phone</Label>
+                          <Input type="tel" value={editingEvent?.contactPhone || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactPhone: e.target.value } : null)} placeholder="e.g., +66 81 234 5678" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Travellers see these in the app, unlike notes and supplier.</p>
+                    </div>
+                  )}
+
                   {/* Check-out Time for hotel (non-overnight) */}
                   {editingEvent?.type === "hotel" && !editingEvent?.isOvernight && (
                     <div className="grid grid-cols-2 gap-4">

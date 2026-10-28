@@ -42,6 +42,7 @@ Field formats:
 - description is public copy travelers read. notes are internal agent notes (confirmation numbers, supplier contacts).
 - assignedTo: the ids of the travellers on this event, from "travelers". An empty list means everyone on the trip. Use it for "only Tony and Laura do the tour".
 - Flights: airline, flightNum (e.g. "BA 2155"), depAirport and arrAirport (3-letter IATA codes). transferType for transfers: car | train | bus | ferry | cruise | other. supplier is the company providing it.
+- Transfers: meetingPoint is where travellers meet the driver or guide ("Exit B, Arrivals hall"); contactName and contactPhone are that person. Travellers see these three, so never put internal notes in them; supplier and notes stay internal.
 
 Rules:
 - Only touch what the agent asked for. Never rewrite descriptions or notes unless asked.
@@ -65,6 +66,9 @@ const FieldsSchema = z.object({
   arrAirport: text(),
   transferType: z.enum(["car", "train", "bus", "ferry", "cruise", "other", ""]),
   supplier: text(),
+  meetingPoint: text(),
+  contactName: text(),
+  contactPhone: text(),
   date: text(),
   time: text(),
   endTime: text(),

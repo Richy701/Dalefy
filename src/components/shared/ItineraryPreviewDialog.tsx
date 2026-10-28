@@ -413,6 +413,12 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
             </div>
           )}
 
+          {ev.type === "transfer" && (ev.meetingPoint || ev.contactName || ev.contactPhone) && (
+            <p className="mt-1.5 text-[11px] sm:text-xs font-medium text-foreground/80">
+              {[ev.meetingPoint && `Meet at ${ev.meetingPoint}`, [ev.contactName, ev.contactPhone].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
+            </p>
+          )}
+
           {(ev.type === "dining" || ev.type === "activity") && ev.supplier && (
             <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
               {ev.supplier}

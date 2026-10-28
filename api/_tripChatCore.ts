@@ -130,6 +130,8 @@ export function tripContext(view: Data, travelerId: string | null): { text: stri
       str(e.endDate) && str(e.endDate) !== day ? `ends ${str(e.endDate)}` : "",
       str(e.location) && `at ${str(e.location)}`,
       flight, stay,
+      e.type === "transfer" && str(e.meetingPoint) ? `meet at ${str(e.meetingPoint)}` : "",
+      e.type === "transfer" && (str(e.contactName) || str(e.contactPhone)) ? `driver or guide ${[str(e.contactName), str(e.contactPhone)].filter(Boolean).join(", ")}` : "",
       str(e.seatDetails) && `seats ${str(e.seatDetails)}`,
       str(e.confNumber) && `confirmation ${str(e.confNumber)}`,
       str(e.description) && clip(str(e.description).replace(/\s+/g, " "), 600),
