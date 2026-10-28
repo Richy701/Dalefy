@@ -71,6 +71,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
+import { publishedChanges } from "@/lib/tripChanges";
 import { fetchTripMembers, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -244,6 +245,9 @@ export function WorkspacePage() {
   const [eventErrors, setEventErrors] = useState<EventErrors>({});
   useEffect(() => { editingEventIdRef.current = isEditPanelOpen && editingEvent ? editingEvent.id : null; }, [isEditPanelOpen, editingEvent]);
   const editBaseline = useRef<Trip | undefined>(undefined);
+  // A save that would empty Information & Documents waits here for a yes
+  const [confirmClearInfo, setConfirmClearInfo] = useState<(() => Promise<void>) | null>(null);
+  const [clearInfoCount, setClearInfoCount] = useState(0);
   const saveBusy = useRef(false);
   const [savingChanges, setSavingChanges] = useState(false);
   const editingOriginalRef = useRef<string | null>(null);
@@ -601,6 +605,8 @@ export function WorkspacePage() {
       publishedAt: new Date().toISOString(),
     };
     const wasPublished = trip.status === "Published";
+    // Travellers only see published versions, so publishing is the one moment they hear about changes
+    const changes = wasPublished && trip.publishedSnapshot ? publishedChanges(trip.publishedSnapshot, snapshot) : ["Trip published"];
     try {
       await saveTrip(trip.id, { status: "Published", publishedSnapshot: snapshot }, trip);
     } catch {
@@ -611,9 +617,7 @@ export function WorkspacePage() {
     setPublishing(false);
     toast.success(wasPublished ? "Changes published" : "Trip published");
     addNotification({ message: wasPublished ? "Changes published" : "Trip published", detail: trip.name, time: "Just now", type: "success" });
-    if (!wasPublished) {
-      notifyTripUpdate(trip.id, trip.name, ["Trip published"]);
-    }
+    if (changes.length) notifyTripUpdate(trip.id, trip.name, changes);
     setShareOpen(true);
   };
 
@@ -926,9 +930,14 @@ export function WorkspacePage() {
     e.preventDefault();
     if (demoGate()) return;
     const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
-    if (!await commitChanges({ info: cleaned.length > 0 ? cleaned : undefined }, editBaseline.current)) return;
-    setEditInfoOpen(false);
-    toast.success("Information updated");
+    const save = async () => {
+      if (!await commitChanges({ info: cleaned.length > 0 ? cleaned : undefined }, editBaseline.current)) return;
+      setEditInfoOpen(false);
+      toast.success("Information updated");
+    };
+    // Emptying the section can't be undone, so it is asked for, never assumed
+    if (cleaned.length === 0 && (editBaseline.current?.info?.length ?? 0) > 0) { setClearInfoCount(editBaseline.current?.info?.length ?? 0); setConfirmClearInfo(() => save); return; }
+    await save();
   };
 
   const TRIP_DOC_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,.csv,.ppt,.pptx,image/*";
@@ -1070,9 +1079,13 @@ export function WorkspacePage() {
       cleaned.info = cleaned.info.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
       if (cleaned.info.length === 0) cleaned.info = undefined;
     }
-    if (!await commitChanges(cleaned, editBaseline.current)) return;
-    setEditTripOpen(false);
-    toast.success("Trip updated");
+    const save = async () => {
+      if (!await commitChanges(cleaned, editBaseline.current)) return;
+      setEditTripOpen(false);
+      toast.success("Trip updated");
+    };
+    if (!cleaned.info && (editBaseline.current?.info?.length ?? 0) > 0) { setClearInfoCount(editBaseline.current?.info?.length ?? 0); setConfirmClearInfo(() => save); return; }
+    await save();
   };
 
   const handleDeleteTrip = () => {
@@ -2104,6 +2117,15 @@ export function WorkspacePage() {
       </div>
 
       {/* Event Edit Dialog - full screen */}
+      <ConfirmDialog
+        open={!!confirmClearInfo}
+        onOpenChange={open => { if (!open) setConfirmClearInfo(null); }}
+        title="Remove all information?"
+        description={`This saves the trip with no Information & Documents cards. The ${clearInfoCount} cards it has now will be gone, and travellers lose them the next time you publish.`}
+        confirmLabel="Remove all"
+        destructive
+        onConfirm={async () => { await confirmClearInfo?.(); setConfirmClearInfo(null); }}
+      />
       <ConfirmDialog
         open={discardPromptOpen}
         onOpenChange={setDiscardPromptOpen}

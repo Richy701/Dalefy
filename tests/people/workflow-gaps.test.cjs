@@ -30,3 +30,12 @@ for(const endpoint of ['send-push','notify-trip-update','send-itinerary'])test(`
  await handler({method:'POST',headers:{authorization:'Bearer mock'},body:{tripId:'trip',tripName:'Trip',changes:['changed'],to:'all',body:'Message',subject:'Trip',recipients:[{email:'test@example.com'}]}},res);
  assert.equal(status,403);
 });
+test('saving a person without a directory photo keeps the photo on the trip and its published copy',()=>{
+ const noPhoto={id:'keep',name:'Laura Davies',email:'laura@example.com',avatar:'',initials:'LD'};
+ const result=people.changePersonOnTrip({travelers:[{...keep}],published_snapshot:{travelers:[{...keep}]}},noPhoto);
+ assert.equal(result.travelers[0].avatar,'photo.png');assert.equal(result.published_snapshot.travelers[0].avatar,'photo.png');
+});
+test('the same trip data with fields in another order is not a conflict',()=>{
+ const before={info:[{id:'i',title:'A',body:'x'}]};const current={info:[{body:'x',title:'A',id:'i'}]};
+ assert.deepEqual(save.tripPatch(before,{info:[{id:'i',title:'B',body:'x'}]},current),{info:[{id:'i',title:'B',body:'x'}]});
+});

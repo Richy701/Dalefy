@@ -69,14 +69,20 @@ const H = 60;
  * - 24h to 3h before departure: every 3 hours
  * - 3h before to 1h after departure: every run (15 min)
  * - after that, hourly until it lands (up to 20h)
+ * - once landed, two more runs while no baggage belt is posted
  * Flights without a usable date/time keep the old once-a-day check at 06:00 UTC.
  */
 export function isDue(
-  ev: { date?: string; time?: string; depTz?: string; depAirport?: string; status?: string },
+  ev: { date?: string; time?: string; depTz?: string; depAirport?: string; status?: string; arrivedAt?: string; baggageBelt?: string },
   now: Date,
 ): boolean {
   const group = statusGroup(ev.status);
-  if (group === "cancelled" || group === "arrived") return false;
+  if (group === "cancelled") return false;
+  if (group === "arrived") {
+    // Belts are often posted after landing; arrivedAt is when a run first saw it land
+    const since = now.getTime() - Date.parse(ev.arrivedAt ?? "");
+    return !ev.baggageBelt && since >= 0 && since <= 35 * 60_000;
+  }
 
   // Run slot: minutes since midnight UTC, so "every N minutes" means slot % N < 15
   // Snapped to the nearest quarter hour, so a run that fires a minute late still counts as its slot

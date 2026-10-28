@@ -1617,10 +1617,29 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           if (m[3]) { const pm = m[3].toLowerCase() === "pm"; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
           return `${String(h).padStart(2, "0")}:${m[2]}`;
         };
+        // A like title alone is not enough: "Transfer to the Bush Camp" and the stay "The Bush Camp" share
+        // every word. The kind of event or the start time has to agree as well, unless one has no time.
+        const sameTime = (x?: string, y?: string) => !!realTime(x) && realTime(x) === realTime(y);
         const sameEvent = (a: { date: string; title: string; time?: string; type?: string }, b: typeof a) =>
-          a.date === b.date && (similar(a.title, b.title) || (!!realTime(a.time) && realTime(a.time) === realTime(b.time) && a.type === b.type));
+          a.date === b.date && (
+            // An event with no time yet can't contradict one: then the like title is enough
+            (similar(a.title, b.title) && (a.type === b.type || sameTime(a.time, b.time) || !realTime(a.time) || !realTime(b.time)))
+            || (sameTime(a.time, b.time) && a.type === b.type));
         const newEvents = events.filter(e => !existing.events.some(x => sameEvent(x, e)));
-        const mergedEvents = [...existing.events, ...newEvents];
+        // A copy that knows more than the event already on the trip fills its gaps: a real time for "TBD",
+        // an end time, a place. Nothing the organiser wrote is overwritten.
+        const mergedEvents = [
+          ...existing.events.map(x => {
+            const copy = events.find(e => sameEvent(x, e));
+            if (!copy) return x;
+            const fill: Partial<TravelEvent> = {};
+            if (!realTime(x.time) && realTime(copy.time)) fill.time = copy.time;
+            if (!realTime(x.endTime) && realTime(copy.endTime)) fill.endTime = copy.endTime;
+            if (!x.location?.trim() && copy.location?.trim()) fill.location = copy.location;
+            return Object.keys(fill).length ? { ...x, ...fill } : x;
+          }),
+          ...newEvents,
+        ];
 
         const existingTravelerKeys = new Set((existing.travelers ?? []).flatMap(t => [t.id, t.name.toLowerCase()]));
         const mergedTravelers = [...(existing.travelers ?? []), ...(tripTravelers ?? []).filter(t => !existingTravelerKeys.has(t.id) && !existingTravelerKeys.has(t.name.toLowerCase()))];

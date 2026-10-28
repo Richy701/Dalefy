@@ -14,7 +14,9 @@ export function changePersonOnTrip(data: Record<string, any>, person: User, dupl
     const matched = people.filter(p => ids.has(p.id));
     if (!matched.length) return people;
     const merged = Object.assign({}, ...matched.filter(p => p.id !== person.id), ...matched.filter(p => p.id === person.id));
-    const next = { ...merged, id: person.id, name: person.name, initials: person.initials, email: person.email || '', avatar: person.avatar || '' };
+    // A photo only ever arrives here, never leaves: photos are changed through their own path, and a
+    // directory entry without one must not wipe the trip's copy
+    const next = { ...merged, id: person.id, name: person.name, initials: person.initials, email: person.email || '', avatar: person.avatar || merged.avatar || '' };
     let added = false;
     return people.flatMap(p => !ids.has(p.id) ? [p] : added ? [] : (added = true, [next]));
   };

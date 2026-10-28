@@ -43,6 +43,11 @@ export interface TravelEvent {
   seatDetails?: string;
   duration?: string;
   status?: string;
+  /** Live estimates ("HH:MM", local) saved by the flight status job; time/endTime stay as scheduled */
+  revisedTime?: string;
+  revisedEndTime?: string;
+  /** When the flight status job first saw the flight land (ISO) */
+  arrivedAt?: string;
   depAirport?: string;
   arrAirport?: string;
   depCoords?: [number, number];

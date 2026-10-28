@@ -50,7 +50,7 @@ const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).fi
 
 const require = createRequire(new URL('../functions/package.json', import.meta.url));
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 initializeApp({ credential: applicationDefault(), projectId: project, storageBucket: bucketName });
 const db = getFirestore();
@@ -192,12 +192,19 @@ for (const { file, person } of plan) {
     // Staff travel too: a trip they organise shows their face on the organiser card as well
     const organiser = trip.data.organizer?.name && norm(trip.data.organizer.name) === norm(person.name) && (!trip.data.organizer.avatar || replace)
       ? { ...trip.data.organizer, avatar: url } : null;
-    if (!travelers && !snapTravelers && !organiser) continue;
+    // Phones read the published copy's organiser, so the photo goes there as well
+    const snapOrg = trip.data.published_snapshot?.organizer;
+    const snapOrganiser = snapOrg?.name && norm(snapOrg.name) === norm(person.name) && (!snapOrg.avatar || replace)
+      ? { ...snapOrg, avatar: url } : null;
+    if (!travelers && !snapTravelers && !organiser && !snapOrganiser) continue;
     const updates = {};
     if (organiser) { updates.organizer = organiser; trip.data.organizer = organiser; }
+    if (snapOrganiser) { updates['published_snapshot.organizer'] = snapOrganiser; trip.data.published_snapshot = { ...trip.data.published_snapshot, organizer: snapOrganiser }; }
     if (travelers) updates.travelers = travelers;
     if (snapTravelers) updates['published_snapshot.travelers'] = snapTravelers;
     batch.update(trip.ref, updates);
+    // Phones reload a trip only when its change stamp moves
+    batch.set(db.collection('trip_versions').doc(trip.ref.id), { updated_at: FieldValue.serverTimestamp() });
     // Keep the local copy current, so the next person's write carries this one's photo too
     if (travelers) trip.data.travelers = travelers;
     if (snapTravelers) trip.data.published_snapshot = { ...trip.data.published_snapshot, travelers: snapTravelers };

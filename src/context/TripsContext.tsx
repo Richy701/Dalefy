@@ -5,7 +5,6 @@ import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, repairTripOwnership } from "@/services/firebaseTrips";
-import { notifyTripUpdate } from "@/services/pushNotify";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { describeTripChange, withHistory } from "@/lib/tripHistory";
 import { useOrg } from "@/context/OrgContext";
@@ -120,47 +119,6 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
 /** Demo/seed trip IDs - never push to cloud */
 const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
 
-/** Detect meaningful itinerary changes between old and new trip state */
-function detectTripChanges(old: Trip, next: Trip): string[] {
-  const changes: string[] = [];
-  const oldEvents = new Map(old.events.map(e => [e.id, e]));
-  const nextEvents = new Map(next.events.map(e => [e.id, e]));
-
-  // New events
-  for (const [id, ev] of nextEvents) {
-    if (!oldEvents.has(id)) {
-      changes.push(`Added ${ev.title}`);
-    }
-  }
-
-  // Removed events
-  for (const [id, ev] of oldEvents) {
-    if (!nextEvents.has(id)) {
-      changes.push(`Removed ${ev.title}`);
-    }
-  }
-
-  // Modified events (time, date, location changes)
-  for (const [id, ev] of nextEvents) {
-    const prev = oldEvents.get(id);
-    if (!prev) continue;
-    if (prev.time !== ev.time || prev.date !== ev.date) {
-      changes.push(`${ev.title} has a new time`);
-    } else if (prev.location !== ev.location) {
-      changes.push(`${ev.title} has moved`);
-    } else if (prev.status !== ev.status && ev.type === "flight") {
-      changes.push(`${ev.flightNum || ev.title} is now ${String(ev.status).toLowerCase()}`);
-    }
-  }
-
-  // Trip-level changes (skip media-only changes)
-  if (old.start !== next.start || old.end !== next.end) {
-    changes.push("The trip dates have changed");
-  }
-
-  return changes;
-}
-
 function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailure?: () => void) {
   const prevIds = new Set(prev.map(t => t.id));
   const nextIds = new Set(next.map(t => t.id));
@@ -182,16 +140,6 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailur
             notifyLocalStorage(STORAGE.TRIPS);
             logger.log("syncToCloud", "wrote download URLs back to localStorage for", cleaned.id);
           } catch { /* quota exceeded - cloud has the URLs, will load on next fetch */ }
-        }
-
-        // Notify trip members of itinerary changes
-        if (old && trip.status !== "Draft") {
-          const changes = detectTripChanges(old, trip);
-          if (changes.length > 0) {
-            notifyTripUpdate(trip.id, trip.name, changes).catch(err =>
-              logger.error("syncToCloud", "push notify failed:", err)
-            );
-          }
         }
       }).catch(err => {
         console.error("[syncToCloud] upsert failed:", err);
@@ -434,8 +382,6 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     const saved = await upsertTrip(next, orgId, original);
     qc.setQueryData<Trip[]>(['trips', orgId || user?.id], prev => prev?.map(trip => trip.id === id ? saved : trip));
     flushLocal(prev => prev.map(trip => trip.id === id ? saved : trip));
-    const changes = detectTripChanges(original, saved);
-    if (saved.status !== 'Draft' && changes.length) void notifyTripUpdate(id, saved.name, changes);
   }, [trips, useCloud, updateTrip, editor, orgId, qc, user?.id, flushLocal]);
 
   const addEvent = useCallback((tripId: string, event: TravelEvent) => {

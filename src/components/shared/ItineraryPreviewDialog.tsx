@@ -3,7 +3,7 @@ import { objectPosition } from "@/lib/imagePosition";
 import {
   CalendarDots, MapPin, Users, Compass,
   Clock, X, CurrencyDollar, User,
-  Tag, Paperclip, Info,
+  Tag, Paperclip,
 } from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -16,6 +16,8 @@ import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
+import { topicIcon, factRows } from "@/lib/infoTopics";
+import { PersonAvatar } from "@/components/shared/PersonAvatar";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -81,8 +83,8 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           {brand.logoUrl && (
             <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded object-contain" />
           )}
-          <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
-            {brand.name} · Itinerary {forPrint ? "" : "Preview"}
+          <span className="text-xs font-medium text-white/85">
+            {brand.name} itinerary
           </span>
         </div>
 
@@ -94,8 +96,18 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Pill icon={CalendarDots} forPrint={forPrint}>{dateRange} · {nights} night{nights !== 1 ? "s" : ""}</Pill>
             {trip.destination && <Pill icon={MapPin} forPrint={forPrint}>{trip.destination}</Pill>}
-            {trip.attendees && <Pill icon={Users} className={forPrint ? undefined : "hidden sm:flex"} forPrint={forPrint}>{trip.attendees}</Pill>}
           </div>
+          {(trip.travelers?.length ?? 0) > 0 && (
+            <div className="mt-3 flex items-center gap-2.5">
+              <div className="flex -space-x-2">
+                {trip.travelers!.slice(0, 5).map(t => (
+                  <PersonAvatar key={t.id} avatar={t.avatar} initials={t.initials} name={t.name} className="h-7 w-7 ring-2 ring-black/40" fallbackClassName="bg-secondary text-foreground text-[10px] font-semibold" />
+                ))}
+                {trip.travelers!.length > 5 && <span className="h-7 w-7 rounded-full ring-2 ring-black/40 bg-secondary text-foreground text-[10px] font-semibold flex items-center justify-center">+{trip.travelers!.length - 5}</span>}
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-white">{trip.travelers!.length} traveller{trip.travelers!.length === 1 ? "" : "s"}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -126,17 +138,28 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
       {hasInfo && (
         <div className={cn("px-4 sm:px-8 py-4 sm:py-6 border-b border-border", forPrint ? "bg-white" : "bg-card border-border")}>
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <Info className="h-3.5 w-3.5 text-brand" />
-              <span className="text-[11px] font-medium text-brand">Trip Information</span>
-            </div>
-            <div className={cn("grid gap-3", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
-              {travelerInfo.map(item => (
-                <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-secondary border-slate-100" : "bg-background border-border")}>
-                  <p className={cn("text-xs font-medium mb-1", forPrint ? "text-slate-900" : "text-foreground")}>{item.title}</p>
-                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-muted-foreground" : "text-muted-foreground")}><Linkify text={item.body} /></p>
-                </div>
-              ))}
+            <p className="mb-3 text-base font-semibold tracking-tight text-foreground">Good to know</p>
+            {/* Same cards as the shared link and the app: icon and heading, then one fact per row */}
+            <div className={cn("grid gap-3 items-start", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
+              {travelerInfo.map(item => {
+                const { Icon: TopicIcon, warn } = topicIcon(item.title || "");
+                return (
+                  <div key={item.id} className="rounded-xl border border-border bg-background overflow-hidden" style={forPrint ? { breakInside: "avoid" } : undefined}>
+                    <div className="flex items-center gap-2.5 px-3 py-2.5 sm:px-4">
+                      <span className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", warn ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-secondary text-foreground")}>
+                        <TopicIcon aria-hidden="true" weight="fill" className="h-3.5 w-3.5" />
+                      </span>
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    </div>
+                    {(item.body ? factRows(item.body) : []).map((row, i) => (
+                      <div key={i} className="border-t border-border px-3 py-2.5 sm:px-4 text-xs sm:text-sm leading-relaxed">
+                        {row.label && <p className="font-medium text-foreground">{row.label}</p>}
+                        <p className={row.label ? "text-muted-foreground" : "text-foreground"}><Linkify text={row.text} /></p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -246,6 +269,23 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
   );
 }
 
+const isTbd = (t: string) => /^tb[acd]$/i.test(t.trim());
+
+/** "2026-11-07" and "2026-11-08" read as "7-8 Nov, 1 night"; check-in and check-out times stay as written */
+function stayRange(checkin?: string, checkout?: string): string {
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (checkin && checkout && iso.test(checkin) && iso.test(checkout)) {
+    const a = parseTripDate(checkin), b = parseTripDate(checkout);
+    const n = Math.round((b.getTime() - a.getTime()) / 86400000);
+    const sameMonth = a.getMonth() === b.getMonth();
+    const range = sameMonth
+      ? `${a.getDate()}-${b.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+      : `${a.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} - ${b.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+    return n > 0 ? `${range}, ${n} night${n === 1 ? "" : "s"}` : range;
+  }
+  return `Check in ${checkin || "TBC"}, check out ${checkout || "TBC"}`;
+}
+
 /* ── Pill badge (hero) ── */
 function Pill({ icon: Icon, children, className, forPrint }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string; forPrint?: boolean }) {
   return (
@@ -257,13 +297,13 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
 }
 
 /* ── Metadata chip ── */
-function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
+function MetaChip({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-muted-foreground" : "text-muted-foreground")} />
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
-        <p className={cn("text-[8px] font-medium", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>{label}</p>
-        <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-foreground/80" : "text-foreground/80")}>{value}</p>
+        <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs sm:text-sm font-semibold truncate text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -272,7 +312,7 @@ function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.Componen
 /* ── Event card ── */
 function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?: boolean; tripTz?: string }) {
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
-  const typeLabel = ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : "Activity";
+  const typeLabel = ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : ev.type === "transfer" ? "Transfer" : "Activity";
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4" style={forPrint ? { breakInside: "avoid", pageBreakInside: "avoid" } : undefined}>
@@ -294,11 +334,14 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Time + location */}
           <div className={cn("flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] flex-wrap", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
-            {ev.time && (
+            {ev.time && isTbd(ev.time) && (
+              <span className="flex items-center gap-1 font-semibold"><Clock className="h-3 w-3" weight="regular" />Time to be confirmed</span>
+            )}
+            {ev.time && !isTbd(ev.time) && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
                 {ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}
-                {ev.endTime && <> - {ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</>}
+                {ev.endTime && !isTbd(ev.endTime) && <> - {ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</>}
               </span>
             )}
             {ev.location && (
@@ -332,7 +375,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
               {ev.roomType && <span>{ev.roomType}</span>}
               {(ev.checkin || ev.checkout) && (
                 <span className={forPrint ? "text-muted-foreground" : "text-muted-foreground"}>
-                  {ev.checkin || "-"} → {ev.checkout || "-"}
+                  {stayRange(ev.checkin, ev.checkout)}
                 </span>
               )}
             </div>

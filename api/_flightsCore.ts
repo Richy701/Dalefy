@@ -12,6 +12,9 @@ interface AeroMovement {
   airport?: { iata?: string; name?: string; location?: { lat: number; lon: number } };
   scheduledTime?: { local?: string; utc?: string };
   actualTime?: { local?: string; utc?: string };
+  revisedTime?: { local?: string; utc?: string };
+  predictedTime?: { local?: string; utc?: string };
+  runwayTime?: { local?: string; utc?: string };
   terminal?: string;
   gate?: string;
   baggageBelt?: string;
@@ -151,6 +154,8 @@ export async function lookupFlightNumber(number: string, date: string, key: stri
         toCode: arr.airport?.iata ?? "",
         departTime: formatTime(depTime),
         arriveTime: formatTime(arrTime),
+        revisedTime: formatTime(dep.revisedTime?.local ?? dep.predictedTime?.local ?? ""),
+        revisedEndTime: formatTime(arr.revisedTime?.local ?? arr.predictedTime?.local ?? arr.runwayTime?.local ?? arr.actualTime?.local ?? ""),
         durationMins: duration,
         price: 0,
         stops: 0,

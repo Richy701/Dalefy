@@ -58,6 +58,18 @@ export default async function handler(req: any, res: any) {
           if (!ev[k] && result[k]) { rawEvents[i][k] = result[k]; tripChanged = true; }
         }
 
+        // Revised times and the landing moment are saved quietly: the board shows how late a
+        // flight is, and the belt checks after landing count from arrivedAt
+        // Only a move of 5 minutes or more is saved: every save reloads travellers' apps and makes an
+        // organiser's open editor start again, and estimates drift by a minute between runs
+        for (const k of ["revisedTime", "revisedEndTime"] as const) {
+          const live = timeToMins(result[k]), stored = timeToMins(ev[k]);
+          if (live !== null && (stored === null || Math.abs(live - stored) >= 5)) { rawEvents[i][k] = result[k]; tripChanged = true; }
+          // An estimate the feed has withdrawn goes too, so the flight stops reading as late
+          else if (live === null && ev[k]) { rawEvents[i][k] = ""; tripChanged = true; }
+        }
+        if (statusGroup(result.status) === "arrived" && !ev.arrivedAt) { rawEvents[i].arrivedAt = now.toISOString(); tripChanged = true; }
+
         // Detect changes
         const changes = detectChanges(ev, result);
         if (changes.length === 0) continue;
@@ -170,6 +182,9 @@ interface LiveFlightData {
   baggageBelt: string;
   departTime: string;
   arriveTime: string;
+  /** Best current estimate, "" when AeroDataBox has none */
+  revisedTime: string;
+  revisedEndTime: string;
   depAirport: string;
   arrAirport: string;
   aircraft: string;
@@ -223,6 +238,8 @@ async function lookupFlight(
       baggageBelt: arr.baggageBelt ?? "",
       departTime: formatTime(dep.scheduledTime?.local ?? dep.actualTime?.local ?? ""),
       arriveTime: formatTime(arr.scheduledTime?.local ?? arr.actualTime?.local ?? ""),
+      revisedTime: formatTime(dep.revisedTime?.local ?? dep.predictedTime?.local ?? ""),
+      revisedEndTime: formatTime(arr.revisedTime?.local ?? arr.predictedTime?.local ?? arr.runwayTime?.local ?? arr.actualTime?.local ?? ""),
       depAirport: dep.airport?.iata ?? "",
       arrAirport: arr.airport?.iata ?? "",
       aircraft: f.aircraft?.model ?? "",

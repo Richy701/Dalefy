@@ -12,13 +12,19 @@ interface FlightLiveData {
   status: string;
   departTime: string;
   arriveTime: string;
+  /** Live estimates, "" when there are none */
+  revisedTime: string;
+  revisedEndTime: string;
 }
 
-export function useFlightLiveData(flightNum?: string, date?: string) {
+/** poll: keep refreshing even when the flight is not dated today, e.g. an overnight flight landing this morning */
+export function useFlightLiveData(flightNum?: string, date?: string, poll = false) {
   const [data, setData] = useState<FlightLiveData | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Another flight's gate must not show while this one loads
+    setData(null);
     if (!flightNum || !date) return;
 
     const clean = flightNum.replace(/\s+/g, "");
@@ -42,6 +48,8 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
             status: f.status || "",
             departTime: f.departTime || "",
             arriveTime: f.arriveTime || "",
+            revisedTime: f.revisedTime || "",
+            revisedEndTime: f.revisedEndTime || "",
           });
         })
         .catch(() => {})
@@ -52,7 +60,7 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
     const getInterval = () => {
       const d = new Date();
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return dateStr === today ? 5 * 60 * 1000 : 0;
+      return poll || dateStr === today ? 5 * 60 * 1000 : 0;
     };
 
     doFetch();
@@ -60,7 +68,7 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
     const interval = ms > 0 ? setInterval(doFetch, ms) : null;
 
     return () => { cancelled = true; if (interval) clearInterval(interval); };
-  }, [flightNum, date]);
+  }, [flightNum, date, poll]);
 
   return { data, loading };
 }

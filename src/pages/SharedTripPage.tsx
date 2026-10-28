@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { objectPosition } from "@/lib/imagePosition";
 import { useParams } from "react-router-dom";
-import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, CalendarBlank, Moon, Flag, Info, Bed, ListChecks } from "@phosphor-icons/react";
+import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, Info, Bed, ListChecks } from "@phosphor-icons/react";
 import { tabsListVariants } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
@@ -16,6 +16,8 @@ import { fetchBranding, type OrgBranding } from "@/services/firebaseBranding";
 import { sortEvents } from "@/lib/sortEvents";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { topicIcon, factRows } from "@/lib/infoTopics";
 
 type Brand = ReturnType<typeof resolvedBrand>;
 
@@ -245,12 +247,29 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   );
 }
 
-function OverviewCell({ label, value, icon, prominent = false }: { label: string; value: React.ReactNode; icon: React.ReactNode; prominent?: boolean }) {
+/** Name, dates and who is coming; white on the photo, theme colours without one and in print */
+function HeroText({ trip, nights, travelers, onPhoto = false, titleId }: { trip: Trip; nights: number; travelers: NonNullable<Trip["travelers"]>; onPhoto?: boolean; titleId?: string }) {
+  const quiet = onPhoto ? "text-white/85" : "text-muted-foreground";
   return (
-    <div className="min-w-0 px-4 py-5 sm:px-6 sm:py-6">
-      <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">{icon}{label}</p>
-      <p className={`mt-3 tracking-tight text-foreground ${prominent ? "text-xl sm:text-2xl font-semibold" : "text-base font-medium"}`}>{value}</p>
-    </div>
+    <>
+      {trip.destination && <p className={`text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] ${quiet}`}>{trip.destination}</p>}
+      <h1 id={titleId} className={`mt-2 break-words text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05] ${onPhoto ? "text-white" : "text-foreground"}`}>{trip.name}</h1>
+      <p className={`mt-3 text-sm sm:text-base ${onPhoto ? "text-white/90" : "text-foreground"}`}>{tripPhase(trip.start, trip.end)}, {nights + 1}-day trip</p>
+      <p className={`mt-1 text-sm ${quiet}`}>{fmtRange(trip.start, trip.end)}</p>
+      {travelers.length > 0 && (
+        <div className="mt-4 flex items-center justify-center gap-3 print:hidden">
+          <div className="flex -space-x-2">
+            {travelers.slice(0, 5).map(t => (
+              <PersonAvatar key={t.id} avatar={t.avatar} initials={t.initials} name={t.name} className={`h-8 w-8 ring-2 ${onPhoto ? "ring-black/40" : "ring-background"}`} fallbackClassName="bg-secondary text-foreground text-[10px] font-semibold" />
+            ))}
+            {travelers.length > 5 && (
+              <span className={`h-8 w-8 rounded-full ring-2 flex items-center justify-center text-[10px] font-semibold bg-secondary text-foreground ${onPhoto ? "ring-black/40" : "ring-background"}`}>+{travelers.length - 5}</span>
+            )}
+          </div>
+          <p className={`text-sm font-medium ${onPhoto ? "text-white" : "text-foreground"}`}>{travelers.length} traveller{travelers.length === 1 ? "" : "s"}</p>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -334,23 +353,21 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </Button>
         </header>
 
-        <section aria-labelledby="trip-title" className="flex flex-col items-start gap-6 py-6 sm:py-8 print:block">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">Travel itinerary</p>
-            <h1 id="trip-title" className="mt-2 max-w-[20ch] break-words text-3xl sm:text-4xl xl:text-4xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
-            {trip.destination && <p className="mt-4 text-base sm:text-lg text-muted-foreground">{trip.destination}</p>}
-            <p className="mt-2 text-sm sm:text-base text-muted-foreground">{fmtRange(trip.start, trip.end)}</p>
+        {/* Hero: the trip's photo with its name over it, like the trip screen in the app */}
+        <section aria-labelledby="trip-title" className="py-6 sm:py-8">
+          {trip.image ? (
+            <div className="relative overflow-hidden rounded-xl bg-secondary print:hidden">
+              <img src={trip.image} alt="" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="w-full aspect-[4/5] sm:aspect-[2/1] lg:aspect-[5/2] max-h-[560px] object-cover" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 px-5 pb-6 sm:px-10 sm:pb-10 text-center">
+                <HeroText trip={trip} nights={nights} travelers={travelers} onPhoto titleId="trip-title" />
+              </div>
+            </div>
+          ) : null}
+          <div className={trip.image ? "hidden print:block" : "text-center"}>
+            <HeroText trip={trip} nights={nights} travelers={travelers} titleId={trip.image ? undefined : "trip-title"} />
           </div>
-          {trip.image && <img src={trip.image} alt="" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[3/1] max-h-[420px] rounded-xl object-cover bg-secondary print:hidden" />}
         </section>
-
-        {/* Overview */}
-        <div className="overflow-hidden rounded-xl border border-border border-t-2 border-t-brand bg-card grid grid-cols-2 sm:grid-cols-4 [&>div:nth-child(even)]:border-l [&>div:nth-child(even)]:border-border [&>div:nth-child(n+3)]:border-t [&>div:nth-child(n+3)]:border-border sm:[&>div:nth-child(n+3)]:border-t-0 sm:[&>div+div]:border-l sm:[&>div+div]:border-border">
-          <OverviewCell label="Departure" value={fmtShort(trip.start)} icon={<AirplaneTilt aria-hidden="true" className="h-4 w-4" />} prominent />
-          <OverviewCell label="Return" value={fmtShort(trip.end)} icon={<CalendarBlank aria-hidden="true" className="h-4 w-4" />} prominent />
-          <OverviewCell label="Duration" value={`${nights} night${nights !== 1 ? "s" : ""}`} icon={<Moon aria-hidden="true" className="h-4 w-4" />} prominent />
-          <OverviewCell label="Your trip" value={tripPhase(trip.start, trip.end)} icon={<Flag aria-hidden="true" className="h-4 w-4" />} />
-        </div>
 
         <nav aria-label="Itinerary sections" className="sticky top-0 z-10 -mx-4 mt-5 overflow-x-auto bg-background px-4 py-3 sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10 xl:-mx-14 xl:px-14 print:hidden">
           <div className={tabsListVariants({ className: "gap-1 p-1" })}>
@@ -394,28 +411,44 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         {trip.info && trip.info.length > 0 && (
           <section id="information" className="min-w-0 scroll-mt-24">
             <SectionTitle>Good to know</SectionTitle>
-            <div className="rounded-xl border border-border bg-card divide-y divide-border">
-              {trip.info.map(item => (
-                <div key={item.id} className="p-4 sm:p-5 print:break-inside-avoid">
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  {item.body && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>}
-                  {item.deadline && <p className="mt-2 text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
-                  {item.actionUrl && (
-                    <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                      {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                  {item.documents && item.documents.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                      {item.documents.map(doc => (
-                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                          <Paperclip className="h-3.5 w-3.5" />{doc.name}
-                        </a>
-                      ))}
+            <div className="grid gap-3 lg:grid-cols-2 items-start">
+              {trip.info.map(item => {
+                const { Icon, warn } = topicIcon(item.title || "");
+                const rows = item.body ? factRows(item.body) : [];
+                return (
+                  <div key={item.id} className="rounded-xl border border-border bg-card overflow-hidden print:break-inside-avoid">
+                    <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                      <span className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${warn ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-secondary text-foreground"}`}>
+                        <Icon aria-hidden="true" weight="fill" className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                        {item.deadline && <p className="text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {rows.map((row, i) => (
+                      <div key={i} className="border-t border-border px-4 py-3 sm:px-5 text-sm leading-relaxed">
+                        {row.label && <p className="font-medium text-foreground">{row.label}</p>}
+                        <p className={row.label ? "text-muted-foreground" : "text-foreground"}><Linkify text={row.text} /></p>
+                      </div>
+                    ))}
+                    {(item.actionUrl || (item.documents?.length ?? 0) > 0) && (
+                      <div className="border-t border-border px-4 py-3 sm:px-5 flex flex-wrap gap-x-4 gap-y-1">
+                        {item.actionUrl && (
+                          <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                            {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        {item.documents?.map(doc => (
+                          <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                            <Paperclip className="h-3.5 w-3.5" />{doc.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

@@ -62,6 +62,7 @@ export function describeTripChange(before: Trip, updates: Partial<Trip>): string
   if (updates.organizer !== undefined && JSON.stringify(updates.organizer) !== JSON.stringify(before.organizer)) details.push("organiser");
   if (details.length) parts.push(`Changed ${details.join(", ")}`);
   if (updates.info !== undefined && JSON.stringify(updates.info) !== JSON.stringify(before.info)) parts.push("Updated information");
+  else if ("info" in updates && updates.info === undefined && before.info?.length) parts.push("Removed all information");
   if (updates.documents !== undefined && JSON.stringify(updates.documents) !== JSON.stringify(before.documents)) parts.push("Updated documents");
   if (updates.tasks !== undefined && JSON.stringify(updates.tasks) !== JSON.stringify(before.tasks)) parts.push("Updated tasks");
   if (updates.media !== undefined && JSON.stringify(updates.media) !== JSON.stringify(before.media)) parts.push("Updated photos");

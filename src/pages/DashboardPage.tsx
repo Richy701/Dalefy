@@ -49,6 +49,7 @@ import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
+import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
 
 
 const EVENT_COLORS = {
@@ -1075,46 +1076,8 @@ export function DashboardPage() {
                 );
               })()}
 
-              {/* Upcoming flights across every trip */}
-              {(() => {
-                const todayKey = new Date().toISOString().slice(0, 10);
-                const flights = trips
-                  .flatMap(t => t.events.filter(e => e.type === "flight" && e.date && e.date >= todayKey).map(e => ({ ev: e, tripId: t.id, tripName: t.name })))
-                  .sort((a, b) => (a.ev.date + (a.ev.time || "")).localeCompare(b.ev.date + (b.ev.time || "")))
-                  .slice(0, 5);
-                if (flights.length === 0) return null;
-                return (
-                  <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex-1 flex flex-col">
-                    <div className="flex items-center justify-between px-5 pt-5 pb-2">
-                      <p className="text-base font-semibold tracking-tight text-foreground">Upcoming flights</p>
-                      <p className="text-xs text-muted-foreground">{flights.length} next</p>
-                    </div>
-                    <div className="flex flex-col pb-2">
-                      {flights.map(({ ev, tripId, tripName }) => {
-                        const route = ev.depAirport && ev.arrAirport ? `${ev.depAirport} → ${ev.arrAirport}` : ev.location || "";
-                        return (
-                          <button
-                            key={ev.id}
-                            type="button"
-                            onClick={() => navigate(`/trip/${tripId}`)}
-                            className="flex items-center gap-3 px-5 py-2.5 text-left hover:bg-secondary/60 transition-colors focus-visible:outline-none focus-visible:bg-secondary/60"
-                          >
-                            <CategoryDot type="flight" size="sm" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-foreground truncate">{[ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{[route, tripName].filter(Boolean).join(" · ")}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-xs font-medium text-foreground tabular-nums">{shortDay(ev.date)}</p>
-                              {ev.time && !/^tb[acd]$/i.test(ev.time) && <p className="text-[11px] text-muted-foreground tabular-nums">{ev.time.split(" ")[0]}</p>}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Every trip's flights, live: today's statuses, tomorrow a click away */}
+              <FlightsBoard trips={trips} directory={customTravelers} onOpen={tripId => navigate(`/trip/${tripId}`)} />
 
               {/* Getting travellers into the next trip is the job; put the PIN and link where they are needed */}
               {upcomingCards[0] && (() => {

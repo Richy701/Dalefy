@@ -9,6 +9,8 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   CaretRight, Calendar, Clock, Check, Phone,
   Warning, WarningCircle, ArrowSquareOut, Paperclip, FileText,
+  IdentificationCard, ShieldCheck, FirstAid, Airplane, TShirt, Users, Info, Money, Suitcase, Handshake, ListChecks, Bed, Wallet, Globe,
+  type Icon,
 } from "phosphor-react-native";
 import { RichText } from "@/components/ui/RichText";
 import { parseContacts } from "@/shared/richText";
@@ -162,6 +164,41 @@ function splitInlineLabels(text: string): { label: string; body: string }[] | nu
   return out.length >= 2 ? out : null;
 }
 
+/** The icon at the head of a topic's card: by layout first, then by what the title is about */
+function topicIcon(title: string, kind: TopicKind): { Icon: Icon; warn: boolean } {
+  const t = title.toLowerCase();
+  if (/important|please note|warning|notice/.test(t)) return { Icon: WarningCircle, warn: true };
+  if (kind === "todo") return { Icon: ListChecks, warn: false };
+  if (kind === "stay") return { Icon: Bed, warn: false };
+  // Each contact row already carries a phone, so the heading names the people
+  if (kind === "contacts") return { Icon: Users, warn: false };
+  if (kind === "costs") return { Icon: Wallet, warn: false };
+  if (/passport|visa|document|\bid\b/.test(t)) return { Icon: IdentificationCard, warn: false };
+  if (/insurance|medical|health|vaccin/.test(t)) return { Icon: FirstAid, warn: false };
+  if (/fcdo|advice|safety|security/.test(t)) return { Icon: ShieldCheck, warn: false };
+  if (/flight|airport|airline/.test(t)) return { Icon: Airplane, warn: false };
+  if (/dress|clothing|attire/.test(t)) return { Icon: TShirt, warn: false };
+  if (/rooming|group|guest/.test(t)) return { Icon: Users, warn: false };
+  if (/behaviour|behavior|etiquette|guideline|conduct|custom/.test(t)) return { Icon: Handshake, warn: false };
+  if (/money|currency|cash|tipping/.test(t)) return { Icon: Money, warn: false };
+  if (/packing|luggage|baggage/.test(t)) return { Icon: Suitcase, warn: false };
+  if (/country|local|destination|culture/.test(t)) return { Icon: Globe, warn: false };
+  return { Icon: Info, warn: false };
+}
+
+const ABBREVIATION = /\b(?:Dr|Mr|Mrs|Ms|Mx|St|Mt|No|Nos|Tel|approx|incl|excl|vs|etc|e\.g|i\.e|a\.m|p\.m)\.$/i;
+
+/** Sentences as the organiser wrote them, so each fact gets its own row; "Dr. Smith" stays whole */
+function sentences(text: string): string[] {
+  const out: string[] = [];
+  for (const piece of text.split(/(?<=[.!?])\s+(?=[A-Z(])/)) {
+    const last = out[out.length - 1];
+    if (last && ABBREVIATION.test(last)) out[out.length - 1] = `${last} ${piece}`;
+    else out.push(piece);
+  }
+  return out.map(sn => sn.trim()).filter(Boolean);
+}
+
 function getStatus(item: TripInfo, now = new Date()): InfoStatus {
   if (item.completed) return "done";
   if (!item.deadline) return null;
@@ -214,7 +251,7 @@ export default function InfoScreen() {
   const photoPage = !!coverImage;
   const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
   const isDark = photoPage || themeDark;
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const styles = useMemo(() => makeStyles(C, photoPage), [C, photoPage]);
 
   const safeBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -286,6 +323,7 @@ export default function InfoScreen() {
   const renderTopic = (item: TripInfo) => {
     const kind = topicKind(item.title || "");
     const heading = TOPIC_HEADING[kind] ?? item.title ?? "Information";
+    const { Icon: TopicIcon, warn } = topicIcon(item.title || "", kind);
     const sc = statusConfig(getStatus(item), item.deadline, C);
     const body = item.body ?? "";
     const facts = kind === "costs" && body ? extractFacts(body) : [];
@@ -320,14 +358,21 @@ export default function InfoScreen() {
             setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true }), 80);
           } : undefined}
         >
-          <Text
-            style={styles.groupTitle}
-            accessibilityRole="header"
-            // Long-press Share and Copy, reachable from VoiceOver too
-            accessibilityActions={[{ name: "share", label: "Share" }, { name: "copy", label: "Copy text" }]}
-            onAccessibilityAction={(e) => shareMenu(item).onPress({ nativeEvent: { index: e.nativeEvent.actionName === "share" ? 0 : 1 } })}
-          >{heading}</Text>
-          {sc ? <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text> : null}
+          <View style={styles.topicHeader}>
+            <View style={[styles.topicIcon, warn && { backgroundColor: C.amberDim }]}>
+              <TopicIcon size={17} color={warn ? C.amberText : C.textPrimary} weight="fill" />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={styles.groupTitle}
+                accessibilityRole="header"
+                // Long-press Share and Copy, reachable from VoiceOver too
+                accessibilityActions={[{ name: "share", label: "Share" }, { name: "copy", label: "Copy text" }]}
+                onAccessibilityAction={(e) => shareMenu(item).onPress({ nativeEvent: { index: e.nativeEvent.actionName === "share" ? 0 : 1 } })}
+              >{heading}</Text>
+              {sc ? <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text> : null}
+            </View>
+          </View>
 
           {receipt.length > 0 && (
             <View style={styles.card}>
@@ -416,13 +461,9 @@ export default function InfoScreen() {
             </View>
           )}
           {contacts && contacts.notes.length > 0 && (
-            contacts.notes.join(" ").length > 160 ? (
-              <View style={styles.prose}>
-                <LinkedText text={contacts.notes.join(". ") + "."} style={styles.bodyText} linkColor={C.tealText} />
-              </View>
-            ) : (
-              <LinkedText text={contacts.notes.join(". ") + "."} style={styles.caption} linkColor={C.tealText} />
-            )
+            <View style={styles.cardText}>
+              <LinkedText text={contacts.notes.join(". ") + "."} style={contacts.notes.join(" ").length > 160 ? styles.bodyText : styles.caption} linkColor={C.tealText} />
+            </View>
           )}
 
           {pairs.length > 0 && (
@@ -469,30 +510,35 @@ export default function InfoScreen() {
           )}
 
           {prose && kind === "text" ? (
-            <View style={styles.prose}>
-              {(splitInlineLabels(prose) ?? [{ label: "", body: prose }]).map((para, i) => (
-                <View key={i} style={i > 0 && styles.paragraph}>
-                  {para.label ? <Text style={styles.proseLabel}>{para.label}</Text> : null}
-                  <LinkedText
-                    text={para.body}
-                    style={styles.bodyText}
-                    linkColor={C.tealText}
-                    stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
-                  />
-                </View>
-              ))}
+            // One fact per row: every sentence gets its own, and a labelled note's label sits on its first
+            <View style={styles.card}>
+              {(splitInlineLabels(prose) ?? [{ label: "", body: prose }])
+                .flatMap(para => sentences(para.body).map((body, j) => ({ label: j === 0 ? para.label : "", body })))
+                .map((row, i) => (
+                  <View key={i} style={[styles.factRow, i > 0 && styles.rowBorder]}>
+                    {row.label ? <Text style={styles.proseLabel}>{row.label}</Text> : null}
+                    <LinkedText
+                      text={row.body}
+                      style={styles.factText}
+                      linkColor={C.tealText}
+                      stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+                    />
+                  </View>
+                ))}
             </View>
           ) : prose ? (
-            <LinkedText
-              text={prose}
-              style={kind === "text" ? styles.bodyText : styles.caption}
-              linkColor={C.tealText}
-              stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
-            />
+            <View style={styles.cardText}>
+              <LinkedText
+                text={prose}
+                style={styles.caption}
+                linkColor={C.tealText}
+                stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+              />
+            </View>
           ) : null}
 
           {item.notes?.map((note, i) => (
-            <View key={i} style={styles.noteCallout}>
+            <View key={i} style={[styles.noteCallout, { margin: S.sm, marginTop: i > 0 ? 0 : S.sm }]}>
               <Warning size={14} color={C.amberText} weight="fill" style={{ marginTop: 3 }} />
               <Text style={styles.noteCalloutText}>{note}</Text>
             </View>
@@ -530,7 +576,7 @@ export default function InfoScreen() {
             </View>
           )}
 
-          {item.source ? <Text style={styles.sourceText}>From {item.source}</Text> : null}
+          {item.source ? <Text style={[styles.sourceText, styles.cardText]}>From {item.source}</Text> : null}
         </View>
       </ContextMenu>
     );
@@ -565,21 +611,27 @@ export default function InfoScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, photoPage: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S["2xl"] },
+    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.md },
     intro: { gap: S.xs2 },
     introName: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
     introSub: { fontSize: T.base, color: C.textSecondary },
-    topic: { gap: S.sm },
+    // Each topic is one inset card: icon and heading on top, its facts as rows underneath
+    topic: { borderRadius: R.xl, overflow: "hidden", backgroundColor: photoPage ? "rgba(255,255,255,0.08)" : C.card },
+    topicHeader: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.sm2 },
+    topicIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" },
     groupTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     caption: { fontSize: T.base, color: C.textSecondary, lineHeight: 22 },
 
-    // Boxless: rows run to the page edge (undoing the content gutter) and split with hairlines
-    card: { marginHorizontal: -S.md },
+    // A group of rows inside the topic card, set off from the heading by a hairline
+    card: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+    cardText: { paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+    factRow: { paddingHorizontal: S.md, paddingVertical: S.sm2, gap: 2 },
+    factText: { fontSize: T.base, color: C.textPrimary, lineHeight: 22 },
     listRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
       paddingHorizontal: S.md, paddingVertical: S.sm2, minHeight: 56,
@@ -621,9 +673,6 @@ function makeStyles(C: ThemeColors) {
 
     // Quiet running text: the heading leads, links and numbers carry the teal
     bodyText: { fontSize: T.base, color: C.textSecondary, lineHeight: 22 },
-    // A paragraph sits closer to its heading than the topic gap, so the two read as one
-    prose: { marginTop: S.xs - S.sm },
-    paragraph: { marginTop: S.sm },
     proseLabel: { fontSize: T.base, fontWeight: T.medium, color: C.textPrimary, lineHeight: 22 },
   });
 }

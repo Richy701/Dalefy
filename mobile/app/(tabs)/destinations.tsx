@@ -33,10 +33,11 @@ import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
-import { getDestinationTz } from "@/shared/timezones";
+import { getDestinationTz, IATA_TZ } from "@/shared/timezones";
 import { PreTripSheetContent, PostTripSheetContent, SectionHeader, StayCard, LinkRow, tripStays } from "@/components/TodayPreTrip";
 import { sheetStyles as ps } from "@/components/todaySheetStyles";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
+import { ArrivalSection, arrivingFlight, landingTime, afterLanding, ARRIVAL_WINDOW_MS } from "@/components/TodayArrival";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext } from "@/shared/today";
@@ -397,7 +398,26 @@ export default function TodayScreen() {
   const showLocalTime = !!destTz && destTz !== deviceTz;
   const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: destTz, hour: "2-digit", minute: "2-digit" }).format(now);
   const nextFlight = next?.event.type === "flight" ? next.event : null;
-  const { data: nextFlightLive } = useFlightLiveData(nextFlight?.flightNum, nextFlight?.date);
+  // One live lookup: the flight that may have just landed, else the next one. A flight whose arrival is
+  // over (or that was cancelled or diverted) is let go, so the next flight gets the live data and phones
+  // stop polling a flight that has finished.
+  const [finishedFlights, setFinishedFlights] = useState<Set<string>>(() => new Set());
+  const landingFlight = useMemo(() => activeTrip ? arrivingFlight(visibleEvents.filter(e => !finishedFlights.has(e.id)), destTz, now) : null, [activeTrip, visibleEvents, finishedFlights, destTz, now]);
+  const liveFlight = landingFlight ?? nextFlight;
+  const { data: liveFlightData } = useFlightLiveData(liveFlight?.flightNum, liveFlight?.date, !!landingFlight);
+  const nextFlightLive = liveFlight === nextFlight ? liveFlightData : null;
+  const landedAt = landingFlight ? landingTime(landingFlight, liveFlightData, destTz, now) : null;
+  const landingStatus = (liveFlightData?.status || landingFlight?.status || "").toLowerCase();
+  const landingDone = !!landingFlight && ((landedAt != null && now - landedAt > ARRIVAL_WINDOW_MS) || /cancel|divert/.test(landingStatus));
+  useEffect(() => {
+    if (landingDone && landingFlight) setFinishedFlights(prev => new Set(prev).add(landingFlight.id));
+  }, [landingDone, landingFlight]);
+  const arrival = landingFlight && landedAt != null && now - landedAt <= ARRIVAL_WINDOW_MS
+    ? { flight: landingFlight, landedAt, then: afterLanding(visibleEvents, landingFlight, landedAt, destTz, now) }
+    : null;
+  // Welcome to the destination only when the flight lands in it, not on the way home
+  const arrivalTz = arrival ? arrival.flight.arrTz ?? (arrival.flight.arrAirport ? IATA_TZ[arrival.flight.arrAirport] : undefined) ?? destTz : destTz;
+  const arrivalPlace = arrival && displayTrip?.destination && arrivalTz === destTz ? displayTrip.destination.split(",")[0].trim() : null;
 
   // No trips at all — empty state
   if (!displayTrip) {
@@ -574,7 +594,21 @@ export default function TodayScreen() {
         ) : (
         <>
         {/* Same sections and rows as the sheet before the trip: what's next, the day, then the trip */}
-        {next && (
+        {arrival ? (
+          <ArrivalSection
+            tripId={displayTrip.id}
+            flight={arrival.flight}
+            live={liveFlightData}
+            landedAt={arrival.landedAt}
+            then={arrival.then}
+            place={arrivalPlace}
+            timeZone={arrivalTz}
+            weather={arrivalPlace ? weather : null}
+            title={ev => normaliseTitle(ev.title, ev.type, ev.transferType)}
+            now={now}
+            C={C}
+          />
+        ) : next && (
           <FadeIn delay={0}>
             <SectionHeader
               title={next.phase === "current" ? "Happening now" : "Next up"}
@@ -616,7 +650,7 @@ export default function TodayScreen() {
           <SectionHeader
             title={`Today, ${new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`}
             C={C}
-            first={!next}
+            first={!next && !arrival}
           />
         </FadeIn>
 

@@ -1,6 +1,9 @@
 /** A stale editor may change untouched fields, but must never overwrite a newer edit to the same field. */
 export function tripPatch(before: Record<string, unknown>, desired: Record<string, unknown>, current: Record<string, unknown>) {
-  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  // Field order is not a change: the same cards written by another tool can list their fields differently
+  const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable)
+    : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, stable((v as Record<string, unknown>)[k])])) : v;
+  const same = (a: unknown, b: unknown) => JSON.stringify(stable(a ?? null)) === JSON.stringify(stable(b ?? null));
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(desired)) {
     if (same(before[key], value)) continue;

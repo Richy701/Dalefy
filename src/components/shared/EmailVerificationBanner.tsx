@@ -15,6 +15,22 @@ export function EmailVerificationBanner() {
     return () => clearInterval(t);
   }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The link opens in another tab; coming back here checks again, so "I verified" is only a fallback
+  const pending = !!user && !emailVerified && user.id !== "demo" && (user.id?.length ?? 0) >= 20;
+  useEffect(() => {
+    if (!pending) return;
+    // Focus and visibilitychange both fire on one return to the tab: one check is enough, and offline it just waits
+    let last = 0;
+    const check = () => {
+      if (document.visibilityState !== "visible" || Date.now() - last < 3000) return;
+      last = Date.now();
+      refreshEmailVerified().catch(() => {});
+    };
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => { window.removeEventListener("focus", check); document.removeEventListener("visibilitychange", check); };
+  }, [pending, refreshEmailVerified]);
+
   if (!user || emailVerified || user.id === "demo" || (user.id?.length ?? 0) < 20) return null;
 
   const handleResend = async () => {
