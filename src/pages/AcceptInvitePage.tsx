@@ -187,7 +187,7 @@ export function AcceptInvitePage() {
                 </p>
                 <Button
                   onClick={handleSignIn}
-                  className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
+                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
                 >
                   Sign in to accept
                 </Button>
@@ -200,7 +200,7 @@ export function AcceptInvitePage() {
                 <Button
                   onClick={handleAccept}
                   disabled={busy || status === "accepting"}
-                  className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
+                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
                 >
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
@@ -229,7 +229,7 @@ export function AcceptInvitePage() {
             <Button
               onClick={handleAccept}
               disabled={busy}
-              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
+              className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
             >
               I've verified, continue
             </Button>
@@ -252,7 +252,7 @@ export function AcceptInvitePage() {
             <Button
               onClick={handleSwitchAccount}
               disabled={busy}
-              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
+              className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
             >
               Sign out and switch account
             </Button>
@@ -273,7 +273,7 @@ export function AcceptInvitePage() {
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={() => navigate("/dashboard")}
-              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
+              className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
             >
               Go to Dashboard
             </Button>

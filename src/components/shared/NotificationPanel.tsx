@@ -131,7 +131,7 @@ export function NotificationPanel() {
         <PopoverTrigger className="hidden sm:flex h-10 w-10 rounded-xl bg-card hover:bg-secondary text-muted-foreground hover:text-brand relative border border-border shadow-sm items-center justify-center transition-colors">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-brand text-black text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-[#111111]">
+            <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-primary text-primary-foreground text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-[#111111]">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -148,7 +148,7 @@ export function NotificationPanel() {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-brand text-black text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-[#111111]">
+          <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-primary text-primary-foreground text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-[#111111]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

@@ -146,7 +146,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               <Button
                 onClick={handleSign}
                 disabled={signing}
-                className="w-full h-16 rounded-xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-lg shadow-brand/25 disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
+                className="w-full h-16 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-black text-xs uppercase tracking-[0.25em] disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
               >
                 {signing ? (
                   <><SpinnerGap className="h-5 w-5 animate-spin mr-3" /> Recording...</>

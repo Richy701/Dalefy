@@ -7,7 +7,7 @@ import {
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText
 } from "@phosphor-icons/react";
 import { lifecycleLabel, liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
@@ -52,6 +52,9 @@ import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
 import { NextTripSide } from "@/components/dashboard/NextTripSide";
+import { TripCard } from "@/components/dashboard/TripCard";
+import { NeedsAttention, type AttentionItem } from "@/components/dashboard/NeedsAttention";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 
 const EVENT_COLORS = {
@@ -254,6 +257,12 @@ export function DashboardPage() {
       );
   }, [trips, archivedTrips, showArchived, searchQuery]);
 
+  // The grid shows current and upcoming trips; past ones sit in a folded row underneath
+  const todayStart = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const currentTrips = useMemo(() => filteredTrips.filter(t => parseTripDate(t.end) >= todayStart), [filteredTrips, todayStart]);
+  const pastTrips = useMemo(() => filteredTrips.filter(t => parseTripDate(t.end) < todayStart).reverse(), [filteredTrips, todayStart]);
+  const [showPast, setShowPast] = useState(false);
+
   const toggleArchived = (trip: Trip) => {
     if (trip.archivedAt) {
       updateTrip(trip.id, { archivedAt: undefined });
@@ -310,7 +319,8 @@ export function DashboardPage() {
   const [customTravelers] = useDirectoryTravelers();
 
   const attentionItems = useMemo(() => {
-    const items: Array<{ tripId: string; tripName: string; message: string; severity: "warn" | "info" }> = [];
+    // The page's own checks; drafts, invites, tasks and flights are worked out in NeedsAttention
+    const items: AttentionItem[] = [];
     const now = new Date();
 
     // Compliance docs per traveler, same precedence as TravelersPage:
@@ -333,19 +343,17 @@ export function DashboardPage() {
           if (docs?.some(d => d.status === "Pending" || d.status === "Expired")) flagged++;
         });
         if (flagged > 0) {
-          items.push({ tripId: trip.id, tripName: trip.name, message: `${flagged} traveler${flagged === 1 ? "" : "s"} with outstanding docs - departs in ${days}d`, severity: "warn" });
-          return;
+          items.push({ key: `${trip.id}-docs`, tripId: trip.id, tripName: trip.name, icon: Warning, urgent: true, to: "/travelers", action: "Review",
+            message: `${flagged} traveller${flagged === 1 ? "" : "s"} with documents outstanding, departs in ${days} days` });
         }
       }
 
-      if (trip.status === "Draft" && days > 0 && days <= 30)
-        items.push({ tripId: trip.id, tripName: trip.name, message: `Draft - departs in ${days}d`, severity: "warn" });
-      else if (trip.events.length === 0 && end >= now)
-        items.push({ tripId: trip.id, tripName: trip.name, message: "No events added", severity: "info" });
+      if (trip.events.length === 0 && end >= now)
+        items.push({ key: `${trip.id}-empty`, tripId: trip.id, tripName: trip.name, icon: FileText, to: `/trip/${trip.id}`, action: "Open", message: "No events added yet" });
       else if (trip.status === "In Progress" && end < now)
-        items.push({ tripId: trip.id, tripName: trip.name, message: "Past end date - still active", severity: "warn" });
+        items.push({ key: `${trip.id}-ended`, tripId: trip.id, tripName: trip.name, icon: Warning, to: `/trip/${trip.id}`, action: "Open", message: "Past its end date but still active" });
     });
-    return items.slice(0, 3);
+    return items;
   }, [trips, complianceOverrides, customTravelers, isDemo]);
 
   // Unfinished tasks on every live trip: overdue first, then by due date, then the undated ones
@@ -523,7 +531,7 @@ export function DashboardPage() {
                 onClick={() => setInviteOpen(true)}
                 className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
               >
-                <Users className="h-4 w-4" /> Invite
+                <Users className="h-4 w-4" /> Invite team
               </button>
             )}
             <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold h-9 px-4 transition-opacity gap-1.5 text-sm shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
@@ -567,7 +575,7 @@ export function DashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand text-primary-foreground px-5 py-2.5 text-xs font-medium hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-xs font-medium hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" /> New Trip
               </button>
@@ -623,342 +631,73 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* ── Next Up - cross-trip agenda ── */}
-          {nextEvents.length > 0 && (
-            <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden">
-              <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
-                <div>
-                  <p className="text-lg font-semibold tracking-tight text-foreground leading-none">Next up</p>
-                  <p className="text-xs text-muted-foreground mt-1">Across all your trips</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-secondary border-t border-border">
-                {nextEvents.map(({ event: ev, tripName, tripId }) => {
-                  return (
-                    <button
-                      key={ev.id}
-                      type="button"
-                      onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
-                      data-compact-cell
-                      className="bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
-                    >
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
-                        <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}</span>
-                      </div>
-                      <p className="text-sm font-medium text-foreground leading-tight line-clamp-1 group-hover:text-brand transition-colors">
-                        {ev.title}
-                      </p>
-                      {ev.location && (
-                        <p className="text-[10px] font-medium text-muted-foreground truncate mt-1 flex items-center gap-1">
-                          <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between mt-2.5 gap-2">
-                        <p className="text-[11px] font-medium text-muted-foreground truncate">{tripName}</p>
-                        {ev.time && <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* ── Needs attention: everything waiting on the organiser ── */}
+          <NeedsAttention trips={trips} extra={attentionItems} />
 
           {/* ── Two-column layout ── */}
           <div data-compact-grid className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-stretch">
 
             {/* ══ LEFT COLUMN ══ */}
             <div className="flex flex-col gap-8 min-w-0">
-
-              {/* ── Upcoming Trip ── */}
-              <section>
-                <div data-compact-section-head className="mb-4">
-                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Upcoming trips</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Your next departures</p>
-                </div>
-
-                {upcomingCards.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {upcomingCards.map(trip => {
+              {/* ── Next Up - cross-trip agenda ── */}
+              {nextEvents.length > 0 && (
+                <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden">
+                  <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
+                    <div>
+                      <p className="text-lg font-semibold tracking-tight text-foreground leading-none">Next up</p>
+                      <p className="text-xs text-muted-foreground mt-1">Across all your trips</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-secondary border-t border-border">
+                    {nextEvents.map(({ event: ev, tripName, tripId }) => {
                       return (
                         <button
-                          key={trip.id}
-                          onClick={() => handleOpenTrip(trip)}
-                          className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          key={ev.id}
+                          type="button"
+                          onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
+                          data-compact-cell
+                          className="bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                         >
-                          <img src={trip.image} alt="" decoding="async" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
-                          <div className="text-left flex-1 min-w-0">
-                            <p className="text-sm font-semibold tracking-tight text-foreground leading-none truncate">
-                              {trip.name}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs font-medium text-muted-foreground">
-                              <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
-                              <span className="text-muted-foreground">·</span>
-                              <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
-                              {travellerCount(trip) > 0 && (
-                                <>
-                                  <span className="text-muted-foreground">·</span>
-                                  <span className="flex items-center gap-1 whitespace-nowrap"><Users className="h-2.5 w-2.5 shrink-0" />{travellerCount(trip)}</span>
-                                </>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
+                            <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}</span>
                           </div>
-                          <CaretRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                          <p className="text-sm font-medium text-foreground leading-tight line-clamp-1 group-hover:text-brand transition-colors">
+                            {ev.title}
+                          </p>
+                          {ev.location && (
+                            <p className="text-[10px] font-medium text-muted-foreground truncate mt-1 flex items-center gap-1">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between mt-2.5 gap-2">
+                            <p className="text-[11px] font-medium text-muted-foreground truncate">{tripName}</p>
+                            {ev.time && <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
+                          </div>
                         </button>
                       );
                     })}
                   </div>
-                ) : (
-                  <div className="bg-card border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
-                    <p className="text-xs font-medium">No upcoming trips</p>
-                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-link hover:underline">Create one →</button>
-                  </div>
-                )}
-              </section>
-
-              {/* ── For your X Trip - Place Cards ── */}
-              {spotlightTrip && (
-                <section className="flex-1 flex flex-col min-h-0">
-                  <div data-compact-section-head className="mb-1">
-                    <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                      For your {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]} trip
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Key events on your itinerary</p>
-                  </div>
-
-                  {spotlightPlaces.length > 0 ? (
-                    <div data-compact-place-list className="mt-4 flex-1 flex flex-col gap-3">
-                      {spotlightPlaces.map((ev) => {
-                        const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
-                        const hasImg = !!ev.image;
-                        const typeLabel =
-                          ev.type === "flight"    ? "Flight"
-                          : ev.type === "hotel"   ? "Stay"
-                          : ev.type === "dining"  ? "Dining"
-                          : ev.type === "transfer" ? "Transfer"
-                          : "Activity";
-                        const eventDate = ev.date ? new Date(ev.date + "T12:00:00") : null;
-                        const weekdayLabel = eventDate
-                          ? eventDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()
-                          : null;
-                        const monthDayLabel = eventDate
-                          ? eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()
-                          : null;
-                        const rawTime = ev.time?.trim();
-                        // Midnight is a parser placeholder rather than a real start time.
-                        // Events are stored 12-hour, so "12:00 AM" is the form that actually
-                        // occurs; the 24-hour spellings are kept for older/imported data.
-                        const isMidnight = !!rawTime && /^(0?0:00(:00)?|12:00\s*am)$/i.test(rawTime);
-                        const isPlaceholderTime = !!rawTime && /^(tbd|tba|n\/a|—|-)$/i.test(rawTime);
-                        const hasRealTime = !!rawTime && !isMidnight && !isPlaceholderTime;
-                        const timeParts = hasRealTime ? rawTime.split(/\s+/) : null;
-
-                        // Type-specific detail row
-                        const detail: React.ReactNode =
-                          ev.type === "flight" && (ev.airline || ev.flightNum || ev.duration) ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {(ev.airline || ev.flightNum) && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
-                                  <AirplaneTilt className="h-3 w-3 text-brand" weight="regular" />
-                                  {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
-                                </span>
-                              )}
-                              {ev.duration && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
-                                  <Clock className="h-3 w-3" weight="regular" />
-                                  {ev.duration}
-                                </span>
-                              )}
-                            </div>
-                          ) : ev.type === "hotel" && (ev.roomType || ev.checkin || ev.checkout) ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {ev.roomType && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
-                                  <Bed className="h-3 w-3 text-brand" weight="regular" />
-                                  {ev.roomType}
-                                </span>
-                              )}
-                              {(ev.checkin || ev.checkout) && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
-                                  {ev.checkin || "-"}
-                                  <ArrowRight className="h-2.5 w-2.5" weight="bold" />
-                                  {ev.checkout || "-"}
-                                </span>
-                              )}
-                            </div>
-                          ) : (ev.price || ev.endTime) ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {ev.price && (
-                                <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold", cfg.text)}>
-                                  <Tag className="h-3 w-3" weight="regular" />
-                                  {ev.price}
-                                </span>
-                              )}
-                              {ev.endTime && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
-                                  <Clock className="h-3 w-3" weight="regular" />
-                                  ends {ev.endTime}
-                                </span>
-                              )}
-                            </div>
-                          ) : null;
-
-                        return (
-                          <button
-                            key={ev.id}
-                            onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
-                          >
-                            {/* Top/Left: image */}
-                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden bg-secondary">
-                              {hasImg ? (
-                                <img src={ev.image} alt={ev.title} style={{ objectPosition: objectPosition(ev.imagePosition) }} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                              ) : (
-                                <div className={`h-full w-full flex items-center justify-center ${cfg.bg}`}>
-                                  <cfg.Icon className={`h-8 w-8 ${cfg.text} opacity-60`} />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Center: content */}
-                            <div data-compact-place-body className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-between gap-2">
-                              {/* Top: type pill + title + inline time on mobile */}
-                              <div className="min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                    <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
-                                    {typeLabel}
-                                  </div>
-                                  {(hasRealTime || monthDayLabel) && (
-                                    <span className="sm:hidden text-[11px] font-medium text-muted-foreground shrink-0">
-                                      {timeParts ? timeParts.join(" ") : monthDayLabel}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="mt-1.5 text-sm font-semibold tracking-tight text-foreground leading-tight line-clamp-1">
-                                  {ev.title}
-                                </p>
-
-                                {ev.location && (
-                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground min-w-0">
-                                    <MapPin className="h-3 w-3 shrink-0" weight="regular" />
-                                    <span className="truncate">{ev.location}</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Middle: type-specific detail */}
-                              {detail}
-
-                              {/* Bottom: status + conf */}
-                              {(ev.status || ev.confNumber) && (
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {ev.status && (
-                                    <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-lg border", cfg.bg, cfg.text, "border-current/20")}>
-                                      {ev.status}
-                                    </span>
-                                  )}
-                                  {ev.confNumber && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-brand/10 text-brand border border-brand/20">
-                                      <Hash className="h-2.5 w-2.5" weight="bold" />
-                                      {ev.confNumber}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
-                            {(timeParts || eventDate) && (
-                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-border">
-                                {weekdayLabel && (
-                                  <span className="text-[11px] font-medium text-muted-foreground">
-                                    {weekdayLabel}
-                                  </span>
-                                )}
-                                {timeParts ? (
-                                  <>
-                                    <span className="text-2xl font-semibold tracking-tighter text-foreground leading-none tabular-nums mt-0.5">
-                                      {timeParts[0]}
-                                    </span>
-                                    {timeParts[1] && (
-                                      <span className="text-xs font-medium text-muted-foreground">
-                                        {timeParts[1]}
-                                      </span>
-                                    )}
-                                  </>
-                                ) : null}
-                                {monthDayLabel && (
-                                  <span className={cn(
-                                    "text-[11px] font-medium text-muted-foreground",
-                                    timeParts ? "mt-1" : "mt-0.5",
-                                  )}>
-                                    {monthDayLabel}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-card rounded-xl border border-dashed border-border flex items-center justify-center py-10 text-muted-foreground cursor-pointer hover:border-brand/40 transition-colors group"
-                    >
-                      <div className="text-center">
-                        <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
-                        <p className="text-xs font-medium">Open trip to add events</p>
-                      </div>
-                    </div>
-                  )}
-                </section>
+                </div>
               )}
+
+              {/* ── Recent activity: grows to the right column's height, so both columns end level ── */}
+              <div className="flex-1 flex flex-col [&>section]:flex-1">
+                <RecentActivity trips={trips} />
+              </div>
+
 
             </div>
 
             {/* ══ RIGHT COLUMN ══ */}
             <div data-compact-sidebar className="flex flex-col gap-4">
+              {/* Every trip's flights, live: today's statuses, tomorrow a click away */}
+              <FlightsBoard trips={trips} directory={customTravelers} onOpen={tripId => navigate(`/trip/${tripId}`)} />
+
               <div data-compact-section-head className="mb-0">
                 <h2 className="text-lg font-semibold tracking-tight text-foreground">Calendar</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Where your trips fall</p>
               </div>
-
-              {/* Needs Attention */}
-              {attentionItems.length > 0 && (
-                <div className="bg-card border border-amber-200/50 dark:border-amber-500/10 shadow-sm rounded-xl overflow-hidden">
-                  <div data-compact-card-head className="flex items-center gap-2.5 px-5 pt-5 pb-3">
-                    <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
-                    <div>
-                      <p className="text-base font-semibold tracking-tight text-foreground leading-none">Needs attention</p>
-                      <p className="text-xs text-muted-foreground mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
-                    </div>
-                  </div>
-                  <div className="px-3 pb-4 space-y-1">
-                    {attentionItems.map(item => (
-                      <button
-                        key={item.tripId}
-                        type="button"
-                        onClick={() => navigate(`/trip/${item.tripId}`)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/4 transition-colors text-left group"
-                      >
-                        <span className={cn(
-                          "h-1.5 w-1.5 rounded-full shrink-0",
-                          item.severity === "warn" ? "bg-amber-500" : "bg-slate-400 dark:bg-muted-foreground/60"
-                        )} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-foreground truncate group-hover:text-brand transition-colors">{item.tripName}</p>
-                          <p className="text-[10px] font-medium text-muted-foreground mt-0.5">{item.message}</p>
-                        </div>
-                        <CaretRight className="h-3 w-3 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Open tasks */}
               {openTasks.total > 0 && (
@@ -1082,8 +821,6 @@ export function DashboardPage() {
                 );
               })()}
 
-              {/* Every trip's flights, live: today's statuses, tomorrow a click away */}
-              <FlightsBoard trips={trips} directory={customTravelers} onOpen={tripId => navigate(`/trip/${tripId}`)} />
 
               {/* Getting travellers into the next trip is the job; put the PIN and link where they are needed */}
               {upcomingCards[0] && (() => {
@@ -1112,7 +849,7 @@ export function DashboardPage() {
                       <p className="text-sm text-muted-foreground">This trip has no PIN yet. Open it and publish to create one.</p>
                     )}
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => copy(link, "Link")} className="flex-1 h-9 rounded-lg bg-brand text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">Copy itinerary link</button>
+                      <button type="button" onClick={() => copy(link, "Link")} className="flex-1 h-9 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">Copy itinerary link</button>
                       <button type="button" onClick={() => navigate(`/trip/${trip.id}`)} className="h-9 px-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary transition-colors">Open trip</button>
                     </div>
                   </div>
@@ -1121,6 +858,207 @@ export function DashboardPage() {
 
             </div>{/* end right col */}
           </div>{/* end 2-col grid */}
+
+          {/* ── For your X Trip - Place Cards ── */}
+          {spotlightTrip && (
+            <section className="flex-1 flex flex-col min-h-0">
+              <div data-compact-section-head className="mb-1">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                  For your {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]} trip
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Key events on your itinerary</p>
+              </div>
+
+              {spotlightPlaces.length > 0 ? (
+                <div data-compact-place-list className="mt-4 flex-1 flex flex-col gap-3">
+                  {spotlightPlaces.map((ev) => {
+                    const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
+                    const hasImg = !!ev.image;
+                    const typeLabel =
+                      ev.type === "flight"    ? "Flight"
+                      : ev.type === "hotel"   ? "Stay"
+                      : ev.type === "dining"  ? "Dining"
+                      : ev.type === "transfer" ? "Transfer"
+                      : "Activity";
+                    const eventDate = ev.date ? new Date(ev.date + "T12:00:00") : null;
+                    const weekdayLabel = eventDate
+                      ? eventDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()
+                      : null;
+                    const monthDayLabel = eventDate
+                      ? eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()
+                      : null;
+                    const rawTime = ev.time?.trim();
+                    // Midnight is a parser placeholder rather than a real start time.
+                    // Events are stored 12-hour, so "12:00 AM" is the form that actually
+                    // occurs; the 24-hour spellings are kept for older/imported data.
+                    const isMidnight = !!rawTime && /^(0?0:00(:00)?|12:00\s*am)$/i.test(rawTime);
+                    const isPlaceholderTime = !!rawTime && /^(tbd|tba|n\/a|—|-)$/i.test(rawTime);
+                    const hasRealTime = !!rawTime && !isMidnight && !isPlaceholderTime;
+                    const timeParts = hasRealTime ? rawTime.split(/\s+/) : null;
+
+                    // Type-specific detail row
+                    const detail: React.ReactNode =
+                      ev.type === "flight" && (ev.airline || ev.flightNum || ev.duration) ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(ev.airline || ev.flightNum) && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
+                              <AirplaneTilt className="h-3 w-3 text-brand" weight="regular" />
+                              {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
+                            </span>
+                          )}
+                          {ev.duration && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+                              <Clock className="h-3 w-3" weight="regular" />
+                              {ev.duration}
+                            </span>
+                          )}
+                        </div>
+                      ) : ev.type === "hotel" && (ev.roomType || ev.checkin || ev.checkout) ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {ev.roomType && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
+                              <Bed className="h-3 w-3 text-brand" weight="regular" />
+                              {ev.roomType}
+                            </span>
+                          )}
+                          {(ev.checkin || ev.checkout) && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+                              {ev.checkin || "-"}
+                              <ArrowRight className="h-2.5 w-2.5" weight="bold" />
+                              {ev.checkout || "-"}
+                            </span>
+                          )}
+                        </div>
+                      ) : (ev.price || ev.endTime) ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {ev.price && (
+                            <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold", cfg.text)}>
+                              <Tag className="h-3 w-3" weight="regular" />
+                              {ev.price}
+                            </span>
+                          )}
+                          {ev.endTime && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+                              <Clock className="h-3 w-3" weight="regular" />
+                              ends {ev.endTime}
+                            </span>
+                          )}
+                        </div>
+                      ) : null;
+
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
+                        data-compact-place className="text-left bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
+                      >
+                        {/* Top/Left: image */}
+                        <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden bg-secondary">
+                          {hasImg ? (
+                            <img src={ev.image} alt={ev.title} style={{ objectPosition: objectPosition(ev.imagePosition) }} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className={`h-full w-full flex items-center justify-center ${cfg.bg}`}>
+                              <cfg.Icon className={`h-8 w-8 ${cfg.text} opacity-60`} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Center: content */}
+                        <div data-compact-place-body className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-between gap-2">
+                          {/* Top: type pill + title + inline time on mobile */}
+                          <div className="min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
+                                {typeLabel}
+                              </div>
+                              {(hasRealTime || monthDayLabel) && (
+                                <span className="sm:hidden text-[11px] font-medium text-muted-foreground shrink-0">
+                                  {timeParts ? timeParts.join(" ") : monthDayLabel}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1.5 text-sm font-semibold tracking-tight text-foreground leading-tight line-clamp-1">
+                              {ev.title}
+                            </p>
+
+                            {ev.location && (
+                              <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground min-w-0">
+                                <MapPin className="h-3 w-3 shrink-0" weight="regular" />
+                                <span className="truncate">{ev.location}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Middle: type-specific detail */}
+                          {detail}
+
+                          {/* Bottom: status + conf */}
+                          {(ev.status || ev.confNumber) && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {ev.status && (
+                                <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-lg border", cfg.bg, cfg.text, "border-current/20")}>
+                                  {ev.status}
+                                </span>
+                              )}
+                              {ev.confNumber && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-brand/10 text-brand border border-brand/20">
+                                  <Hash className="h-2.5 w-2.5" weight="bold" />
+                                  {ev.confNumber}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
+                        {(timeParts || eventDate) && (
+                          <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-border">
+                            {weekdayLabel && (
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {weekdayLabel}
+                              </span>
+                            )}
+                            {timeParts ? (
+                              <>
+                                <span className="text-2xl font-semibold tracking-tighter text-foreground leading-none tabular-nums mt-0.5">
+                                  {timeParts[0]}
+                                </span>
+                                {timeParts[1] && (
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {timeParts[1]}
+                                  </span>
+                                )}
+                              </>
+                            ) : null}
+                            {monthDayLabel && (
+                              <span className={cn(
+                                "text-[11px] font-medium text-muted-foreground",
+                                timeParts ? "mt-1" : "mt-0.5",
+                              )}>
+                                {monthDayLabel}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div
+                  onClick={() => handleOpenTrip(spotlightTrip)}
+                  className="mt-4 bg-card rounded-xl border border-dashed border-border flex items-center justify-center py-10 text-muted-foreground cursor-pointer hover:border-brand/40 transition-colors group"
+                >
+                  <div className="text-center">
+                    <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
+                    <p className="text-xs font-medium">Open trip to add events</p>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
 
           {/* ── All Trips - full width ── */}
           <section className="space-y-4">
@@ -1135,7 +1073,7 @@ export function DashboardPage() {
                     type="button"
                     aria-pressed={showArchived}
                     onClick={() => setShowArchived(v => !v)}
-                    className={`h-9 px-3 rounded-xl border shadow-sm flex items-center gap-1.5 text-xs font-medium transition-colors ${showArchived ? "bg-brand text-primary-foreground border-brand" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+                    className={`h-9 px-3 rounded-xl border shadow-sm flex items-center gap-1.5 text-xs font-medium transition-colors ${showArchived ? "bg-primary text-primary-foreground border-brand" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
                   >
                     <Archive className="h-4 w-4" /> <span className="hidden sm:inline">Archived</span> <span className="tabular-nums">{archivedTrips.length}</span>
                   </button>
@@ -1145,90 +1083,65 @@ export function DashboardPage() {
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-card border border-border shadow-sm rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-foreground" />
                 </div>
 <div className="flex gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-primary-foreground shadow-md" : "text-muted-foreground hover:hover:text-foreground"}`}><GridFour className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-primary-foreground shadow-md" : "text-muted-foreground hover:hover:text-foreground"}`}><List className="h-4 w-4" /></button>
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-secondary text-foreground" : "text-muted-foreground hover:hover:text-foreground"}`}><GridFour className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:hover:text-foreground"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
 
             {displayMode === "grid" ? (
               <div data-compact-trip-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredTrips.map((trip) => {
-                  const startDate = parseTripDate(trip.start);
-                  const endDate = parseTripDate(trip.end);
-                  const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-                  const daysLeft = daysUntil(trip.start);
-                  const label = lifecycleLabel(trip);
-                  const isActive = label === "Active";
-                  const isUpcoming = daysLeft > 0 && !trip.archivedAt;
-                  return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden bg-secondary flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
-                      <img src={trip.image} alt={trip.name} loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 h-full w-full object-cover" />
-                      {/* Light wash for the top chips, then a dedicated scrim behind the
-                          text block so legibility never depends on the photo. */}
-                      <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/45 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 h-[62%] bg-linear-to-t from-black/92 via-black/72 to-transparent" />
-
-                      {/* Row actions, anchored to the card so a wrapping title cannot move them */}
-                      <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                {/* Current and upcoming trips first; past ones fold away below */}
+                {(showArchived ? filteredTrips : currentTrips).map((trip) => (
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    today={todayStart}
+                    onOpen={() => handleOpenTrip(trip)}
+                    menu={
                         <DropdownMenu>
-                          <DropdownMenuTrigger aria-label={`Actions for ${trip.name}`} className="h-8 w-8 rounded-lg bg-black/55 backdrop-blur text-white/80 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
-                            <DotsThreeVertical className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) toggleArchived(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80">{trip.archivedAt ? <ArrowCounterClockwise className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />} {trip.archivedAt ? "Unarchive" : "Archive"}</DropdownMenuItem>
-                            {(!isOrgMember || canDeleteTrip) && (
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      {/* Top row: status + countdown */}
-                      <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
-                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                          {label}
-                        </span>
-                        {isUpcoming && (
-                          <span className="text-[10px] font-semibold tabular-nums text-white/90 bg-black/45 backdrop-blur-md px-2 py-1 rounded-md">
-                            {daysLeft === 0 ? "Today" : `${daysLeft}d away`}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Bottom content */}
-                      <div data-compact-card-bottom className="relative z-10 mt-auto p-4">
-                        {trip.destination && (
-                          <p className="text-[11px] font-medium text-white/75 mb-1.5 flex items-center gap-1.5 truncate">
-                            <MapPin className="h-3 w-3 text-brand shrink-0" /> {trip.destination}
-                          </p>
-                        )}
-                        <h3 className="text-xl font-bold leading-[1.15] text-white mb-2.5 line-clamp-2 tracking-tight">{trip.name}</h3>
-                        <div className="flex items-center gap-3 text-white/70 pt-2.5 border-t border-white/15">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <LucideCalendar className="h-3 w-3 text-brand shrink-0" />
-                            <span className="text-[11px] font-medium tabular-nums truncate">{dateStr}</span>
-                          </div>
-                          <span className="text-white/25">·</span>
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <Users className="h-3 w-3 text-brand shrink-0" />
-                            <span className="text-[11px] font-medium tabular-nums truncate">{travellerCount(trip)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                            <DropdownMenuTrigger aria-label={`Actions for ${trip.name}`} className="h-8 w-8 rounded-lg bg-black/55 backdrop-blur text-white/80 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
+                              <DotsThreeVertical className="h-4 w-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) toggleArchived(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80">{trip.archivedAt ? <ArrowCounterClockwise className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />} {trip.archivedAt ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                              {(!isOrgMember || canDeleteTrip) && (
+                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                    }
+                  />
+                ))}
                 <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center py-12 text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[280px]">
                   <div className="h-14 w-14 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[13px] font-semibold">New trip</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Plan your next adventure</p>
                 </button>
               </div>
-            ) : (
+            ) : null}
+            {displayMode === "grid" && !showArchived && pastTrips.length > 0 && (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowPast(v => !v)}
+                  aria-expanded={showPast}
+                  className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-foreground/80"
+                >
+                  <CaretRight className={`h-4 w-4 transition-transform ${showPast ? "rotate-90" : ""}`} />
+                  Past trips
+                  <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md tabular-nums">{pastTrips.length}</span>
+                </button>
+                {showPast && (
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {pastTrips.map(trip => <TripCard key={trip.id} trip={trip} today={todayStart} onOpen={() => handleOpenTrip(trip)} />)}
+                  </div>
+                )}
+              </div>
+            )}
+            {displayMode === "grid" ? null : (
               <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
                   <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-20">
@@ -1533,7 +1446,7 @@ export function DashboardPage() {
                       />
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
-                      className="h-9 px-4 rounded-lg bg-brand text-primary-foreground text-[13px] font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
+                      className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
                       {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
@@ -1592,7 +1505,7 @@ export function DashboardPage() {
                     Cancel
                   </button>
                   <button type="submit"
-                    className="flex-2 h-10 rounded-xl bg-brand text-primary-foreground text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    className="flex-2 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
                     <Plus className="h-4 w-4" /> Create Itinerary
                   </button>
                 </div>

@@ -36,7 +36,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
         <DialogFooter className="pt-4 flex flex-col gap-2 sm:flex-col">
           <Button
             onClick={handleSignUp}
-            className="w-full rounded-xl h-10 px-8 font-bold bg-brand hover:opacity-90 text-black shadow-xl shadow-brand/20"
+            className="w-full rounded-xl h-10 px-8 font-bold bg-primary hover:opacity-90 text-primary-foreground"
           >
             Sign In
           </Button>

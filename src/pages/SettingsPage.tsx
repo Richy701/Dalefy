@@ -49,9 +49,9 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
   return (
     <section
       id={id}
-      className="scroll-mt-6 grid gap-4 py-7 first:pt-0 border-b border-border last:border-b-0 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] lg:gap-10"
+      className="scroll-mt-6 mb-5 bg-card border border-border rounded-xl shadow-sm overflow-hidden"
     >
-      <div className="flex items-start gap-3 lg:pt-1">
+      <div className="flex items-start gap-3 px-5 pt-5 pb-4">
         <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -64,7 +64,7 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
           </p>
         </div>
       </div>
-      <div className="min-w-0 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col divide-y divide-border">
+      <div className="flex flex-col divide-y divide-border border-t border-border">
         {children}
       </div>
     </section>
@@ -117,7 +117,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["⌘", "K"], label: "Open command palette" },
   { keys: ["⌘", "/"], label: "Open command palette (alt)" },
   { keys: ["G", "D"], label: "Go to dashboard" },
-  { keys: ["G", "T"], label: "Go to travelers" },
+  { keys: ["G", "T"], label: "Go to travellers" },
   { keys: ["G", "M"], label: "Go to destinations" },
   { keys: ["G", "R"], label: "Go to reports" },
   { keys: ["G", "S"], label: "Go to settings" },
@@ -138,6 +138,7 @@ export function SettingsPage() {
   const { brand, orgBranding, refreshBranding } = useBrand();
   const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [resetOpen, setResetOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const realAuth = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
@@ -364,7 +365,7 @@ export function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 lg:px-8 py-6 pb-12">
-          <div className="min-w-0 max-w-6xl">
+          <div className="min-w-0">
           {/* ── Profile ── */}
           <Section
             id="profile"
@@ -429,7 +430,7 @@ export function SettingsPage() {
                     <Button
                       onClick={handleChangePassword}
                       disabled={changingPassword || newPassword.length < 6}
-                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 disabled:opacity-40"
+                      className="h-9 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 disabled:opacity-40"
                     >
                       {changingPassword ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Update"}
                     </Button>
@@ -459,7 +460,7 @@ export function SettingsPage() {
                 <Button
                   onClick={handleCreateOrg}
                   disabled={creatingOrg || !newOrgName.trim()}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-4 disabled:opacity-40"
+                  className="h-9 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-4 disabled:opacity-40"
                 >
                   {creatingOrg ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Create Agency"}
                 </Button>
@@ -522,7 +523,7 @@ export function SettingsPage() {
                       Agency Code
                     </label>
                     <p className="text-[11px] text-muted-foreground">
-                      Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
+                      Share this code with your travellers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
                   </div>
                   <div className="flex flex-col sm:items-end gap-2 shrink-0">
@@ -540,7 +541,7 @@ export function SettingsPage() {
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(agencyCodeEdit);
-                            toast.success("Copied! Share this with your travelers.");
+                            toast.success("Copied! Share this with your travellers.");
                           }}
                           className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-10 px-4 rounded-xl bg-brand/10 text-[13px] font-medium text-brand hover:bg-brand/20 transition-colors"
                         >
@@ -567,7 +568,7 @@ export function SettingsPage() {
                               await setDoc(doc(db, "org_branding", currentOrg.id), {
                                 agency_code: agencyCodeEdit.trim().toLowerCase(),
                               }, { merge: true });
-                              toast.success("Agency code saved! Share it with your travelers.");
+                              toast.success("Agency code saved! Share it with your travellers.");
                             } catch (err) {
                               console.error("Agency code save error:", err);
                               toast.error("Failed to save agency code");
@@ -575,7 +576,7 @@ export function SettingsPage() {
                               setSavingAgencyCode(false);
                             }
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand text-[13px] font-medium text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="h-10 px-4 rounded-xl bg-primary text-[13px] font-medium text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {savingAgencyCode ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </button>
@@ -583,7 +584,7 @@ export function SettingsPage() {
                     </div>
                     {!currentOrg?.agencyCode && (
                       <p className="text-[12px] text-amber-500 dark:text-amber-400 font-medium">
-                        Set a code so travelers can connect to your agency
+                        Set a code so travellers can connect to your agency
                       </p>
                     )}
                   </div>
@@ -626,7 +627,7 @@ export function SettingsPage() {
                   <Button
                     onClick={handleSaveBranding}
                     disabled={savingBrand}
-                    className="h-9 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-5 disabled:opacity-40"
+                    className="h-9 rounded-lg bg-primary hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-5 disabled:opacity-40"
                   >
                     {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save changes"}
                   </Button>
@@ -741,12 +742,12 @@ export function SettingsPage() {
             description="Control how the app interrupts you. Notifications appear as toasts and in the bell panel."
           >
             <Row
-              label="Toast Notifications"
+              label="Pop-up messages"
               value="Show toast messages for actions like trip created, imported, or deleted"
               action={<ToggleSwitch checked={toastsEnabled} onChange={setToastsEnabled} />}
             />
             <Row
-              label="Sound Alerts"
+              label="Sounds"
               value="Play a subtle chime on successful actions"
               action={<ToggleSwitch checked={soundEnabled} onChange={handleSoundToggle} />}
             />
@@ -785,8 +786,8 @@ export function SettingsPage() {
             description="Export your work or reset local data. Cloud-synced trips are not affected by reset."
           >
             <Row
-              label="Export Trips"
-              value={`${trips.length} trip${trips.length === 1 ? "" : "s"} - download as CSV`}
+              label="Export trips"
+              value={`Download ${trips.length} trip${trips.length === 1 ? "" : "s"} as a spreadsheet`}
               action={
                 <Button
                   onClick={exportTrips}
@@ -798,13 +799,23 @@ export function SettingsPage() {
                 </Button>
               }
             />
+            {/* Storage and reset are rarely needed, so they stay folded away */}
             <Row
-              label="Local Storage"
-              value={`${storageSizeKb} KB used across preferences, trips, and compliance overrides`}
+              label="Advanced"
+              value="Storage on this device and resetting local data"
+              action={
+                <Button variant="outline" onClick={() => setAdvancedOpen(o => !o)} aria-expanded={advancedOpen} className="h-9 rounded-xl text-[13px]">
+                  {advancedOpen ? "Hide" : "Show"}
+                </Button>
+              }
             />
-            <Row
-              label="Reset Trip Data"
-              value="Clears trips, compliance overrides, and custom travelers. Keeps your account."
+            {advancedOpen && <Row
+              label="Local storage"
+              value={`${storageSizeKb} KB used across preferences, trips, and compliance overrides`}
+            />}
+            {advancedOpen && <Row
+              label="Reset trip data"
+              value="Clears trips, compliance overrides, and custom travellers. Keeps your account."
               action={
                 <Button
                   onClick={() => { if (!demoGate()) setResetOpen(true); }}
@@ -815,7 +826,7 @@ export function SettingsPage() {
                   Reset
                 </Button>
               }
-            />
+            />}
           </Section>
 
           {/* ── Shortcuts ── */}
@@ -882,7 +893,6 @@ export function SettingsPage() {
           {/* ── Footer ── */}
           <div className="border-t border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
             <span>{brand.name}</span>
-            <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
           </div>
         </div>
@@ -892,7 +902,7 @@ export function SettingsPage() {
         open={resetOpen}
         onOpenChange={setResetOpen}
         title="Reset Trip Data"
-        description="This will permanently clear all trips, compliance overrides, and custom travelers from this device. Your account and theme preference will be kept. This cannot be undone."
+        description="This will permanently clear all trips, compliance overrides, and custom travellers from this device. Your account and theme preference will be kept. This cannot be undone."
         confirmLabel="Reset"
         onConfirm={resetData}
         destructive

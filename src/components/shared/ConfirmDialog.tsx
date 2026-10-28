@@ -46,7 +46,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           <Button
             onClick={handleConfirm}
             disabled={busy}
-            className={`rounded-xl h-10 px-8 font-bold shadow-xl ${destructive ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-brand hover:opacity-90 text-black shadow-brand/20'}`}
+            className={`rounded-xl h-10 px-8 font-bold shadow-xl ${destructive ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-primary hover:opacity-90 text-primary-foreground'}`}
           >
             {busy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : confirmLabel}
           </Button>

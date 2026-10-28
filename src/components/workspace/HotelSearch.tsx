@@ -95,7 +95,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             type="button"
             onClick={search}
             disabled={loading || !query || !checkin || !checkout}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:bg-brand/80 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-primary hover:opacity-90 disabled:opacity-40 text-primary-foreground text-[11px] sm:text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Bed className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search

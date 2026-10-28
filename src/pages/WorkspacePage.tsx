@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise,
+  ChatCircleText, Megaphone, CaretLeft, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -151,7 +151,7 @@ export function WorkspacePage() {
   const navigate = useNavigate();
   const { trips, ready, updateTrip, saveTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { addNotification } = useNotifications();
   const { canDeleteTrip, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
@@ -159,6 +159,16 @@ export function WorkspacePage() {
   const { others: presenceUsers, updateActivity } = usePresence(tripId);
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
+  // What travellers would notice if this were published now: -1 for a trip that's never been published
+  const pendingChanges = useMemo(() => {
+    if (!trip) return 0;
+    const snap = trip.publishedSnapshot;
+    if (trip.status !== "Published" || !snap) return -1;
+    const itinerary = publishedChanges(snap, { events: trip.events, start: trip.start, end: trip.end, info: trip.info }).length;
+    // The organiser card is left out: directory syncs rewrite the published copy's contact fields on their own
+    const header = [snap.name !== trip.name, snap.image !== trip.image].filter(Boolean).length;
+    return itinerary + header;
+  }, [trip]);
   const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
 
   // Auto-open event from ?event= query param (e.g. from Dashboard event cards)
@@ -543,6 +553,18 @@ export function WorkspacePage() {
     return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${markers}/auto/800x300@2x?padding=60&logo=false&attribution=false&access_token=${MAPBOX_TOKEN}`;
   }, [trip]);
 
+  // The command palette's trip actions (Publish, Share, Email itinerary) arrive as a window event.
+  // Hooks stay above the early return below, so the hook order never changes between renders.
+  const paletteActions = useRef<Record<"publish" | "share" | "email", () => void>>({ publish: () => {}, share: () => {}, email: () => {} });
+  useEffect(() => {
+    const onAction = (e: Event) => {
+      const action = (e as CustomEvent<{ action?: string }>).detail?.action;
+      if (action === "publish" || action === "share" || action === "email") paletteActions.current[action]();
+    };
+    window.addEventListener("dalefy:trip-action", onAction);
+    return () => window.removeEventListener("dalefy:trip-action", onAction);
+  }, []);
+
   if (!trip) {
     if (!ready) {
       return (
@@ -555,7 +577,7 @@ export function WorkspacePage() {
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <p className="text-xl font-semibold tracking-tight text-foreground">Trip not found</p>
-          <Button onClick={() => navigate("/dashboard")} className="bg-brand text-black font-bold rounded-xl">Back to Dashboard</Button>
+          <Button onClick={() => navigate("/dashboard")} className="bg-primary text-primary-foreground font-bold rounded-xl">Back to Dashboard</Button>
         </div>
       </div>
     );
@@ -962,7 +984,7 @@ export function WorkspacePage() {
     };
     // Emptying the section can't be undone, so it is asked for, never assumed
     const had = editBaseline.current?.info?.length ?? 0;
-    if (cleaned.length === 0 && had > 0) { setClearing([`all ${had} Information & Documents cards`]); setConfirmClearInfo(() => save); return; }
+    if (cleaned.length === 0 && had > 0) { setClearing([`all ${had} Trip info cards`]); setConfirmClearInfo(() => save); return; }
     await save();
   };
 
@@ -1113,7 +1135,7 @@ export function WorkspacePage() {
     // Emptying a section, or the organiser's name, can't be undone, so it is asked for, never assumed
     const base = editBaseline.current;
     const losing = [
-      !cleaned.info && (base?.info?.length ?? 0) > 0 ? `all ${base!.info!.length} Information & Documents cards` : "",
+      !cleaned.info && (base?.info?.length ?? 0) > 0 ? `all ${base!.info!.length} Trip info cards` : "",
       !cleaned.organizer && base?.organizer?.name?.trim() ? `the organiser (${base.organizer.name.trim()})` : "",
     ].filter(Boolean);
     if (losing.length) { setClearing(losing); setConfirmClearInfo(() => save); return; }
@@ -1130,6 +1152,9 @@ export function WorkspacePage() {
   const handleShareTrip = () => setShareOpen(true);
 
   const handleSendEmail = () => setSendInviteOpen(true);
+
+  // Latest handlers for the command palette's trip actions; the listener is set up above the early return
+  paletteActions.current = { publish: handlePublish, share: handleShareTrip, email: handleSendEmail };
 
   return (
     <div className="flex flex-col h-screen bg-background w-full relative overflow-hidden">
@@ -1184,7 +1209,7 @@ export function WorkspacePage() {
                   : "bg-card border-border text-muted-foreground hover:text-brand"
               }`}>
                 <Users className="h-3.5 w-3.5" />
-                {viewAsTraveler ? `Viewing as ${viewAsTraveler.name.split(" ")[0]}` : "View As"}
+                <span className={viewAsTraveler ? "" : "hidden xl:inline"}>{viewAsTraveler ? `Viewing as ${viewAsTraveler.name.split(" ")[0]}` : "View as"}</span>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-2 bg-card border border-border shadow-2xl rounded-xl">
                 <button
@@ -1193,8 +1218,8 @@ export function WorkspacePage() {
                     !viewAsId ? "bg-brand/10 text-brand" : "text-muted-foreground hover:bg-secondary"
                   }`}
                 >
-                  <div className="h-7 w-7 rounded-md bg-secondary flex items-center justify-center text-[9px] font-black text-muted-foreground">ALL</div>
-                  <span className="uppercase tracking-wider">Everyone</span>
+                  <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground"><Users className="h-3.5 w-3.5" /></div>
+                  <span>Everyone</span>
                   {!viewAsId && <Check className="h-3 w-3 ml-auto" />}
                 </button>
                 <div className="h-px bg-secondary my-1" />
@@ -1249,9 +1274,9 @@ export function WorkspacePage() {
                     <ShareNetwork className="h-4 w-4" /> <span className="hidden lg:inline">Share</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-card border border-border shadow-2xl rounded-xl p-1">
-                    <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-muted-foreground" /> Send to travellers</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setMessageOpen(true)} className={item}><Megaphone className="h-4 w-4 text-muted-foreground" /> Message travellers</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-muted-foreground" /> Share link &amp; PIN</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-muted-foreground" /> Email itinerary</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMessageOpen(true)} className={item}><Megaphone className="h-4 w-4 text-muted-foreground" /> Send a message</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-muted-foreground" /> Link and PIN</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-secondary" />
                     <DropdownMenuItem onClick={() => setPreviewOpen(true)} className={item}><Eye className="h-4 w-4" /> Preview itinerary</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className={item}>{exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {exporting ? "Exporting..." : "Export PDF"}</DropdownMenuItem>
@@ -1268,8 +1293,6 @@ export function WorkspacePage() {
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setHistoryOpen(true)} className={item}><ClockCounterClockwise className="h-4 w-4" /> History</DropdownMenuItem>
                     <DropdownMenuItem onClick={toggleArchived} className={item}>{trip.archivedAt ? <ArrowCounterClockwise className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {trip.archivedAt ? "Unarchive trip" : "Archive trip"}</DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-secondary" />
-                    <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
                     {(!isOrgMember || canDeleteTrip) && (
                       <>
                         <DropdownMenuSeparator className="bg-secondary" />
@@ -1324,21 +1347,18 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-secondary" />
               <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
-                <ShareNetwork className="h-4 w-4" /> Share Link
+                <ShareNetwork className="h-4 w-4" /> Link and PIN
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
-                <EnvelopeOpen className="h-4 w-4" /> Send to Client
+                <EnvelopeOpen className="h-4 w-4" /> Email itinerary
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMessageOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
-                <Megaphone className="h-4 w-4" /> Message travellers
+                <Megaphone className="h-4 w-4" /> Send a message
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <FileText className="h-4 w-4" /> Export PDF
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-secondary" />
-              <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </DropdownMenuItem>
               {(!isOrgMember || canDeleteTrip) && (
                 <>
                   <DropdownMenuSeparator className="bg-secondary" />
@@ -1350,8 +1370,22 @@ export function WorkspacePage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-black font-semibold h-9 w-9 sm:w-auto px-0 sm:px-4 rounded-lg transition-opacity text-sm sm:min-w-[96px] shrink-0 flex items-center justify-center">
-            {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">Publish</span></>)}
+          <Button
+            onClick={handlePublish}
+            disabled={publishing}
+            variant={pendingChanges === 0 ? "outline" : "default"}
+            aria-label={pendingChanges === 0 ? "Published and up to date. Publish again" : pendingChanges > 0 ? `Publish ${pendingChanges} changes` : "Publish trip"}
+            title={pendingChanges === 0 ? "Travellers see the latest version" : pendingChanges > 0 ? "Travellers don't see these changes until you publish" : "Travellers can't see this trip until it's published"}
+            className="relative font-semibold h-9 w-9 sm:w-auto px-0 sm:px-4 rounded-lg gap-1.5"
+          >
+            {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (
+              <>
+                {pendingChanges === 0 ? <Check className="h-4 w-4" /> : <PaperPlaneTilt className="h-4 w-4 sm:hidden" />}
+                <span className="hidden sm:inline">
+                  {pendingChanges === 0 ? "Up to date" : pendingChanges > 0 ? `Publish ${pendingChanges} ${pendingChanges === 1 ? "change" : "changes"}` : "Publish"}
+                </span>
+              </>
+            )}
           </Button>
         </div>
       </header>
@@ -1429,7 +1463,7 @@ export function WorkspacePage() {
 
               {/* Top row: status + event count pill */}
               <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
-                <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${lifecycle === "Published" || lifecycle === "Active" ? "bg-brand text-black" : "bg-white/20 text-white"}`}>
+                <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${lifecycle === "Published" || lifecycle === "Active" ? "bg-primary text-primary-foreground" : "bg-white/20 text-white"}`}>
                   {lifecycle}
                 </Badge>
                 <span className="text-xs font-medium text-white/80 tabular-nums">{trip.events.length} events · {groupedEvents.length} days</span>
@@ -1475,9 +1509,9 @@ export function WorkspacePage() {
                           : "bg-card text-muted-foreground border-border hover:text-foreground"
                       }`}
                     >
-                      {t.toUpperCase()}
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
                       {count > 0 && (
-                        <span className={`text-[9px] font-black rounded-lg px-1.5 py-0.5 leading-none ${active ? "bg-white/20" : "bg-brand/15 text-brand"}`}>
+                        <span className={`text-[10px] font-semibold rounded-md px-1.5 py-0.5 leading-none tabular-nums ${active ? "bg-background/20" : "bg-secondary text-muted-foreground"}`}>
                           {count}
                         </span>
                       )}
@@ -1553,7 +1587,7 @@ export function WorkspacePage() {
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-3.5 w-3.5 text-brand" />
-                              <span className="text-xs font-medium text-muted-foreground">Information & Documents</span>
+                              <span className="text-xs font-medium text-muted-foreground">Trip info</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
@@ -1717,6 +1751,7 @@ export function WorkspacePage() {
                 </div>
                 {!isViewer && (
                   <div className={showMap || showTasks || showCosts || showMobilePreview || showAssistant ? "hidden lg:block" : ""}>
+                    <div aria-hidden="true" className="h-28" />
                     <DockBar onAddEvent={handleAddEvent} />
                   </div>
                 )}
@@ -1798,7 +1833,7 @@ export function WorkspacePage() {
                               setBulkEmailMode(false);
                               toast.success("Emails updated");
                             }}
-                            className="h-8 px-5 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity"
+                            className="h-8 px-5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
                           >
                             Save All
                           </button>
@@ -2050,7 +2085,7 @@ export function WorkspacePage() {
                       >
                         <Input name="qname" required placeholder="Name" className="w-full font-bold" />
                         <Input name="qemail" type="email" placeholder="Email (links their app account)" className="w-full font-bold" />
-                        <button type="submit" className="w-full h-9 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
+                        <button type="submit" className="w-full h-9 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
                           <UserPlus className="h-3.5 w-3.5" /> Add to Trip
                         </button>
                       </form>
@@ -2199,7 +2234,7 @@ export function WorkspacePage() {
                       editingEvent?.status === s
                         ? s === "Confirmed" ? "bg-emerald-400 text-black shadow-lg shadow-emerald-400/20"
                           : s === "Cancelled" ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
-                          : "bg-brand text-black shadow-lg shadow-brand/20"
+                          : "bg-primary text-primary-foreground"
                         : "bg-secondary text-muted-foreground hover:bg-slate-200 dark:hover:bg-secondary"
                     }`}
                   >
@@ -2582,7 +2617,7 @@ export function WorkspacePage() {
                       />
                     </div>
                     <button type="button" onClick={() => runImageSearch(imageSearch)}
-                      className="h-9 px-3 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
+                      className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
                       {isSearchingImages ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {imageSearch && (
@@ -2618,7 +2653,7 @@ export function WorkspacePage() {
                       </div>
                       <div className="absolute top-2 right-2 flex items-center gap-1.5">
                         {imageIsAuto && (
-                          <div className="flex items-center gap-1 bg-brand text-black text-[11px] font-medium px-2 py-0.5 rounded-lg">
+                          <div className="flex items-center gap-1 bg-primary text-primary-foreground text-[11px] font-medium px-2 py-0.5 rounded-lg">
                             <MagicWand className="h-2.5 w-2.5" /> Auto
                           </div>
                         )}
@@ -2799,7 +2834,7 @@ export function WorkspacePage() {
                         aria-pressed={!editingEvent?.assignedTo}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           !editingEvent?.assignedTo
-                            ? "bg-brand text-black shadow-sm"
+                            ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
@@ -2811,7 +2846,7 @@ export function WorkspacePage() {
                         aria-pressed={Array.isArray(editingEvent?.assignedTo)}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           Array.isArray(editingEvent?.assignedTo)
-                            ? "bg-brand text-black shadow-sm"
+                            ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
@@ -2954,6 +2989,8 @@ export function WorkspacePage() {
         tripName={trip.name}
         onPublish={handlePublish}
         publishing={publishing}
+        notInvited={(trip.travelers ?? []).filter(t => !t.invitedAt).length}
+        onEmailTravellers={() => { setShareOpen(false); handleSendEmail(); }}
       />
 
       {messageOpen && <MessageDialog open onOpenChange={setMessageOpen} trips={[trip]} />}
@@ -3011,7 +3048,7 @@ export function WorkspacePage() {
                     <Upload className="h-3.5 w-3.5" />
                   </button>
                   <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
-                    className="h-9 px-3 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
+                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
                     {isTripImageSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                   </button>
                   {tripImageResults.length > 0 && (
@@ -3185,7 +3222,7 @@ export function WorkspacePage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-brand" />
-                    <h4 className="text-xs font-medium text-muted-foreground">Information & Documents</h4>
+                    <h4 className="text-xs font-medium text-muted-foreground">Trip info</h4>
                     {(editingTrip.info?.length ?? 0) > 0 && (
                       <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{editingTrip.info!.length}</span>
                     )}
@@ -3291,7 +3328,7 @@ export function WorkspacePage() {
                       className={`flex-1 h-11 rounded-xl text-xs font-medium transition-all ${
                         editingTrip.status === s
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                            : s === "In Progress" ? "bg-brand text-primary-foreground shadow-lg shadow-brand/20"
+                            : s === "In Progress" ? "bg-primary text-primary-foreground shadow-lg shadow-brand/20"
                             : "bg-slate-800 dark:bg-white text-white dark:text-black shadow-lg"
                           : "bg-secondary text-muted-foreground hover:bg-slate-200 dark:hover:bg-secondary"
                       }`}>
@@ -3347,7 +3384,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-6 py-4 border-t border-border flex items-center justify-between">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
-              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3558,7 +3595,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-border flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
-              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>

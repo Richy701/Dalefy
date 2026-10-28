@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 const NAV_ITEMS = [
   { icon: SquaresFour, label: "Dashboard", path: "/dashboard" },
-  { icon: Users,       label: "Travelers",   path: "/travelers" },
+  { icon: Users,       label: "Travellers",  path: "/travelers" },
   { icon: Globe,       label: "Destinations", path: "/destinations" },
   { icon: Images,      label: "Media",        path: "/media" },
   { icon: ChartPie,    label: "Reports",      path: "/reports" },

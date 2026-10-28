@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import { Copy, Check, ArrowSquareOut, DownloadSimple, X, WarningCircle, DeviceMobile } from "@phosphor-icons/react";
+import { Copy, Check, ArrowSquareOut, DownloadSimple, X, WarningCircle, DeviceMobile, EnvelopeSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -17,12 +17,15 @@ interface ShareTripDialogProps {
   /** Called when the user chooses to publish a draft from inside the dialog. */
   onPublish?: () => void | Promise<void>;
   publishing?: boolean;
+  /** Travellers on the trip who haven't been emailed the itinerary yet */
+  notInvited?: number;
+  onEmailTravellers?: () => void;
 }
 
 /** Scheme registered by the Expo app (mobile/app.json). */
 const APP_SCHEME = "dafadventures";
 
-export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing }: ShareTripDialogProps) {
+export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing, notInvited = 0, onEmailTravellers }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const { brand } = useBrand();
   const { trips, updateTrip } = useTrips();
@@ -120,6 +123,19 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Published, but some travellers have never been told: the one step that actually reaches them */}
+        {isPublished && notInvited > 0 && onEmailTravellers && (
+          <div className="mx-6 mt-5 rounded-xl border border-border bg-secondary/60 px-4 py-3 flex items-center gap-3">
+            <EnvelopeSimple className="h-5 w-5 text-muted-foreground shrink-0" />
+            <p className="flex-1 min-w-0 text-sm text-foreground">
+              {notInvited === 1 ? "1 traveller hasn't" : `${notInvited} travellers haven't`} been emailed the itinerary yet.
+            </p>
+            <button type="button" onClick={onEmailTravellers} className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 shrink-0">
+              Email them
+            </button>
           </div>
         )}
 

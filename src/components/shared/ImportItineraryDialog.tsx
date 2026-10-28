@@ -2461,7 +2461,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       <AlertDialogHeader>
                         <AlertDialogTitle>Replace everything on this trip?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Every event, traveler and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. Trip info cards stay, and any the document also has get its latest text. You can undo this once, straight afterwards, but not later.
+                          Every event, traveller and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. Trip info cards stay, and any the document also has get its latest text. You can undo this once, straight afterwards, but not later.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -2513,7 +2513,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <Button variant="ghost" onClick={handleUndo} className="rounded-xl h-10 px-5 font-bold text-red-400 hover:bg-red-500/10 uppercase tracking-wider text-xs">
                 Undo Changes
               </Button>
-              <Button onClick={() => handleClose(false)} className="rounded-xl h-10 px-5 font-bold bg-brand hover:opacity-90 text-black uppercase tracking-wider text-xs">
+              <Button onClick={() => handleClose(false)} className="rounded-xl h-10 px-5 font-bold bg-primary hover:opacity-90 text-primary-foreground uppercase tracking-wider text-xs">
                 Done
               </Button>
             </div>

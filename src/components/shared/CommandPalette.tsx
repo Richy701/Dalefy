@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Command } from "cmdk";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useHotkeys } from "react-hotkeys-hook";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { useTheme } from "@/context/ThemeContext";
@@ -8,7 +8,7 @@ import { useTrips } from "@/context/TripsContext";
 import {
   SquaresFour, Users, Globe, ChartBar, Sun, Moon,
   AirplaneTilt, MapPin, MagnifyingGlass, ArrowRight, Command as CmdIcon, Gear,
-  UserPlus, UsersThree, Images,
+  UserPlus, UsersThree, Images, PaperPlaneTilt, ShareNetwork, EnvelopeSimple,
 } from "@phosphor-icons/react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useOrg } from "@/context/OrgContext";
@@ -21,6 +21,10 @@ interface CommandPaletteProps {
 export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  // On a trip, the palette can publish, share or email it; the workspace listens for these
+  const onTrip = /^\/trip\/[^/]+/.test(useLocation().pathname);
+  const tripAction = (action: "publish" | "share" | "email") =>
+    window.dispatchEvent(new CustomEvent("dalefy:trip-action", { detail: { action } }));
   const { theme, toggleTheme } = useTheme();
   const { trips } = useTrips();
   const { canInviteMembers, isOrgMember } = usePermissions();
@@ -89,7 +93,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           >
             {[
               { label: "Dashboard", icon: SquaresFour, path: "/dashboard" },
-              { label: "Travelers", icon: Users, path: "/travelers" },
+              { label: "Travellers", icon: Users, path: "/travelers" },
               { label: "Destinations", icon: Globe, path: "/destinations" },
               { label: "Media", icon: Images, path: "/media" },
               { label: "Reports", icon: ChartBar, path: "/reports" },
@@ -109,6 +113,24 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
               </Command.Item>
             ))}
           </Command.Group>
+
+          {/* This trip */}
+          {onTrip && (
+            <Command.Group heading="This trip" className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:font-black **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-[0.35em] **:[[cmdk-group-heading]]:text-slate-500 dark:**:[[cmdk-group-heading]]:text-[#666]">
+              {([
+                { action: "publish", label: "Publish trip", value: "publish trip travellers", Icon: PaperPlaneTilt },
+                { action: "share", label: "Share trip", value: "share trip link pin qr", Icon: ShareNetwork },
+                { action: "email", label: "Email itinerary", value: "email itinerary send travellers invite", Icon: EnvelopeSimple },
+              ] as const).map(({ action, label, value, Icon }) => (
+                <Command.Item key={action} value={value} onSelect={() => run(() => tripAction(action))} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-foreground font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-secondary">
+                  <div className="h-8 w-8 rounded-lg bg-secondary text-muted-foreground flex items-center justify-center shrink-0">
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  {label}
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
 
           {/* Actions */}
           <Command.Group

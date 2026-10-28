@@ -641,7 +641,7 @@ export function DestinationsPage() {
                         key={id}
                         type="button"
                         onClick={() => navigate(`/trip/${id}`)}
-                        className="text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-brand hover:text-black text-white text-sm font-bold transition-colors truncate"
+                        className="text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-primary hover:text-primary-foreground text-white text-sm font-bold transition-colors truncate"
                       >
                         {dest.tripNames[i] ?? "Trip"}
                       </button>

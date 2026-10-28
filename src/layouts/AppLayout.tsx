@@ -30,7 +30,7 @@ function PageErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
         <button
           onClick={resetErrorBoundary}
-          className="h-10 px-6 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+          className="h-10 px-6 rounded-xl bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
         >
           Try Again
         </button>

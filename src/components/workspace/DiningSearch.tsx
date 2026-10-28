@@ -58,7 +58,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
             type="button"
             onClick={search}
             disabled={loading || !query}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-opacity flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-primary hover:opacity-90 disabled:opacity-40 text-primary-foreground text-[11px] sm:text-xs font-medium transition-opacity flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <ForkKnife className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search

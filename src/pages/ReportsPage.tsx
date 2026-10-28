@@ -94,7 +94,7 @@ export function ReportsPage() {
         "Activities": activities,
         "Dining": dining,
         "Transfers": transfers,
-        "Traveler Count": travellerCount(t),
+        "Traveller Count": travellerCount(t),
       };
     });
     const csv = Papa.unparse(rows);
@@ -198,7 +198,7 @@ export function ReportsPage() {
           <button
             onClick={tab === "operations" ? handleExportCsv : handleExportComplianceCsv}
             disabled={exportDisabled}
-            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-brand hover:opacity-90 text-black text-xs font-medium transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-medium transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={tab === "operations" ? "Export trips as CSV" : "Export compliance as CSV"}
             title={exportDisabled ? "Nothing to export yet" : undefined}
           >
@@ -249,7 +249,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/dashboard")}
-                className="h-9 px-4 rounded-lg bg-brand text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 Create a trip
               </button>
@@ -487,7 +487,7 @@ export function ReportsPage() {
                 <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="mb-5">
                     <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Travelers per Trip</h3>
+                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Travellers per trip</h3>
                       <p className="text-xs text-muted-foreground mt-1">Group sizes</p>
                     </div>
                   </div>
@@ -540,7 +540,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/travelers")}
-                className="h-9 px-4 rounded-lg bg-brand text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 Add travellers
               </button>
@@ -718,7 +718,7 @@ export function ReportsPage() {
                 <div className="mb-5">
                   <div>
                     <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Team Compliance Grid</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Overview by traveler and document</p>
+                    <p className="text-xs text-muted-foreground mt-1">Overview by traveller and document</p>
                   </div>
                 </div>
                 <div className="overflow-x-auto">

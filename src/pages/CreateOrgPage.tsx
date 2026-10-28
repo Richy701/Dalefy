@@ -20,7 +20,7 @@ const inputClass =
   "h-11 rounded-xl bg-card border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
 
 const primaryBtn =
-  "h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium gap-2 disabled:opacity-40";
+  "h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium gap-2 disabled:opacity-40";
 
 const labelClass = "text-xs font-medium text-muted-foreground";
 

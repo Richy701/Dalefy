@@ -32,7 +32,7 @@ function inviteUrl(token: string) {
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agent", viewer: "Viewer" };
 const ROLE_HINT: Record<string, string> = {
   viewer: "Can view trips and itineraries, nothing else",
-  agent: "Can build and edit trips and manage travelers",
+  agent: "Can build and edit trips and manage travellers",
   admin: "Everything an agent can, plus team and branding",
 };
 const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Key, agent: UserGear, viewer: Eye };

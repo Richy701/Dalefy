@@ -148,7 +148,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
         <button
           onClick={resetErrorBoundary}
-          className="h-12 px-8 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-xl shadow-brand/20"
+          className="h-12 px-8 rounded-xl bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
         >
           Reload App
         </button>

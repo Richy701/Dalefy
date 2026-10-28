@@ -12,8 +12,8 @@ import type { OrgRole } from "@/types";
 
 const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: string; blurb: string }> = {
   owner: { icon: Crown, label: "Owner", color: "text-amber-500", blurb: "Full control, including ownership transfer" },
-  admin: { icon: Key, label: "Admin", color: "text-brand", blurb: "Manages trips, travelers, branding and the team" },
-  agent: { icon: UserGear, label: "Agent", color: "text-muted-foreground", blurb: "Builds and edits trips and manages travelers" },
+  admin: { icon: Key, label: "Admin", color: "text-brand", blurb: "Manages trips, travellers, branding and the team" },
+  agent: { icon: UserGear, label: "Agent", color: "text-muted-foreground", blurb: "Builds and edits trips and manages travellers" },
   viewer: { icon: Eye, label: "Viewer", color: "text-muted-foreground", blurb: "Views trips and itineraries only" },
 };
 
@@ -316,7 +316,7 @@ function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
     label = "Leave team";
   }
   const tones = {
-    neutral: { wrap: "bg-secondary border-border", text: "text-foreground/80", btn: "bg-brand text-black hover:opacity-90" },
+    neutral: { wrap: "bg-secondary border-border", text: "text-foreground/80", btn: "bg-primary text-primary-foreground hover:opacity-90" },
     warn: { wrap: "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30", text: "text-amber-700 dark:text-amber-400", btn: "bg-amber-500 hover:bg-amber-600 text-white" },
     danger: { wrap: "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30", text: "text-red-600 dark:text-red-400", btn: "bg-red-500 hover:bg-red-600 text-white" },
   }[tone];

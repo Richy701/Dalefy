@@ -216,7 +216,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             <button
               onClick={handleAdd}
               disabled={!newTitle.trim()}
-              className="flex-1 h-8 rounded-lg bg-brand text-black text-xs font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               Add Task
             </button>

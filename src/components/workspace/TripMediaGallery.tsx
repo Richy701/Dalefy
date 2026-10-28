@@ -184,7 +184,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
             <div
               className={`h-16 w-16 rounded-xl flex items-center justify-center transition-all ${
                 isDragging
-                  ? "bg-brand text-black scale-110"
+                  ? "bg-primary text-primary-foreground scale-110"
                   : "bg-background border border-border text-muted-foreground"
               }`}
             >

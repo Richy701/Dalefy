@@ -1054,7 +1054,7 @@ export function TravelersPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">Add Traveler</Drawer.Title>
+                  <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">Add traveller</Drawer.Title>
                   <p className="text-[11px] font-medium text-muted-foreground mt-1">New team member</p>
                 </div>
                 <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
@@ -1123,7 +1123,7 @@ export function TravelersPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
+                    className="flex-2 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                   >
                     <UserPlus className="h-4 w-4" /> {personSaving ? "Saving…" : "Add to Team"}
                   </button>
@@ -1136,7 +1136,7 @@ export function TravelersPage() {
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
                     <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-background border border-border">
-                      <div className="h-5 w-5 rounded-md bg-brand text-black flex items-center justify-center font-black text-[9px]">{u.initials}</div>
+                      <div className="h-5 w-5 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-black text-[9px]">{u.initials}</div>
                       <span className="text-xs font-bold text-muted-foreground truncate max-w-[100px]">{u.name}</span>
                       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${u.status === "Active" ? "bg-emerald-400" : u.status === "Away" ? "bg-amber-400" : "bg-slate-300 dark:bg-slate-500"}`} />
                     </div>
@@ -1200,7 +1200,7 @@ export function TravelersPage() {
                             : "bg-background border-border text-muted-foreground hover:border-brand/20"
                         }`}
                       >
-                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-secondary text-muted-foreground"}`}>
+                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
                           {selected ? <Check className="h-3 w-3" /> : t.initials}
                         </div>
                         {t.name.split(" ")[0]}
@@ -1218,7 +1218,7 @@ export function TravelersPage() {
                 <button
                   onClick={handleUploadDocument}
                   disabled={!uploadDocName.trim() || uploadAssignees.length === 0}
-                  className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-2 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" /> Assign Document
                 </button>
