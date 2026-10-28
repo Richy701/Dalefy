@@ -2108,6 +2108,7 @@ export function WorkspacePage() {
                 key={trip.id}
                 trip={trip}
                 onUpdateEvents={(events) => updateTrip(trip.id, { events })}
+                onUpdateInfo={(info) => updateTrip(trip.id, { info })}
                 onClose={() => setShowAssistant(false)}
                 guard={demoGate}
               />

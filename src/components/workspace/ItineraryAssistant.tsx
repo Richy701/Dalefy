@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowRight, ArrowCounterClockwise, CaretDown, ChatCircleText, Check, NotePencil, Warning, X } from "@phosphor-icons/react";
+import { ArrowUp, ArrowRight, ArrowCounterClockwise, CaretDown, ChatCircleText, Check, Info, NotePencil, Warning, X } from "@phosphor-icons/react";
 import { differenceInCalendarDays, format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,15 @@ import { apiFetch, getIdToken, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   applyAssistantChanges,
+  applyInfoChanges,
   changedFields,
   compactTripForAssistant,
   undoAssistantChanges,
+  undoInfoChanges,
   type AssistantChange,
   type AssistantResult,
 } from "@/lib/itineraryAssistant";
-import type { TravelEvent, Trip } from "@/types";
+import type { TravelEvent, Trip, TripInfo } from "@/types";
 
 type ProposalStatus = "pending" | "applied" | "discarded" | "undone";
 
@@ -30,7 +32,7 @@ interface ChatMessage {
   /** Per-change tick state while pending; after applying, which ones went in. */
   selected?: boolean[];
   status?: ProposalStatus;
-  undo?: { originals: TravelEvent[]; addedIds: string[] };
+  undo?: { originals: TravelEvent[]; addedIds: string[]; infoOriginals?: TripInfo[]; infoAddedIds?: string[] };
   error?: boolean;
 }
 
@@ -60,9 +62,12 @@ function prettyValue(key: string, value: string) {
     const d = parseISO(value);
     return isValid(d) ? format(d, "EEE d MMM") : value;
   }
-  if (key === "type") return value.charAt(0).toUpperCase() + value.slice(1);
+  if (key === "type" || key === "transferType") return value.charAt(0).toUpperCase() + value.slice(1);
   return value;
 }
+
+/** Trip info changes are grouped under this key, ahead of the days */
+const INFO_GROUP = "info";
 
 /** "Secret Dining Room Dinner — Anantara Chiang Mai" -> "Secret Dining Room Dinner" */
 function shortTitle(title: string) {
@@ -153,6 +158,8 @@ const OP_STYLE: Record<AssistantChange["op"], { label: string; className: string
 function ChangeRow({
   change,
   event,
+  card,
+  names,
   selectable,
   checked,
   skipped,
@@ -160,16 +167,20 @@ function ChangeRow({
 }: {
   change: AssistantChange;
   event?: TravelEvent;
+  /** The Trip info card an info change is about */
+  card?: TripInfo;
+  names: Map<string, string>;
   selectable: boolean;
   checked: boolean;
   skipped: boolean;
   onToggle: (v: boolean) => void;
 }) {
+  const info = change.target === "info";
   const type = (change.fields.type ?? event?.type ?? "activity") as TravelEvent["type"];
   const op = OP_STYLE[change.op];
-  const diffs = change.op === "update" ? changedFields(event, change.fields) : [];
-  const title = change.op === "add" ? change.fields.title : event?.title;
-  const canLocate = change.op !== "add" && !!event;
+  const diffs = change.op === "update" ? changedFields(info ? card : event, change.fields, names) : [];
+  const title = change.op === "add" ? change.fields.title : info ? card?.title : event?.title;
+  const canLocate = !info && change.op !== "add" && !!event;
 
   return (
     <li
@@ -186,7 +197,9 @@ function ChangeRow({
         />
       )}
       <div className={cn("flex min-w-0 flex-1 gap-3 transition-opacity", (skipped || (selectable && !checked)) && "opacity-45")}>
-      <CategoryDot type={type} size="sm" className="mt-0.5" />
+      {info
+        ? <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground"><Info className="h-3.5 w-3.5" weight="fill" /></span>
+        : <CategoryDot type={type} size="sm" className="mt-0.5" />}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn("text-sm font-medium leading-snug text-foreground", change.op === "delete" && "line-through decoration-muted-foreground/60")}>
@@ -197,20 +210,24 @@ function ChangeRow({
           </span>
         </div>
 
-        {change.op === "add" && (
+        {change.op === "add" && info && change.fields.body && (
+          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3">{change.fields.body}</p>
+        )}
+
+        {change.op === "add" && !info && (
           <p className="mt-0.5 text-xs text-muted-foreground">
             {[change.fields.time && change.fields.time !== "TBD" ? change.fields.time : "", change.fields.endTime ? `until ${change.fields.endTime}` : "", change.fields.location].filter(Boolean).join(", ")}
           </p>
         )}
 
         {change.op === "delete" && (
-          <p className="mt-0.5 text-xs text-muted-foreground">Removed from the itinerary</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{info ? "Removed from Trip info" : "Removed from the itinerary"}</p>
         )}
 
         {diffs.length > 0 && (
           <dl className="mt-1.5 space-y-1">
             {diffs.map(d => {
-              const long = d.key === "description" || d.key === "notes";
+              const long = d.key === "description" || d.key === "notes" || d.key === "body";
               return (
                 <div key={d.key} className="grid grid-cols-[4.5rem_1fr] gap-2 text-xs">
                   <dt className="pt-px text-muted-foreground">{d.label}</dt>
@@ -262,15 +279,20 @@ function ProposalCard({
   // Once applied, the live event already carries the new values; diff against the snapshot instead.
   const originals = useMemo(() => new Map((message.undo?.originals ?? []).map(e => [e.id, e])), [message.undo]);
   const eventFor = (c: AssistantChange) => originals.get(c.eventId) ?? byId.get(c.eventId);
+  const cardsById = useMemo(() => new Map((trip.info ?? []).map(i => [i.id, i])), [trip.info]);
+  const infoOriginals = useMemo(() => new Map((message.undo?.infoOriginals ?? []).map(i => [i.id, i])), [message.undo]);
+  const cardFor = (c: AssistantChange) => infoOriginals.get(c.eventId) ?? cardsById.get(c.eventId);
+  const names = useMemo(() => new Map((trip.travelers ?? []).map(t => [t.id, t.name])), [trip.travelers]);
 
   // Group rows by the day they sit on now (new events by the day they land on).
   const groups = useMemo(() => {
     const map = new Map<string, number[]>();
     changes.forEach((c, i) => {
-      const day = (c.op === "add" ? c.fields.date : eventFor(c)?.date) || "";
+      const day = c.target === "info" ? INFO_GROUP : (c.op === "add" ? c.fields.date : eventFor(c)?.date) || "";
       map.set(day, [...(map.get(day) ?? []), i]);
     });
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+    // Trip info first, then the days in order
+    return [...map.entries()].sort(([a], [b]) => (a === INFO_GROUP ? -1 : b === INFO_GROUP ? 1 : a.localeCompare(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [changes, byId, originals]);
   const grouped = groups.length > 1;
@@ -282,6 +304,7 @@ function ProposalCard({
   );
 
   const dayLabel = (date: string) => {
+    if (date === INFO_GROUP) return { day: "Trip info", sub: "" };
     const d = parseISO(date);
     if (!date || !isValid(d)) return { day: "No date", sub: "" };
     const start = parseISO(trip.start);
@@ -354,7 +377,9 @@ function ProposalCard({
                     <ChangeRow
                       key={i}
                       change={changes[i]}
-                      event={eventFor(changes[i])}
+                      event={changes[i].target === "info" ? undefined : eventFor(changes[i])}
+                      card={changes[i].target === "info" ? cardFor(changes[i]) : undefined}
+                      names={names}
                       selectable={selectable}
                       checked={selected[i]}
                       skipped={message.status === "applied" && !selected[i]}
@@ -399,11 +424,13 @@ function ProposalCard({
 export function ItineraryAssistant({
   trip,
   onUpdateEvents,
+  onUpdateInfo,
   onClose,
   guard,
 }: {
   trip: Trip;
   onUpdateEvents: (events: TravelEvent[]) => void;
+  onUpdateInfo: (info: TripInfo[]) => void;
   onClose: () => void;
   /** Returns true when the action should be blocked (demo accounts). */
   guard?: () => boolean;
@@ -419,6 +446,10 @@ export function ItineraryAssistant({
   useEffect(() => {
     eventsRef.current = trip.events;
   }, [trip.events]);
+  const infoRef = useRef(trip.info ?? []);
+  useEffect(() => {
+    infoRef.current = trip.info ?? [];
+  }, [trip.info]);
 
   const setMessages = (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
     setMessagesState(prev => {
@@ -503,12 +534,18 @@ export function ItineraryAssistant({
     const changes = (m.changes ?? []).filter((_, i) => m.selected?.[i] !== false);
     if (!changes.length) return;
     clearFocus();
-    const touched = new Set(changes.filter(c => c.op !== "add").map(c => c.eventId));
+    const eventChanges = changes.filter(c => c.target !== "info");
+    const infoChanges = changes.filter(c => c.target === "info");
+    const touched = new Set(eventChanges.filter(c => c.op !== "add").map(c => c.eventId));
     const originals = eventsRef.current.filter(ev => touched.has(ev.id));
-    const { events, addedIds } = applyAssistantChanges(eventsRef.current, changes);
-    onUpdateEvents(events);
-    patch(m.id, () => ({ status: "applied", undo: { originals, addedIds } }));
-    const changedIds = [...changes.filter(c => c.op === "update").map(c => c.eventId), ...addedIds];
+    const { events, addedIds } = applyAssistantChanges(eventsRef.current, eventChanges);
+    if (eventChanges.length) onUpdateEvents(events);
+    const touchedCards = new Set(infoChanges.filter(c => c.op !== "add").map(c => c.eventId));
+    const infoOriginals = infoRef.current.filter(card => touchedCards.has(card.id));
+    const { info, addedIds: infoAddedIds } = applyInfoChanges(infoRef.current, infoChanges);
+    if (infoChanges.length) onUpdateInfo(info);
+    patch(m.id, () => ({ status: "applied", undo: { originals, addedIds, infoOriginals, infoAddedIds } }));
+    const changedIds = [...eventChanges.filter(c => c.op === "update").map(c => c.eventId), ...addedIds];
     // Wait a frame for the itinerary to re-render the moved/new cards before flashing them.
     requestAnimationFrame(() => requestAnimationFrame(() => markEvents(changedIds, "assistant-flash", true)));
     toast.success(changes.length === 1 ? "Change applied" : `${changes.length} changes applied`);
@@ -516,7 +553,8 @@ export function ItineraryAssistant({
 
   const undo = (m: ChatMessage) => {
     if (!m.undo) return;
-    onUpdateEvents(undoAssistantChanges(eventsRef.current, m.undo.originals, m.undo.addedIds));
+    if (m.undo.originals.length || m.undo.addedIds.length) onUpdateEvents(undoAssistantChanges(eventsRef.current, m.undo.originals, m.undo.addedIds));
+    if (m.undo.infoOriginals?.length || m.undo.infoAddedIds?.length) onUpdateInfo(undoInfoChanges(infoRef.current, m.undo.infoOriginals ?? [], m.undo.infoAddedIds ?? []));
     patch(m.id, () => ({ status: "undone" }));
     const restored = m.undo.originals.map(e => e.id);
     requestAnimationFrame(() => requestAnimationFrame(() => markEvents(restored, "assistant-flash", true)));

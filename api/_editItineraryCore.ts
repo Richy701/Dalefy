@@ -19,7 +19,7 @@ const MAX_MESSAGE_CHARS = 4000;
 
 const SYSTEM_PROMPT = `You are the itinerary assistant inside a travel agency's trip planning tool. A travel agent is editing one trip and asks you, in plain language, to change it or answer questions about it.
 
-You are given the current trip as JSON in the latest user message. Each event has an "id". You cannot save anything yourself: you propose changes, and the agent reviews them and presses Accept or Discard.
+You are given the current trip as JSON in the latest user message. Each event has an "id", and so does each Trip info card in "info" (the organiser's notes travellers read: contacts, dress codes, meeting points, visas). You cannot save anything yourself: you propose changes, and the agent reviews them and presses Accept or Discard.
 
 How to respond:
 - "reply": a short, friendly message to the agent (1-3 sentences). Say what you are proposing, or answer their question. Do not repeat every field you changed, the agent sees a diff.
@@ -27,10 +27,11 @@ How to respond:
 - "warnings": short notes about problems your proposal creates or reveals that the agent should check, e.g. "The 6:00 AM Dawn Game Drive on Mar 21 overlaps the new balloon flight." One sentence each, most important first. Only flag problems this proposal causes or that directly affect it, not unrelated issues elsewhere in the trip. Empty when there is nothing to flag. Do not repeat these in "reply".
 - "options": when you ask a clarifying question with a few clear answers, list them as short replies the agent can tap, written in the agent's voice, e.g. ["The Welcome Dinner on Mar 18", "The Bush Dinner on Mar 20"]. At most 5, under 60 characters each. Empty otherwise.
 
-Each change:
-- op "update": set eventId to an existing event id. In "fields", set ONLY the fields that change; every other field must be null.
-- op "add": eventId is an empty string. In "fields", set type, date, time and title at minimum, plus anything else you know. Unknown fields are null.
-- op "delete": set eventId; all fields null.
+Each change has a "target": "event" for an itinerary event, "info" for a Trip info card.
+- op "update": set eventId to the existing event's or info card's id. In "fields", set ONLY the fields that change; every other field is an empty string (assignedTo: null).
+- op "add": eventId is an empty string. For an event, set type, date, time and title at minimum, plus anything else you know. For an info card, set title and body. Unknown fields are empty strings (assignedTo: null).
+- op "delete": set eventId; all fields empty (assignedTo: null).
+- Info cards use only "title" and "body". Keep the organiser's wording and every phone number, address and reference exactly; change only what was asked. Put new practical notes travellers need (a meeting point, a dress code) in the card they belong to, or a new card when none fits.
 - "summary": one short line describing the change in plain words, e.g. "Move dinner at Nobu to 8:00 PM".
 
 Field formats:
@@ -39,6 +40,8 @@ Field formats:
 - type: flight | hotel | dining | activity | transfer
 - Hotels: "date" equals the check-in date; set checkin and checkout. "time" is check-in time, "endTime" is check-out time.
 - description is public copy travelers read. notes are internal agent notes (confirmation numbers, supplier contacts).
+- assignedTo: the ids of the travellers on this event, from "travelers". An empty list means everyone on the trip. Use it for "only Tony and Laura do the tour".
+- Flights: airline, flightNum (e.g. "BA 2155"), depAirport and arrAirport (3-letter IATA codes). transferType for transfers: car | train | bus | ferry | cruise | other. supplier is the company providing it.
 
 Rules:
 - Only touch what the agent asked for. Never rewrite descriptions or notes unless asked.
@@ -50,18 +53,28 @@ Rules:
 - Use "today" (given in the message) to resolve relative dates like "tomorrow".
 - Write warm, concise, professional copy. Never use em dashes; use commas, hyphens, or periods instead.`;
 
+// Text fields use "" for "no change" rather than null: the API caps how many optional fields a schema may have
+const text = () => z.string();
 const FieldsSchema = z.object({
-  type: z.enum(["flight", "hotel", "dining", "activity", "transfer"]).nullable(),
-  date: z.string().nullable(),
-  time: z.string().nullable(),
-  endTime: z.string().nullable(),
-  endDate: z.string().nullable(),
-  title: z.string().nullable(),
-  location: z.string().nullable(),
-  description: z.string().nullable(),
-  notes: z.string().nullable(),
-  checkin: z.string().nullable(),
-  checkout: z.string().nullable(),
+  type: z.enum(["flight", "hotel", "dining", "activity", "transfer", ""]),
+  body: text(),
+  assignedTo: z.array(z.string()).nullable(),
+  airline: text(),
+  flightNum: text(),
+  depAirport: text(),
+  arrAirport: text(),
+  transferType: z.enum(["car", "train", "bus", "ferry", "cruise", "other", ""]),
+  supplier: text(),
+  date: text(),
+  time: text(),
+  endTime: text(),
+  endDate: text(),
+  title: text(),
+  location: text(),
+  description: text(),
+  notes: text(),
+  checkin: text(),
+  checkout: text(),
 });
 
 const EditResultSchema = z.object({
@@ -69,6 +82,7 @@ const EditResultSchema = z.object({
   warnings: z.array(z.string()),
   options: z.array(z.string()),
   changes: z.array(z.object({
+    target: z.enum(["event", "info"]),
     op: z.enum(["add", "update", "delete"]),
     eventId: z.string(),
     summary: z.string(),
@@ -76,8 +90,12 @@ const EditResultSchema = z.object({
   })),
 });
 
-export type EditFields = z.infer<typeof FieldsSchema>;
-export type EditResult = z.infer<typeof EditResultSchema>;
+type RawFields = z.infer<typeof FieldsSchema>;
+/** What the workspace receives: null for every field the change leaves alone */
+export type EditFields = { [K in keyof RawFields]: K extends "assignedTo" ? string[] | null : string | null };
+type RawResult = z.infer<typeof EditResultSchema>;
+/** The assistant's answer as the workspace receives it, with unchanged fields as null */
+export type EditResult = Omit<RawResult, "changes"> & { changes: Array<Omit<RawResult["changes"][number], "fields"> & { fields: EditFields }> };
 
 export interface EditTripInput {
   name?: string;
@@ -86,6 +104,7 @@ export interface EditTripInput {
   end?: string;
   travelers?: Array<{ id: string; name: string }>;
   events: Array<Record<string, unknown> & { id: string }>;
+  info?: Array<{ id: string; title?: string; body?: string }>;
 }
 
 export interface EditInput {
@@ -141,13 +160,15 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
     },
   ];
 
-  const message = await client.messages.parse({
+  // Streamed with room to spare, so shifting a whole trip doesn't run out of output.
+  // High effort: a wrong date or a dropped event costs the agent far more than the extra seconds.
+  const message = await client.messages.stream({
     model: EDIT_MODEL,
-    max_tokens: 16000,
+    max_tokens: 64000,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages,
-    output_config: { effort: "medium", format: zodOutputFormat(EditResultSchema) },
-  });
+    output_config: { effort: "high", format: zodOutputFormat(EditResultSchema) },
+  }).finalMessage();
 
   if (message.stop_reason === "refusal") {
     throw new ParseHttpError(422, "The assistant couldn't help with that request");
@@ -162,19 +183,36 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
   // Drop anything that points at an event that doesn't exist, and normalise dates
   // so a sloppy value can never land in the trip.
   const ids = new Set(input.trip.events.map((e) => e.id));
+  const infoIds = new Set((input.trip.info ?? []).map((i) => i.id));
+  const travelerIds = new Set((input.trip.travelers ?? []).map((t) => t.id));
+  const iata = (v: string | null) => (v && /^[A-Za-z]{3}$/.test(v.trim()) ? v.trim().toUpperCase() : null);
   const changes = message.parsed_output.changes
-    .filter((c) => (c.op === "add" ? true : ids.has(c.eventId)))
-    .filter((c) => c.op !== "add" || (c.fields.title && cleanDate(c.fields.date)))
+    .map((c) => ({ ...c, fields: Object.fromEntries(Object.entries(c.fields).map(([k, v]) => [k, v === "" ? null : typeof v === "string" ? v.trim() || null : v])) as EditFields }))
+    .filter((c) => (c.op === "add" ? true : (c.target === "info" ? infoIds : ids).has(c.eventId)))
+    .filter((c) => c.op !== "add" || (c.target === "info" ? !!c.fields.title && !!c.fields.body : !!c.fields.title && !!cleanDate(c.fields.date)))
     .map((c) => ({
       ...c,
       eventId: c.op === "add" ? "" : c.eventId,
-      fields: {
-        ...c.fields,
-        date: cleanDate(c.fields.date),
-        endDate: cleanDate(c.fields.endDate),
-        checkin: cleanDate(c.fields.checkin),
-        checkout: cleanDate(c.fields.checkout),
-      },
+      fields: c.target === "info"
+        // A card only carries a title and body; anything else the model set is dropped
+        ? { ...Object.fromEntries(Object.keys(c.fields).map((k) => [k, null])) as typeof c.fields, title: c.fields.title, body: c.fields.body }
+        : {
+          ...c.fields,
+          body: null,
+          date: cleanDate(c.fields.date),
+          endDate: cleanDate(c.fields.endDate),
+          checkin: cleanDate(c.fields.checkin),
+          checkout: cleanDate(c.fields.checkout),
+          depAirport: iata(c.fields.depAirport),
+          arrAirport: iata(c.fields.arrAirport),
+          // Only travellers on this trip; an id the model made up is dropped
+          // (an all-unknown list becomes no change, never "everyone")
+          assignedTo: (() => {
+            if (c.fields.assignedTo == null) return null;
+            const known = c.fields.assignedTo.filter((id) => travelerIds.has(id));
+            return c.fields.assignedTo.length && !known.length ? null : known;
+          })(),
+        },
     }));
 
   return {
