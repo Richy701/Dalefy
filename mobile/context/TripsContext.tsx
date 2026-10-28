@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
+import { withEventTimes24h } from "@/shared/dates";
 import { fetchTrips, changeTripMedia, subscribeToTrips } from "@/services/firebaseTrips";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/services/firebase";
@@ -13,7 +14,7 @@ async function readCache(): Promise<Trip[] | null> {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed as Trip[] : null;
+    return Array.isArray(parsed) ? (parsed as Trip[]).map(t => ({ ...t, events: withEventTimes24h(t.events ?? []) })) : null;
   } catch { return null; }
 }
 

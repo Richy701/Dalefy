@@ -9,6 +9,7 @@ import type { Trip, Notification } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
 import { AppState, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { withEventTimes24h } from "@/shared/dates";
 
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
@@ -488,7 +489,7 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     status: data.status as Trip["status"],
     image: data.image as string,
     imagePosition: (data.image_position as Trip["imagePosition"]) ?? undefined,
-    events: (data.events as Trip["events"]) ?? [],
+    events: withEventTimes24h((data.events as Trip["events"]) ?? []),
     media: (data.media as Trip["media"]) ?? undefined,
     shortCode: (data.short_code as string) ?? undefined,
     travelerIds: (data.traveler_ids as string[]) ?? undefined,
@@ -507,7 +508,7 @@ function legacyDocToTrip(id: string, data: Record<string, unknown>): Trip {
   const snap = data.published_snapshot as Trip["publishedSnapshot"];
   const published = snap ? {
     ...trip, name: snap.name, image: snap.image, imagePosition: snap.imagePosition, destination: snap.destination,
-    start: snap.start, end: snap.end, paxCount: snap.paxCount, events: snap.events,
+    start: snap.start, end: snap.end, paxCount: snap.paxCount, events: withEventTimes24h(snap.events ?? []),
     info: snap.info, organizer: snap.organizer, documents: snap.documents,
   } : trip;
   delete published.budget;

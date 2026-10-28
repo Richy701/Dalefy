@@ -34,3 +34,24 @@ export function parseEventDateTime(date: string, time?: string | null): Date {
   d.setHours(0, mins < 0 ? 12 * 60 : mins, 0, 0);
   return d;
 }
+
+const TIME_12H = /^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i;
+const TIME_24H = /^\s*(\d{1,2}):(\d{2})\s*$/;
+
+/** "2:00 PM" or "9:05" as "14:00" / "09:05". Anything else ("TBD", blank) comes back unchanged. */
+export function to24h(time: string): string {
+  const pad = (h: number, m: string) => `${String(h).padStart(2, "0")}:${m}`;
+  const m12 = time.match(TIME_12H);
+  if (m12) return pad(parseInt(m12[1]) % 12 + (m12[3].toUpperCase() === "PM" ? 12 : 0), m12[2]);
+  const m24 = time.match(TIME_24H);
+  return m24 ? pad(parseInt(m24[1]), m24[2]) : time;
+}
+
+/** The importer saves 12-hour times and the flight lookup 24-hour, so the app shows every event in 24-hour. */
+export function withEventTimes24h<T extends { time?: string; endTime?: string }>(events: T[]): T[] {
+  return events.map(ev => ({
+    ...ev,
+    ...(typeof ev.time === "string" ? { time: to24h(ev.time) } : {}),
+    ...(typeof ev.endTime === "string" ? { endTime: to24h(ev.endTime) } : {}),
+  }));
+}
