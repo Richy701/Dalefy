@@ -14,7 +14,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
-import { DaleEventCard } from "@/components/DaleEventCard";
+import { DaleEventCard, Ground } from "@/components/DaleEventCard";
 import { BlurView } from "expo-blur";
 import { StreamedText, TypingDots } from "@/components/DaleChat";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
@@ -234,6 +234,7 @@ export default function AskScreen() {
                       <DaleEventCard
                         ev={ev}
                         C={C}
+                        glass
                         stayEnd={stayEnds.get(ev.id)}
                         onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                       />
@@ -275,6 +276,7 @@ export default function AskScreen() {
                   accessibilityLabel={q.ask}
                   style={({ pressed }) => [styles.starterCard, { opacity: pressed ? 0.7 : 1 }]}
                 >
+                  <Ground glass C={C} />
                   <Text style={styles.starterTitle} numberOfLines={1}>{q.title}</Text>
                   <Text style={styles.starterSub} numberOfLines={1}>{q.sub}</Text>
                 </Pressable>
@@ -336,8 +338,8 @@ function makeStyles(C: ThemeColors) {
     starterRail: { paddingHorizontal: S.md, gap: S.xs, paddingBottom: S.xs },
     starterCard: {
       minWidth: 150, paddingHorizontal: S.sm2 + 4, paddingVertical: S.sm2,
-      borderRadius: R.lg, backgroundColor: C.elevated,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      // Glass, like the event cards; the edge comes with it
+      borderRadius: R.lg, overflow: "hidden",
     },
     starterTitle: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
     starterSub: { fontSize: T.sm, color: C.textSecondary, marginTop: 2 },

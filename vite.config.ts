@@ -105,7 +105,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
           res.end(JSON.stringify(data))
         }
         try {
-          if (p === "/api/trip" || p === "/api/send-itinerary" || p === "/api/send-invite" || p === "/api/auth-email" || p === "/api/notify-trip-update" || p === "/api/send-push" || p === "/api/my-trips" || p === "/api/edit-itinerary" || p === "/api/trip-chat") {
+          if (p === "/api/trip" || p === "/api/send-itinerary" || p === "/api/send-invite" || p === "/api/auth-email" || p === "/api/notify-trip-update" || p === "/api/send-push" || p === "/api/my-trips" || p === "/api/edit-itinerary" || p === "/api/trip-chat" || p === "/api/my-photo") {
             for (const key of ["ANTHROPIC_API_KEY", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "VITE_APP_URL", "FIREBASE_SERVICE_ACCOUNT", "GCP_WIF_AUDIENCE", "GCP_SERVICE_ACCOUNT", "VERCEL_OIDC_TOKEN"]) {
               if (env[key]) process.env[key] = env[key]
             }

@@ -46,3 +46,15 @@ export async function askTrip(tripId: string, turns: ChatTurn[]): Promise<{ repl
     clearTimeout(timer);
   }
 }
+
+/** A traveller's own photo goes onto the trips they're linked to where the organiser hasn't attached one */
+export async function shareMyPhoto(avatar: string): Promise<void> {
+  if (!/^https:\/\//.test(avatar)) return;
+  const token = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+  if (!token) return;
+  await fetch(`${API_BASE}/api/my-photo`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ avatar }),
+  }).catch(() => {});
+}

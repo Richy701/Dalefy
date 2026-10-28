@@ -10,10 +10,23 @@ import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { parseTripDate } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 
 const DAY_MS = 86_400_000;
 // Carrier marks are drawn for a white ground, in either theme, as on the flight page
 const LOGO_PLATE = "#fff";
+const LIQUID_GLASS = isLiquidGlassAvailable();
+
+/** A card's ground: Liquid Glass where the system has it, else a see-through tint with a hairline edge */
+export function Ground({ glass, C }: { glass?: boolean; C: ThemeColors }) {
+  if (!glass) return null;
+  // Tinted with the card colour so the card reads as a card, not a hole in the sheet
+  const tint = /^#[0-9a-f]{6}$/i.test(C.card) ? `${C.card}99` : C.elevated;
+  const edge = { borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border };
+  return LIQUID_GLASS
+    ? <GlassView glassEffectStyle="regular" tintColor={tint} style={[StyleSheet.absoluteFill, edge]} />
+    : <View style={[StyleSheet.absoluteFill, edge, { backgroundColor: tint }]} />;
+}
 const isTbd = (t?: string) => !t || /^tb[acd]$/i.test(t.trim());
 const shortDay = (date: string) => parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
@@ -50,9 +63,13 @@ function route(ev: TravelEvent): { from: string; to: string } {
  * The event Dale's answer is about, shaped by what it is: a flight as a small ticket with the carrier's
  * logo and live status, a stay with its photo and nights, anything else with its photo, time and place.
  */
-export function DaleEventCard({ ev, C, onPress, stayEnd }: { ev: TravelEvent; C: ThemeColors; onPress: () => void; stayEnd?: string }) {
+export function DaleEventCard({ ev, C, onPress, stayEnd, glass }: {
+  ev: TravelEvent; C: ThemeColors; onPress: () => void; stayEnd?: string;
+  /** On a glass sheet: the card is glass too rather than a solid slab */
+  glass?: boolean;
+}) {
   const title = tidyTitleSeparators(ev.title);
-  if (ev.type === "flight") return <FlightCard ev={ev} C={C} onPress={onPress} title={title} />;
+  if (ev.type === "flight") return <FlightCard ev={ev} C={C} onPress={onPress} title={title} glass={glass} />;
   const sub = ev.type === "hotel" ? stayLine(ev, stayEnd) : [shortDay(ev.date), isTbd(ev.time) ? "" : ev.time].filter(Boolean).join(", ");
   const place = ev.location ? tidyLocation(ev.location) : "";
   return (
@@ -60,25 +77,26 @@ export function DaleEventCard({ ev, C, onPress, stayEnd }: { ev: TravelEvent; C:
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[title, sub, place].filter(Boolean).join(", ")}
-      style={({ pressed }) => [s.card, { backgroundColor: C.elevated, opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [s.card, { backgroundColor: glass ? "transparent" : C.elevated, opacity: pressed ? 0.7 : 1 }]}
     >
+      <Ground glass={glass} C={C} />
       {ev.image
         ? <CachedImage uri={ev.image} style={s.photo} />
         : <CategoryDot palette={C} type={ev.type} transferType={ev.transferType} size={44} base={C.elevated} />}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[s.title, { color: C.textPrimary }]} numberOfLines={2}>{title}</Text>
-        <Text style={[s.sub, { color: C.textSecondary }]} numberOfLines={1}>
+        <Text style={[s.sub, { color: glass ? C.textPrimary : C.textSecondary }]} numberOfLines={1}>
           {ev.type === "hotel" || isTbd(ev.time) ? sub : (
             <>{shortDay(ev.date)}, <Text style={{ color: C.tealText, fontWeight: T.semibold }}>{ev.time}</Text></>
           )}
         </Text>
-        {place && ev.type !== "transfer" ? <Text style={[s.sub, { color: C.textTertiary }]} numberOfLines={1}>{place}</Text> : null}
+        {place && ev.type !== "transfer" ? <Text style={[s.sub, { color: glass ? C.textSecondary : C.textTertiary }]} numberOfLines={1}>{place}</Text> : null}
       </View>
     </Pressable>
   );
 }
 
-function FlightCard({ ev, C, onPress, title }: { ev: TravelEvent; C: ThemeColors; onPress: () => void; title: string }) {
+function FlightCard({ ev, C, onPress, title, glass }: { ev: TravelEvent; C: ThemeColors; onPress: () => void; title: string; glass?: boolean }) {
   // Live status only around the day itself; further out the schedule is the answer and lookups cost money
   const now = useMinuteClock();
   const near = Math.abs(parseTripDate(ev.date).getTime() - now) < 1.5 * DAY_MS;
@@ -113,20 +131,21 @@ function FlightCard({ ev, C, onPress, title }: { ev: TravelEvent; C: ThemeColors
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[carrier, from && to ? `${from} to ${to}` : "", isTbd(ev.time) ? "" : `departs ${ev.time}`, statusText, foot].filter(Boolean).join(", ")}
-      style={({ pressed }) => [s.ticket, { backgroundColor: C.elevated, opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [s.ticket, { backgroundColor: glass ? "transparent" : C.elevated, opacity: pressed ? 0.7 : 1 }]}
     >
+      <Ground glass={glass} C={C} />
       <View style={s.carrierRow}>
         <View style={[s.logoTile, { backgroundColor: LOGO_PLATE }]}>
           {logo ? <Image source={logo} accessible={false} style={s.logo} resizeMode="cover" />
             : <PlaneIcon size={14} color="#1c1c1e" />}
         </View>
-        <Text style={[s.carrier, { color: C.textSecondary }]} numberOfLines={1}>{carrier}</Text>
+        <Text style={[s.carrier, { color: glass ? C.textPrimary : C.textSecondary }]} numberOfLines={1}>{carrier}</Text>
         {statusText ? <Text style={[s.status, { color: statusColor }]}>{statusText}</Text> : null}
       </View>
       <View style={s.routeRow}>
         <View>
           <Text style={[s.code, { color: C.textPrimary }]}>{from || "---"}</Text>
-          <Text style={[s.time, { color: C.textSecondary }]}>{isTbd(ev.time) ? "TBC" : (late >= 15 && revised ? revised : ev.time)}</Text>
+          <Text style={[s.time, { color: glass ? C.textPrimary : C.textSecondary }]}>{isTbd(ev.time) ? "TBC" : (late >= 15 && revised ? revised : ev.time)}</Text>
         </View>
         <View style={s.line}>
           <View style={[s.rule, { backgroundColor: C.border }]} />
@@ -135,10 +154,10 @@ function FlightCard({ ev, C, onPress, title }: { ev: TravelEvent; C: ThemeColors
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[s.code, { color: C.textPrimary }]}>{to || "---"}</Text>
-          <Text style={[s.time, { color: C.textSecondary }]}>{isTbd(ev.endTime) ? "" : ev.endTime}</Text>
+          <Text style={[s.time, { color: glass ? C.textPrimary : C.textSecondary }]}>{isTbd(ev.endTime) ? "" : ev.endTime}</Text>
         </View>
       </View>
-      <Text style={[s.foot, { color: C.textTertiary }]} numberOfLines={1}>{foot}</Text>
+      <Text style={[s.foot, { color: glass ? C.textSecondary : C.textTertiary }]} numberOfLines={1}>{foot}</Text>
     </Pressable>
   );
 }

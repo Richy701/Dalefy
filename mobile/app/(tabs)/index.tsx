@@ -45,6 +45,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useOrganiserPhoto } from "@/hooks/useOrganiserPhoto";
 import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow, categoryTone } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 
@@ -101,6 +102,8 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
   const { C, isDark } = useTheme();
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
+  // The organiser's headshot when there is one, else the photo they chose
+  const myPhoto = useOrganiserPhoto() || prefs.avatar;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ join?: string }>();
@@ -129,8 +132,8 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
             hitSlop={6}
           >
             {/* A solid circle like the buttons beside it: their photo, or their initial on the accent */}
-            {prefs.avatar ? (
-              <Avatar size={36} uri={prefs.avatar} initials={(prefs.name || "").trim().charAt(0).toUpperCase() || "?"} />
+            {myPhoto ? (
+              <Avatar size={36} uri={myPhoto} initials={(prefs.name || "").trim().charAt(0).toUpperCase() || "?"} />
             ) : (
               <Text style={[styles.avatarInitial, { color: "rgba(0,0,0,0.82)" }]}>{(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}</Text>
             )}

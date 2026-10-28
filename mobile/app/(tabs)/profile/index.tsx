@@ -26,6 +26,7 @@ import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme"
 import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useOrganiserPhoto } from "@/hooks/useOrganiserPhoto";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
@@ -43,6 +44,8 @@ const HERO_H = 250;
 export default function ProfileScreen() {
   const { C: themeC, isDark: themeDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
+  // The organiser's headshot when there is one, else the photo they chose
+  const myPhoto = useOrganiserPhoto() || prefs.avatar;
   const auth = useAuth();
   const { brand } = useBrand();
   const { trips, reload } = useTrips();
@@ -110,8 +113,8 @@ export default function ProfileScreen() {
             </Animated.View>
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
-            {prefs.avatar || initials ? (
-              <Avatar size={76} solid uri={prefs.avatar} initials={initials || undefined} color={avatarColor} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
+            {myPhoto || initials ? (
+              <Avatar size={76} solid uri={myPhoto} initials={initials || undefined} color={avatarColor} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
             ) : (
               <View style={s.avatarFallback}>
                 <User size={34} color={C.textTertiary} weight="light" />

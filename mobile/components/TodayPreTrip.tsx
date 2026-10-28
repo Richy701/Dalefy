@@ -7,12 +7,11 @@ import {
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
-import { CategoryDot } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { useFlightLiveData } from "@/hooks/useFlightLiveData";
+import { DaleEventCard } from "@/components/DaleEventCard";
 import { type ThemeColors, T, S, R, statusTone } from "@/constants/theme";
 import { calendarDays, scheduledMinutes } from "@/shared/today";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
@@ -213,8 +212,6 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
   const tripDays = daysBetween(trip.start, trip.end) + 1;
 
   const flight = useMemo(() => firstFlight(trip), [trip]);
-  const flightSoon = !!flight && daysBetween(todayISO, flight.date) >= 0 && daysBetween(todayISO, flight.date) <= 1;
-  const { data: live } = useFlightLiveData(flightSoon ? flight?.flightNum : undefined, flightSoon ? flight?.date : undefined);
 
   // Two lists: things to do (dated or with an action, open first, then done), and the organiser's plain notes
   const todo = useMemo(() => {
@@ -289,34 +286,15 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
         {flight && (
           <FadeIn delay={next()}>
             <SectionHeader title={daysBetween(todayISO, flight.date) === 0 ? "Your flight today" : "Your first flight"} C={C} first={todo.tasks.length === 0} />
-            <ScalePress
-              activeScale={0.985}
-              onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Flight ${flight.flightNum || ""} on ${fmtLong(flight.date)} at ${flight.time}`}
-            >
-              <Card C={C} isDark={isDark}>
-                <View style={[s.row, s.rowTop]}>
-                  <View style={s.iconOnTitle}><CategoryDot type="flight" size={32} /></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>
-                      {[flight.airline, flight.flightNum].filter(Boolean).join(" ") || tidyTitleSeparators(flight.title.replace(/\s*\([A-Z]{3}\)\s*$/, ""))}
-                    </Text>
-                    <Text style={[s.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
-                      {flight.depAirport && flight.arrAirport ? `${flight.depAirport} → ${flight.arrAirport}, ` : ""}
-                      {fmtLong(flight.date)}, {scheduledMinutes(flight.time) == null ? "Time to be confirmed" : flight.time}
-                    </Text>
-                  </View>
-                </View>
-                {(flight.terminal || live?.terminal || live?.gate || live?.status) && (
-                  <View style={[s.flightMeta, { borderTopColor: C.border }]}>
-                    {(live?.terminal || flight.terminal) ? <Text style={[s.metaText, { color: C.textSecondary }]}>Terminal {live?.terminal || flight.terminal}</Text> : null}
-                    {live?.gate ? <Text style={[s.metaText, { color: C.textSecondary }]}>Gate {live.gate}</Text> : null}
-                    {live?.status ? <Text style={[s.metaText, { color: C.tealText, fontWeight: T.semibold }]}>{live.status}</Text> : null}
-                  </View>
-                )}
-              </Card>
-            </ScalePress>
+            {/* The same ticket as Dale's answers: logo, route, times, terminal and gate, live status on the day */}
+            <View style={{ paddingHorizontal: S.md }}>
+              <DaleEventCard
+                ev={flight}
+                C={C}
+                glass
+                onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
+              />
+            </View>
           </FadeIn>
         )}
 

@@ -15,6 +15,8 @@ import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
+import { useOrganiserPhoto } from "@/hooks/useOrganiserPhoto";
+import { shareMyPhoto } from "@/services/tripChat";
 import { updateMemberProfile } from "@/services/firebaseTrips";
 import { CaretLeft, Camera, User, Ticket, Check, X, ClipboardText } from "@/components/ui/OnboardingIcons";
 import { TripPreviewCard } from "@/components/TripPreviewCard";
@@ -145,6 +147,10 @@ export default function WelcomeScreen() {
 
   const [name, setName] = useState(prefs.name || providerName);
   const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
+  // An organiser's headshot is the traveller's photo and isn't changed from the phone
+  const organiserPhoto = useOrganiserPhoto();
+  const photoLocked = isEdit && !!organiserPhoto;
+  const shownAvatar = photoLocked ? organiserPhoto : avatar;
   const uploadedUrlRef = useRef<string | null>(null);
   // Save awaits this, so a half-uploaded photo never reaches the trip roster as a phone-local path
   const uploadPromiseRef = useRef<Promise<string | null> | null>(null);
@@ -433,6 +439,8 @@ export default function WelcomeScreen() {
       setPref("name", trimmed);
       if (finalAvatar) setPref("avatar", finalAvatar);
       updateMemberProfile(trimmed, finalAvatar || null);
+      // Without an organiser headshot, their own photo shows on the trip for everyone
+      if (finalAvatar && !organiserPhoto) void shareMyPhoto(finalAvatar);
       if (router.canGoBack()) {
         toast("Profile updated");
         router.back();
@@ -660,13 +668,14 @@ export default function WelcomeScreen() {
             <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S["2xl"] + S.lg }, !isEdit && { marginTop: S.md }]}>
               <Pressable
                 onPress={pickAvatar}
+                disabled={photoLocked}
                 style={({ pressed }) => [styles.avatarWrap, isEdit && styles.avatarLarge, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
-                accessibilityRole="button"
-                accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"}
+                accessibilityRole={photoLocked ? "image" : "button"}
+                accessibilityLabel={photoLocked ? "Profile photo from your organiser" : avatar ? "Change profile photo" : "Add profile photo"}
               >
                 <View style={[styles.avatarCircle, isEdit && styles.avatarLarge]}>
-                  {avatar ? (
-                    <CachedImage uri={avatar} style={[styles.avatarImage, isEdit && styles.avatarLarge]} blurhash={null} />
+                  {shownAvatar ? (
+                    <CachedImage uri={shownAvatar} style={[styles.avatarImage, isEdit && styles.avatarLarge]} blurhash={null} />
                   ) : isEdit && name.trim() ? (
                     <Text style={styles.avatarInitial}>{name.trim()[0].toUpperCase()}</Text>
                   ) : (
@@ -679,12 +688,15 @@ export default function WelcomeScreen() {
                   </View>
                 )}
               </Pressable>
-              {(!avatar || isEdit) && (
+              {photoLocked ? (
+                <Text style={{ marginTop: S.xs, fontSize: T.sm, color: C.textSecondary }}>Photo from your organiser</Text>
+              ) : null}
+              {!photoLocked && (!avatar || isEdit) && (
                 <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
                   <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{avatar ? "Change photo" : "Add photo"}</Text>
                 </Pressable>
               )}
-              {isEdit && !!avatar && (
+              {isEdit && !photoLocked && !!avatar && (
                 <Pressable onPress={() => setAvatar("")} accessibilityRole="button" accessibilityLabel="Remove profile photo" hitSlop={6} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
                   <Text style={{ fontSize: T.sm, color: C.textSecondary }}>Remove photo</Text>
                 </Pressable>
