@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { parseTripDate } from "@/lib/dates";
 import {
@@ -8,8 +8,6 @@ import {
   Play,
   Images,
   CaretDown,
-  CaretLeft,
-  CaretRight,
   X,
   Image as ImageIcon,
   FilmStrip,
@@ -18,6 +16,8 @@ import {
   Square,
   MinusSquare,
   Check,
+  ImageSquare,
+  UserCircle,
 } from "@phosphor-icons/react";
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
@@ -33,6 +33,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { TripMedia } from "@/types";
+import { ReportedPhotos } from "@/components/media/ReportedPhotos";
+import { byDay, dayLabel, sharerKeyOf } from "@/components/media/grouping";
 
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
 type MediaFilter = "all" | "image" | "video";
@@ -73,6 +75,8 @@ export function MediaPage() {
 
   const [activeTripFilter, setActiveTripFilter] = useState<string>("all");
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  // "all", or one sharer's key (their account, else the name on the photo)
+  const [sharerFilter, setSharerFilter] = useState<string>("all");
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -102,8 +106,26 @@ export function MediaPage() {
     if (mediaFilter !== "all") {
       items = items.filter((m) => m.type === mediaFilter);
     }
+    if (sharerFilter !== "all") {
+      items = items.filter((m) => sharerKeyOf(m) === sharerFilter);
+    }
     return items;
-  }, [allItems, activeTripFilter, mediaFilter]);
+  }, [allItems, activeTripFilter, mediaFilter, sharerFilter]);
+
+  // Everyone who has shared on the trips in view, for the "Shared by" filter
+  const sharers = useMemo(() => {
+    const inView = activeTripFilter === "all" ? allItems : allItems.filter((m) => m.tripId === activeTripFilter);
+    const byKey = new Map<string, { key: string; name: string; count: number }>();
+    for (const m of inView) {
+      const key = sharerKeyOf(m);
+      if (!key) continue;
+      const row = byKey.get(key) ?? { key, name: m.uploadedBy || "A traveller", count: 0 };
+      row.count++;
+      if (m.uploadedBy) row.name = m.uploadedBy;
+      byKey.set(key, row);
+    }
+    return [...byKey.values()].sort((a, b) => b.count - a.count);
+  }, [allItems, activeTripFilter]);
 
   // Group filtered items by trip
   const groupedByTrip = useMemo(() => {
@@ -116,17 +138,20 @@ export function MediaPage() {
         map.set(item.tripId, { tripId: item.tripId, tripName: item.tripName, tripImage: item.tripImage, items: [item] });
       }
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).map((g) => ({ ...g, days: byDay(g.items) }));
   }, [filtered]);
 
-  // All filtered items in display order, so videos open in the lightbox too
+  // Items exactly as they appear on screen (trip, then day), so the lightbox pages in the same order
+  const ordered = useMemo(() => groupedByTrip.flatMap((g) => g.days.flatMap((d) => d.items)), [groupedByTrip]);
+
+  // All shown items in display order, so videos open in the lightbox too
   const lightboxSlides = useMemo(() =>
-    filtered.map((m) =>
+    ordered.map((m) =>
       m.type === "image"
         ? { src: m.url }
         : { type: "video" as const, sources: [{ src: m.url, type: videoMime(m.name) }] }
     ),
-    [filtered]
+    [ordered]
   );
 
   const totalPhotos = allItems.filter((m) => m.type === "image").length;
@@ -356,7 +381,13 @@ export function MediaPage() {
   };
 
   const getLightboxIndex = (item: FilteredItem) =>
-    filtered.findIndex((m) => m.id === item.id && m.tripId === item.tripId);
+    ordered.findIndex((m) => m.id === item.id && m.tripId === item.tripId);
+
+  const setCover = (item: FilteredItem) => {
+    updateTrip(item.tripId, { image: item.url });
+    toast.success(`Cover photo updated for ${item.tripName}`);
+  };
+  const coverOf = (tripId: string) => trips.find((t) => t.id === tripId)?.image;
 
   const tripsWithMedia = trips.filter((t) => (t.media?.length ?? 0) > 0);
 
@@ -364,28 +395,6 @@ export function MediaPage() {
   const bannerTrip = activeTripFilter !== "all"
     ? trips.find((t) => t.id === activeTripFilter) ?? null
     : null;
-
-  // For "all" mode - rotating carousel through trips that actually have media
-  const carouselTrips = useMemo(() =>
-    trips.filter((t) => (t.media?.length ?? 0) > 0 && !!t.image),
-    [trips]
-  );
-  const [carouselIdx, setCarouselIdx] = useState(0);
-  const [carouselPaused, setCarouselPaused] = useState(false);
-
-  // Auto-rotate every 5s when on "All" view; hold still on hover and under reduced motion
-  useEffect(() => {
-    if (bannerTrip || carouselTrips.length <= 1 || carouselPaused) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = setInterval(() => {
-      setCarouselIdx((i) => (i + 1) % carouselTrips.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [bannerTrip, carouselTrips.length, carouselPaused]);
-
-  // Clamp instead of resetting state when the trip list shrinks
-  const safeCarouselIdx = carouselIdx < carouselTrips.length ? carouselIdx : 0;
-  const currentCarouselTrip = carouselTrips[safeCarouselIdx] ?? null;
 
   // True totals for the trip (or library) - independent of the type filter
   const bannerPhotos = bannerTrip
@@ -420,138 +429,36 @@ export function MediaPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-9 px-5 rounded-lg bg-brand text-[#050505] text-xs font-medium hover:opacity-90 transition-opacity"
+              className="h-9 px-5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
           </div>
         ) : (<>
 
-        {/* Hero Banner - rotating carousel (All) or trip-specific cover */}
+        {/* Header: what's in view and how much of it */}
         <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-          <div
-            className="relative overflow-hidden rounded-xl min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]"
-            onMouseEnter={() => setCarouselPaused(true)}
-            onMouseLeave={() => setCarouselPaused(false)}
-          >
-            {/* Background image layer */}
-            {bannerTrip ? (
-              /* ── Trip-specific: full cover image ── */
-              <img
-                key={bannerTrip.id}
-                src={bannerTrip.image}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover animate-fadeIn"
-                draggable={false}
-              />
-            ) : (
-              /* ── All trips: rotating carousel with crossfade ── */
-              carouselTrips.map((t, i) => (
-                <img
-                  key={t.id}
-                  src={t.image}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-                  style={{ opacity: i === safeCarouselIdx ? 1 : 0 }}
-                  draggable={false}
-                />
-              ))
-            )}
-
-            {/* Overlay gradients */}
-            <div className="absolute inset-0 bg-linear-to-r from-black/95 via-black/70 to-black/30" />
-            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
-
-            <div className="relative px-4 sm:px-8 py-8 sm:py-10 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
-              <div>
-                <p className="text-[11px] font-medium text-brand mb-3">
-                  {bannerTrip ? bannerTrip.destination : "Your Gallery"}
+          <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              {bannerTrip?.image && <img src={bannerTrip.image} alt="" className="h-14 w-14 rounded-lg object-cover bg-secondary shrink-0" />}
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground truncate">{bannerTrip ? bannerTrip.name : "All photos"}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  {[
+                    `${bannerPhotos} ${bannerPhotos === 1 ? "photo" : "photos"}`,
+                    bannerVideos ? `${bannerVideos} ${bannerVideos === 1 ? "video" : "videos"}` : "",
+                    bannerTrip
+                      ? `${parseTripDate(bannerTrip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${parseTripDate(bannerTrip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                      : `across ${tripsWithMedia.length} ${tripsWithMedia.length === 1 ? "trip" : "trips"}`,
+                  ].filter(Boolean).join(", ")}
                 </p>
-                <h2 className="text-[2.5rem] font-black uppercase leading-none tracking-tight text-white">
-                  {bannerTrip ? (
-                    <>{bannerTrip.name}</>
-                  ) : (
-                    <>Photos &amp;<br />Videos</>
-                  )}
-                </h2>
-                {bannerTrip && (
-                  <p className="text-[11px] font-bold text-white/50 mt-2 uppercase tracking-wider">
-                    {parseTripDate(bannerTrip.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – {parseTripDate(bannerTrip.end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-end justify-between gap-6 mt-8">
-                <div className="flex items-center gap-6">
-                  <div>
-                    <p className="text-3xl font-black leading-none text-white">{bannerPhotos}</p>
-                    <p className="text-[11px] font-medium text-white/60 mt-1.5">Photos</p>
-                  </div>
-                  <div className="h-10 w-px bg-white/15" />
-                  <div>
-                    <p className="text-3xl font-black leading-none text-white">{bannerVideos}</p>
-                    <p className="text-[11px] font-medium text-white/60 mt-1.5">Videos</p>
-                  </div>
-                  {!bannerTrip && (
-                    <>
-                      <div className="h-10 w-px bg-white/15" />
-                      <div>
-                        <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
-                        <p className="text-[11px] font-medium text-white/60 mt-1.5">Trips</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {bannerTrip ? (
-                  <button
-                    onClick={() => navigate(`/trip/${bannerTrip.id}`)}
-                    className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
-                  >
-                    Open Trip
-                  </button>
-                ) : currentCarouselTrip ? (
-                  <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                    {currentCarouselTrip.name}
-                  </div>
-                ) : null}
               </div>
             </div>
-
-            {/* Carousel controls - bottom center of banner */}
-            {!bannerTrip && carouselTrips.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
-                <button
-                  onClick={() => setCarouselIdx((i) => (i - 1 + carouselTrips.length) % carouselTrips.length)}
-                  aria-label="Previous trip"
-                  className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
-                >
-                  <CaretLeft className="h-3.5 w-3.5" />
-                </button>
-                <div className="flex items-center gap-1.5 px-1">
-                  {carouselTrips.map((t, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCarouselIdx(i)}
-                      aria-label={`Show ${t.name}`}
-                      aria-current={i === safeCarouselIdx ? "true" : undefined}
-                      className={`rounded-full transition-all duration-300 ${
-                        i === safeCarouselIdx
-                          ? "h-2 w-5 bg-brand"
-                          : "h-2 w-2 bg-white/30 hover:bg-white/50"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => setCarouselIdx((i) => (i + 1) % carouselTrips.length)}
-                  aria-label="Next trip"
-                  className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
-                >
-                  <CaretRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
+            {/* Uploading lives in the bar below, with its trip picker */}
+            {bannerTrip && (
+              <button onClick={() => navigate(`/trip/${bannerTrip.id}`)} className="h-9 px-3.5 rounded-xl border border-border text-[13px] font-medium text-foreground hover:bg-secondary transition-colors shrink-0">
+                Open trip
+              </button>
             )}
           </div>
         </div>
@@ -604,7 +511,7 @@ export function MediaPage() {
                   <DropdownMenuItem
                     key={t.id}
                     onClick={() => setUploadTripId(t.id)}
-                    className={t.id === uploadTripId ? "text-brand" : undefined}
+                    className={t.id === uploadTripId ? "text-link" : undefined}
                   >
                     <div className="h-6 w-8 rounded overflow-hidden shrink-0">
                       <img src={t.image} alt="" className="h-full w-full object-cover" />
@@ -624,7 +531,7 @@ export function MediaPage() {
           <button
             onClick={() => !uploading && fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40 sm:hidden"
+            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40 sm:hidden"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload
@@ -637,7 +544,7 @@ export function MediaPage() {
               <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                 <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
               </div>
-              <span className="text-xs font-medium text-brand shrink-0">Uploading…</span>
+              <span className="text-xs font-medium text-link shrink-0">Uploading…</span>
             </div>
           )}
 
@@ -648,7 +555,7 @@ export function MediaPage() {
                 <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <span className="text-xs font-medium text-brand shrink-0">Uploading…</span>
+                <span className="text-xs font-medium text-link shrink-0">Uploading…</span>
               </div>
             ) : (
               <p className="text-[11px] font-medium text-muted-foreground truncate">
@@ -661,7 +568,7 @@ export function MediaPage() {
           <button
             onClick={() => !uploading && fileInputRef.current?.click()}
             disabled={uploading}
-            className="hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+            className="hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload
@@ -679,11 +586,11 @@ export function MediaPage() {
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
               <button
-                onClick={() => setActiveTripFilter("all")}
+                onClick={() => { setActiveTripFilter("all"); setSharerFilter("all"); }}
                 className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border shrink-0 ${
                   activeTripFilter === "all"
-                    ? "bg-brand text-black border-transparent"
-                    : "bg-card border-border text-muted-foreground hover:border-brand/40"
+                    ? "bg-primary text-primary-foreground border-transparent"
+                    : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/25"
                 }`}
               >
                 All · {allItems.length}
@@ -691,12 +598,12 @@ export function MediaPage() {
               {tripsWithMedia.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setActiveTripFilter(activeTripFilter === t.id ? "all" : t.id)}
+                  onClick={() => { setActiveTripFilter(activeTripFilter === t.id ? "all" : t.id); setSharerFilter("all"); }}
                   aria-pressed={activeTripFilter === t.id}
                   className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
-                      ? "bg-brand text-black border-transparent"
-                      : "bg-card border-border text-muted-foreground hover:border-brand/40"
+                      ? "bg-primary text-primary-foreground border-transparent"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/25"
                   }`}
                 >
                   {t.name} · {t.media!.length}
@@ -707,6 +614,35 @@ export function MediaPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Shared by */}
+            {sharers.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Filter by who shared"
+                  className="group flex items-center gap-1.5 h-[38px] px-3 rounded-xl border border-border bg-card shadow-sm text-xs font-medium text-foreground hover:bg-secondary transition-colors"
+                >
+                  <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="hidden sm:inline max-w-[140px] truncate">
+                    {sharerFilter === "all" ? "Shared by anyone" : sharers.find((p) => p.key === sharerFilter)?.name ?? "Shared by"}
+                  </span>
+                  <CaretDown className="h-3 w-3 text-muted-foreground transition-transform group-data-popup-open:rotate-180" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setSharerFilter("all")}>
+                    <span className="flex-1 text-xs font-medium">Anyone</span>
+                    {sharerFilter === "all" && <Check className="h-3.5 w-3.5" />}
+                  </DropdownMenuItem>
+                  {sharers.map((p) => (
+                    <DropdownMenuItem key={p.key} onClick={() => setSharerFilter(p.key)}>
+                      <span className="flex-1 min-w-0 truncate text-xs font-medium">{p.name}</span>
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{p.count}</span>
+                      {sharerFilter === p.key && <Check className="h-3.5 w-3.5" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Type toggle */}
             <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
               {([
@@ -721,7 +657,7 @@ export function MediaPage() {
                   aria-pressed={mediaFilter === opt.key}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     mediaFilter === opt.key
-                      ? "bg-brand text-black shadow-sm"
+                      ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:hover:text-foreground"
                   }`}
                 >
@@ -738,7 +674,7 @@ export function MediaPage() {
               aria-pressed={selectMode}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
                 selectMode
-                  ? "bg-brand text-black border-transparent"
+                  ? "bg-primary text-primary-foreground border-transparent"
                   : "bg-card border-border text-muted-foreground hover:hover:text-foreground shadow-sm"
               }`}
             >
@@ -748,20 +684,23 @@ export function MediaPage() {
           </div>
         </div>}
 
+        {/* ── Reported by travellers, ahead of everything else ── */}
+        <ReportedPhotos tripIds={tripsWithMedia.map((t) => t.id)} items={allItems} onRemove={(item) => handleDelete(item as FilteredItem)} />
+
         {/* ── Selection toolbar ── */}
         {selectMode && filtered.length > 0 && (
-          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/8">
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-border bg-secondary/60">
             <button
               onClick={() => allFilteredSelected ? setSelected(new Set()) : selectAllFiltered()}
-              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-brand transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground transition-colors"
             >
-              {allFilteredSelected ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
+              {allFilteredSelected ? <MinusSquare className="h-4 w-4 text-foreground" /> : <Square className="h-4 w-4" />}
               {allFilteredSelected ? "Deselect All" : "Select All"}
             </button>
 
-            <div className="h-4 w-px bg-secondary dark:bg-[#2a2a2a]" />
+            <div className="h-4 w-px bg-border" />
 
-            <span className="text-xs font-medium text-brand">
+            <span className="text-xs font-medium text-link">
               {selected.size} selected
             </span>
 
@@ -790,15 +729,8 @@ export function MediaPage() {
         {/* ── Gallery grouped by trip ── */}
         {filtered.length > 0 ? (
           activeTripFilter !== "all" ? (
-            /* Single trip - flat grid, no header needed */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filtered.map((item) => {
-                const lbIdx = getLightboxIndex(item);
-                return (
-                  <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />
-                );
-              })}
-            </div>
+            /* Single trip - its days, no trip header needed */
+            <MediaDays days={groupedByTrip[0]?.days ?? []} renderItem={(item) => <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={getLightboxIndex(item)} onZoom={setLightboxIndex} onDelete={handleDelete} onSetCover={setCover} isCover={item.type === "image" && coverOf(item.tripId) === item.url} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />} />
           ) : (
             /* All trips - grouped with section headers */
             <div className="space-y-10">
@@ -813,9 +745,9 @@ export function MediaPage() {
                     {selectMode && (
                       <button onClick={() => selectTrip(group.tripId)} className="shrink-0">
                         {allGroupSelected ? (
-                          <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
+                          <CheckSquare className="h-5 w-5 text-foreground" weight="fill" />
                         ) : someGroupSelected ? (
-                          <MinusSquare className="h-5 w-5 text-brand" weight="fill" />
+                          <MinusSquare className="h-5 w-5 text-foreground" weight="fill" />
                         ) : (
                           <Square className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -827,26 +759,22 @@ export function MediaPage() {
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold tracking-tight text-foreground truncate">{group.tripName}</h3>
                       <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
-                        {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
+                        {(() => {
+                          const photos = group.items.filter(i => i.type === "image").length, videos = group.items.filter(i => i.type === "video").length;
+                          return [`${photos} ${photos === 1 ? "photo" : "photos"}`, videos ? `${videos} ${videos === 1 ? "video" : "videos"}` : "", `${group.days.length} ${group.days.length === 1 ? "day" : "days"}`].filter(Boolean).join(", ");
+                        })()}
                       </p>
                     </div>
                     <button
                       onClick={() => navigate(`/trip/${group.tripId}`)}
-                      className="flex items-center gap-1 text-xs font-medium text-brand hover:opacity-70 transition-opacity shrink-0"
+                      className="flex items-center gap-1 text-xs font-medium text-link hover:underline shrink-0"
                     >
-                      View Trip
+                      Open trip
                     </button>
                   </div>
 
-                  {/* Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {group.items.map((item) => {
-                      const lbIdx = getLightboxIndex(item);
-                      return (
-                        <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />
-                      );
-                    })}
-                  </div>
+                  {/* The trip's photos, a day at a time */}
+                  <MediaDays days={group.days} renderItem={(item) => <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={getLightboxIndex(item)} onZoom={setLightboxIndex} onDelete={handleDelete} onSetCover={setCover} isCover={item.type === "image" && coverOf(item.tripId) === item.url} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />} />
                 </section>
                 );
               })}
@@ -872,9 +800,9 @@ export function MediaPage() {
                 <div className={`h-11 w-11 rounded-xl flex items-center justify-center mb-4 transition-colors ${
                   isDragging ? "bg-brand/15" : "bg-secondary"
                 }`}>
-                  <Upload className={`h-5 w-5 ${isDragging ? "text-brand" : "text-muted-foreground"}`} />
+                  <Upload className={`h-5 w-5 ${isDragging ? "text-link" : "text-muted-foreground"}`} />
                 </div>
-                <p className={`text-sm font-bold tracking-tight ${isDragging ? "text-brand" : "text-foreground"}`}>
+                <p className={`text-sm font-bold tracking-tight ${isDragging ? "text-link" : "text-foreground"}`}>
                   {isDragging ? "Drop to upload" : "No photos yet"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-xs">
@@ -906,7 +834,7 @@ export function MediaPage() {
                       <DropdownMenuItem
                         key={t.id}
                         onClick={() => setUploadTripId(t.id)}
-                        className={t.id === uploadTripId ? "text-brand" : undefined}
+                        className={t.id === uploadTripId ? "text-link" : undefined}
                       >
                         <div className="h-7 w-10 rounded-lg overflow-hidden shrink-0">
                           <img src={t.image} alt="" className="h-full w-full object-cover" />
@@ -924,7 +852,7 @@ export function MediaPage() {
               <button
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
               >
                 <Upload className="h-3.5 w-3.5" />
                 Upload
@@ -964,12 +892,34 @@ export function MediaPage() {
   );
 }
 
+/* ── A trip's photos, grouped under day headers ── */
+function MediaDays({ days, renderItem }: { days: Array<{ key: string; items: FilteredItem[] }>; renderItem: (item: FilteredItem) => React.ReactNode }) {
+  return (
+    <div className="space-y-6">
+      {days.map((d) => (
+        <div key={d.key || "undated"}>
+          <div className="flex items-center gap-3 mb-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{dayLabel(d.key)}</p>
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground tabular-nums">{d.items.length}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {d.items.map(renderItem)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Media Card Component ── */
-function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onToggleSelect }: {
+function MediaCard({ item, lbIdx, onZoom, onDelete, onSetCover, isCover, selectMode, isSelected, onToggleSelect }: {
   item: FilteredItem;
   lbIdx: number;
   onZoom: (idx: number) => void;
   onDelete: (item: FilteredItem) => void;
+  onSetCover?: (item: FilteredItem) => void;
+  isCover?: boolean;
   selectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -978,8 +928,8 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
     <div
       className={`group relative rounded-xl overflow-hidden bg-card border shadow-sm hover:shadow-xl transition-all duration-300 ${
         isSelected
-          ? "border-brand ring-2 ring-brand/30"
-          : "border-border hover:border-brand/30"
+          ? "border-foreground/40 ring-2 ring-foreground/15"
+          : "border-border hover:border-foreground/25"
       }`}
       role={selectMode ? "checkbox" : undefined}
       aria-checked={selectMode ? isSelected : undefined}
@@ -1014,10 +964,17 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
         {selectMode && (
           <div className="absolute top-2 right-2 z-10">
             <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${
-              isSelected ? "bg-brand" : "bg-black/40 backdrop-blur-sm border border-white/30"
+              isSelected ? "bg-primary" : "bg-black/40 backdrop-blur-sm border border-white/30"
             }`}>
-              {isSelected && <Check className="h-3.5 w-3.5 text-black" weight="bold" />}
+              {isSelected && <Check className="h-3.5 w-3.5 text-primary-foreground" weight="bold" />}
             </div>
+          </div>
+        )}
+
+        {/* The trip's current cover */}
+        {isCover && (
+          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/55 backdrop-blur-sm text-[11px] font-medium text-white flex items-center gap-1">
+            <ImageSquare className="h-3 w-3" /> Cover
           </div>
         )}
 
@@ -1046,6 +1003,16 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
           >
             <Download className="h-4 w-4" />
           </button>
+          {item.type === "image" && onSetCover && !isCover && (
+            <button
+              onClick={() => onSetCover(item)}
+              aria-label={`Use ${item.name} as the trip cover`}
+              title="Use as cover"
+              className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            >
+              <ImageSquare className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => onDelete(item)}
             aria-label={`Delete ${item.name}`}
@@ -1061,7 +1028,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
       <div className="px-2.5 py-2">
         <p className="text-[10px] font-bold text-foreground truncate leading-tight">{item.name}</p>
         <div className="flex items-center justify-between mt-1">
-          <p className="text-[9px] font-bold text-brand truncate uppercase tracking-tight">{item.tripName}</p>
+          <p className="text-[10px] font-medium text-muted-foreground truncate">{item.tripName}</p>
           <div className="flex items-center gap-2 shrink-0">
             {item.uploadedBy && <span className="text-[9px] font-bold text-muted-foreground">by {item.uploadedBy}</span>}
             {item.uploadedAt && <span className="text-[9px] font-bold text-muted-foreground">{formatDate(item.uploadedAt)}</span>}

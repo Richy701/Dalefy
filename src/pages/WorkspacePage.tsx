@@ -89,7 +89,7 @@ import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
 import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
-import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
+import { CategoryDot } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
 // The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
@@ -236,6 +236,28 @@ export function WorkspacePage() {
   const [showCosts, setShowCosts] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+  // The phone preview panel is dragged wider or narrower from its left edge; the phone scales to fit
+  const [previewWidth, setPreviewWidth] = useState<number | null>(() => {
+    try { const v = Number(localStorage.getItem("daf-preview-width")); return v >= 300 ? v : null; } catch { return null; }
+  });
+  const startPreviewResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    const right = handle.parentElement!.getBoundingClientRect().right;
+    handle.setPointerCapture(e.pointerId);
+    let latest = 0;
+    const move = (ev: PointerEvent) => {
+      latest = Math.round(Math.min(Math.max(right - ev.clientX, 300), window.innerWidth * 0.65));
+      setPreviewWidth(latest);
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      if (latest) { try { localStorage.setItem("daf-preview-width", String(latest)); } catch { /* private mode */ } }
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+  }, []);
   const [showAssistant, setShowAssistant] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -462,6 +484,8 @@ export function WorkspacePage() {
     }
   };
 
+  // The viewer's own calendar day, in the same YYYY-MM-DD shape as event dates, to mark "Today" in the day list
+  const todayIso = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
   const groupedEvents = useMemo(() => {
     if (!trip) return [];
     let events = trip.events;
@@ -1356,36 +1380,35 @@ export function WorkspacePage() {
                       updateActivity(date);
                       document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg group relative transition-colors ${isActive ? "bg-secondary ring-1 ring-brand" : "hover:bg-secondary/60"}`}
+                    aria-current={isActive ? "true" : undefined}
+                    className={`w-full text-left px-2.5 py-2.5 rounded-xl group relative transition-colors ${isActive ? "bg-secondary" : "hover:bg-secondary/60"}`}
                   >
-                    <div className="flex items-center gap-2.5 relative z-10 leading-none">
+                    <div className="flex items-center gap-3 relative z-10">
                       <div className="relative shrink-0">
-                        <div className={`h-9 w-9 rounded-lg flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black" : "bg-secondary text-muted-foreground"}`}>
-                          <span className="text-[8px] font-bold uppercase leading-none">{parseTripDate(date).toLocaleDateString("en-US", { month: "short" })}</span>
-                          <span className="text-sm font-black leading-none mt-0.5">{parseTripDate(date).getDate()}</span>
+                        <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center transition-colors ${isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground group-hover:bg-card"}`}>
+                          <span className="text-[9px] font-semibold uppercase leading-none tracking-wide">{parseTripDate(date).toLocaleDateString("en-GB", { month: "short" })}</span>
+                          <span className="text-[15px] font-bold leading-none mt-0.5 tabular-nums">{parseTripDate(date).getDate()}</span>
                         </div>
                         {dayPeers.length > 0 && (
-                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-card flex items-center justify-center text-[7px] font-black text-white">
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-card flex items-center justify-center text-[8px] font-bold text-white">
                             {dayPeers.length}
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-[11px] font-medium text-muted-foreground">Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className={`text-xs font-medium truncate leading-tight mt-0.5 ${isActive ? "text-foreground" : "text-foreground/80"}`}>{highlight}</span>
-                        {/* the day's shape: one segment per event, in order, coloured by category */}
-                        <div className="flex items-center gap-0.5 mt-1.5 h-[3px]">
-                          {dayEvents.map(e => (
-                            <span key={e.id} className={`flex-1 h-[3px] rounded-full ${(CATEGORY_CLASS[e.type] ?? CATEGORY_CLASS.activity).fg.replace("text-", "bg-")}`} />
-                          ))}
-                          {dayPeers.length > 0 && (
-                            <div className="flex -space-x-1 ml-1.5">
-                              {dayPeers.slice(0, 3).map(p => (
-                                <div key={p.userId} className="h-3.5 w-3.5 rounded-full bg-secondary border border-card flex items-center justify-center text-[6px] font-bold text-foreground uppercase">{p.initials.slice(0, 1)}</div>
-                              ))}
-                            </div>
-                          )}
+                      <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground">Day {i + 1}, {parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short" })}</span>
+                          {date === todayIso && <span className="rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-foreground">Today</span>}
+                          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">{dayEvents.length}</span>
                         </div>
+                        <span className={`text-[13px] truncate leading-tight ${isActive ? "font-semibold text-foreground" : "font-medium text-foreground/85"}`}>{highlight || "Nothing planned"}</span>
+                        {dayPeers.length > 0 && (
+                          <div className="flex -space-x-1 mt-1">
+                            {dayPeers.slice(0, 3).map(p => (
+                              <div key={p.userId} className="h-4 w-4 rounded-full bg-secondary border border-card flex items-center justify-center text-[7px] font-bold text-foreground uppercase">{p.initials.slice(0, 1)}</div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -1396,7 +1419,7 @@ export function WorkspacePage() {
         </aside>
 
         <div className="flex-1 flex flex-row overflow-hidden relative">
-          <main ref={printRef} className={`flex-1 flex flex-col relative bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showCosts || showMobilePreview || showAssistant ? "lg:w-[60%]" : "w-full"}`}>
+          <main ref={printRef} className={`flex-1 min-w-0 flex flex-col relative bg-background overflow-y-auto transition-all duration-500 ${showMobilePreview && previewWidth ? "" : showMap || showTasks || showCosts || showMobilePreview || showAssistant ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover" style={{ objectPosition: objectPosition(trip.imagePosition) }} alt={trip.name} />
@@ -2100,7 +2123,20 @@ export function WorkspacePage() {
             </aside>
           )}
           {showMobilePreview && (
-            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-border bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+            <aside
+              className={`absolute inset-0 lg:relative lg:inset-auto w-full h-full border-l-0 lg:border-l border-border bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col ${previewWidth ? "lg:w-(--preview-w) lg:shrink-0" : "lg:w-[40%]"}`}
+              style={previewWidth ? ({ "--preview-w": `${previewWidth}px` } as React.CSSProperties) : undefined}
+            >
+              {/* Drag to resize the panel; double-click puts it back */}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize phone preview"
+                title="Drag to resize. Double-click to reset."
+                onPointerDown={startPreviewResize}
+                onDoubleClick={() => { setPreviewWidth(null); try { localStorage.removeItem("daf-preview-width"); } catch { /* private mode */ } }}
+                className="hidden lg:block absolute left-0 top-0 bottom-0 w-1.5 -ml-0.5 z-10 cursor-col-resize hover:bg-border active:bg-foreground/20 transition-colors"
+              />
               <MobilePreview
                 trip={trip}
                 events={groupedEvents.flatMap(([, evs]) => evs)}

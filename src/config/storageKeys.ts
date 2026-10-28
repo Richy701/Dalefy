@@ -15,4 +15,5 @@ export const STORAGE = {
   EVENT_IMAGE_CACHE: "daf-event-image-cache-v1",
   PENDING_BRANDING:  "daf-pending-branding",
   BRANDING:          "daf-branding",
+  CURRENCY:          "daf-default-currency",
 } as const;

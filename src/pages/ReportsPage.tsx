@@ -19,9 +19,12 @@ import { liveTrips } from "@/lib/tripLifecycle";
 import { MOCK_USERS } from "@/data/mock-users";
 import { AIRLINE_COLORS, airlineLogoUrl } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { TravellersReport } from "@/components/reports/TravellersReport";
+import { TripsReport } from "@/components/reports/TripsReport";
 import type { User } from "@/types";
 
-type Tab = "operations" | "compliance";
+type Tab = "operations" | "travellers" | "trips" | "compliance";
+const TAB_LABELS: Record<Tab, string> = { operations: "Overview", travellers: "Travellers", trips: "Trips", compliance: "Documents" };
 
 // Single source of truth for document-status colors (icons use the matching
 // emerald-400 / amber-400 / red-400 utility classes)
@@ -191,7 +194,7 @@ export function ReportsPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
       <PageHeader
-        cta={
+        cta={(tab === "operations" || tab === "compliance") && (
           <button
             onClick={tab === "operations" ? handleExportCsv : handleExportComplianceCsv}
             disabled={exportDisabled}
@@ -202,7 +205,7 @@ export function ReportsPage() {
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
-        }
+        )}
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -214,7 +217,7 @@ export function ReportsPage() {
               <p className="text-sm text-muted-foreground mt-1.5">{BRAND.name}</p>
             </div>
             <div role="tablist" className="flex items-center bg-secondary p-0.5 rounded-lg shrink-0">
-              {(["operations", "compliance"] as const).map(t => (
+              {(["operations", "travellers", "trips", "compliance"] as const).map(t => (
                 <button
                   key={t}
                   role="tab"
@@ -224,7 +227,7 @@ export function ReportsPage() {
                     tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {t === "operations" ? "Overview" : "Documents"}
+                  {TAB_LABELS[t]}
                 </button>
               ))}
             </div>
@@ -236,6 +239,8 @@ export function ReportsPage() {
               <div className="h-6 w-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
             </div>
           )}
+          {tripsReady && tab === "travellers" && <TravellersReport trips={trips} />}
+          {tripsReady && tab === "trips" && <TripsReport trips={trips} />}
           {tripsReady && tab === "operations" && (trips.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <div className="text-center space-y-1.5">

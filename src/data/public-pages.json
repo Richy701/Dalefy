@@ -34,6 +34,96 @@
     "sections": [],
     "releases": [
       {
+        "date": "2026-10-28",
+        "dateLabel": "28 Oct 2026",
+        "heading": "Dale gets live answers, and you can report a photo",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Dale can answer with live flight status and the weather where you're going, and shows the events it's talking about as cards you can tap.",
+          "Dale asks before it sends anything to the AI for the first time. The privacy policy now names Anthropic, the company behind it.",
+          "Report a photo someone else added to the gallery. It's hidden for you straight away and your organiser is told so they can review it.",
+          "Transfers show the meeting point, the driver and their phone number. Event times show in 24-hour.",
+          "Android: sheets, cards and the Dale message box are solid instead of see-through, and the keyboard no longer covers what you type."
+        ]
+      },
+      {
+        "date": "2026-10-27",
+        "dateLabel": "27 Oct 2026",
+        "heading": "Trip info and your organiser's photo",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Trip info reads like a document, and phone numbers, emails and links are tappable everywhere.",
+          "Your organiser's photo appears on the trip, and traveller photos show across the itinerary.",
+          "Where you're staying always shows, even when the itinerary didn't list it separately."
+        ]
+      },
+      {
+        "date": "2026-10-26",
+        "dateLabel": "26 Oct 2026",
+        "heading": "Today before, during and after your trip",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Today shows your hotel before you go, tonight's stay while you travel and a photo recap once you're home.",
+          "Messages from your organiser arrive in the notifications list, even when you opened the app from the lock screen.",
+          "Leave a trip by pressing and holding it on Home.",
+          "Documents open inside the app, and the first tap after opening the app is faster."
+        ]
+      },
+      {
+        "date": "2026-10-23",
+        "dateLabel": "23 Oct 2026",
+        "heading": "Meet Dale",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Dale is the trip assistant. Ask about your flights, hotels, meals or what's on tomorrow, and it answers from your itinerary and your organiser's notes.",
+          "Find it under Ask Dale on Home and on the trip page."
+        ]
+      },
+      {
+        "date": "2026-10-22",
+        "dateLabel": "22 Oct 2026",
+        "heading": "A quicker start and faster updates",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "A new first screen: sign in or enter your trip code in one box, and a short tour of the app built from your own trip.",
+          "Changes from your organiser reach your phone as soon as they're published, instead of every 30 seconds.",
+          "Flight alerts check every 15 minutes around departure, and only notify you about changes you need to act on.",
+          "Map pins stay in the trip's own country and cities."
+        ]
+      },
+      {
+        "date": "2026-10-21",
+        "dateLabel": "21 Oct 2026",
+        "heading": "A new look for the app",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Home and Today redesigned, with frosted sheets, a day strip and a countdown on each trip.",
+          "New flight and event pages: a ticket in the airline's colours, photo headers and smoother moves between events.",
+          "Join a trip has PIN and Scan tabs, shows a big preview of the trip, and accepts a pasted link.",
+          "Trip links and QR codes open straight into the app.",
+          "Widgets and Live Activities redesigned, and notifications show the trip photo with quick actions.",
+          "The Gallery groups photos under a banner for each trip and keeps the date each photo was taken."
+        ]
+      },
+      {
         "date": "2026-09-15",
         "dateLabel": "15 Sep 2026",
         "heading": "Branded email, and widgets that land on the right day",
@@ -138,7 +228,7 @@
     "title": "Help & support",
     "eyebrow": "Support",
     "description": "Answers to the common questions, and how to reach us when you need a person.",
-    "updated": "Last updated: 15 September 2026",
+    "updated": "Last updated: 28 October 2026",
     "sections": [
       {
         "heading": "Contact us",
@@ -167,6 +257,26 @@
             "answer": "Yes. Open the Gallery tab and tap the plus button to add photos or videos from your camera roll. Everyone on the trip can see what is shared there."
           },
           {
+            "question": "Can I report a photo?",
+            "answer": "Yes. Open the photo in the Gallery and tap the flag, or press and hold it and choose Report. It's hidden for you straight away, and your organiser is told so they can review it and remove it."
+          },
+          {
+            "question": "What is Dale?",
+            "answer": "Dale is the trip assistant. Tap <span class=\"path\">Ask Dale</span> on Home or on the trip page and ask anything about your trip, like when your next flight is or which meals are included. It answers from your itinerary and your organiser's notes, and can check live flight status and the weather."
+          },
+          {
+            "question": "Can I rely on Dale's answers?",
+            "answer": "Dale uses AI, so it can get things wrong. For anything that matters, like a flight time or a meeting point, check the event itself or ask your organiser."
+          },
+          {
+            "question": "What does Dale send to the AI?",
+            "answer": "Your question and your trip's details, including the names of people on the trip, go to Anthropic's Claude AI to write the answer. They aren't used to train it. Dale asks before it's used for the first time. More in the <a href=\"/privacy.html\">privacy policy</a>."
+          },
+          {
+            "question": "How do I leave a trip?",
+            "answer": "On Home, press and hold the trip and choose <span class=\"path\">Leave Trip</span>. It comes off your phone and your organiser's list. You'll need the PIN or link to join again."
+          },
+          {
             "question": "Do I need an account?",
             "answer": "No. You can join and use a trip without one. Signing in with Apple, Google or an email link keeps your trips with you if you change phones. Go to <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Sign in</span>."
           },
@@ -176,7 +286,7 @@
           },
           {
             "question": "How do notifications work?",
-            "answer": "Trip reminders arrive before each event, and itinerary updates arrive when your organiser changes the plan. If you have not installed the app, updates come by email instead. Both can be turned off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span>."
+            "answer": "Trip reminders arrive before each event, and itinerary updates and messages arrive when your organiser sends them. Everything also stays in the list behind the bell on Home. If you have not installed the app, updates come by email instead. Both can be turned off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span>."
           },
           {
             "question": "What is Live Activity?",
@@ -229,19 +339,19 @@
       },
       {
         "heading": "What we collect",
-        "html": "<p><strong>If you sign in:</strong> your name, email address and profile photo, as provided by Apple, Google or the email link you used. Signing in is optional for travellers.</p>\n        <p><strong>Trip data:</strong> the trips you join, the traveller you link yourself to on a trip, and the photos and videos you add to a trip gallery.</p>\n        <p><strong>Device data:</strong> a random identifier for this installation so your trips stay with the device, and a push notification token if you allow notifications. On iPhone, a Live Activity token lets flight progress show on your lock screen.</p>\n        <p><strong>Location:</strong> the app does not track where you are. Event addresses set by your organiser are looked up on a map so the app can show them to you.</p>\n        <p><strong>Cookies:</strong> the website uses no tracking or advertising cookies. It stores a sign-in session and your theme choice in your browser, and nothing else.</p>",
+        "html": "<p><strong>If you sign in:</strong> your name, email address and profile photo, as provided by Apple, Google or the email link you used. Signing in is optional for travellers.</p>\n        <p><strong>Trip data:</strong> the trips you join, the traveller you link yourself to on a trip, and the photos and videos you add to a trip gallery.</p>\n        <p><strong>Details your organiser adds:</strong> an organiser can record a traveller's phone number, date of birth, nationality, dietary needs, emergency contact and notes so they can run the trip. These are kept in the organiser's workspace, are seen only by the organiser's team, and are not shown to other travellers. Dalefy never stores passport details.</p>\n        <p><strong>App activity:</strong> when you last opened a trip and whether you use iPhone or Android, so your organiser can see who has the latest plan.</p>\n        <p><strong>Reports:</strong> if you report a photo, we keep the report and tell your organiser which photo it was and who reported it.</p>\n        <p><strong>Device data:</strong> a random identifier for this installation so your trips stay with the device, and a push notification token if you allow notifications. On iPhone, a Live Activity token lets flight progress show on your lock screen.</p>\n        <p><strong>Location:</strong> the app does not track where you are. Event addresses set by your organiser are looked up on a map so the app can show them to you.</p>\n        <p><strong>Cookies:</strong> the website uses no tracking or advertising cookies. It stores a sign-in session and your theme choice in your browser, and nothing else.</p>",
         "faqs": [],
         "signIn": false
       },
       {
         "heading": "How we use it",
-        "html": "<ul>\n          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>\n          <li>To send trip reminders and itinerary updates you have opted into, by push notification or email.</li>\n          <li>To send sign-in links, verification and password reset emails when you ask for them.</li>\n          <li>To share your name and avatar with the other people on the same trip.</li>\n          <li>To answer the questions you ask Dale, the trip assistant in the app, and to help organisers import and edit itineraries.</li>\n          <li>To answer support requests you send us.</li>\n        </ul>\n        <p>We do not sell your personal information, and we do not use it for advertising.</p>",
+        "html": "<ul>\n          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>\n          <li>To send trip reminders and itinerary updates you have opted into, by push notification or email.</li>\n          <li>To send sign-in links, verification and password reset emails when you ask for them.</li>\n          <li>To share your name and avatar with the other people on the same trip.</li>\n          <li>To answer the questions you ask Dale, the trip assistant in the app, and to help organisers import and edit itineraries.</li>\n          <li>To let organisers review photos that have been reported, and remove them.</li>\n          <li>To answer support requests you send us.</li>\n        </ul>\n        <p>We do not sell your personal information, and we do not use it for advertising.</p>",
         "faqs": [],
         "signIn": false
       },
       {
         "heading": "Who we share it with",
-        "html": "<ul>\n          <li><strong>Your trip organiser</strong> can see who has joined their trip and which traveller you linked to.</li>\n          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>\n          <li><strong>Resend</strong> delivers the emails Dalefy sends, such as itineraries, invitations and sign-in links.</li>\n          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>\n          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>\n          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>\n          <li><strong>Vercel</strong> hosts the website and the services behind the app.</li>\n          <li><strong>Anthropic</strong> provides the Claude AI behind Dale and the organiser's itinerary tools. When you ask Dale something, your question and your trip's details, including the names of people on the trip, are sent to Anthropic to write the answer. The app asks before Dale is used for the first time. Anthropic doesn't use this data to train its models.</li>\n        </ul>\n        <p>All of this data travels over encrypted connections. Each provider only receives what it needs for its job.</p>",
+        "html": "<ul>\n          <li><strong>Your trip organiser</strong> can see who has joined their trip, which traveller you linked to, when you last opened it, and any photo reports you make.</li>\n          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>\n          <li><strong>Resend</strong> delivers the emails Dalefy sends, such as itineraries, invitations and sign-in links.</li>\n          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>\n          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>\n          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>\n          <li><strong>AeroDataBox</strong> provides live flight status. It receives flight numbers and dates, not your name.</li>\n          <li><strong>OpenWeather</strong> provides the weather for the places on a trip. It receives place coordinates only.</li>\n          <li><strong>Vercel</strong> hosts the website and the services behind the app.</li>\n          <li><strong>Anthropic</strong> provides the Claude AI behind Dale and the organiser's itinerary tools. When you ask Dale something, your question and your trip's details, including the names of people on the trip, are sent to Anthropic to write the answer. The app asks before Dale is used for the first time. Anthropic doesn't use this data to train its models.</li>\n        </ul>\n        <p>All of this data travels over encrypted connections. Each provider only receives what it needs for its job.</p>",
         "faqs": [],
         "signIn": false
       },
@@ -282,7 +392,7 @@
     "title": "Terms of service",
     "eyebrow": "Legal",
     "description": "The short version: be a good guest, and remember your organiser runs the trip.",
-    "updated": "Last updated: 15 September 2026",
+    "updated": "Last updated: 28 October 2026",
     "sections": [
       {
         "heading": "Agreeing to these terms",
@@ -316,13 +426,19 @@
       },
       {
         "heading": "Your content",
-        "html": "<p>You own the photos, videos and text you add to a trip. By adding them to a shared gallery you allow the other people on that trip, and your organiser, to see them in the app. Dalefy does not claim ownership of your content.</p>\n        <p>Only add content you have the right to share. Do not add anything illegal, harmful, abusive, or that infringes someone else's rights. Organisers and Dalefy can remove content that breaks these terms.</p>",
+        "html": "<p>You own the photos, videos and text you add to a trip. By adding them to a shared gallery you allow the other people on that trip, and your organiser, to see them in the app. Dalefy does not claim ownership of your content.</p>\n        <p>Only add content you have the right to share. Do not add anything illegal, harmful, abusive, or that infringes someone else's rights. Organisers and Dalefy can remove content that breaks these terms.</p>\n        <p>There is no tolerance for objectionable content or abusive users. If you see something that breaks these terms, report it from the photo. It is hidden for you straight away and your organiser is asked to review it. Organisers and Dalefy can remove the content and the account of whoever posted it.</p>",
         "faqs": [],
         "signIn": false
       },
       {
         "heading": "Using the service fairly",
         "html": "<ul>\n          <li>Do not share trip PINs, QR codes or invite links with people who are not on the trip.</li>\n          <li>Do not try to access trips, accounts or data that are not yours.</li>\n          <li>Do not interfere with the app, its servers or other people's use of it.</li>\n          <li>Do not use Dalefy to send unsolicited messages or emails.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Dale, the trip assistant",
+        "html": "<p>Dale answers questions about your trip using AI, from the itinerary and notes your organiser published. AI can make mistakes, so Dale's answers are a guide, not a confirmation. Check important times, places and bookings in the trip itself or with your organiser.</p>",
         "faqs": [],
         "signIn": false
       },

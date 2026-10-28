@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MagnifyingGlass, MapPin, Calendar as LucideCalendar, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
-import MapboxMap, { Marker } from "react-map-gl/mapbox";
+import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -11,6 +11,11 @@ import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { resolveCoords } from "@/data/coordinates";
 import { geocode } from "@/services/geocode";
 import { sortEvents } from "@/lib/sortEvents";
+import { tripPlaces, type Place } from "@/components/destinations/tripPlaces";
+import { DestinationStats } from "@/components/destinations/DestinationStats";
+import { UpcomingTimeline } from "@/components/destinations/UpcomingTimeline";
+import { LocalInfo, type UpcomingPlace } from "@/components/destinations/LocalInfo";
+import { parseTripDate } from "@/lib/dates";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -79,7 +84,8 @@ export function DestinationsPage() {
       const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
       // Collect hotel names so we can reject them as destinations
       const hotelNames = new Set(
-        trip.events.filter(e => e.type === "hotel").map(e => e.location.toLowerCase()),
+        // A hotel with no location would otherwise "match" every destination name
+        trip.events.filter(e => e.type === "hotel" && e.location.trim()).map(e => e.location.trim().toLowerCase()),
       );
       const isHotelName = (n: string) => {
         const lower = n.toLowerCase();
@@ -196,6 +202,43 @@ export function DestinationsPage() {
       .filter((d): d is typeof d & { coords: [number, number] } => !!d.coords);
   }, [destinations, geoCoords]);
 
+  // Which destination each trip was filed under, for its pins, timeline row and local info
+  const destOfTrip = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of destinations) for (const id of d.tripIds) m.set(id, d.name);
+    return m;
+  }, [destinations]);
+  const destinationName = useCallback((t: { id: string; destination?: string; name: string }) => destOfTrip.get(t.id) ?? t.destination ?? t.name, [destOfTrip]);
+
+  // Hotels, venues and airports from every trip, pinned under the destinations
+  const [showPlaces, setShowPlaces] = useState(true);
+  const places = useMemo(() => tripPlaces(trips, t => geoCoords[destOfTrip.get(t.id) ?? ""]), [trips, geoCoords, destOfTrip]);
+  const placesGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: places.map(p => ({
+      type: "Feature" as const,
+      properties: { kind: p.kind, name: p.name, trip: p.tripName },
+      geometry: { type: "Point" as const, coordinates: p.lngLat },
+    })),
+  }), [places]);
+  const placeCounts = useMemo(() => ({
+    hotel: places.filter(p => p.kind === "hotel").length,
+    venue: places.filter(p => p.kind === "venue").length,
+    airport: places.filter(p => p.kind === "airport").length,
+  }), [places]);
+  const [hoveredPlace, setHoveredPlace] = useState<(Pick<Place, "kind" | "name" | "tripName"> & { x: number; y: number }) | null>(null);
+
+  const upcomingPlaces: UpcomingPlace[] = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return trips
+      .filter(t => parseTripDate(t.end) >= today)
+      .sort((a, b) => a.start.localeCompare(b.start))
+      .map(t => {
+        const name = destOfTrip.get(t.id) ?? t.destination ?? t.name;
+        return { trip: t, destination: name, country: geoCountry[name] ?? null, lngLat: geoCoords[name] };
+      });
+  }, [trips, destOfTrip, geoCountry, geoCoords]);
+
   type MapPin = typeof mapPins[0];
   const [hoveredPin, setHoveredPin] = useState<MapPin | null>(null);
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
@@ -295,7 +338,7 @@ export function DestinationsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search destinations or trips"
-              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-card border-none rounded-full text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest"
+              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-card border-none rounded-full text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest"
             />
           </div>
         ) : undefined}
@@ -312,7 +355,7 @@ export function DestinationsPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-medium hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -322,7 +365,7 @@ export function DestinationsPage() {
         {/* ── Hero Banner ── */}
         <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
           {/* Banner - same style as dashboard */}
-          <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/15 via-brand/3 to-slate-50 dark:from-brand/15 dark:via-brand/3 dark:to-background border border-slate-200/50 border-border">
+          <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/15 via-brand/3 to-slate-50 dark:from-brand/15 dark:via-brand/3 dark:to-background border border-border">
             {/* Mobile: stacked layout / Desktop: side-by-side */}
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
               {/* Text content */}
@@ -362,7 +405,28 @@ export function DestinationsPage() {
                 minZoom={1}
                 maxZoom={8}
                 onLoad={onMapLoad}
+                interactiveLayerIds={showPlaces ? ["trip-places"] : []}
+                onMouseMove={e => {
+                  const f = e.features?.[0];
+                  setHoveredPlace(f ? { kind: f.properties?.kind, name: f.properties?.name, tripName: f.properties?.trip, x: e.originalEvent.clientX, y: e.originalEvent.clientY } : null);
+                }}
+                onMouseLeave={() => setHoveredPlace(null)}
               >
+                {showPlaces && places.length > 0 && (
+                  <Source id="trip-places" type="geojson" data={placesGeoJson}>
+                    <Layer
+                      id="trip-places"
+                      type="circle"
+                      paint={{
+                        "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 2.5, 6, 5, 10, 7],
+                        "circle-color": ["match", ["get", "kind"], "hotel", isDark ? "#E8A13A" : "#9A5F0B", "airport", isDark ? "#e4e4e9" : "#202127", ACCENT],
+                        "circle-stroke-width": 1,
+                        "circle-stroke-color": isDark ? "#0E0E10" : "#FFFFFF",
+                        "circle-opacity": 0.9,
+                      }}
+                    />
+                  </Source>
+                )}
                 {mapPins.map((pin, i) => {
                   const lit = selectedDest === pin.name || hoveredCard === pin.name;
                   return (
@@ -401,6 +465,21 @@ export function DestinationsPage() {
                   );
                 })}
               </MapboxMap>
+              {places.length > 0 && (
+                <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 rounded-xl border border-border bg-card/90 backdrop-blur-sm px-3 py-2 shadow-sm">
+                  <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
+                    <input type="checkbox" checked={showPlaces} onChange={e => setShowPlaces(e.target.checked)} className="accent-current h-3.5 w-3.5" />
+                    Places from trips
+                  </label>
+                  {showPlaces && (
+                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      {placeCounts.hotel > 0 && <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sand" /> {placeCounts.hotel} hotels</span>}
+                      {placeCounts.venue > 0 && <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brand" /> {placeCounts.venue} venues</span>}
+                      {placeCounts.airport > 0 && <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-foreground" /> {placeCounts.airport} airports</span>}
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Nav buttons - bottom right of globe */}
               {mapPins.length > 1 && (
                 <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
@@ -408,14 +487,14 @@ export function DestinationsPage() {
                     onClick={recenter}
                     title="Show all destinations"
                     aria-label="Show all destinations"
-                    className="h-9 w-9 rounded-full flex items-center justify-center bg-card/90/90 backdrop-blur-sm border border-border shadow-lg hover:bg-secondary transition-colors"
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-card/90 backdrop-blur-sm border border-border shadow-lg hover:bg-secondary transition-colors"
                   >
                     <Crosshair className="h-4 w-4 text-muted-foreground" />
                   </button>
-                  <div className="flex items-center gap-1 bg-card/90/90 backdrop-blur-sm rounded-full border border-border shadow-lg px-1 py-1">
+                  <div className="flex items-center gap-1 bg-card/90 backdrop-blur-sm rounded-full border border-border shadow-lg px-1 py-1">
                     <button
                       onClick={handlePrev}
-                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-secondary transition-colors"
                     >
                       <CaretLeft className="h-4 w-4 text-muted-foreground" />
                     </button>
@@ -424,7 +503,7 @@ export function DestinationsPage() {
                     </span>
                     <button
                       onClick={handleNext}
-                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-secondary transition-colors"
                     >
                       <CaretRight className="h-4 w-4 text-muted-foreground" />
                     </button>
@@ -435,6 +514,15 @@ export function DestinationsPage() {
             </div>{/* end flex row/col */}
           </div>
         </div>
+
+        {hoveredPlace && !hoveredPin && (
+          <div className="fixed z-9999 pointer-events-none" style={{ left: hoveredPlace.x + 14, top: hoveredPlace.y - 12 }}>
+            <div className="bg-card border border-border rounded-lg shadow-xl px-3 py-1.5">
+              <p className="text-xs font-semibold text-foreground">{hoveredPlace.name}</p>
+              <p className="text-[11px] text-muted-foreground">{hoveredPlace.kind === "hotel" ? "Hotel" : hoveredPlace.kind === "airport" ? "Airport" : "Venue"}, {hoveredPlace.tripName}</p>
+            </div>
+          </div>
+        )}
 
         {/* Hover label - the full stats live on the destination cards */}
         {hoveredPin && (
@@ -452,6 +540,14 @@ export function DestinationsPage() {
           </div>
         )}
 
+        {/* ── Coming up, local info, and every destination at a glance ── */}
+        <div className="px-3 sm:px-4 lg:px-8 pt-5 sm:pt-7 space-y-6">
+          {/* Local info runs across the page as tiles, so neither column is left with a gap beside it */}
+          <LocalInfo places={upcomingPlaces} />
+          <UpcomingTimeline trips={trips} destinationOf={t => t.destination?.trim() || destinationName(t)} />
+          <DestinationStats destinations={destinations} trips={trips} />
+        </div>
+
         {/* ── Cards Section ── */}
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
           <div className="flex gap-2 flex-wrap">
@@ -460,7 +556,7 @@ export function DestinationsPage() {
                 key={r}
                 onClick={() => setFilter(r)}
                 aria-pressed={filter === r}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-medium transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-card text-muted-foreground border border-border hover:border-brand/40"}`}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-medium transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border hover:border-foreground/25"}`}
               >
                 {r === "all" ? "All Regions" : r}
               </button>

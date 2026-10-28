@@ -3,9 +3,15 @@ import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
   Sun, Moon, Download, Trash, Lock, Buildings, Users, SpinnerGap,
+  DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera,
 } from "@phosphor-icons/react";
-import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
-import { doc, collection, query, where, getDocs } from "firebase/firestore";
+import { QRCodeSVG } from "qrcode.react";
+import { isFirebaseConfigured, firebaseDb, firebaseStorage } from "@/services/firebase";
+import { doc, collection, query, where, getDocs, getDoc, updateDoc } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { CURRENCIES } from "@/config/currencies";
 import { changePassword } from "@/services/firebaseAuth";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
@@ -39,16 +45,13 @@ interface SectionProps {
   wide?: boolean;
 }
 
-function Section({ icon: Icon, title, description, children, id, wide }: SectionProps) {
+function Section({ icon: Icon, title, description, children, id }: SectionProps) {
   return (
     <section
       id={id}
-      className={cn(
-        "bg-card border border-border rounded-xl overflow-hidden scroll-mt-20 mb-5 flex flex-col",
-        wide && "lg:col-span-2",
-      )}
+      className="scroll-mt-6 grid gap-4 py-7 first:pt-0 border-b border-border last:border-b-0 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] lg:gap-10"
     >
-      <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+      <div className="flex items-start gap-3 lg:pt-1">
         <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -61,7 +64,7 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
           </p>
         </div>
       </div>
-      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-border [&>*]:grow">
+      <div className="min-w-0 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col divide-y divide-border">
         {children}
       </div>
     </section>
@@ -107,6 +110,9 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   );
 }
 
+/** Where travellers get the app. Unlisted, so this link is the only way in; it opens once Apple releases the app. */
+const APP_STORE_URL = "https://apps.apple.com/app/id6765462755";
+
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["⌘", "K"], label: "Open command palette" },
   { keys: ["⌘", "/"], label: "Open command palette (alt)" },
@@ -120,7 +126,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
 
 export function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const { trips } = useTrips();
   const {
     compactMode, setCompactMode,
@@ -151,6 +157,52 @@ export function SettingsPage() {
   const [savingAgencyCode, setSavingAgencyCode] = useState(false);
   const canSetupOrg = realAuth && !currentOrg && tablesReady;
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [defaultCurrency, setDefaultCurrency] = useLocalStorage<string>(STORAGE.CURRENCY, "USD");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  // Emails sent to you, kept on your profile so the server can check them; on unless switched off
+  const [photoReportEmails, setPhotoReportEmails] = useState(true);
+  useEffect(() => {
+    if (!realAuth || !user) return;
+    getDoc(doc(firebaseDb(), "profiles", user.id))
+      .then(snap => { if (snap.data()?.email_prefs?.photo_reports === false) setPhotoReportEmails(false); })
+      .catch(() => {});
+  }, [realAuth, user]);
+
+  const handlePhotoReportEmails = async (on: boolean) => {
+    if (!user) return;
+    setPhotoReportEmails(on);
+    try {
+      await updateDoc(doc(firebaseDb(), "profiles", user.id), { "email_prefs.photo_reports": on });
+    } catch {
+      setPhotoReportEmails(!on);
+      toast.error("Couldn't save that. Try again.");
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { toast.error("Use a JPG, PNG or WebP photo"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Photo must be under 2MB"); return; }
+    setUploadingAvatar(true);
+    try {
+      const fileRef = storageRef(firebaseStorage(), `avatars/${user.id}/profile-${Date.now()}`);
+      await uploadBytes(fileRef, file, { contentType: file.type });
+      updateProfile({ avatar: await getDownloadURL(fileRef) });
+      toast.success("Photo updated");
+    } catch (err) {
+      logger.error("SettingsPage", "avatar upload error:", err);
+      toast.error("Couldn't upload that photo");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const copyAppLink = async () => {
+    try { await navigator.clipboard.writeText(APP_STORE_URL); toast.success("App link copied"); }
+    catch { toast.error("Couldn't copy the link"); }
+  };
 
   // Sync form state when orgBranding loads asynchronously
   useEffect(() => {
@@ -311,17 +363,27 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5">
+        <div className="px-4 lg:px-8 py-6 pb-12">
+          <div className="min-w-0 max-w-6xl">
           {/* ── Profile ── */}
           <Section
+            id="profile"
             icon={UserIcon}
             title="Profile"
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
             <div className="px-5 py-4 flex items-center gap-4">
-              <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-bold border border-brand/20 shrink-0">
-                {initials}
-              </div>
+              <label className={cn("group relative h-14 w-14 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", realAuth && "cursor-pointer")}>
+                {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
+                {realAuth && (
+                  <>
+                    <span className="absolute inset-0 bg-black/45 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    </span>
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={handleAvatarUpload} disabled={uploadingAvatar} aria-label="Change your profile photo" />
+                  </>
+                )}
+              </label>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold tracking-tight text-foreground truncate">
                   {user?.name ?? ""}
@@ -343,6 +405,7 @@ export function SettingsPage() {
           {/* ── Security (only for real Firebase auth users) ── */}
           {realAuth && (
             <Section
+            id="security"
               icon={Lock}
               title="Security"
               description="Manage your account security and password."
@@ -379,6 +442,7 @@ export function SettingsPage() {
           {/* ── Set up Agency (real auth, no org yet) ── */}
           {canSetupOrg && (
             <Section
+            id="agency"
               icon={Buildings}
               title="Agency Setup"
               description="Create your agency to unlock white-label branding on shared trips and PDFs."
@@ -406,6 +470,7 @@ export function SettingsPage() {
           {/* ── Organization Branding (owner/admin only) ── */}
           {showBrandingSection && (
             <Section
+            id="branding"
               icon={Buildings}
               wide
               title="White-Label"
@@ -574,6 +639,7 @@ export function SettingsPage() {
           {/* ── Team ── */}
           {realAuth && currentOrg && (
             <Section
+            id="team"
               icon={Users}
               wide
               title="Team"
@@ -585,8 +651,58 @@ export function SettingsPage() {
             </Section>
           )}
 
+          {/* ── Traveller app ── */}
+          <Section
+            id="traveller-app"
+            icon={DeviceMobile}
+            title="Traveller app"
+            description="Send travellers this link with their invite. They join with the trip PIN from the email."
+          >
+            <div className="px-5 py-4 flex flex-col sm:flex-row gap-5">
+              <div className="rounded-xl border border-border bg-white p-3 self-start shrink-0">
+                <QRCodeSVG value={APP_STORE_URL} size={112} level="M" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <p className="text-[13px] font-medium text-foreground">Dalefy for iPhone</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5 break-all">{APP_STORE_URL}</p>
+                  <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-1.5">Waiting for Apple's approval. The link opens once the app is released.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={copyAppLink} className="h-9 rounded-xl text-[13px] gap-1.5"><Copy className="h-3.5 w-3.5" /> Copy link</Button>
+                  <Button variant="outline" onClick={() => window.open(APP_STORE_URL, "_blank", "noopener")} className="h-9 rounded-xl text-[13px] gap-1.5"><ArrowSquareOut className="h-3.5 w-3.5" /> Open</Button>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[13px] font-medium text-foreground">What travellers do</p>
+              <ol className="mt-2 space-y-1.5 text-[12px] text-muted-foreground list-decimal pl-4">
+                <li>Install Dalefy from the link or the QR code.</li>
+                <li>Type the 6-character PIN from their invite email on the Home screen.</li>
+                <li>See the published itinerary, live flights and trip info. Changes reach them when you publish.</li>
+              </ol>
+            </div>
+          </Section>
+
+          {/* ── Email notifications ── */}
+          {realAuth && (
+            <Section
+            id="email"
+              icon={EnvelopeSimple}
+              title="Email notifications"
+              description={`Emails Dalefy sends you at ${user?.email || "your address"}.`}
+            >
+              <Row
+                label="Photo reports"
+                value="When a traveller reports a photo in a trip gallery, so you can review it"
+                action={<ToggleSwitch checked={photoReportEmails} onChange={handlePhotoReportEmails} />}
+              />
+            </Section>
+          )}
+
           {/* ── Appearance ── */}
           <Section
+            id="appearance"
             icon={Palette}
             title="Appearance"
             description="Tune how the workspace looks. Changes apply instantly across every page."
@@ -619,6 +735,7 @@ export function SettingsPage() {
 
           {/* ── Notifications ── */}
           <Section
+            id="notifications"
             icon={Bell}
             title="Notifications"
             description="Control how the app interrupts you. Notifications appear as toasts and in the bell panel."
@@ -635,8 +752,34 @@ export function SettingsPage() {
             />
           </Section>
 
+          {/* ── Regional ── */}
+          <Section
+            id="regional"
+            icon={Globe}
+            title="Regional"
+            description="Defaults for new trips, and how times are written."
+          >
+            <Row
+              label="Default currency"
+              value="Starts the budget on every new trip"
+              action={
+                <Select value={defaultCurrency} onValueChange={v => v && setDefaultCurrency(v)}>
+                  <SelectTrigger className="w-24 h-9" aria-label="Default currency"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              }
+            />
+            <Row
+              label="Times"
+              value="24-hour everywhere, like 14:30, matching the traveller app. Imported itineraries are converted too."
+            />
+          </Section>
+
           {/* ── Data ── */}
           <Section
+            id="data"
             icon={Database}
             title="Data"
             description="Export your work or reset local data. Cloud-synced trips are not affected by reset."
@@ -647,7 +790,8 @@ export function SettingsPage() {
               action={
                 <Button
                   onClick={exportTrips}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 gap-1.5"
+                  variant="outline"
+                  className="h-9 rounded-xl text-[13px] gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
@@ -664,8 +808,8 @@ export function SettingsPage() {
               action={
                 <Button
                   onClick={() => { if (!demoGate()) setResetOpen(true); }}
-                  variant="ghost"
-                  className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-semibold text-[13px] px-3 gap-1.5"
+                  variant="outline"
+                  className="h-9 rounded-xl text-[13px] gap-1.5 text-red-600 dark:text-red-400 hover:text-red-600 hover:bg-red-500/10"
                 >
                   <Trash className="h-3.5 w-3.5" />
                   Reset
@@ -705,10 +849,41 @@ export function SettingsPage() {
             </div>
           </Section>
 
+          {/* ── Account ── */}
+          <Section
+            id="account"
+            icon={UserIcon}
+            title="Account"
+            description="Help, the legal pages, and signing out."
+          >
+            <Row
+              label="Help and support"
+              value="Guides and how to reach us"
+              action={<Button variant="outline" onClick={() => window.open("/support.html", "_blank", "noopener")} className="h-9 rounded-xl text-[13px] gap-1.5"><ArrowSquareOut className="h-3.5 w-3.5" /> Open</Button>}
+            />
+            <Row
+              label="Privacy and terms"
+              value={<><a href="/privacy.html" target="_blank" rel="noopener" className="text-link hover:underline">Privacy policy</a>{", "}<a href="/terms.html" target="_blank" rel="noopener" className="text-link hover:underline">Terms of use</a></>}
+            />
+            {realAuth && (
+              <Row
+                label="Delete your account"
+                value="How to remove your account and what happens to your trips"
+                action={<Button variant="outline" onClick={() => window.open("/delete-account.html", "_blank", "noopener")} className="h-9 rounded-xl text-[13px] gap-1.5 text-red-600 dark:text-red-400 hover:text-red-600 hover:bg-red-500/10"><ArrowSquareOut className="h-3.5 w-3.5" /> Learn how</Button>}
+              />
+            )}
+            <Row
+              label="Sign out"
+              value={user?.email || undefined}
+              action={<Button variant="outline" onClick={() => { logout(); }} className="h-9 rounded-xl text-[13px] gap-1.5"><SignOut className="h-3.5 w-3.5" /> Sign out</Button>}
+            />
+          </Section>
+
           {/* ── Footer ── */}
-          <div className="lg:col-span-2 border-t border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+          <div className="border-t border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
+          </div>
           </div>
         </div>
       </div>

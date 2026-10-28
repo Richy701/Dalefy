@@ -274,6 +274,14 @@ service cloud.firestore {
       allow write: if isCronUser();
     }
 
+    // ── Photo reports: a traveller flagged someone else's gallery photo ──
+    // The trip's staff read them in Reports (queries filter on trip_id); only the
+    // server writes them, from /api/report-media.
+    match /media_reports/{reportId} {
+      allow read: if isTripStaff(resource.data.trip_id);
+      allow write: if false;
+    }
+
     // ── Trip versions: a "last changed" stamp per trip, nothing else ─────
     // Travellers can't read trips, so the app listens here and reloads the
     // filtered trip from /api/trip only when the stamp moves.

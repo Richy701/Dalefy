@@ -6,7 +6,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
-import { usePreferences } from "@/context/PreferencesContext";
 import { useTrips } from "@/context/TripsContext";
 import { generateUniqueShortCode } from "@/services/firebaseTrips";
 
@@ -26,7 +25,6 @@ const APP_SCHEME = "dafadventures";
 export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const { brand } = useBrand();
-  const { resolvedAccent, accentFg } = usePreferences();
   const { trips, updateTrip } = useTrips();
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -125,48 +123,26 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
           </div>
         )}
 
-        {/* Link and QR: works for everyone, no app needed */}
-        <section className="px-6 pt-5 pb-5">
-          <p className="text-sm font-medium text-foreground">Link</p>
-          <p className="text-sm text-muted-foreground mt-0.5">Opens the itinerary in any browser. No app needed.</p>
-
-          <div className="mt-4 flex gap-4 items-start">
-            <div className="shrink-0 flex flex-col items-center gap-1.5">
-              <div className="rounded-xl border border-border bg-white p-2.5">
-                <QRCodeSVG value={webUrl} size={112} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
-              </div>
-              <button type="button" onClick={downloadQr} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <DownloadSimple className="h-3.5 w-3.5" weight="bold" />Save QR
-              </button>
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col gap-2">
-              <div className="rounded-lg border border-border bg-secondary px-3 py-2 min-w-0">
-                <p className="text-xs text-muted-foreground">Web link</p>
-                <p className="text-sm font-mono text-foreground truncate" title={webUrl}>{displayUrl}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <ActionButton
-                  primary
-                  style={{ background: resolvedAccent, color: accentFg }}
-                  onClick={() => copy("web", webUrl, "Link")}
-                  icon={copiedKey === "web" ? Check : Copy}
-                  label={copiedKey === "web" ? "Copied" : "Copy link"}
-                />
-                <ActionButton onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open" />
-              </div>
-            </div>
+        {/* PIN first: it's what travellers type in the app */}
+        <section className="px-6 pt-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-medium text-foreground">Trip PIN</p>
+            <p className="text-xs text-muted-foreground">Typed on the {brand.platformName} app's Home screen</p>
           </div>
-        </section>
-
-        <div className="mx-6 border-t border-border" />
-
-        {/* PIN: for travellers who have the app */}
-        <section className="px-6 pt-5 pb-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">Trip PIN</p>
-              <p className="text-sm text-muted-foreground mt-0.5">Travellers with the {brand.platformName} app enter this to join.</p>
-            </div>
+          <button
+            type="button"
+            onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
+            disabled={!shortCode}
+            aria-label={shortCode ? `Copy trip PIN ${shortCode}` : "No trip PIN yet"}
+            className="group mt-3 w-full flex justify-center gap-2 disabled:cursor-default"
+          >
+            {(pinChars.length ? pinChars : Array(6).fill("")).map((ch, i) => (
+              <span key={i} className="h-14 w-11 rounded-xl border border-border bg-secondary flex items-center justify-center text-2xl font-semibold text-foreground tabular-nums group-hover:border-foreground/25 transition-colors">
+                {ch || <span className="h-0.5 w-3 rounded-full bg-muted-foreground/40" />}
+              </span>
+            ))}
+          </button>
+          <div className="mt-3 flex justify-center">
             <ActionButton
               onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
               disabled={!shortCode}
@@ -174,19 +150,30 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
               label={copiedKey === "pin" ? "Copied" : "Copy PIN"}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
-            disabled={!shortCode}
-            aria-label="Copy trip PIN"
-            className="mt-4 w-full rounded-xl border border-border bg-secondary py-5 text-center font-mono text-4xl font-semibold tracking-[0.3em] text-foreground tabular-nums disabled:cursor-default hover:border-brand/40 transition-colors"
-          >
-            {pinChars.length > 0 ? (
-              <span className="inline-block pl-[0.3em]">{pinChars.join("")}</span>
-            ) : (
-              <span className="text-muted-foreground">••••••</span>
-            )}
-          </button>
+        </section>
+
+        {/* Link and QR: opens in any browser, no app needed */}
+        <section className="px-6 pt-6 pb-5">
+          <p className="text-sm font-medium text-foreground">Link</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Opens the itinerary in any browser. No app needed.</p>
+          <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3 items-center">
+            <div className="shrink-0 rounded-lg border border-border bg-white p-1.5">
+              <QRCodeSVG value={webUrl} size={76} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground truncate" title={webUrl}>{displayUrl}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <ActionButton
+                  primary
+                  onClick={() => copy("web", webUrl, "Link")}
+                  icon={copiedKey === "web" ? Check : Copy}
+                  label={copiedKey === "web" ? "Copied" : "Copy link"}
+                />
+                <ActionButton onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open" />
+                <ActionButton onClick={downloadQr} icon={DownloadSimple} label="Save QR" />
+              </div>
+            </div>
+          </div>
         </section>
 
         <div className="mx-6 border-t border-border" />
@@ -232,7 +219,7 @@ function ActionButton({ onClick, icon: Icon, label, primary, disabled, style }: 
       className={[
         "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shrink-0",
         primary
-          ? "hover:opacity-90"
+          ? "bg-primary text-primary-foreground hover:opacity-90"
           : "border border-border bg-card text-foreground hover:bg-secondary",
       ].join(" ")}
     >

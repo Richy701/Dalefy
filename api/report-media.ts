@@ -1,4 +1,4 @@
-import { getDocument, queryDocuments, setDocument, decodeValue, encodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { getDocument, queryDocuments, setDocument, deleteDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, membershipMatches } from "./_tripView.js";
@@ -15,6 +15,11 @@ function decode(doc: FirestoreDoc | null): Record<string, unknown> {
  * A traveller flags someone else's photo in the trip gallery. The app hides it for them straight away;
  * here the report is kept and the trip's owners and admins are emailed so they can remove it in the workspace.
  * Only travellers who joined the trip can report, and only photos that are in it.
+ *
+ * POST /api/report-media  { tripId, mediaId, action: "dismiss" }  (bearer token)
+ *
+ * The trip's staff keep a reported photo: every report on it is cleared. Staff are the trip's owner, or an
+ * owner, admin or agent of the trip's organisation.
  */
 export default async function handler(req: any, res: any) {
   res.setHeader("Cache-Control", "private, no-store");
@@ -28,6 +33,17 @@ export default async function handler(req: any, res: any) {
   const tripId = body.tripId, mediaId = body.mediaId;
   if (typeof tripId !== "string" || !/^[\w-]{1,150}$/.test(tripId) || typeof mediaId !== "string" || !/^[\w.-]{1,200}$/.test(mediaId)) {
     return res.status(400).json({ error: "Invalid report" });
+  }
+
+  if (body.action === "dismiss") {
+    const trip = decode(await getDocument("trips", tripId));
+    const orgId = typeof trip.organization_id === "string" ? trip.organization_id : "";
+    const role = orgId ? decode(await getDocument("org_members", `${payload.sub}_${orgId}`)).role : null;
+    const staff = trip.user_id === payload.sub || ["owner", "admin", "agent"].includes(String(role ?? ""));
+    if (!staff) return res.status(403).json({ error: "Only the trip's team can clear reports" });
+    const reports = (await queryDocuments("media_reports", "trip_id", tripId, 500)).filter(d => decode(d).media_id === mediaId);
+    await Promise.all(reports.map(d => deleteDocument("media_reports", docId(d))));
+    return res.status(200).json({ cleared: reports.length });
   }
 
   const member = decode(await getDocument("trip_members", `${payload.sub}_${tripId}`));
@@ -56,7 +72,10 @@ export default async function handler(req: any, res: any) {
   const emails = new Set<string>();
   for (const uid of uids) {
     if (typeof uid !== "string" || !uid) continue;
-    const email = decode(await getDocument("profiles", uid).catch(() => null)).email;
+    const profile = decode(await getDocument("profiles", uid).catch(() => null));
+    // Settings > Email notifications can switch these off
+    if ((profile.email_prefs as Record<string, unknown> | undefined)?.photo_reports === false) continue;
+    const email = profile.email;
     if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emails.add(email.toLowerCase());
   }
 

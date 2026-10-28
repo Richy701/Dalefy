@@ -4,17 +4,16 @@ import { createPortal } from "react-dom";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { pdfLinks, docxLinks, formatLinks, type DocLink } from "@/lib/documentLinks";
 import { withAccommodation } from "@/lib/stays";
-import { Upload, FileText, Check, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
+import { parseTimeInput } from "@/lib/timeInput";
+import { Upload, FileText, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -1139,8 +1138,9 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
       id: `imp-ai-${Date.now()}-${i}`,
       type: ev.type as EventType,
       date: ev.date ?? checkin ?? "",
-      time: ev.time ?? "TBD",
-      endTime: ev.endTime ?? "",
+      // Saved 24-hour, like times typed in the workspace; "TBD" and anything unreadable stay as written
+      time: parseTimeInput(ev.time) || ev.time || "TBD",
+      endTime: parseTimeInput(ev.endTime) || ev.endTime || "",
       title: toTitleCase((ev.title ?? "Event").slice(0, 100)),
       location: ev.location ?? "",
       description: ev.description ?? "",
@@ -1320,6 +1320,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingHeader, setEditingHeader] = useState(false);
+  // Trip info cards are secondary on review, so they start folded under the events
+  const [infoOpen, setInfoOpen] = useState(false);
   const [uploadTab, setUploadTab] = useState<"file" | "paste">("file");
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1470,7 +1472,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const dayLabel = (iso: string) => {
     if (!iso) return "No date";
     const d = new Date(iso + "T12:00:00");
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
   };
 
   // The replace path is confirmed by AlertDialog before this runs.
@@ -1834,10 +1836,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "review" && <>
               {hasExisting
                 ? `${plural(parsed?.events.length ?? 0, "event")} found, ${duplicateCount > 0 ? `${newEventCount} new and ${duplicateCount} already on this trip` : "all new"}. Choose how they go in, then untick anything wrong.`
-                : `${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
-              {parserUsed && (
-                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
-                  {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
+                : `${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found. Untick anything that's wrong, or click it to edit.`}
+              {/* Only worth a word when the AI wasn't available */}
+              {parserUsed === "heuristic" && (
+                <span title="Parsed on this device (AI unavailable), double-check the details" className="ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  Basic parser, check details
                 </span>
               )}
             </>}
@@ -1871,16 +1874,6 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             )}
 
-            {/* Two equal paths rather than one buried under a divider — halves
-                the height of this step and stops the paste box being an
-                afterthought. */}
-            <Tabs value={uploadTab} onValueChange={v => setUploadTab(v as "file" | "paste")}>
-              <TabsList className="w-full">
-                <TabsTrigger value="file" className="flex-1 text-xs font-medium">Upload a file</TabsTrigger>
-                <TabsTrigger value="paste" className="flex-1 text-xs font-medium">Paste text</TabsTrigger>
-              </TabsList>
-            </Tabs>
-
             {uploadTab === "file" ? (
               <div
                 role="button"
@@ -1891,22 +1884,25 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 onDrop={e => { setDragging(false); handleDrop(e); }}
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
-                className={`cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-3 p-6 border-2 border-dashed rounded-xl transition-colors ${
+                className={`group cursor-pointer outline-none focus-visible:border-foreground/40 flex flex-col items-center justify-center gap-4 px-6 py-10 border border-dashed rounded-xl transition-colors ${
                   dragging
-                    ? "border-brand bg-brand/5"
-                    : "border-border bg-background hover:border-brand/60"
+                    ? "border-foreground/40 bg-secondary"
+                    : "border-border bg-secondary/40 hover:bg-secondary/70 hover:border-foreground/25"
                 }`}
               >
-                <div className="h-10 w-10 rounded-xl bg-brand/10 flex items-center justify-center" aria-hidden="true">
-                  <Upload className="h-5 w-5 text-brand" />
+                <div className="h-12 w-12 rounded-full bg-card border border-border shadow-sm flex items-center justify-center transition-transform group-hover:-translate-y-0.5" aria-hidden="true">
+                  <Upload className="h-5 w-5 text-foreground" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-bold text-foreground tracking-tight">
-                    {dragging ? "Drop to import" : "Drop a file here or click to browse"}
+                  <p className="text-base font-semibold text-foreground tracking-tight">
+                    {dragging ? "Drop it here" : "Drop your itinerary here"}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    PDF, Word, PowerPoint, text or an image, up to 20MB
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">or click to choose a file, up to 20MB</p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-1.5" aria-hidden="true">
+                  {["PDF", "Word", "PowerPoint", "Text", "Image"].map(kind => (
+                    <span key={kind} className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{kind}</span>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -1914,8 +1910,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 <Label htmlFor="import-paste" className="sr-only">Paste itinerary text</Label>
                 <Textarea
                   id="import-paste"
-                  placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
-                  className="w-full field-sizing-fixed h-[200px] sm:h-[240px] max-h-[40dvh] resize-none overflow-y-auto font-mono text-xs leading-relaxed"
+                  placeholder="Paste the itinerary from an email or a document. Dates, flights, hotels and activities are picked out for you."
+                  className="w-full field-sizing-fixed h-[220px] sm:h-[260px] max-h-[40dvh] resize-none overflow-y-auto text-sm leading-relaxed focus-visible:ring-0 focus-visible:border-foreground/30"
                   ref={pasteRef}
                   defaultValue={rawText}
                   onChange={e => {
@@ -1942,12 +1938,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     }
                   }}
                   disabled={!hasPaste}
-                  className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20"
+                  className="w-full h-10 rounded-xl font-semibold"
                 >
-                  Parse Text <CaretRight className="h-4 w-4 ml-1" />
+                  Build itinerary <CaretRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setUploadTab(uploadTab === "file" ? "paste" : "file")}
+              className="mx-auto block text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              {uploadTab === "file" ? "Or paste the text instead" : "Upload a file instead"}
+            </button>
 
             {createPortal(
               <input
@@ -1982,137 +1986,105 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           </div>
         )}
 
-        {/* ── STEP 2: EXTRACTING ── */}
+        {/* ── STEP 2: EXTRACTING ── the trip takes shape as the AI writes it */}
         {step === "extracting" && (() => {
-          const stages = [
-            { key: "reading", title: "Read the document", hint: "Text, images and attachments come out of the file." },
-            { key: "parsing", title: "Build the itinerary", hint: "Dates, flights, hotels and activities get picked out. Longer documents take a minute or two." },
-            { key: "review", title: "Review", hint: "You check every event before anything is saved." },
-          ] as const;
-          const activeIndex = extractStage === "reading" ? 0 : 1;
-          const fileCard = extractFile && (
-            <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-background px-3.5 py-3">
-              <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                <FileText className="h-4 w-4 text-brand" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">{extractFile.name}</p>
-                <p className="text-[10px] font-mono text-muted-foreground">{formatBytes(extractFile.size)}</p>
-              </div>
-            </div>
-          );
-          // Live build: the events appear day by day as the AI writes them
-          if (extractStage === "parsing" && livePartial && livePartial.events.length > 0) {
-            const live = livePartial;
-            const dayIndex = (iso: string) => {
-              const a = new Date(live.start + "T12:00:00").getTime(), b = new Date(iso + "T12:00:00").getTime();
-              return isNaN(a) || isNaN(b) ? -1 : Math.round((b - a) / 86_400_000);
-            };
-            const totalDays = Math.max(1, dayIndex(live.end) + 1);
-            const lastDate = live.events[live.events.length - 1].date;
-            const currentDay = Math.min(totalDays, Math.max(1, dayIndex(lastDate) + 1));
-            const days: Array<[string, typeof live.events]> = [];
-            for (const ev of live.events) {
-              const group = days[days.length - 1];
-              if (group && group[0] === ev.date) group[1].push(ev);
-              else days.push([ev.date, [ev]]);
-            }
-            return (
-              <div className="py-4 sm:py-6 max-w-md mx-auto w-full" role="status" aria-live="polite">
-                {fileCard}
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-bold tracking-tight text-foreground">Building your itinerary</p>
-                  {dayIndex(live.end) >= 0 && (
-                    <p className="text-xs text-muted-foreground tabular-nums shrink-0">Day {currentDay} of {totalDays}</p>
-                  )}
-                </div>
-                {live.name && <p className="mt-0.5 text-[11px] text-muted-foreground truncate">{live.name}</p>}
-                <Progress value={dayIndex(live.end) >= 0 ? (currentDay / totalDays) * 90 : extractProgress} className="mt-3 h-1.5" />
-                <ol ref={liveListRef} className="mt-5 max-h-80 overflow-y-auto space-y-4 pr-1 -mr-1 pt-2 [mask-image:linear-gradient(to_bottom,transparent,black_24px)]">
-                  {days.map(([date, evs]) => (
-                    <li key={date || "undated"}>
-                      <div className="flex items-center gap-2 px-0.5 mb-1.5">
-                        <p className="text-xs font-medium text-foreground">{dayLabel(date)}</p>
-                        <div className="h-px flex-1 bg-secondary dark:bg-border" />
-                      </div>
-                      <ul className="space-y-1">
-                        {evs.map((ev, i) => {
-                          const type = (ev.type in EVENT_TYPE_ICONS ? ev.type : "activity") as EventType;
-                          const Icon = EVENT_TYPE_ICONS[type];
-                          return (
-                            <motion.li
-                              key={`${date}-${i}`}
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.2, ease: "easeOut" }}
-                              className="flex items-center gap-3 rounded-lg bg-card border border-border px-3 py-2"
-                            >
-                              <Icon className={`h-4 w-4 shrink-0 ${EVENT_TEXT_COLORS[type]}`} />
-                              <span className="flex-1 min-w-0 truncate text-sm text-foreground">{toTitleCase(ev.title)}</span>
-                              {ev.time && ev.time !== "TBD" && (
-                                <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ev.time}</span>
-                              )}
-                            </motion.li>
-                          );
-                        })}
-                      </ul>
-                    </li>
-                  ))}
-                  <li className="flex items-center gap-2 px-0.5 text-[11px] text-muted-foreground">
-                    <Spinner className="size-3 text-brand" />
-                    Reading the next part
-                  </li>
-                </ol>
-                <p className="mt-4 text-[11px] text-muted-foreground text-center">You'll review everything before it's saved.</p>
-              </div>
-            );
+          const live = livePartial;
+          const at = (iso: string) => new Date(iso + "T12:00:00");
+          const valid = (iso?: string) => !!iso && !isNaN(at(iso).getTime());
+          const dayIndex = (iso: string) => (live && valid(live.start) && valid(iso) ? Math.round((at(iso).getTime() - at(live.start).getTime()) / 86_400_000) : -1);
+          const totalDays = live && valid(live.end) ? Math.max(1, dayIndex(live.end) + 1) : 0;
+          const events = live?.events ?? [];
+          const currentDay = totalDays && events.length ? Math.min(totalDays, Math.max(1, dayIndex(events[events.length - 1].date) + 1)) : 0;
+          const progress = currentDay ? (currentDay / totalDays) * 95 : extractProgress * 0.35;
+          const days: Array<[string, typeof events]> = [];
+          for (const ev of events) {
+            const group = days[days.length - 1];
+            if (group && group[0] === ev.date) group[1].push(ev);
+            else days.push([ev.date, [ev]]);
           }
+          const shortDay = (iso: string) => (valid(iso) ? at(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "No date");
+          const range = live && valid(live.start) && valid(live.end)
+            ? `${at(live.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${at(live.end).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+            : "";
+          const status = events.length ? "Your trip is taking shape" : extractStage === "reading" ? "Opening your document" : "Reading your itinerary";
           return (
-            <div className="py-4 sm:py-6 max-w-md mx-auto w-full" role="status" aria-live="polite">
-              {fileCard}
-              <ol className="relative">
-                {stages.map((st, i) => {
-                  const done = i < activeIndex;
-                  const active = i === activeIndex;
-                  const last = i === stages.length - 1;
-                  return (
-                    <li key={st.key} className="relative flex gap-4 pb-6 last:pb-0">
-                      {!last && (
-                        <span
-                          aria-hidden="true"
-                          className={`absolute left-[11px] top-6 bottom-0 w-px ${done ? "bg-brand" : "bg-secondary dark:bg-border"}`}
-                        />
-                      )}
-                      <span
-                        className={`relative z-10 mt-0.5 h-6 w-6 rounded-full flex items-center justify-center shrink-0 border-2 ${
-                          done
-                            ? "bg-brand border-brand"
-                            : active
-                              ? "bg-card border-brand"
-                              : "bg-card border-border"
-                        }`}
-                      >
-                        {done && <Check className="h-3 w-3 text-black" weight="bold" />}
-                        {active && <span className="h-2 w-2 rounded-full bg-brand" />}
-                      </span>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <p className={`text-sm font-bold tracking-tight ${active || done ? "text-foreground" : "text-muted-foreground/70"}`}>
-                          {st.title}
-                        </p>
-                        <p className={`mt-0.5 text-[11px] leading-snug ${active ? "text-muted-foreground" : "text-muted-foreground/60"}`}>
-                          {st.hint}
-                        </p>
-                        {active && (
-                          <div className="mt-3 flex items-center gap-3">
-                            <Progress value={extractProgress} className="h-1.5 flex-1" />
-                            <Spinner className="size-3.5 text-brand shrink-0" />
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+            <div className="max-w-xl mx-auto w-full py-2" role="status" aria-live="polite">
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{status}</p>
+                {live?.name ? (
+                  <p className="mt-2 text-xl font-bold tracking-tight text-foreground truncate">{live.name}</p>
+                ) : (
+                  <div className="mt-2.5 h-6 w-56 max-w-full rounded-md bg-secondary animate-pulse" />
+                )}
+                {range || live?.destination ? (
+                  <p className="mt-1 text-sm text-muted-foreground truncate">{[range, live?.destination].filter(Boolean).join(", ")}</p>
+                ) : (
+                  <div className="mt-2 h-4 w-40 max-w-full rounded-md bg-secondary animate-pulse" />
+                )}
+                <div className="mt-5 flex items-center gap-3">
+                  <Progress value={progress} className="h-1.5 flex-1" />
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+                    {currentDay ? `Day ${currentDay} of ${totalDays}` : <Spinner className="size-3.5" />}
+                  </span>
+                </div>
+              </div>
+
+              <ol ref={liveListRef} className="mt-6 max-h-[340px] overflow-y-auto pr-1 -mr-1 pt-1 [mask-image:linear-gradient(to_bottom,transparent,black_16px)]">
+                {days.map(([date, evs]) => (
+                  <li key={date || "undated"} className="mb-4 last:mb-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{shortDay(date)}</p>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <ul>
+                      {evs.map((ev, i) => {
+                        const type = (ev.type in EVENT_TYPE_ICONS ? ev.type : "activity") as EventType;
+                        const Icon = EVENT_TYPE_ICONS[type];
+                        return (
+                          <motion.li
+                            key={`${date}-${i}`}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            className="relative flex items-center gap-3 py-1.5 pl-11 min-h-[44px]"
+                          >
+                            {/* The timeline: a line runs through each day's icons */}
+                            <span aria-hidden="true" className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+                            <span className="absolute left-0 h-8 w-8 rounded-full border border-border bg-card flex items-center justify-center">
+                              <Icon className={`h-4 w-4 ${EVENT_TEXT_COLORS[type]}`} />
+                            </span>
+                            <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{toTitleCase(ev.title)}</span>
+                            {ev.time && ev.time !== "TBD" && (
+                              <span className="text-xs font-semibold text-link tabular-nums shrink-0">{ev.time}</span>
+                            )}
+                          </motion.li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
+                {/* What comes next: skeleton rows before the first event, then the one being written */}
+                {(events.length ? [0] : [0, 1, 2]).map(n => (
+                  <li key={`next-${n}`} className="relative flex items-center gap-3 py-1.5 pl-11 min-h-[44px]">
+                    <span className="absolute left-0 h-8 w-8 rounded-full border border-dashed border-border flex items-center justify-center">
+                      {n === 0 && <Spinner className="size-3.5 text-muted-foreground" />}
+                    </span>
+                    {events.length ? (
+                      <span className="text-sm text-muted-foreground">Reading the next part</span>
+                    ) : (
+                      <div className="h-4 rounded-md bg-secondary animate-pulse" style={{ width: `${[62, 48, 55][n]}%` }} />
+                    )}
+                  </li>
+                ))}
               </ol>
+
+              <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-[11px] text-muted-foreground">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{extractFile ? `${extractFile.name}, ${formatBytes(extractFile.size)}` : "Pasted text"}</span>
+                </span>
+                <span className="shrink-0">You'll review everything before it's saved</span>
+              </div>
             </div>
           );
         })()}
@@ -2168,20 +2140,15 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             )}
 
-            {/* Trip summary */}
-            <div className="rounded-xl border border-border overflow-hidden bg-card">
-              {/* Teal accent strip + back */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-linear-to-r from-brand/6 to-transparent">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-                  <p className="text-[11px] font-medium text-brand/70">Ready to import</p>
-                </div>
-                <button onClick={() => { setStep("upload"); setHasPaste(rawText.trim().length > 0); }} className="text-[10px] font-semibold text-muted-foreground hover:text-brand transition-colors">
-                  ← Back
+            {/* Trip summary: the same card the live build filled in, now complete */}
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Ready to import</p>
+                <button onClick={() => { setStep("upload"); setHasPaste(rawText.trim().length > 0); }} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Start again
                 </button>
               </div>
-
-              <div className="p-4 sm:p-5 space-y-4">
+              <div className="mt-2 space-y-4">
                 {/* Trip name, destination and dates — all correctable here */}
                 {editingHeader ? (
                   <div className="space-y-3">
@@ -2219,7 +2186,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground leading-tight">
+                      <h3 className="text-xl font-bold tracking-tight text-foreground leading-tight">
                         {parsed.name}
                       </h3>
                       <Button
@@ -2233,79 +2200,38 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       </Button>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {parsed.destination && (
-                        <Badge className="gap-1.5 bg-brand/10 text-brand border-transparent hover:bg-brand/10">
-                          <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                          {parsed.destination}
-                        </Badge>
-                      )}
-                      <Badge variant="secondary">
-                        {(() => {
-                          const fmt = (iso: string) => {
-                            const d = new Date(iso + "T12:00:00");
-                            return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                          };
-                          const endYear = new Date(parsed.end + "T12:00:00").getFullYear();
-                          return `${fmt(parsed.start)} – ${fmt(parsed.end)}, ${endYear}`;
-                        })()}
-                      </Badge>
-                      {parsed.paxCount > 0 && (
-                        <Badge variant="secondary">
-                          {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                    </div>
+                    <p className="-mt-2 text-sm text-muted-foreground">
+                      {(() => {
+                        const fmt = (iso: string, year = false) => {
+                          const d = new Date(iso + "T12:00:00");
+                          return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}) });
+                        };
+                        const range = fmt(parsed.start) && fmt(parsed.end, true) ? `${fmt(parsed.start)} to ${fmt(parsed.end, true)}` : "";
+                        return [range, parsed.destination].filter(Boolean).join(", ");
+                      })()}
+                    </p>
                   </>
                 )}
 
-                {/* Travelers */}
+                {/* Travellers: a row of initials and the names, not a wall of chips */}
                 {parsed.parsedTravelerNames.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
-                    <div className="w-full pt-2" />
-                    {parsed.parsedTravelerNames.map((name, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background border border-border text-[11px] font-semibold text-foreground/80"
-                      >
-                        <span className="h-5 w-5 rounded-md bg-brand/10 flex items-center justify-center text-brand text-[8px] font-black uppercase shrink-0">
+                  <div className="flex items-center gap-3 border-t border-border pt-4">
+                    <div className="flex -space-x-2 shrink-0" aria-hidden="true">
+                      {parsed.parsedTravelerNames.slice(0, 5).map((name, i) => (
+                        <span key={i} className="h-8 w-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center text-[10px] font-semibold text-foreground">
                           {name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase()}
                         </span>
-                        {name}
-                      </span>
-                    ))}
+                      ))}
+                    </div>
+                    <p className="min-w-0 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{plural(parsed.parsedTravelerNames.length, "traveller")}</span>
+                      {" "}
+                      <span className="line-clamp-1">{parsed.parsedTravelerNames.join(", ")}</span>
+                    </p>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Information & Documents preview (editable) */}
-              {editInfo.length > 0 && (
-                <div className="rounded-xl border border-border bg-background overflow-hidden">
-                  <div className="px-4 py-3 flex items-center gap-2.5 border-b border-border">
-                    <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
-                      <FileText className="h-3.5 w-3.5 text-brand" />
-                    </div>
-                    <p className="text-xs font-bold text-foreground flex-1">
-                      Information
-                    </p>
-                    <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
-                      {editInfo.length} item{editInfo.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="divide-y divide-slate-100 dark:divide-border">
-                    {editInfo.map((item, i) => (
-                      <InfoReviewCard
-                        key={i}
-                        item={item}
-                        onChangeTitle={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, title: v } : it))}
-                        onChangeBody={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, body: v } : it))}
-                        onRemove={() => setEditInfo(prev => prev.filter((_, j) => j !== i))}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
 
             {/* Events, grouped by day. Unchecked rows are skipped, not deleted. */}
             {parsed.events.length > 0 ? (
@@ -2329,14 +2255,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 </div>
 
                 {eventsByDay.map(([date, dayEvents]) => (
-                  <div key={date || "undated"} className="space-y-1.5">
-                    <div className="flex items-center gap-2 px-0.5">
-                      <p className="text-xs font-medium text-foreground">
+                  <div key={date || "undated"}>
+                    <div className="flex items-center gap-3 mb-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                         {dayLabel(date)}
                       </p>
-                      <div className="h-px flex-1 bg-secondary dark:bg-border" />
-                      <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
-                        {dayEvents.length}
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        {plural(dayEvents.length, "event")}
                       </span>
                     </div>
 
@@ -2350,21 +2276,19 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       return (
                         <div
                           key={ev.id}
-                          className={`rounded-xl border transition-colors ${
-                            editing
-                              ? "border-brand/40 bg-card"
-                              : "border-border bg-card"
+                          className={`rounded-xl transition-colors ${
+                            editing ? "border border-border bg-card shadow-sm my-1" : "hover:bg-secondary/50"
                           } ${(excluded || dup) && !editing ? "opacity-45" : ""}`}
                         >
-                          <div className="flex items-start gap-3 p-3">
+                          <div className="group flex items-center gap-3 px-2 py-2">
                             <Checkbox
                               checked={!excluded && !dup}
                               disabled={dup}
                               onCheckedChange={() => toggleExcluded(ev.id)}
                               aria-label={dup ? `${ev.title}, already on this trip` : `Include ${ev.title}`}
-                              className="mt-0.5 shrink-0"
+                              className="shrink-0"
                             />
-                            <div className={`h-9 w-9 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
+                            <div className={`h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
                               <Icon className="h-4 w-4" />
                             </div>
                             <button
@@ -2373,7 +2297,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                               aria-expanded={editing}
                               className="flex-1 min-w-0 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-md"
                             >
-                              <p className={`text-[13px] sm:text-xs font-bold text-foreground line-clamp-2 leading-snug ${excluded ? "line-through" : ""}`}>
+                              <p className={`text-sm font-medium text-foreground line-clamp-1 leading-snug ${excluded ? "line-through" : ""}`}>
                                 {ev.title}
                               </p>
                               {hasExisting && duplicateCount > 0 && (
@@ -2381,12 +2305,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                                   {onTrip ? "Already on this trip" : "New"}
                                 </span>
                               )}
-                              <p className="text-[11px] sm:text-[10px] text-muted-foreground mt-1 wrap-break-word">
-                                <span className="font-mono tabular-nums">{ev.time || "No time"}</span>
-                                {ev.location ? ` · ${ev.location}` : ""}
-                              </p>
+                              {ev.location && <p className="text-xs text-muted-foreground mt-0.5 truncate">{ev.location}</p>}
                             </button>
-                            <div className="flex items-center shrink-0">
+                            <span className={`text-xs font-semibold tabular-nums shrink-0 ${ev.time && ev.time !== "TBD" ? "text-link" : "text-muted-foreground"}`}>
+                              {ev.time && ev.time !== "TBD" ? ev.time : "No time"}
+                            </span>
+                            <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                               <Button
                                 size="icon-sm"
                                 variant="ghost"
@@ -2454,6 +2378,40 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </Empty>
             )}
 
+            {/* Trip info from the document, folded under the events */}
+            {editInfo.length > 0 && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setInfoOpen(o => !o)}
+                  aria-expanded={infoOpen}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-secondary/50 transition-colors"
+                >
+                  <span className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center shrink-0">
+                    <FileText className="h-4 w-4 text-foreground" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">Trip info</span>
+                    <span className="block text-xs text-muted-foreground truncate">{editInfo.map(i => i.title).filter(Boolean).join(", ")}</span>
+                  </span>
+                  <CaretRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${infoOpen ? "rotate-90" : ""}`} />
+                </button>
+                {infoOpen && (
+                  <div className="border-t border-border divide-y divide-border">
+                    {editInfo.map((item, i) => (
+                      <InfoReviewCard
+                        key={i}
+                        item={item}
+                        onChangeTitle={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, title: v } : it))}
+                        onChangeBody={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, body: v } : it))}
+                        onRemove={() => setEditInfo(prev => prev.filter((_, j) => j !== i))}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Extracted media preview */}
             {parsed.extractedMedia.length > 0 && (
               <div className="space-y-2">
@@ -2488,13 +2446,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   Import didn't finish: {importError}. Nothing was changed. You can try again.
                 </div>
               )}
-              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
-                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-muted-foreground">Cancel</Button>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-10 px-4 font-medium text-muted-foreground">Cancel</Button>
                 {hasExisting && importMode === "replace" ? (
                   <AlertDialog>
                     <AlertDialogTrigger
                       disabled={includedEvents.length === 0}
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl h-10 font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl h-10 px-6 font-semibold bg-red-500 text-white hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Replace with {plural(includedEvents.length, "event")}
@@ -2523,7 +2481,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     disabled={isReimport
                       ? eventsToApply.length === 0 && !hasOtherContent
                       : parsed.events.length > 0 && includedEvents.length === 0}
-                    className="flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg gap-2 bg-brand shadow-brand/20"
+                    className="rounded-xl h-10 px-6 font-semibold gap-2"
                   >
                     <CheckCircle className="h-4 w-4" />
                     {parsed.events.length === 0

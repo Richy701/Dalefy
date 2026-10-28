@@ -71,8 +71,11 @@ function SidebarExtras() {
   if (collapsed || listedTrips.length === 0) return null;
 
   const dateRange = (t: (typeof trips)[number]) => {
-    const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return `${fmt(parseTripDate(t.start))} \u2013 ${fmt(parseTripDate(t.end))}`;
+    // "6 to 12 Nov", or "28 Dec to 10 Jan" when the trip crosses a month
+    const start = parseTripDate(t.start), end = parseTripDate(t.end);
+    const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+    const dayMonth = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return sameMonth ? `${start.getDate()} to ${dayMonth(end)}` : `${dayMonth(start)} to ${dayMonth(end)}`;
   };
 
   return (
@@ -105,7 +108,7 @@ function SidebarExtras() {
                   onClick={() => setOpenMobile(false)}
                   isActive={selected}
                   aria-current={selected ? "page" : undefined}
-                  className="h-auto min-h-16 gap-3 rounded-xl p-2 transition-colors data-active:bg-brand/10"
+                  className="h-auto min-h-14 gap-3 rounded-lg p-2 transition-colors data-active:bg-sidebar-accent"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-accent text-sidebar-muted-foreground">
                     {trip.image ? (

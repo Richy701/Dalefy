@@ -38,12 +38,10 @@ export function NavMain() {
                 aria-current={active ? "page" : undefined}
                 isActive={active}
                 className={`
-                  relative rounded-lg h-10 gap-3 transition-colors motion-reduce:transition-none
-                  before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2
-                  before:h-4 before:w-[3px] before:rounded-r-full before:transition-all
+                  rounded-lg h-9 gap-3 transition-colors motion-reduce:transition-none
                   ${active
-                    ? "bg-brand/10! text-brand! hover:bg-brand/15! before:bg-brand"
-                    : "text-sidebar-muted-foreground! hover:text-sidebar-foreground! hover:bg-sidebar-accent! before:bg-transparent"
+                    ? "bg-sidebar-accent! text-sidebar-foreground!"
+                    : "text-sidebar-muted-foreground! hover:text-sidebar-foreground! hover:bg-sidebar-accent/60!"
                   }
                 `}
               >

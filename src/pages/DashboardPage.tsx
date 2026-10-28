@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { lifecycleLabel, liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
+import { CURRENCIES } from "@/config/currencies";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
+import { NextTripSide } from "@/components/dashboard/NextTripSide";
 
 
 const EVENT_COLORS = {
@@ -95,7 +97,8 @@ function useLiveCountdown(trip: Trip | undefined) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!target) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    // Minutes are the smallest unit shown, so a slow tick keeps it calm
+    const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, [target]);
   if (!target) return null;
@@ -133,7 +136,6 @@ function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
             { value: countdown.days, label: "DAYS" },
             { value: countdown.hours, label: "HRS" },
             { value: countdown.minutes, label: "MIN" },
-            { value: countdown.seconds, label: "SEC" },
           ].map((u, i) => (
             <div key={u.label} className="flex items-center">
               <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px] lg:min-w-[60px]">
@@ -144,13 +146,13 @@ function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
                   {u.label.toLowerCase()}
                 </span>
               </div>
-              {i < 3 && (
+              {i < 2 && (
                 <span className="text-xl font-semibold text-muted-foreground/50 mx-0.5 -mt-3 select-none">:</span>
               )}
             </div>
           ))}
         </div>
-        <p className="mt-2 flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
+        <p className="mt-2 flex items-center gap-1 text-sm font-medium text-link group-hover:underline">
           Open itinerary
         </p>
       </button>
@@ -228,10 +230,13 @@ export function DashboardPage() {
     if (file) { setDroppedFile(file); setImportOpen(true); }
   }, []);
 
+  const [wideCalendar] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+  // The currency picked in Settings starts every new trip's budget
+  const [defaultCurrency] = useLocalStorage<string>(STORAGE.CURRENCY, "USD");
   const [newTripData, setNewTripData] = useState<{
     name: string; attendees: string; dateRange: DateRange | undefined; image: string;
     destination: string; paxCount: string; tripType: string; budget: string; currency: string;
-  }>({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: "USD" });
+  }>({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: defaultCurrency });
   const [coverSearch, setCoverSearch] = useState("");
   const [coverResults, setCoverResults] = useState<string[]>([]);
   const [isCoverSearching, setIsCoverSearching] = useState(false);
@@ -390,7 +395,7 @@ export function DashboardPage() {
       paxCount: newTripData.paxCount || undefined,
       tripType: newTripData.tripType || undefined,
       budget: newTripData.budget || undefined,
-      currency: newTripData.currency || "USD",
+      currency: newTripData.currency || defaultCurrency,
       start: format(newTripData.dateRange.from, "yyyy-MM-dd"),
       end: format(newTripData.dateRange.to, "yyyy-MM-dd"),
       status: "Draft",
@@ -403,7 +408,7 @@ export function DashboardPage() {
     };
     addTrip(newTrip);
     setIsNewTripOpen(false);
-    setNewTripData({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: "USD" });
+    setNewTripData({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: defaultCurrency });
     setCoverSearch(""); setCoverResults([]);
     toast.success("Trip created successfully");
     addNotification({ message: "Trip created", detail: newTrip.name, time: "Just now", type: "success" });
@@ -584,7 +589,7 @@ export function DashboardPage() {
           {/* ── Next departure ── */}
           <div data-compact-hero className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
             {upcomingCards[0] ? (
-              <div className="flex flex-col sm:flex-row">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap">
                 <button
                   type="button"
                   onClick={() => handleOpenTrip(upcomingCards[0])}
@@ -602,12 +607,13 @@ export function DashboardPage() {
                       {upcomingCards[0].name}
                     </button>
                     <p className="text-base font-medium text-foreground/90 mt-1">
-                      {tripFactLine(upcomingCards[0])}{travellerCount(upcomingCards[0]) ? ` · ${travellerCount(upcomingCards[0])} travellers` : ""}
+                      {tripFactLine(upcomingCards[0])}
                     </p>
                     <p className="text-sm text-muted-foreground mt-0.5">{shortDay(upcomingCards[0].start)} → {shortDay(upcomingCards[0].end)} · {upcomingCards[0].events.length} events</p>
                   </div>
                   <NextTripHero trip={upcomingCards[0]} onOpen={() => handleOpenTrip(upcomingCards[0])} />
                 </div>
+                <NextTripSide trip={upcomingCards[0]} />
               </div>
             ) : (
               <div className="p-6">
@@ -1371,12 +1377,13 @@ export function DashboardPage() {
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-card border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
             <div className="mx-auto w-12 h-1 rounded-full bg-secondary mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
+              <div className="max-w-2xl mx-auto">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">New trip</Drawer.Title>
                   <p className="text-[13px] text-muted-foreground mt-1">Only the title, client and dates are required.</p>
                 </div>
-                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => setIsNewTripOpen(false)} aria-label="Close" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1385,18 +1392,19 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border bg-background hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3.5 rounded-xl border border-dashed border-border bg-secondary/40 hover:bg-secondary/70 hover:border-foreground/25 transition-colors group text-left"
               >
-                <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
-                  <Upload className="h-4 w-4 text-brand" />
+                <div className="h-9 w-9 rounded-full bg-card border border-border shadow-sm flex items-center justify-center shrink-0">
+                  <Upload className="h-4 w-4 text-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-foreground">Import from a file instead</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">PDF, Word, PowerPoint or text, and we'll fill this in for you</p>
                 </div>
+                <CaretRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
 
-              <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
+              <form onSubmit={handleCreateTripSubmit} className="space-y-6">
                 {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="nt-title" className="text-xs font-medium text-muted-foreground">Itinerary title</Label>
@@ -1410,7 +1418,7 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border ${newTripData.tripType === t ? "bg-brand text-primary-foreground border-brand shadow-lg shadow-brand/20" : "bg-background border-border text-muted-foreground hover:border-brand/40"}`}>
+                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border ${newTripData.tripType === t ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-foreground/25"}`}>
                         {t}
                       </button>
                     ))}
@@ -1444,15 +1452,16 @@ export function DashboardPage() {
                     <span className="text-xs font-medium text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-brand">
-                          {format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}
+                        <span className="text-xs font-semibold text-link">
+                          {format(newTripData.dateRange.from, "d MMM")} to {format(newTripData.dateRange.to, "d MMM yyyy")}
                         </span>
                         <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-muted-foreground hover:text-red-400 transition-colors">Clear</button>
                       </div>
                     )}
                   </div>
-                  <div className={`rounded-xl border bg-background w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 border-border"}`}>
-                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={1} className="w-full" />
+                  <div className={`rounded-xl border bg-background w-full ${newTripDateError ? "border-red-500" : "border-border"}`}>
+                    {/* Two months side by side where there's room, so most trips are picked without paging */}
+                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={wideCalendar ? 2 : 1} className="w-full" />
                   </div>
                   {newTripDateError
                     ? <p className="text-[11px] font-semibold text-red-500">{newTripDateError}</p>
@@ -1460,7 +1469,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* ── Optional extras ── */}
-                <Collapsible className="rounded-xl border border-slate-200/80 border-border overflow-hidden">
+                <Collapsible className="rounded-xl border border-border overflow-hidden">
                   <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary transition-colors group/nt">
                     <span className="text-xs font-medium text-muted-foreground">Budget &amp; cover image</span>
                     <span className="flex items-center gap-2">
@@ -1489,10 +1498,10 @@ export function DashboardPage() {
                       placeholder="45000"
                       className="flex-1"
                     />
-                    <Select value={newTripData.currency} onValueChange={v => setNewTripData({ ...newTripData, currency: v ?? "USD" })}>
+                    <Select value={newTripData.currency} onValueChange={v => setNewTripData({ ...newTripData, currency: v ?? defaultCurrency })}>
                       <SelectTrigger className="w-24 h-9" aria-label="Currency"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1588,6 +1597,7 @@ export function DashboardPage() {
                   </button>
                 </div>
               </form>
+              </div>
             </div>
           </Drawer.Content>
         </Drawer.Portal>

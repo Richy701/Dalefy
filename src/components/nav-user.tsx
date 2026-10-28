@@ -35,24 +35,19 @@ export function NavUser() {
           <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "flex-col justify-center gap-1.5 px-0" : ""}`}>
             <button
               onClick={() => { navigate("/settings"); setOpenMobile(false); }}
-              className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-brand/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center ml-0" : ""}`}
+              className={`flex items-center gap-3 flex-1 min-w-0 rounded-lg hover:bg-sidebar-accent/60 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center ml-0" : ""}`}
               aria-label={`${displayName}, open settings`}
               title={collapsed ? `${displayName} · Settings` : undefined}
             >
-              <div className="h-8 w-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-[10px] font-bold shrink-0 border border-brand/20">
-                {initials}
+              <div className="h-8 w-8 rounded-full overflow-hidden bg-sidebar-accent text-sidebar-foreground flex items-center justify-center text-[10px] font-semibold shrink-0">
+                {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[13px] font-semibold text-sidebar-foreground truncate leading-tight">{displayName}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-[11px] text-sidebar-muted-foreground leading-tight truncate">{displayRole}</p>
-                    {orgRole && (
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
-                        {orgRole}
-                      </span>
-                    )}
-                  </div>
+                  <p className="mt-0.5 text-[11px] text-sidebar-muted-foreground leading-tight truncate">
+                    {[displayRole, orgRole ? orgRole.charAt(0).toUpperCase() + orgRole.slice(1) : ""].filter(Boolean).join(", ")}
+                  </p>
                 </div>
               )}
             </button>
