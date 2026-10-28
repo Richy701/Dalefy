@@ -2898,12 +2898,7 @@ export function WorkspacePage() {
         onOpenChange={setSendInviteOpen}
         trip={trip}
         travelers={tripTravelers}
-        onSent={ids => {
-          if (!ids.length) return;
-          const at = new Date().toISOString();
-          const sent = new Set(ids);
-          updateTrip(trip.id, { travelers: (trip.travelers ?? []).map(tv => (sent.has(tv.id) ? { ...tv, invitedAt: at } : tv)) });
-        }}
+        // The send endpoint stamps who was invited onto the trip itself; the trip listener brings it in
       />
 
       <ItineraryPreviewDialog

@@ -10,7 +10,7 @@ import { canEditTrip } from "./_tripPermissions.js";
  * The caller must own the trip or belong to its organisation.
  */
 
-import { getDocument, decodeValue } from "./_firebaseAdmin.js";
+import { getDocument, decodeValue, encodeValue, updateDocument } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
@@ -70,8 +70,11 @@ export default async function handler(req: any, res: any) {
     ? await getDocument("org_branding", orgId).catch(() => null)
     : null;
   const bf = branding?.fields ?? {};
-  const brandName = (decodeValue(bf.company_name) as string) || PLATFORM_NAME;
-  const logoUrl = (decodeValue(bf.logo_url) as string) || null;
+  // Itinerary emails go out as Dalefy with the Dalefy icon: a sender name that differs from the sending
+  // domain gets flagged by work mail filters, and organisation logos are often embedded images that
+  // Gmail and Outlook won't show. The organiser still appears in the email and receives the replies.
+  const brandName = PLATFORM_NAME;
+  const logoUrl = null;
   const accentColor = (decodeValue(bf.accent_color) as string) || null;
 
   const organizer = decodeValue(f.organizer) as ItineraryOrganizer | null;
@@ -101,7 +104,35 @@ export default async function handler(req: any, res: any) {
   }));
 
   const sent = results.filter(r => r.ok).length;
+  // Stamp "invited" here rather than from the browser: this writes onto the newest copy of the trip, so it can't
+  // clash with an organiser's open editor or another save. A failed stamp never fails the send.
+  await stampInvited(tripId, new Set(results.filter(r => r.ok).map(r => r.email.toLowerCase()))).catch(err =>
+    console.warn("send-itinerary: invitedAt stamp failed:", err instanceof Error ? err.message : err));
   return res.status(200).json({ sent, failed: results.length - sent, results });
+}
+
+async function stampInvited(tripId: string, delivered: Set<string>) {
+  if (!delivered.size) return;
+  const at = new Date().toISOString();
+  // Retried once: a save landing between the read and the write makes the first attempt stale
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const doc = await getDocument("trips", tripId);
+    if (!doc) return;
+    const travelers = (decodeValue(doc.fields?.travelers) ?? []) as Array<Record<string, unknown>>;
+    let touched = false;
+    const next = travelers.map(t => {
+      if (!delivered.has(String(t.email ?? "").trim().toLowerCase())) return t;
+      touched = true;
+      return { ...t, invitedAt: at };
+    });
+    if (!touched) return;
+    try {
+      await updateDocument("trips", tripId, { travelers: encodeValue(next) }, ["travelers"], doc.updateTime);
+      return;
+    } catch (err) {
+      if (attempt === 1) throw err;
+    }
+  }
 }
 
 interface ItineraryOrganizer {

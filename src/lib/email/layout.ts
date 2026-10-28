@@ -274,7 +274,6 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
     <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td width="600"><![endif]-->
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="email-card" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:${editorial ? "0" : `1px solid ${PALETTE.border}`};border-radius:${editorial ? "0" : "16px"};overflow:hidden;">
 
-      ${editorial ? `<tr><td height="4" style="height:4px;background:${accent};font-size:1px;line-height:4px;mso-line-height-rule:exactly;">&nbsp;</td></tr>` : ""}
       <tr><td class="content-pad" style="padding:${editorial ? "32px 40px 16px" : "32px 40px"};${editorial ? "" : `border-bottom:1px solid ${PALETTE.border};`}">
         ${masthead}
       </td></tr>
@@ -289,7 +288,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
         ${input.subtitle ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
       </td></tr>
 
-      ${input.image && input.imageAfterTitle ? `<tr><td class="${editorial ? "" : "content-pad"}" style="padding:${editorial ? "28px 0 0" : "24px 40px 0"};"><img class="itinerary-image" src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:100%;height:${editorial ? "300px" : "240px"};object-fit:cover;display:block;border-radius:${editorial ? "0" : "8px"};background:${PALETTE.raised};" /></td></tr>` : ""}
+      ${input.image && input.imageAfterTitle ? `<tr><td class="${editorial ? "" : "content-pad"}" style="padding:${editorial ? "28px 0 0" : "24px 40px 0"};"><!--[if !mso]><!--><img class="itinerary-image" src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:100%;height:${editorial ? "300px" : "240px"};object-fit:cover;display:block;border-radius:${editorial ? "0" : "8px"};background:${PALETTE.raised};" /><!--<![endif]--><!--[if mso]><img src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:${editorial ? "600" : "518"}px;display:block;" /><![endif]--></td></tr>` : ""}
 
       ${input.contextHtml ? `<tr><td class="content-pad" style="padding:16px 40px;border-bottom:1px solid ${PALETTE.border};">${input.contextHtml}</td></tr>` : ""}
 

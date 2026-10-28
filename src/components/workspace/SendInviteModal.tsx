@@ -81,8 +81,9 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent }:
 
   const email = useMemo(() => renderItineraryEmail({
     template: template.id,
-    brandName: brand.name,
-    logoUrl: brand.logoUrl,
+    // Matches what api/send-itinerary sends: Dalefy's name and icon, whatever the organisation's branding
+    brandName: brand.platformName,
+    logoUrl: null,
     accentColor: resolvedAccent,
     platformName: brand.platformName,
     tripName: trip.name,
