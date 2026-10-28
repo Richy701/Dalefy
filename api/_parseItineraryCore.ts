@@ -6,6 +6,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 
 export const PARSE_MODEL = "claude-sonnet-5-5";
 export const ASSIST_MODEL = "claude-haiku-5-5";
@@ -233,15 +234,18 @@ export async function runParse(client: Anthropic, input: ParseInput) {
   }
 
   // Streamed so a long document's thinking and output have room without the request timing out
-  const message = await client.messages.stream({
+  // A declined document is retried on a backup model inside the same call, chosen by the API
+  const message = await client.beta.messages.stream({
     model: PARSE_MODEL,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
     max_tokens: 64000,
     system: [
       { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     ],
     messages: [{ role: "user", content: contentBlocks }],
     // High effort: importing happens rarely and a missed time or a duplicated event costs the organiser far more
-    output_config: { effort: "high", format: zodOutputFormat(ItinerarySchema) },
+    output_config: { effort: "high", format: betaZodOutputFormat(ItinerarySchema) },
   }).finalMessage();
 
   if (message.stop_reason === "refusal") {

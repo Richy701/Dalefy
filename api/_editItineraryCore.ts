@@ -8,7 +8,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { ParseHttpError } from "./_parseItineraryCore.js";
 
 export const EDIT_MODEL = "claude-sonnet-5-5";
@@ -156,7 +156,7 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
   // The trip snapshot rides on the newest user turn only, so earlier turns stay
   // short and the system prefix stays byte-identical for caching.
   const tripJson = JSON.stringify(input.trip);
-  const messages: Anthropic.MessageParam[] = [
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
     ...history.map((m) => ({ role: m.role, content: m.content })),
     {
       role: "user",
@@ -166,12 +166,15 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
 
   // Streamed with room to spare, so shifting a whole trip doesn't run out of output.
   // High effort: a wrong date or a dropped event costs the agent far more than the extra seconds.
-  const message = await client.messages.stream({
+  // A declined request is retried on a backup model inside the same call, chosen by the API
+  const message = await client.beta.messages.stream({
     model: EDIT_MODEL,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
     max_tokens: 64000,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages,
-    output_config: { effort: "high", format: zodOutputFormat(EditResultSchema) },
+    output_config: { effort: "high", format: betaZodOutputFormat(EditResultSchema) },
   }).finalMessage();
 
   if (message.stop_reason === "refusal") {

@@ -12,7 +12,7 @@
     "test:security": "firebase emulators:exec --config firebase.test.json --project demo-dalefy-security --only firestore,storage \"node --test tests/security/*.test.mjs\""
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@base-ui/react": "^1.4.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
