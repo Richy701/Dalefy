@@ -236,7 +236,7 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
         {ev.documents && ev.documents.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
             {ev.documents.map(doc => (
-              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
                 <Paperclip className="h-3.5 w-3.5" />{doc.name}
               </a>
             ))}
@@ -435,12 +435,12 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
                     {(item.actionUrl || (item.documents?.length ?? 0) > 0) && (
                       <div className="border-t border-border px-4 py-3 sm:px-5 flex flex-wrap gap-x-4 gap-y-1">
                         {item.actionUrl && (
-                          <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                          <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
                             {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
                           </a>
                         )}
                         {item.documents?.map(doc => (
-                          <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                          <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
                             <Paperclip className="h-3.5 w-3.5" />{doc.name}
                           </a>
                         ))}
@@ -547,8 +547,8 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
             </div>
             {(org.email || org.phone) && (
               <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                {org.phone && <a href={`tel:${org.phone}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-brand hover:underline"><Phone className="h-4 w-4" />{org.phone}</a>}
-                {org.email && <a href={`mailto:${org.email}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-brand hover:underline"><EnvelopeSimple className="h-4 w-4" />{org.email}</a>}
+                {org.phone && <a href={`tel:${org.phone}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-link hover:underline"><Phone className="h-4 w-4" />{org.phone}</a>}
+                {org.email && <a href={`mailto:${org.email}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-link hover:underline"><EnvelopeSimple className="h-4 w-4" />{org.email}</a>}
               </div>
             )}
           </div>

@@ -247,7 +247,8 @@ export function WorkspacePage() {
   const editBaseline = useRef<Trip | undefined>(undefined);
   // A save that would empty Information & Documents waits here for a yes
   const [confirmClearInfo, setConfirmClearInfo] = useState<(() => Promise<void>) | null>(null);
-  const [clearInfoCount, setClearInfoCount] = useState(0);
+  /** What the waiting save would remove, in words: "all 17 Information & Documents cards", "the organiser (Laura Davies)" */
+  const [clearing, setClearing] = useState<string[]>([]);
   const saveBusy = useRef(false);
   const [savingChanges, setSavingChanges] = useState(false);
   const editingOriginalRef = useRef<string | null>(null);
@@ -936,7 +937,8 @@ export function WorkspacePage() {
       toast.success("Information updated");
     };
     // Emptying the section can't be undone, so it is asked for, never assumed
-    if (cleaned.length === 0 && (editBaseline.current?.info?.length ?? 0) > 0) { setClearInfoCount(editBaseline.current?.info?.length ?? 0); setConfirmClearInfo(() => save); return; }
+    const had = editBaseline.current?.info?.length ?? 0;
+    if (cleaned.length === 0 && had > 0) { setClearing([`all ${had} Information & Documents cards`]); setConfirmClearInfo(() => save); return; }
     await save();
   };
 
@@ -1084,7 +1086,13 @@ export function WorkspacePage() {
       setEditTripOpen(false);
       toast.success("Trip updated");
     };
-    if (!cleaned.info && (editBaseline.current?.info?.length ?? 0) > 0) { setClearInfoCount(editBaseline.current?.info?.length ?? 0); setConfirmClearInfo(() => save); return; }
+    // Emptying a section, or the organiser's name, can't be undone, so it is asked for, never assumed
+    const base = editBaseline.current;
+    const losing = [
+      !cleaned.info && (base?.info?.length ?? 0) > 0 ? `all ${base!.info!.length} Information & Documents cards` : "",
+      !cleaned.organizer && base?.organizer?.name?.trim() ? `the organiser (${base.organizer.name.trim()})` : "",
+    ].filter(Boolean);
+    if (losing.length) { setClearing(losing); setConfirmClearInfo(() => save); return; }
     await save();
   };
 
@@ -1718,7 +1726,7 @@ export function WorkspacePage() {
                               setBulkEmails(init);
                               setBulkEmailMode(true);
                             }}
-                            className="text-[11px] font-medium text-brand hover:underline"
+                            className="text-[11px] font-medium text-link hover:underline"
                           >
                             Edit All Emails
                           </button>
@@ -1840,7 +1848,7 @@ export function WorkspacePage() {
                                   <button
                                     type="button"
                                     disabled={emailSaving} onClick={async () => { if (await saveTravelerEmail(t.id, memberByTraveler.get(t.id)!.email!)) toast.success("Email saved"); }}
-                                    className="text-[10px] font-medium text-brand hover:underline mt-0.5 text-left block truncate max-w-full"
+                                    className="text-[10px] font-medium text-link hover:underline mt-0.5 text-left block truncate max-w-full"
                                   >
                                     Use {memberByTraveler.get(t.id)!.email} from the app
                                   </button>
@@ -2121,9 +2129,9 @@ export function WorkspacePage() {
       <ConfirmDialog
         open={!!confirmClearInfo}
         onOpenChange={open => { if (!open) setConfirmClearInfo(null); }}
-        title="Remove all information?"
-        description={`This saves the trip with no Information & Documents cards. The ${clearInfoCount} cards it has now will be gone, and travellers lose them the next time you publish.`}
-        confirmLabel="Remove all"
+        title={clearing.length === 1 && clearing[0].startsWith("the organiser") ? "Remove the organiser?" : clearing.length > 1 ? "Remove these from the trip?" : "Remove all information?"}
+        description={`Saving removes ${clearing.join(" and ")} from this trip. Travellers lose ${clearing.length > 1 || !clearing[0]?.startsWith("the organiser") ? "them" : "it"} the next time you publish.`}
+        confirmLabel="Remove"
         destructive
         onConfirm={async () => { await confirmClearInfo?.(); setConfirmClearInfo(null); }}
       />

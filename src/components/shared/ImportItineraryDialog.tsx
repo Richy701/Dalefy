@@ -1198,7 +1198,7 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="text-[11px] font-bold text-brand hover:underline"
+                className="text-[11px] font-bold text-link hover:underline"
               >
                 Done editing
               </button>

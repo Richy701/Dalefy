@@ -256,7 +256,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
         <PhoneFrame isDark={isDark} device={prefs.device} finish={prefs.finish[prefs.device]} screenBg={frameColors.bg} statusInk={frameColors.ink}>
           <div ref={viewportRef} style={{ position: "relative", height: "100%", overflow: "hidden" }}>
             {bootStatus !== "ready" && <div role="status" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-card px-4 text-center text-xs text-muted-foreground">
-              {bootStatus === "loading" ? "Loading mobile preview…" : <>The mobile preview couldn’t load.<button className="text-brand underline" onClick={() => { setBootStatus("loading"); iframeRef.current?.contentWindow?.location.reload(); }}>Reload preview</button></>}
+              {bootStatus === "loading" ? "Loading mobile preview…" : <>The mobile preview couldn’t load.<button className="text-link underline" onClick={() => { setBootStatus("loading"); iframeRef.current?.contentWindow?.location.reload(); }}>Reload preview</button></>}
             </div>}
             <iframe ref={iframeRef} src="/mobile-preview.html" title="Live mobile app preview" onLoad={sendPreview}
               style={{ border: 0, width: prefs.viewportWidth, height: `${prefs.viewportWidth / width * 100}%`, transform: `scale(${width / prefs.viewportWidth})`, transformOrigin: "top left", display: "block" }} />

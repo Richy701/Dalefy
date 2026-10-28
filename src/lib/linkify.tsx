@@ -16,7 +16,7 @@ export function Linkify({ text, className }: { text: string; className?: string 
             key={i}
             href={t.href}
             {...(t.kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            className="text-brand underline underline-offset-2 hover:opacity-80 break-all"
+            className="text-link underline underline-offset-2 hover:opacity-80 break-all"
             onClick={e => e.stopPropagation()}
           >
             {t.value}

@@ -51,7 +51,7 @@ export function CostSummary({ trip, onOpenEvent, onEditBudget }: {
                 </p>
               </div>
             ) : (
-              <button type="button" onClick={onEditBudget} className="mt-2 text-xs text-brand hover:underline underline-offset-2">Set a budget in trip details</button>
+              <button type="button" onClick={onEditBudget} className="mt-2 text-xs text-link hover:underline underline-offset-2">Set a budget in trip details</button>
             )}
             <div className="mt-4 pt-3 border-t border-border flex items-baseline justify-between gap-3">
               <p className="text-xs text-muted-foreground">Per traveller, {s.travellers} on the trip</p>

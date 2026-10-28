@@ -34,7 +34,7 @@ function Calendar({
         day_range_start: "w-full! rounded-none! rounded-l-lg! bg-brand text-(--accent-fg) hover:bg-brand hover:text-(--accent-fg) font-bold",
         day_range_end: "day-range-end w-full! rounded-none! rounded-r-lg! bg-brand text-(--accent-fg) hover:bg-brand hover:text-(--accent-fg) font-bold",
         day_selected: "bg-brand! text-(--accent-fg)! hover:bg-brand! hover:text-(--accent-fg)! focus:bg-brand! focus:text-(--accent-fg)! font-bold",
-        day_today: "font-bold text-brand dark:text-brand underline underline-offset-2 decoration-brand/40",
+        day_today: "font-bold text-link underline underline-offset-2 decoration-brand/40",
         day_outside: "day-outside text-muted-foreground/60 aria-selected:bg-brand/10 aria-selected:text-slate-500 dark:aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground/60 cursor-not-allowed",
         day_range_middle: "w-full! rounded-none! aria-selected:bg-brand/15! aria-selected:text-slate-900! dark:aria-selected:text-white!",

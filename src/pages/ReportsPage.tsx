@@ -368,7 +368,7 @@ export function ReportsPage() {
                           );
                         })}
                         {allTravelers.length > 7 && (
-                          <button onClick={() => navigate("/travelers")} className="w-full text-center py-2 text-xs font-medium text-brand hover:underline">
+                          <button onClick={() => navigate("/travelers")} className="w-full text-center py-2 text-xs font-medium text-link hover:underline">
                             +{allTravelers.length - 7} more
                           </button>
                         )}

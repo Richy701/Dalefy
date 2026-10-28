@@ -60,6 +60,7 @@ export function describeTripChange(before: Trip, updates: Partial<Trip>): string
   if ((updates.budget !== undefined && updates.budget !== before.budget) || (updates.currency !== undefined && updates.currency !== before.currency)) details.push("budget");
   if (updates.image !== undefined && updates.image !== before.image) details.push("cover photo");
   if (updates.organizer !== undefined && JSON.stringify(updates.organizer) !== JSON.stringify(before.organizer)) details.push("organiser");
+  else if ("organizer" in updates && updates.organizer === undefined && before.organizer?.name) parts.push("Removed the organiser");
   if (details.length) parts.push(`Changed ${details.join(", ")}`);
   if (updates.info !== undefined && JSON.stringify(updates.info) !== JSON.stringify(before.info)) parts.push("Updated information");
   else if ("info" in updates && updates.info === undefined && before.info?.length) parts.push("Removed all information");

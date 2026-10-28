@@ -707,7 +707,7 @@ export function DashboardPage() {
                   <div className="bg-card border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-medium">No upcoming trips</p>
-                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
+                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-link hover:underline">Create one →</button>
                   </div>
                 )}
               </section>
@@ -1045,7 +1045,7 @@ export function DashboardPage() {
                         footer={
                           calMonth.getMonth() !== new Date().getMonth() || calMonth.getFullYear() !== new Date().getFullYear() ? (
                             <div className="flex justify-end px-1 pt-1">
-                              <button type="button" onClick={() => setCalMonth(new Date())} className="text-xs font-medium text-brand hover:underline">
+                              <button type="button" onClick={() => setCalMonth(new Date())} className="text-xs font-medium text-link hover:underline">
                                 Back to this month
                               </button>
                             </div>
@@ -1230,7 +1230,7 @@ export function DashboardPage() {
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-medium text-muted-foreground">{showArchived ? "Nothing archived" : "No trips yet"}</p>
-                    {!showArchived && <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>}
+                    {!showArchived && <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-link hover:underline mt-2">Create your first trip →</button>}
                   </div>
                 )}
                 {filteredTrips.map(trip => {
