@@ -16,8 +16,9 @@ import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
-import { topicIcon, factRows } from "@/lib/infoTopics";
+import { topicIcon, factRows, balanceColumns } from "@/lib/infoTopics";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { CategoryDot } from "@/components/ui/category-dot";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -140,11 +141,11 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           <div className="max-w-3xl mx-auto">
             <p className="mb-3 text-base font-semibold tracking-tight text-foreground">Good to know</p>
             {/* Same cards as the shared link and the app: icon and heading, then one fact per row */}
-            <div className={cn("grid gap-3 items-start", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
-              {travelerInfo.map(item => {
+            {(() => {
+              const renderCard = (item: (typeof travelerInfo)[number]) => {
                 const { Icon: TopicIcon, warn } = topicIcon(item.title || "");
                 return (
-                  <div key={item.id} className="rounded-xl border border-border bg-background overflow-hidden" style={forPrint ? { breakInside: "avoid" } : undefined}>
+                  <div key={item.id} className="rounded-xl border border-border bg-background overflow-hidden print:break-inside-avoid">
                     <div className="flex items-center gap-2.5 px-3 py-2.5 sm:px-4">
                       <span className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", warn ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-secondary text-foreground")}>
                         <TopicIcon aria-hidden="true" weight="fill" className="h-3.5 w-3.5" />
@@ -159,8 +160,17 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
                     ))}
                   </div>
                 );
-              })}
-            </div>
+              };
+              // One column in list order on narrow screens; two columns of matching height on wide ones
+              return (
+                <>
+                  <div className="flex flex-col gap-3 sm:hidden print:hidden">{travelerInfo.map(renderCard)}</div>
+                  <div className="hidden gap-3 sm:flex items-start print:flex">
+                    {balanceColumns(travelerInfo).map((col, i) => <div key={i} className="flex min-w-0 flex-1 flex-col gap-3">{col.map(renderCard)}</div>)}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -168,14 +178,28 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
       {/* ── Itinerary body ── */}
       <div className={cn(forPrint ? "px-8 py-8" : "px-3 sm:px-8 py-5 sm:py-8")}>
         <div className="max-w-3xl mx-auto">
-          {/* Event count */}
-          <div className="flex items-center gap-2 mb-5 sm:mb-6">
-            <Compass className="h-4 w-4 text-brand" />
-            <span className={cn("text-[10px] sm:text-xs font-medium", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
-              {trip.events.length} event{trip.events.length !== 1 ? "s" : ""} · {grouped.length} day{grouped.length !== 1 ? "s" : ""}
-              {totalDocs > 0 && <> · {totalDocs} document{totalDocs !== 1 ? "s" : ""}</>}
-            </span>
-          </div>
+          {/* The trip at a glance: days, then each kind of plan with the same circles as the itinerary below */}
+          {trip.events.length > 0 && (
+            <div className="mb-6 sm:mb-8 grid grid-cols-3 sm:flex rounded-xl border border-border bg-card overflow-hidden" style={forPrint ? { breakInside: "avoid" } : undefined}>
+              {[
+                { key: "days", n: grouped.length, label: grouped.length === 1 ? "day" : "days" },
+                ...GLANCE_TYPES.map(({ type, one, many }) => {
+                  const n = trip.events.filter(e => e.type === type).length;
+                  return { key: type, type, n, label: n === 1 ? one : many };
+                }).filter(t => t.n > 0),
+                ...(totalDocs > 0 ? [{ key: "docs", n: totalDocs, label: totalDocs === 1 ? "document" : "documents", docs: true }] : []),
+              ].map((t, i) => (
+                <div key={t.key} className={cn("flex min-w-0 items-center gap-2.5 px-4 py-3 sm:flex-1 sm:px-3", i > 0 && "sm:border-l border-border")}>
+                  {"type" in t && t.type ? <CategoryDot type={t.type} size="sm" />
+                    : "docs" in t ? <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center"><Paperclip className="h-3.5 w-3.5 text-muted-foreground" /></span> : null}
+                  <div className="min-w-0">
+                    <p className="text-lg font-semibold leading-none tabular-nums text-foreground">{t.n}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {grouped.length === 0 ? (
             <div className={cn("border border-dashed rounded-xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-border text-muted-foreground" : "bg-card border-border text-muted-foreground")}>
@@ -285,6 +309,14 @@ function stayRange(checkin?: string, checkout?: string): string {
   }
   return `Check in ${checkin || "TBC"}, check out ${checkout || "TBC"}`;
 }
+
+const GLANCE_TYPES: Array<{ type: TravelEvent["type"]; one: string; many: string }> = [
+  { type: "flight", one: "flight", many: "flights" },
+  { type: "hotel", one: "stay", many: "stays" },
+  { type: "activity", one: "activity", many: "activities" },
+  { type: "dining", one: "meal", many: "meals" },
+  { type: "transfer", one: "transfer", many: "transfers" },
+];
 
 /* ── Pill badge (hero) ── */
 function Pill({ icon: Icon, children, className, forPrint }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string; forPrint?: boolean }) {

@@ -168,6 +168,8 @@ function splitInlineLabels(text: string): { label: string; body: string }[] | nu
 function topicIcon(title: string, kind: TopicKind): { Icon: Icon; warn: boolean } {
   const t = title.toLowerCase();
   if (/important|please note|warning|notice/.test(t)) return { Icon: WarningCircle, warn: true };
+  // Insurance names a 24-hour assistance line but is about cover, not a list of people to call
+  if (/insurance|medical|health|vaccin/.test(t)) return { Icon: FirstAid, warn: false };
   if (kind === "todo") return { Icon: ListChecks, warn: false };
   if (kind === "stay") return { Icon: Bed, warn: false };
   // Each contact row already carries a phone, so the heading names the people

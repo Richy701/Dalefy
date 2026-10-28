@@ -9,6 +9,8 @@ import {
 export function topicIcon(title: string): { Icon: Icon; warn: boolean } {
   const t = title.toLowerCase();
   if (/important|please note|warning|notice/.test(t)) return { Icon: WarningCircle, warn: true };
+  // Insurance names a 24-hour assistance line but is about cover, not a list of people to call
+  if (/insurance|medical|health|vaccin/.test(t)) return { Icon: FirstAid, warn: false };
   // The phone's order: what the topic's layout is (costs, contacts, stays, to-dos), then its subject
   if (/cost|price|budget|payment|invoice|deposit|balance/.test(t)) return { Icon: Wallet, warn: false };
   if (/contact|emergency|24\/7|24-hour|24 hour|helpline|hotline|assistance|\bteam\b/.test(t)) return { Icon: Users, warn: false };
@@ -69,4 +71,21 @@ export function sentences(text: string): string[] {
     else out.push(piece);
   }
   return out.map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Two columns that end at about the same height: each card goes to the shorter column so far, by a rough
+ * height from its rows and text. Cards keep their order within each column.
+ */
+export function balanceColumns<T extends { title?: string; body?: string }>(items: T[]): [T[], T[]] {
+  const cols: [T[], T[]] = [[], []];
+  const height = [0, 0];
+  for (const item of items) {
+    const rows = item.body ? factRows(item.body) : [];
+    const size = 2 + rows.reduce((n, r) => n + 1 + Math.ceil(r.text.length / 70) + (r.label ? 1 : 0), 0);
+    const i = height[0] <= height[1] ? 0 : 1;
+    cols[i].push(item);
+    height[i] += size;
+  }
+  return cols;
 }

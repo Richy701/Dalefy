@@ -266,13 +266,14 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent }:
                         aria-pressed={selected}
                         className={cn(
                           "inline-flex items-center gap-1.5 h-8 pl-1.5 pr-2.5 rounded-lg text-sm border transition-colors",
-                          selected ? "border-brand/40 bg-brand/10 text-foreground" : "border-border bg-card text-foreground hover:bg-secondary",
+                          // Primary, not brand: it stays readable whatever accent the organisation picks, mono included
+                          selected ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card text-foreground hover:bg-secondary",
                           disabled && "opacity-50 cursor-not-allowed hover:bg-card",
                         )}
                       >
                         <span className={cn(
                           "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-semibold",
-                          selected ? "bg-brand text-black" : "bg-secondary text-muted-foreground",
+                          selected ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
                         )}>
                           {selected ? <Check className="h-3 w-3" weight="bold" /> : t.initials}
                         </span>
