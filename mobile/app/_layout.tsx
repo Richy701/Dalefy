@@ -258,7 +258,12 @@ function AppStack() {
   };
   // Frosted sheets (Join, Notifications): no dimming, the system glass shows through. Light glass is thin and
   // picks up whatever is behind it, so light mode adds a pale veil to keep text readable.
-  const glassSheetOptions = {
+  // Android has no system glass behind the sheet, so it gets a solid page and the usual dimming.
+  const glassSheetOptions = Platform.OS === "android" ? {
+    ...sheetOptions,
+    sheetAllowedDetents: [0.94],
+    contentStyle: { backgroundColor: C.bg },
+  } : {
     ...sheetOptions,
     sheetAllowedDetents: [0.94],
     sheetLargestUndimmedDetentIndex: 0,
