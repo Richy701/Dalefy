@@ -381,6 +381,7 @@ export default function SharedTripScreen() {
           {justAdded ? (
             <Animated.View entering={FadeInDown.delay(220).duration(420).easing(Easing.out(Easing.cubic))} style={styles.arriveCard}>
               <BlurView intensity={50} tint={Platform.OS === "ios" ? "systemMaterialDark" : "dark"} style={StyleSheet.absoluteFill} />
+              {Platform.OS !== "ios" ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(28,28,32,0.6)" }]} /> : null}
               <Animated.View entering={FadeIn.delay(320).duration(320)} style={styles.arriveRow}>
                 <View style={styles.arriveIcon}><CalendarBlank size={18} color="#fff" weight="bold" /></View>
                 <View style={{ flex: 1 }}>

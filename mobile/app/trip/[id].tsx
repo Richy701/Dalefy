@@ -777,7 +777,9 @@ export default function TripScreen() {
         pointerEvents={stripPinned ? "box-none" : "none"}
         style={[{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: pinTop, zIndex: 15 }, stripBackingStyle]}
       >
-        {photoPage
+        {photoPage && Platform.OS === "android"
+          ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(9,9,11,0.97)" }]} />
+          : photoPage
           ? <BlurView intensity={100} tint="systemChromeMaterialDark" style={StyleSheet.absoluteFill} />
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />}
         {renderStrip()}

@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
-  ActivityIndicator, useWindowDimensions,
+  ActivityIndicator, useWindowDimensions, Platform,
 } from "react-native";
 import type { ScrollViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -583,6 +583,8 @@ export default function TodayScreen() {
         {/* The same Liquid Glass as the system sheets (Join, Notifications); a blur where it isn't available */}
         {SHEET_GLASS
           ? <GlassView glassEffectStyle="regular" style={styles.sheetGlass} />
+          : Platform.OS === "android"
+          ? <View style={[styles.sheetGlass, { backgroundColor: C.bg }]} />
           : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={100} style={styles.sheetGlass} />}
         <View style={styles.grabber} />
         {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}

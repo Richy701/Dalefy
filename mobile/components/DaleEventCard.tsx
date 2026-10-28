@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Image, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, StyleSheet, Platform } from "react-native";
 import type { TravelEvent } from "@/shared/types";
 import type { ThemeColors } from "@/constants/theme";
 import { T, R, S } from "@/constants/theme";
@@ -21,7 +21,8 @@ const LIQUID_GLASS = isLiquidGlassAvailable();
 export function Ground({ glass, C }: { glass?: boolean; C: ThemeColors }) {
   if (!glass) return null;
   // Tinted with the card colour so the card reads as a card, not a hole in the sheet
-  const tint = /^#[0-9a-f]{6}$/i.test(C.card) ? `${C.card}99` : C.elevated;
+  // Android has no glass to soften what shows through, so its cards are solid
+  const tint = Platform.OS !== "android" && /^#[0-9a-f]{6}$/i.test(C.card) ? `${C.card}99` : C.elevated;
   const edge = { borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border };
   return LIQUID_GLASS
     ? <GlassView glassEffectStyle="regular" tintColor={tint} style={[StyleSheet.absoluteFill, edge]} />

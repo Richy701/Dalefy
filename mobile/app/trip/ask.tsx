@@ -1,9 +1,9 @@
 import {
   View, Text, ScrollView, Pressable, TextInput,
-  StyleSheet, Platform, KeyboardAvoidingView, Keyboard,
+  StyleSheet, Platform, Keyboard,
 } from "react-native";
 import type { ScrollViewInstance } from "react-native";
-import Animated, { FadeIn as EnterFade, FadeInDown, Easing } from "react-native-reanimated";
+import Animated, { FadeIn as EnterFade, FadeInDown, Easing, useAnimatedKeyboard, useAnimatedStyle } from "react-native-reanimated";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -108,7 +108,10 @@ export default function AskScreen() {
   const scrollRef = useRef<ScrollViewInstance>(null);
   const viewH = useRef(0);
 
-  // The composer sits on the home indicator inset, and right on the keyboard while it is up
+  // The composer sits on the home indicator inset, and right on the keyboard while it is up.
+  // The page follows the keyboard itself: Android's edge-to-edge window no longer resizes for it.
+  const keyboard = useAnimatedKeyboard();
+  const keyboardPad = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
   const [keyboardUp, setKeyboardUp] = useState(false);
   useEffect(() => {
     const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", () => setKeyboardUp(true));
@@ -149,7 +152,7 @@ export default function AskScreen() {
     } finally {
       setPending(false);
     }
-  }, [pending, tripId]);
+  }, [pending, tripId, consented]);
 
   const send = useCallback((text: string) => ask(turns, text), [ask, turns]);
 
@@ -190,7 +193,7 @@ export default function AskScreen() {
     <View style={styles.safe}>
       {photoPage && <PhotoBackdrop uri={trip.image} />}
       <Stack.Screen options={headerOptions} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <Animated.View style={[{ flex: 1 }, keyboardPad]}>
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
@@ -308,6 +311,8 @@ export default function AskScreen() {
           <View style={styles.field}>
             {GLASS
               ? <GlassView glassEffectStyle="regular" style={[StyleSheet.absoluteFill, styles.fieldGlass]} />
+              : Platform.OS === "android"
+              ? <View style={[StyleSheet.absoluteFill, styles.fieldGlass, { backgroundColor: C.elevated }]} />
               : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={90} style={[StyleSheet.absoluteFill, styles.fieldGlass]} />}
             <TextInput
               value={draft}
@@ -336,7 +341,7 @@ export default function AskScreen() {
           </View>
         </View>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </View>
   );
 }

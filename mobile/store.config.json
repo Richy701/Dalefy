@@ -1,0 +1,70 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0",
+    "release": {
+      "automaticRelease": true
+    },
+    "info": {
+      "en-GB": {
+        "title": "Dalefy",
+        "subtitle": "Your group trip, all in one",
+        "promoText": "Everything your trip organiser has planned, on your phone: flights, transfers, hotels and the day's plans, with live flight updates and answers from Dale.",
+        "description": "Dalefy keeps your group trip in one place. Your travel organiser plans the trip, invites you, and everything they arrange appears on your phone, kept up to date as plans change.\n\nDalefy is for travellers invited to a trip. Join with the 6-character PIN or the invite link from your organiser.\n\nYOUR TRIP, DAY BY DAY\nSee every flight, transfer, hotel, meal and tour in order, with times, places and directions. Today shows what's next and where you're staying, on a map.\n\nLIVE FLIGHTS\nGates, terminals, delays and baggage belts, kept up to date. Follow your flight on your Lock Screen and Dynamic Island with Live Activities, and on your Home Screen with widgets.\n\nKNOW WHO'S MEETING YOU\nTransfers show the meeting point, your driver or guide and a button to call them, so arriving somewhere new is simple.\n\nEVERYTHING YOU NEED TO KNOW\nYour organiser's notes, sorted by topic: where you're staying, emergency contacts, travel documents, dress codes, money and more. Reach your organiser in one tap.\n\nASK DALE\nDale answers questions about your trip, such as \"what time is my pickup?\" or \"what should I wear tonight?\", using your itinerary and your organiser's notes. Dale asks before anything is sent.\n\nSHARE THE MOMENTS\nA shared gallery for the photos your group takes along the way.\n\nALWAYS WITH YOU\nTrips saved on your phone are there without a connection. You get a notification when your organiser changes the plan or your flight changes.",
+        "keywords": [
+          "itinerary",
+          "group travel",
+          "flight tracker",
+          "tour",
+          "holiday",
+          "travel organiser",
+          "transfer",
+          "companion",
+          "live activity"
+        ],
+        "supportUrl": "https://dalefy.app/support.html",
+        "privacyPolicyUrl": "https://dalefy.app/privacy.html"
+      }
+    },
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
+    },
+    "copyright": "2026 Dalefy",
+    "categories": [
+      "TRAVEL"
+    ],
+    "review": {
+      "firstName": "Richmond",
+      "lastName": "Lamptey",
+      "email": "support@dalefy.app",
+      "demoRequired": false,
+      "notes": "Dalefy is a trip companion for invited groups. A travel organiser plans a trip in our web workspace and invites the travellers; travellers use this app to follow that trip. We intend to distribute it as an unlisted app (link only) and will submit the unlisted distribution request after approval.\n\nHOW TO TEST\n1. Open the app. On Home, type the trip PIN D83S2D into the six boxes and tap \"Join trip\".\n2. Tap \"Join\" on the trip page that opens.\n3. This opens a demo trip, \"Lisbon Long Weekend\". It has flights, hotels, activities, transfers with a meeting point and driver, and Trip info from the organiser. No real people or personal data are in it.\n\nSigning in is optional for travellers. To test signed-in features, including account deletion (Profile > Delete account), use Sign in with Apple.\n\nFEATURES TO NOTE\n- Home, Today and the trip timeline show the itinerary; tapping an event opens its details.\n- Dale (the \"Ask Dale\" button on a trip) answers questions about the trip using Anthropic's Claude AI. The first time it opens, it explains what it sends and asks for agreement; nothing is sent before that.\n- Widgets and Live Activities show the next event and flight progress. They appear around a flight's departure time, so they may be empty during review if no flight is due.\n- Push notifications are only requested after joining a trip, and are used for itinerary changes and flight updates.\n- Location is only used to show trip places on the map and for directions; the app does not track the user.\n\nCONTACT\nRichmond Lamptey, support@dalefy.app"
+    }
+  }
+}
