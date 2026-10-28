@@ -177,6 +177,19 @@ export async function changeTripMedia(tripId: string, add: NonNullable<Trip["med
   await tripRequest("", { tripId, add, remove });
 }
 
+/** Tell the trip's organisers about someone else's photo; true once the report is recorded */
+export async function reportTripMedia(tripId: string, mediaId: string): Promise<boolean> {
+  await waitForAuth();
+  const token = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+  if (!token) return false;
+  const response = await withTimeout(fetch(`${API_BASE}/api/report-media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ tripId, mediaId }),
+  })).catch(() => null);
+  return !!response?.ok;
+}
+
 export async function upsertTrip(trip: Trip): Promise<void> {
   // Compatibility for the gallery upload path: only append media, never write a trip.
   await changeTripMedia(trip.id, trip.media ?? []);

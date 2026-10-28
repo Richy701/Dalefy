@@ -185,3 +185,33 @@ export function tripUpdatedEmail(input: {
   });
   return { subject: `Updated itinerary: ${input.tripName}`, html, text };
 }
+
+// ── Photo reported ──────────────────────────────────────────────────────────
+
+export function mediaReportedEmail(input: {
+  tripName: string;
+  photoName: string;
+  uploadedBy?: string | null;
+  reportedBy?: string | null;
+  manageUrl: string;
+}): RenderedEmail {
+  const brand = DALEFY_BRAND;
+  const intro = `A traveller on ${input.tripName} reported a photo in the trip gallery. It's hidden for them, but everyone else on the trip can still see it until you remove it.`;
+  const list = listCard([
+    `Photo: ${input.photoName}`,
+    input.uploadedBy ? `Uploaded by: ${input.uploadedBy}` : "",
+    input.reportedBy ? `Reported by: ${input.reportedBy}` : "",
+  ].filter(Boolean));
+  const bodyHtml = paragraph(escapeHtml(intro)) + list.html + paragraph("Open the trip's media in the workspace to review it, and delete it if it shouldn't be there.");
+  const bodyText = `${intro}\n\n${list.text}\n\nOpen the trip's media in the workspace to review it, and delete it if it shouldn't be there.`;
+  const { html, text } = renderEmailShell({
+    brand,
+    preheader: `A photo on ${input.tripName} was reported`,
+    eyebrow: "Photo reported",
+    title: input.tripName,
+    bodyHtml, bodyText,
+    cta: { label: "Review trip media", url: input.manageUrl },
+    footerText: `Sent by ${brand.platformName}.`,
+  });
+  return { subject: `Photo reported: ${input.tripName}`, html, text };
+}

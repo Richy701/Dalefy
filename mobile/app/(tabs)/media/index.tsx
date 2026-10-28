@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash, Heart, Export, VideoCamera, ImageSquare,
-  CaretRight, CaretDown, Images,
+  CaretRight, CaretDown, Images, Flag,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -39,7 +39,7 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
 import { parseTripDate } from "@/shared/dates";
-import { changeTripMedia, fetchTripById } from "@/services/firebaseTrips";
+import { changeTripMedia, fetchTripById, reportTripMedia } from "@/services/firebaseTrips";
 import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
@@ -413,13 +413,14 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
-function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, canDelete, hearted, onToggleHeart, C }: {
+function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, onReport, canDelete, hearted, onToggleHeart, C }: {
   items: ViewerItem[];
   initialIndex: number;
   visible: boolean;
   origin: OriginRect | null;
   onClose: () => void;
   onDelete: (item: ViewerItem) => void;
+  onReport: (item: ViewerItem) => void;
   canDelete: (item: ViewerItem) => boolean;
   hearted: Set<string>;
   onToggleHeart: (id: string) => void;
@@ -676,7 +677,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
               colors={["transparent", "transparent"]}
               style={{ paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: 48 }}
             >
-              {/* One glass toolbar: share, favourite, and delete on your own photos */}
+              {/* One glass toolbar: share, favourite, and delete on your own photos or report someone else's */}
               <ViewerGlass style={viewerStyles.toolbar}>
                 <Pressable
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Share.share({ url: current.url, message: Platform.OS === "android" ? current.url : undefined }); }}
@@ -715,6 +716,17 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                     <Trash size={22} color="#fff" weight="regular" />
                   </Pressable>
                 )}
+                {!canDelete(current) && (
+                  <Pressable
+                    onPress={() => onReport(current)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Report photo"
+                    style={({ pressed }) => [viewerStyles.tool, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <Flag size={22} color="#fff" weight="regular" />
+                  </Pressable>
+                )}
               </ViewerGlass>
             </LinearGradient>
           </Animated.View>
@@ -726,12 +738,13 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onDelete, C }: {
+const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onDelete, onReport, C }: {
   item: TripMedia;
   tripId: string;
   size: number;
   onPress: (id: string, origin: OriginRect | null) => void;
   onDelete?: (item: TripMedia & { tripId: string }) => void;
+  onReport?: (item: TripMedia & { tripId: string }) => void;
   C: ThemeColors;
 }) {
   const tileRef = useRef<HostInstance>(null);
@@ -748,13 +761,14 @@ const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onD
       actions={[
         { title: "View", systemIcon: "eye" },
         { title: "Share", systemIcon: "square.and.arrow.up" },
-        // Delete only on your own photos
+        // Delete only on your own photos; anyone else's can be reported
         ...(onDelete ? [{ title: "Delete", systemIcon: "trash", destructive: true }] : []),
+        ...(onReport ? [{ title: "Report", systemIcon: "flag", destructive: true }] : []),
       ]}
       onPress={(e: any) => {
         if (e.nativeEvent.index === 0) open();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
-        else if (e.nativeEvent.index === 2) onDelete?.({ ...item, tripId });
+        else if (e.nativeEvent.index === 2) (onDelete ?? onReport)?.({ ...item, tripId });
       }}
     >
     <Pressable
@@ -890,10 +904,19 @@ export default function MediaScreen() {
     [trips, pendingMedia, isValidMediaUrl],
   );
 
+  // Photos this person reported stay hidden on this device, whatever the organiser decides
+  const HIDDEN_KEY = "daf-media-hidden";
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    AsyncStorage.getItem(HIDDEN_KEY).then(raw => {
+      if (raw) setHidden(new Set(JSON.parse(raw)));
+    }).catch(() => {});
+  }, []);
+
   // Photos only until the app has a video player: a video tile would open to a play button that does nothing
   const tripsWithMedia = useMemo(() => mergedTrips
-    .map(t => ({ ...t, media: t.media?.filter(m => m.type === "image") }))
-    .filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
+    .map(t => ({ ...t, media: t.media?.filter(m => m.type === "image" && !hidden.has(m.id)) }))
+    .filter(t => (t.media?.length ?? 0) > 0), [mergedTrips, hidden]);
 
   // Default to everything. Only a trip that is live right now narrows the
   // gallery, so an upcoming trip with no photos never makes it look empty.
@@ -1006,6 +1029,26 @@ export default function MediaScreen() {
     ]);
   }, [trips, updateTrip, toast, deviceId, setPendingMedia]);
 
+  const handleReport = useCallback((item: TripMedia & { tripId: string }) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert("Report this photo?", "Your trip organiser will be told so they can review it. It's hidden for you straight away.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Report", style: "destructive",
+        onPress: async () => {
+          setHidden(prev => {
+            const next = new Set(prev).add(item.id);
+            AsyncStorage.setItem(HIDDEN_KEY, JSON.stringify([...next])).catch(() => {});
+            return next;
+          });
+          const sent = await reportTripMedia(item.tripId, item.id);
+          if (sent) toast("Reported. Your organiser has been told.");
+          else toast("Hidden for you, but the report didn't send. Check your connection.", "error");
+        },
+      },
+    ]);
+  }, [toast]);
+
   const openMedia = useCallback((id: string, origin: OriginRect | null) => {
     setViewerOrigin(origin);
     setViewerIndex(allItemsIndex.get(id) ?? -1);
@@ -1054,12 +1097,13 @@ export default function MediaScreen() {
             size={GRID_ITEM_SIZE}
             onPress={openMedia}
             onDelete={isMine(m) ? handleDelete : undefined}
+            onReport={isMine(m) ? undefined : handleReport}
             C={C}
           />
         ))}
       </View>
     );
-  }, [C, styles, openMedia, handleDelete, isMine]);
+  }, [C, styles, openMedia, handleDelete, handleReport, isMine]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     const trip = trips.find(t => t.id === tripId);
@@ -1310,6 +1354,7 @@ export default function MediaScreen() {
         origin={viewerOrigin}
         onClose={() => setViewerIndex(-1)}
         onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
+        onReport={(item) => { setViewerIndex(-1); handleReport(item); }}
         canDelete={isMine}
         hearted={hearted}
         onToggleHeart={toggleHeart}
