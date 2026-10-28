@@ -1674,7 +1674,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         showToast(`Added ${plural(newEvents.length, "new event")} to "${existing.name}"`);
         addNotification({ message: "Itinerary updated", detail: existing.name, time: "Just now", type: "success" });
       } else {
-        // Replace: full overwrite (old behavior)
+        // Replace: events, travellers and trip details come from the document; Information is merged below
         const updates: Partial<Trip> = {
           name: parsed.name,
           attendees: finalAttendees,
@@ -1689,9 +1689,21 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         if (parsed.organizer) {
           updates.organizer = parsed.organizer;
         }
-        // A document with no information sections leaves the trip's existing cards alone: replacing the
-        // itinerary should never silently wipe contacts, dress codes and the rest.
-        if (cleanedInfo.length > 0) updates.info = cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }));
+        // Replacing the itinerary never wipes Information: a card the document also has gets the document's
+        // text (keeping its attachments, deadline and leader-only setting), a new section is added, and
+        // every other card, hand-written ones included, stays.
+        if (cleanedInfo.length > 0) {
+          const key = (title: string) => title.trim().toLowerCase();
+          const incoming = new Map(cleanedInfo.map(item => [key(item.title), item]));
+          const kept = (existing?.info ?? []).map(card => {
+            const fresh = incoming.get(key(card.title));
+            return fresh ? { ...card, body: fresh.body } : card;
+          });
+          const have = new Set(kept.map(card => key(card.title)));
+          const added = cleanedInfo.filter(item => !have.has(key(item.title)))
+            .map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }));
+          updates.info = [...kept, ...added];
+        }
         if (tripMedia.length > 0) {
           const existingMedia = existing?.media || [];
           const newUrls = new Set(tripMedia.map(m => m.url));
@@ -2013,7 +2025,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <div role="radiogroup" aria-label="How the document goes into this trip" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {([
                   { value: "merge", title: `Add the ${plural(newEventCount, "new event")}`, body: `Your ${plural(existingEventCount, "event")} stay as they are` },
-                  { value: "replace", title: `Replace all ${existingEventCount} with these ${includedEvents.length}`, body: "Photos stay, undo available once" },
+                  { value: "replace", title: `Replace all ${existingEventCount} with these ${includedEvents.length}`, body: "Photos and trip info stay, undo available once" },
                 ] as const).map(opt => {
                   const selected = importMode === opt.value;
                   return (
@@ -2373,7 +2385,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       <AlertDialogHeader>
                         <AlertDialogTitle>Replace everything on this trip?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Every event, traveler and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. You can undo this once, straight afterwards, but not later.
+                          Every event, traveler and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. Trip info cards stay, and any the document also has get its latest text. You can undo this once, straight afterwards, but not later.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
