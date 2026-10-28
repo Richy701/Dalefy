@@ -110,7 +110,9 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
     setTimeout(() => recentLocalEdits.current.clear(), 5000);
 
     qc.setQueryData<Trip[]>(queryKey, next);
-    syncToCloud(prev, next, orgId, () => { recentLocalEdits.current.clear(); void qc.invalidateQueries({ queryKey }); });
+    syncToCloud(prev, next, orgId, () => { recentLocalEdits.current.clear(); void qc.invalidateQueries({ queryKey }); },
+      // The stored trip carries uploaded photo addresses; keep it unless the trip was edited again meanwhile
+      (saved, sent) => qc.setQueryData<Trip[]>(queryKey, list => list?.map(t => (t.id === saved.id && JSON.stringify(t) === JSON.stringify(sent) ? saved : t))));
   }, [qc, uid, orgId]);
 
   return { trips, setTrips, ready: isSuccess };
@@ -119,7 +121,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
 /** Demo/seed trip IDs - never push to cloud */
 const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
 
-function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailure?: () => void) {
+function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailure?: () => void, onSaved?: (saved: Trip, sent: Trip) => void) {
   const prevIds = new Set(prev.map(t => t.id));
   const nextIds = new Set(next.map(t => t.id));
 
@@ -129,6 +131,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null, onFailur
     if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
       logger.log("syncToCloud", "upserting trip:", trip.id, trip.name, "events:", trip.events.length);
       upsertTrip(trip, orgId, old).then((cleaned) => {
+        onSaved?.(cleaned, trip);
         // Write download URLs back to localStorage so images survive refresh
         if (JSON.stringify(cleaned) !== JSON.stringify(trip)) {
           try {

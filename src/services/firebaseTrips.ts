@@ -139,12 +139,18 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Pr
   const cleanTrip = await uploadTripImages(trip);
   const data = tripToDoc(cleanTrip);
   if (orgId) data.organization_id = orgId;
+  // What changed is decided on the trip as the editor has it, before photos are uploaded: an upload gives a
+  // photo a new address every time, which would otherwise read as an edit that clashes with the stored one
+  const desired = tripToDoc(trip);
+  if (orgId) desired.organization_id = orgId;
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org", isNew ? "(new)" : "(update)");
   const saved = await runTransaction(firebaseDb(), async tx => {
     const latest = await tx.get(tripRef);
     const current = latest.data() || {};
-    const patch = before ? tripPatch(tripToDoc(before), data, current) : data;
+    const patch = before ? tripPatch(tripToDoc(before), desired, current) : data;
+    // The fields that did change are written with their uploaded photo addresses
+    if (before) for (const key of Object.keys(patch)) if (key !== 'history' && key in data) patch[key] = data[key];
     const merged = syncLinkedOrganizer({ ...current, ...patch });
     if ('travelers' in patch) {
       const travelers = (merged.travelers || []) as Array<{ name: string; email?: string }>;
