@@ -47,22 +47,6 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Missing 'text', 'images', or 'pdf' in request body" });
   }
 
-  // ?stream=1: one JSON line per update while the trip is written, then the result (or an error) last
-  if (url.searchParams.get("stream") === "1") {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/x-ndjson");
-    res.setHeader("Cache-Control", "no-store");
-    const line = (data: unknown) => res.write(`${JSON.stringify(data)}\n`);
-    try {
-      const result = await runParse(client, { text, images, pdf }, partial => line({ type: "partial", partial }));
-      line({ type: "done", result });
-    } catch (err) {
-      console.error("parse-itinerary error:", err);
-      line({ type: "error", ...aiErrorToHttp(err) });
-    }
-    return res.end();
-  }
-
   try {
     const result = await runParse(client, { text, images, pdf });
     return res.status(200).json(result);

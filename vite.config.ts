@@ -124,7 +124,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
               json: (data: unknown) => send(res.statusCode || 200, data),
             }
             await handler({ method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body: parsed }, response)
-          } else if (p === "/api/parse-itinerary") {
+          } else if (p === "/api/parse-itinerary" || p === "/api/parse-itinerary-stream") {
             if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Method not allowed" })); return }
             const apiKey = env.ANTHROPIC_API_KEY
             if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
@@ -151,7 +151,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
 
             const { text, images, pdf } = parsed
             if (!text && !pdf && (!images || !Array.isArray(images) || images.length === 0)) { res.statusCode = 400; res.end(JSON.stringify({ error: "Missing 'text', 'images', or 'pdf' in body" })); return }
-            if (url.searchParams.get("stream") === "1") {
+            if (p === "/api/parse-itinerary-stream") {
               res.setHeader("Content-Type", "application/x-ndjson")
               const line = (data: unknown) => res.write(`${JSON.stringify(data)}\n`)
               try {

@@ -1091,7 +1091,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     ? { pdf: pdfDataUrl, text: linkBlock || undefined }
     : { text: [text, linkBlock].filter(Boolean).join("\n\n") || undefined, images: images.length > 0 ? images : undefined };
 
-  const resp = await fetch("/api/parse-itinerary?stream=1", {
+  const resp = await fetch("/api/parse-itinerary-stream", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
     body: JSON.stringify(payload),
