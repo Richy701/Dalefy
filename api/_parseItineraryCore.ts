@@ -84,6 +84,15 @@ Event title rules:
 - Concise and specific: "Visit Hwaseong Fortress" not "Today's tour"
 - Include venue names: "Farewell Dinner — Muwha Seoul" not just "Dinner"
 - Transfers: "Transfer to Incheon Airport" not just "Transfer"
+- Hotel events are titled with the property's name only ("The Bush Camp, Elephant Hills"), never "Check in — …".
+- Use the document's own words for activity and venue names; don't paraphrase or reword them ("Mountain-top Sundowner" stays "Mountain-top Sundowner"). The same document must give the same titles every time.
+
+Time rules:
+- Look for an event's time everywhere the document mentions it: the schedule line, its description ("meet in the lobby at 2:50 PM"), a day summary, or a transfer note ("pick-up 08:00"). Use the start of the event itself, not the meeting time, when both are given.
+- Use "TBD" only when the document gives no time for that event anywhere.
+
+One event per thing:
+- When the document describes the same activity, meal, transfer or stay in more than one place (a day-by-day schedule and a summary, or a heading and a note), create one event and merge the details into it.
 
 Other rules:
 - For flights with concatenated IATA codes like "LHRICN", split into "LHR"+"ICN" and resolve to city names (LHR=London, ICN=Seoul, JFK=New York, etc.)
@@ -217,15 +226,17 @@ export async function runParse(client: Anthropic, input: ParseInput) {
     throw new ParseHttpError(400, "No valid content to parse");
   }
 
-  const message = await client.messages.parse({
+  // Streamed so a long document's thinking and output have room without the request timing out
+  const message = await client.messages.stream({
     model: PARSE_MODEL,
-    max_tokens: 16000,
+    max_tokens: 64000,
     system: [
       { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     ],
     messages: [{ role: "user", content: contentBlocks }],
-    output_config: { effort: "medium", format: zodOutputFormat(ItinerarySchema) },
-  });
+    // High effort: importing happens rarely and a missed time or a duplicated event costs the organiser far more
+    output_config: { effort: "high", format: zodOutputFormat(ItinerarySchema) },
+  }).finalMessage();
 
   if (message.stop_reason === "refusal") {
     throw new ParseHttpError(422, "AI couldn't process this itinerary. Try pasting the text instead");

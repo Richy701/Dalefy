@@ -14,20 +14,21 @@ import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
-import { CategoryDot } from "@/components/ui/CategoryDot";
+import { DaleEventCard } from "@/components/DaleEventCard";
+import { BlurView } from "expo-blur";
 import { StreamedText, TypingDots } from "@/components/DaleChat";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { PhotoBackdrop, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { FadeIn } from "@/components/FadeIn";
-import { tidyTitleSeparators } from "@/shared/eventTitle";
-import { parseTripDate } from "@/shared/dates";
 import { todayKey } from "@/shared/tripSummary";
 import { askTrip, type ChatTurn } from "@/services/tripChat";
 import * as Haptics from "@/services/haptics";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import type { Trip, TravelEvent } from "@/shared/types";
 
 const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
+// Liquid Glass on iOS 26, a system blur elsewhere
+const GLASS = isLiquidGlassAvailable();
 
 // Conversations last while the app is open, so stepping into an event and back keeps the thread
 const sessions = new Map<string, ChatTurn[]>();
@@ -78,6 +79,7 @@ function suggestions(trip: Trip, events: TravelEvent[]): Starter[] {
 
 export default function AskScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const [composerH, setComposerH] = useState(0);
   const { trips } = useTrips();
   const router = useRouter();
   const { C: themeC, isDark: themeDark } = useTheme();
@@ -118,6 +120,11 @@ export default function AskScreen() {
   const myEvents = useMemo(() => (trip?.events ?? []).filter(e =>
     !linkedTravelerId || !e.assignedTo?.length || e.assignedTo.includes(linkedTravelerId)), [trip?.events, linkedTravelerId]);
   const byId = useMemo(() => new Map((trip?.events ?? []).map(e => [e.id, e])), [trip?.events]);
+  // When each stay ends, for "7-8 Nov, 1 night": its own end date, else the next stay, else the trip's end
+  const stayEnds = useMemo(() => {
+    const hotels = (trip?.events ?? []).filter(e => e.type === "hotel").sort((a, b) => a.date.localeCompare(b.date));
+    return new Map(hotels.map((h, i) => [h.id, h.endDate || hotels.slice(i + 1).find(n => n.date > h.date)?.date || trip?.end || ""]));
+  }, [trip?.events, trip?.end]);
   const starters = useMemo(() => (trip ? suggestions(trip, myEvents) : []), [trip, myEvents]);
 
   const ask = useCallback(async (base: ChatTurn[], text: string) => {
@@ -174,10 +181,6 @@ export default function AskScreen() {
     );
   }
 
-  const eventLine = (ev: TravelEvent) => {
-    const day = parseTripDate(ev.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-    return [day, ev.time && !/^tb[acd]$/i.test(ev.time) ? ev.time : ""].filter(Boolean).join(", ");
-  };
 
   const canSend = !!draft.trim() && !pending;
 
@@ -192,7 +195,7 @@ export default function AskScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[styles.content, turns.length === 0 && styles.contentEmpty]}
+          contentContainerStyle={[styles.content, turns.length === 0 && styles.contentEmpty, { paddingBottom: S.md + composerH }]}
           onLayout={e => { viewH.current = e.nativeEvent.layout.height; }}
           onContentSizeChange={(_, h) => {
             // scrollToEnd ignores the inset under the transparent bar, so a short thread would slide up behind it.
@@ -228,18 +231,12 @@ export default function AskScreen() {
                   <Animated.View entering={EnterFade.duration(220)} style={{ gap: S.xs }}>
                     {(t.eventIds ?? []).map(id => byId.get(id)).filter((e): e is TravelEvent => !!e).map((ev, k) => (
                       <Animated.View key={ev.id} entering={k ? FadeInDown.duration(280).easing(EASE_OUT).delay(k * CARD_STAGGER) : FadeInDown.duration(280).easing(EASE_OUT)}>
-                      <Pressable
+                      <DaleEventCard
+                        ev={ev}
+                        C={C}
+                        stayEnd={stayEnds.get(ev.id)}
                         onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${tidyTitleSeparators(ev.title)}, ${eventLine(ev)}`}
-                        style={({ pressed }) => [styles.eventCard, { opacity: pressed ? 0.7 : 1 }]}
-                      >
-                        <CategoryDot palette={C} type={ev.type} transferType={ev.transferType} size={36} base={C.elevated} />
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.eventTitle} numberOfLines={1}>{tidyTitleSeparators(ev.title)}</Text>
-                          <Text style={styles.eventSub} numberOfLines={1}>{eventLine(ev)}</Text>
-                        </View>
-                      </Pressable>
+                      />
                       </Animated.View>
                     ))}
                     {t.error ? (i === turns.length - 1 ? (
@@ -257,6 +254,10 @@ export default function AskScreen() {
           {pending ? <TypingDots C={C} /> : null}
         </ScrollView>
 
+        {/* The composer floats over the thread, like Messages: the thread scrolls on under the glass field,
+            and the composer's measured height keeps the last message clear of it. It stays in the layout
+            (pulled up by its own height) so the keyboard still lifts it. */}
+        <View onLayout={e => setComposerH(e.nativeEvent.layout.height)} style={{ marginTop: -composerH }}>
         {turns.length === 0 ? (
           <ScrollView
             horizontal
@@ -282,8 +283,11 @@ export default function AskScreen() {
           </ScrollView>
         ) : null}
         <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Math.max(insets.bottom, S.sm) }]}>
-          {/* One rounded field with the send button inside it */}
+          {/* One rounded glass field with the send button inside it */}
           <View style={styles.field}>
+            {GLASS
+              ? <GlassView glassEffectStyle="regular" style={[StyleSheet.absoluteFill, styles.fieldGlass]} />
+              : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={90} style={[StyleSheet.absoluteFill, styles.fieldGlass]} />}
             <TextInput
               value={draft}
               onChangeText={setDraft}
@@ -309,6 +313,7 @@ export default function AskScreen() {
               <ArrowUp size={17} weight="bold" color={canSend ? C.onAccent : C.textTertiary} />
             </IconCircleButton>
           </View>
+        </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -347,21 +352,15 @@ function makeStyles(C: ThemeColors) {
     answer: { gap: S.xs, paddingRight: S.lg },
     answerText: { fontSize: T.md, lineHeight: 24, color: C.textPrimary },
     retry: { fontSize: T.base, fontWeight: T.semibold, color: C.tealText },
-    eventCard: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      paddingHorizontal: S.sm2, paddingVertical: S.sm2, borderRadius: R.lg,
-      backgroundColor: C.elevated,
-    },
-    eventTitle: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
-    eventSub: { fontSize: T.xs, color: C.textSecondary, marginTop: 1 },
 
     composer: { paddingHorizontal: S.md, paddingTop: S.xs },
     field: {
       flexDirection: "row", alignItems: "flex-end", gap: S.xs,
-      minHeight: 50, borderRadius: 25,
-      backgroundColor: C.elevated, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      minHeight: 50, borderRadius: 25, overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       paddingLeft: S.md, paddingRight: 8, paddingVertical: 8,
     },
+    fieldGlass: { borderRadius: 25 },
     input: {
       flex: 1, maxHeight: 120, minHeight: 34,
       paddingTop: 7, paddingBottom: 7, paddingHorizontal: 0,

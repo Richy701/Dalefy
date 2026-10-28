@@ -4,7 +4,7 @@ import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { aiErrorToHttp } from "./_parseItineraryCore.js";
 import { publishedTripView, membershipMatches, record } from "./_tripView.js";
-import { runTripChat, tripContext, validateChatInput } from "./_tripChatCore.js";
+import { runTripChat, tripContext, validateChatInput, liveContext } from "./_tripChatCore.js";
 
 function decode(doc: FirestoreDoc | null): Record<string, unknown> {
   return doc ? Object.fromEntries(Object.entries(doc.fields ?? {}).map(([k, v]) => [k, decodeValue(v)])) : {};
@@ -60,7 +60,12 @@ export default async function handler(req: Request, res: Response) {
 
     const linked = typeof member.linked_traveler_id === "string" && member.linked_traveler_id ? member.linked_traveler_id : null;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const result = await runTripChat(client, tripContext(view, linked), input);
+    const trip = decode(found);
+    const question = input.messages[input.messages.length - 1].content;
+    // Live flight details and weather help, but a question is still answered without them
+    const live = await liveContext(view, Array.isArray(trip.events) ? trip.events as Record<string, unknown>[] : [], linked, question, process.env.OPENWEATHER_KEY)
+      .catch((err) => { console.warn("trip-chat live context failed:", err instanceof Error ? err.message : err); return ""; });
+    const result = await runTripChat(client, tripContext(view, linked), input, live);
     return res.status(200).json(result);
   } catch (err) {
     console.error("trip-chat error:", err);
