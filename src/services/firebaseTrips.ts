@@ -37,47 +37,71 @@ export function waitForAuth(): Promise<string | null> {
   });
 }
 
-export async function fetchTrips(orgId?: string | null): Promise<Trip[]> {
+// Private trips are seen by their creator and the team's owners and admins. Firestore checks a query's
+// permissions as a whole, so other teammates ask only for shared trips plus their own.
+type Scope = { seeAll: boolean };
+
+function visibleTrips(docs: Array<{ id: string; data(): Record<string, unknown> }>, uid: string, scope: Scope): Trip[] {
+  const byId = new Map<string, Trip>();
+  for (const d of docs) if (!DEMO_IDS.has(d.id)) byId.set(d.id, docToTrip(d.id, d.data()));
+  return [...byId.values()]
+    .filter(t => scope.seeAll || !t.private || t.ownerId === uid)
+    .sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")));
+}
+
+function tripQueries(orgId: string | null | undefined, uid: string, split: boolean) {
+  const trips = collection(firebaseDb(), TRIPS);
+  if (!orgId) return [query(trips, where("user_id", "==", uid), orderBy("start", "desc"))];
+  if (!split) return [query(trips, where("organization_id", "==", orgId), orderBy("start", "desc"))];
+  return [
+    query(trips, where("organization_id", "==", orgId), where("private", "==", false)),
+    query(trips, where("organization_id", "==", orgId), where("user_id", "==", uid)),
+  ];
+}
+
+const isDenied = (err: unknown) => (err as { code?: string } | null)?.code === "permission-denied";
+
+export async function fetchTrips(orgId?: string | null, scope: Scope = { seeAll: true }): Promise<Trip[]> {
   const uid = await waitForAuth();
   if (!uid) return [];
-
-  const constraint = orgId
-    ? where("organization_id", "==", orgId)
-    : where("user_id", "==", uid);
-
-  const snap = await getDocs(
-    query(collection(firebaseDb(), TRIPS), constraint, orderBy("start", "desc")),
-  );
-  const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
-  const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
-  const blocked = all.length - filtered.length;
-  if (blocked > 0) logger.log("fetchTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
-  return filtered;
+  const run = async (split: boolean) => (await Promise.all(tripQueries(orgId, uid, split).map(q => getDocs(q)))).flatMap(s => s.docs);
+  try {
+    return visibleTrips(await run(false), uid, scope);
+  } catch (err) {
+    if (!orgId || scope.seeAll || !isDenied(err)) throw err;
+    return visibleTrips(await run(true), uid, scope);
+  }
 }
 
 /** `fromCache` is true when the snapshot came from the offline copy rather than the server. `onGiveUp` fires once retries run out. */
-export function subscribeToTrips(onChange: (trips: Trip[], fromCache: boolean) => void, orgId?: string | null, onGiveUp?: () => void): Unsubscribe {
-  let innerUnsub: Unsubscribe | null = null;
+export function subscribeToTrips(
+  onChange: (trips: Trip[], fromCache: boolean) => void,
+  orgId?: string | null,
+  onGiveUp?: () => void,
+  scope: Scope = { seeAll: true },
+): Unsubscribe {
+  let unsubs: Unsubscribe[] = [];
   let cancelled = false;
+  const stop = () => { unsubs.forEach(u => u()); unsubs = []; };
 
-  const startListener = (uid: string, attempt = 1) => {
+  const startListener = (uid: string, attempt = 1, split = false) => {
     if (cancelled) return;
-    const constraint = orgId
-      ? where("organization_id", "==", orgId)
-      : where("user_id", "==", uid);
-    const q = query(collection(firebaseDb(), TRIPS), constraint, orderBy("start", "desc"));
-    innerUnsub = onSnapshot(q, (snap) => {
-      const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
-      const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
-      const blocked = all.length - filtered.length;
-      if (blocked > 0) logger.log("subscribeToTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
-      onChange(filtered, snap.metadata.fromCache);
+    stop();
+    const queries = tripQueries(orgId, uid, split);
+    const latest: Array<{ docs: Array<{ id: string; data(): Record<string, unknown> }>; fromCache: boolean } | null> = queries.map(() => null);
+    unsubs = queries.map((q, i) => onSnapshot(q, (snap) => {
+      latest[i] = { docs: snap.docs, fromCache: snap.metadata.fromCache };
+      // Wait for every part, so a teammate never sees only half their trips
+      if (latest.some(l => !l)) return;
+      onChange(visibleTrips(latest.flatMap(l => l!.docs), uid, scope), latest.some(l => l!.fromCache));
     }, (err) => {
       logger.log("subscribeToTrips", `snapshot error (attempt ${attempt}):`, err.message);
       if (cancelled) return;
-      if (attempt < 3) setTimeout(() => startListener(uid, attempt + 1), attempt * 1500);
-      else onGiveUp?.();
-    });
+      // Rules that hide private trips refuse a whole-team query from a teammate; ask for what they can see
+      if (!split && orgId && !scope.seeAll && isDenied(err)) { startListener(uid, 1, true); return; }
+      if (attempt < 3) setTimeout(() => startListener(uid, attempt + 1, split), attempt * 1500);
+      else { stop(); onGiveUp?.(); }
+    }));
   };
 
   waitForAuth().then((uid) => {
@@ -85,7 +109,16 @@ export function subscribeToTrips(onChange: (trips: Trip[], fromCache: boolean) =
     startListener(uid);
   });
 
-  return () => { cancelled = true; innerUnsub?.(); };
+  return () => { cancelled = true; stop(); };
+}
+
+/** Owners and admins stamp older team trips as shared, so teammates' "shared trips" query finds them */
+export async function backfillPrivateFlag(orgId: string): Promise<number> {
+  const snap = await getDocs(query(collection(firebaseDb(), TRIPS), where("organization_id", "==", orgId)));
+  const missing = snap.docs.filter(d => !DEMO_IDS.has(d.id) && typeof d.data().private !== "boolean");
+  await Promise.all(missing.map(d => setDoc(d.ref, { private: false }, { merge: true })));
+  if (missing.length) logger.log("backfillPrivateFlag", `marked ${missing.length} trips as shared`);
+  return missing.length;
 }
 
 export async function backfillOrgId(orgId: string): Promise<number> {
@@ -134,7 +167,7 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Pr
     await setDoc(tripRef, {
       user_id: userId, organization_id: orgId ?? trip.organizationId ?? null,
       name: trip.name, start: trip.start, end_date: trip.end,
-      status: "Draft", events: [],
+      status: "Draft", events: [], private: !!trip.private,
     });
   }
   const cleanTrip = await uploadTripImages(trip);
@@ -149,6 +182,8 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Pr
   const saved = await runTransaction(firebaseDb(), async tx => {
     const latest = await tx.get(tripRef);
     const current = latest.data() || {};
+    // Trips saved before private trips existed have no flag; they were always shared
+    if (typeof current.private !== "boolean") current.private = false;
     const patch = before ? tripPatch(tripToDoc(before), desired, current) : data;
     // The fields that did change are written with their uploaded photo addresses
     if (before) for (const key of Object.keys(patch)) if (key !== 'history' && key in data) patch[key] = data[key];
@@ -661,6 +696,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     documents: trip.documents ?? null,
     published_snapshot: trip.publishedSnapshot ?? null,
     archived_at: trip.archivedAt ?? null,
+    private: !!trip.private,
     history: trip.history ?? null,
     tasks: trip.tasks ?? null,
   });
@@ -695,6 +731,8 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     organizationId: (data.organization_id as string) ?? undefined,
     publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
     archivedAt: (data.archived_at as string) ?? undefined,
+    private: data.private === true,
+    ownerId: (data.user_id as string) ?? undefined,
     history: (data.history as Trip["history"]) ?? undefined,
     tasks: (data.tasks as Trip["tasks"]) ?? undefined,
   };

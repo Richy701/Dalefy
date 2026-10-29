@@ -4,7 +4,7 @@ import type { Trip, TravelEvent, User } from "@/types";
 import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, repairTripOwnership } from "@/services/firebaseTrips";
+import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, backfillPrivateFlag, repairTripOwnership } from "@/services/firebaseTrips";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { describeTripChange, withHistory } from "@/lib/tripHistory";
 import { useOrg } from "@/context/OrgContext";
@@ -46,16 +46,16 @@ const TripsContext = createContext<TripsContextType>({
 
 // ── Data source hooks ─────────────────────────────────────────────────────────
 
-function useCloudTrips(uid: string | null, orgId?: string | null) {
+function useCloudTrips(uid: string | null, orgId?: string | null, seeAll = true) {
   const qc = useQueryClient();
   const recentLocalEdits = useRef<Set<string>>(new Set());
   const pendingDeletes = useRef<Set<string>>(new Set());
-  const queryKey = ["trips", orgId || uid];
+  const queryKey = ["trips", orgId || uid, seeAll ? "all" : "mine"];
 
   // The live listener below fills this query; a separate fetch would download every trip twice
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
     queryKey,
-    queryFn: () => fetchTrips(orgId),
+    queryFn: () => fetchTrips(orgId, { seeAll }),
     staleTime: Infinity,
     enabled: false,
   });
@@ -86,12 +86,12 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
 
       qc.setQueryData<Trip[]>(queryKey, incoming);
     }, orgId, () => {
-      fetchTrips(orgId)
+      fetchTrips(orgId, { seeAll })
         .then(list => qc.setQueryData<Trip[]>(queryKey, list))
         .catch(err => logger.error("TripsProvider", "trips fallback fetch failed:", err));
-    });
+    }, { seeAll });
     return () => unsub();
-  }, [qc, uid, orgId]);
+  }, [qc, uid, orgId, seeAll]);
 
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
     const prev = qc.getQueryData<Trip[]>(queryKey) ?? [];
@@ -118,11 +118,11 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
     qc.setQueryData<Trip[]>(queryKey, next);
     syncToCloud(prev, next, orgId, () => {
       recentLocalEdits.current.clear();
-      fetchTrips(orgId).then(list => qc.setQueryData<Trip[]>(queryKey, list)).catch(() => {});
+      fetchTrips(orgId, { seeAll }).then(list => qc.setQueryData<Trip[]>(queryKey, list)).catch(() => {});
     },
       // The stored trip carries uploaded photo addresses; keep it unless the trip was edited again meanwhile
       (saved, sent) => qc.setQueryData<Trip[]>(queryKey, list => list?.map(t => (t.id === saved.id && JSON.stringify(t) === JSON.stringify(sent) ? saved : t))));
-  }, [qc, uid, orgId]);
+  }, [qc, uid, orgId, seeAll]);
 
   return { trips, setTrips, ready: isSuccess };
 }
@@ -262,13 +262,15 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
   const useCloud = firebaseOn && !isDemoUser;
   const local = useLocalTrips(isDemoUser && !authLoading);
-  const { currentOrg, isLoading: orgLoading } = useOrg();
+  const { currentOrg, orgRole, isLoading: orgLoading } = useOrg();
   const orgId = currentOrg?.id ?? null;
+  // Owners and admins see private trips too; everyone else sees shared trips and their own
+  const seeAllTrips = !orgId || orgRole === "owner" || orgRole === "admin";
   // Don't fire cloud queries while org is still loading - avoids a user_id-only
   // query that returns incomplete results, then a second org-scoped query that
   // briefly flashes empty while it resolves.
   const cloudUid = useCloud && !orgLoading ? (user?.id ?? null) : null;
-  const cloud = useCloudTrips(cloudUid, orgId);
+  const cloud = useCloudTrips(cloudUid, orgId, seeAllTrips);
   const isLocalOnly = !useCloud;
 
   const { setTrips } = useCloud ? cloud : local;
@@ -284,7 +286,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     backfillRan.current = true;
     backfillOrgId(orgId).catch(err => logger.error("TripsProvider", "org backfill failed:", err));
     repairTripOwnership(orgId).catch(err => logger.error("TripsProvider", "ownership repair failed:", err));
-  }, [useCloud, orgId, cloud.ready]);
+    if (orgRole === "owner" || orgRole === "admin") backfillPrivateFlag(orgId).catch(err => logger.error("TripsProvider", "private flag backfill failed:", err));
+  }, [useCloud, orgId, cloud.ready, orgRole]);
 
   // One-time cleanup: strip structured fields from localStorage that belong in
   // Firestore. Prevents stale localStorage from resurrecting deleted data.

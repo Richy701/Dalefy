@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise,
+  ChatCircleText, Megaphone, CaretLeft, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -153,7 +153,7 @@ export function WorkspacePage() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { addNotification } = useNotifications();
-  const { canDeleteTrip, isOrgMember, isViewer } = usePermissions();
+  const { canDeleteTrip, isOrgMember, isViewer, canManageOrg } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
   const { others: presenceUsers, updateActivity } = usePresence(tripId);
@@ -1095,6 +1095,16 @@ export function WorkspacePage() {
     }
   };
 
+  /** Hide a trip from the rest of the team, or share it again. Only its creator or an owner/admin can. */
+  const canSetPrivate = isOrgMember && (trip.ownerId === user?.id || canManageOrg);
+  const togglePrivate = () => {
+    if (demoGate()) return;
+    updateTrip(trip.id, { private: !trip.private });
+    toast.success(trip.private
+      ? `${trip.name} is shared with your team again`
+      : `${trip.name} is private. Only you and your team's owners and admins can see it.`);
+  };
+
   const handleOpenEditTrip = () => {
     if (demoGate()) return;
     editBaseline.current = trip;
@@ -1164,7 +1174,10 @@ export function WorkspacePage() {
       <header className="h-14 bg-card border-b border-border px-3 sm:px-4 lg:px-6 flex items-center gap-3 sticky top-0 z-50">
           <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-9 w-9 rounded-lg hover:bg-secondary text-foreground shrink-0"><CaretLeft className="h-5 w-5" /></Button>
           <div className="min-w-0 hidden sm:block">
-            <h2 className="text-sm font-semibold text-foreground leading-tight truncate">{trip.name}</h2>
+            <h2 className="text-sm font-semibold text-foreground leading-tight truncate flex items-center gap-1.5">
+              <span className="truncate">{trip.name}</span>
+              {trip.private && <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-medium text-muted-foreground"><LockSimple className="h-3 w-3" weight="bold" /> Private</span>}
+            </h2>
             <p className="text-xs text-muted-foreground leading-tight truncate">{tripFactLine(trip)}</p>
           </div>
 
@@ -1294,6 +1307,9 @@ export function WorkspacePage() {
                     <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Import from document</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setHistoryOpen(true)} className={item}><ClockCounterClockwise className="h-4 w-4" /> History</DropdownMenuItem>
+                    {canSetPrivate && (
+                      <DropdownMenuItem onClick={togglePrivate} className={item}>{trip.private ? <UsersThree className="h-4 w-4" /> : <LockSimple className="h-4 w-4" />} {trip.private ? "Share with team" : "Make private"}</DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={toggleArchived} className={item}>{trip.archivedAt ? <ArrowCounterClockwise className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {trip.archivedAt ? "Unarchive trip" : "Archive trip"}</DropdownMenuItem>
                     {(!isOrgMember || canDeleteTrip) && (
                       <>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, EnvelopeSimple, PaperPlaneTilt, PencilSimple, Users } from "@phosphor-icons/react";
+import { Check, EnvelopeSimple, LockSimple, PaperPlaneTilt, PencilSimple, Users } from "@phosphor-icons/react";
 import { objectPosition } from "@/lib/imagePosition";
 import { parseTripDate } from "@/lib/dates";
 import { publishedChanges } from "@/lib/tripChanges";
@@ -62,7 +62,10 @@ export function TripCard({ trip, today, onOpen, menu }: { trip: Trip; today: Dat
         )}
       </div>
       <div className="flex-1 flex flex-col p-4">
-        <h3 className="text-base font-semibold tracking-tight text-foreground leading-snug line-clamp-2">{trip.name}</h3>
+        <h3 className="text-base font-semibold tracking-tight text-foreground leading-snug line-clamp-2">
+          {trip.private && <LockSimple className="inline h-3.5 w-3.5 mr-1 -mt-0.5 text-muted-foreground" weight="bold" aria-label="Private trip" />}
+          {trip.name}
+        </h3>
         {trip.destination && <p className="text-xs text-muted-foreground truncate mt-0.5">{trip.destination}</p>}
         <p className="mt-2 flex items-center gap-3 text-xs text-foreground/80 tabular-nums">
           <span>{dateRange(trip)}</span>
