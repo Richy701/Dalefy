@@ -3,25 +3,20 @@ import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { parseTripDate } from "@/lib/dates";
-import { AirplaneTilt, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, FileText, Warning, WarningCircle, CheckCircle, Download, Storefront, FilePdf, SpinnerGap } from "@phosphor-icons/react";
-import { BarChart, Bar, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Users, SealCheck, Clock, FileText, Warning, WarningCircle, CheckCircle, Download, FilePdf, SpinnerGap } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
 import { travellerCount } from "@/lib/travelerSync";
 import { useDirectoryTravelers, useComplianceRecords } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
-import { usePreferences } from "@/context/PreferencesContext";
-import { useTheme } from "@/context/ThemeContext";
-import { useTripStats } from "@/hooks/useTripStats";
 import { liveTrips } from "@/lib/tripLifecycle";
 import { MOCK_USERS } from "@/data/mock-users";
-import { AIRLINE_COLORS, airlineLogoUrl } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { TravellersReport } from "@/components/reports/TravellersReport";
 import { TripsReport } from "@/components/reports/TripsReport";
 import { MoneyReport } from "@/components/reports/MoneyReport";
+import { OverviewReport } from "@/components/reports/OverviewReport";
 import { ReportFiltersBar } from "@/components/reports/ReportFiltersBar";
 import { DEFAULT_REPORT_FILTERS, filterReportTrips, describeFilters, type ReportFilters } from "@/lib/reportFilters";
 import { moneyByCurrency } from "@/lib/reportMoney";
@@ -59,26 +54,7 @@ export function ReportsPage() {
   const { brand } = useBrand();
   const [exportingPdf, setExportingPdf] = useState(false);
   const { user } = useAuth();
-  const { resolvedAccent } = usePreferences();
-  const { theme } = useTheme();
-  const brandHex = resolvedAccent;
-  // Chart tick colour that passes contrast on both grounds (slate-500 on white, #aaa on #111)
-  const tickFill = theme === "dark" ? "#aaaaaa" : "#64748b";
   const navigate = useNavigate();
-  const stats = useTripStats(trips);
-  // Everyone booked through, from the supplier typed on each event: how often, and on how many trips
-  const suppliers = useMemo(() => {
-    const byKey = new Map<string, { name: string; bookings: number; trips: Set<string>; kinds: Set<string> }>();
-    for (const t of trips) for (const e of t.events) {
-      const name = e.supplier?.trim();
-      if (!name) continue;
-      const key = name.toLowerCase();
-      const row = byKey.get(key) ?? { name, bookings: 0, trips: new Set<string>(), kinds: new Set<string>() };
-      row.bookings += 1; row.trips.add(t.id); row.kinds.add(e.type);
-      byKey.set(key, row);
-    }
-    return [...byKey.values()].sort((a, b) => b.bookings - a.bookings).slice(0, 8);
-  }, [trips]);
   const [tab, setTab] = useState<Tab>("operations");
   const [complianceOverrides] = useComplianceRecords();
   const [customTravelers] = useDirectoryTravelers();
@@ -336,280 +312,7 @@ export function ReportsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-8 mt-8">
-              {/* ── Hero Stats Strip ── */}
-              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
-                  <div className="text-center lg:text-left shrink-0">
-                    <p className="text-xs text-muted-foreground mb-1">Travel days</p>
-                    <p className="text-4xl sm:text-5xl font-semibold tracking-tight leading-none text-foreground tabular-nums">{stats.totalDays}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
-                  </div>
-                  <div className="hidden lg:block w-px h-20 bg-secondary" />
-                  <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
-                    {[
-                      { label: "Active", value: stats.activeTrips.toString(), sub: "In progress", icon: <AirplaneTilt className="h-4 w-4" /> },
-                      { label: "Upcoming", value: stats.upcomingTrips.length.toString(), sub: "Next 30 days", icon: <LucideCalendar className="h-4 w-4" /> },
-                      { label: "Events", value: stats.totalEvents.toString(), sub: `${stats.avgEventsPerTrip} per trip`, icon: <Briefcase className="h-4 w-4" /> },
-                    ].map((kpi, i, arr) => (
-                      <div key={kpi.label} className="flex items-stretch gap-4 lg:gap-8 flex-1">
-                        <div className="text-center lg:text-left flex-1">
-                          <p className="text-xs text-muted-foreground mb-2">{kpi.label}</p>
-                          <p className="text-2xl lg:text-3xl font-semibold tracking-tight leading-none text-foreground tabular-nums">{kpi.value}</p>
-                          <p className="text-xs text-muted-foreground mt-1.5">{kpi.sub}</p>
-                        </div>
-                        {i < arr.length - 1 && (
-                          <div className="hidden lg:block w-px self-stretch bg-secondary" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
-              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                <div className="mb-5">
-                  <div>
-                    <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Trip Pipeline</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{stats.pipeline.total} {stats.pipeline.total === 1 ? "trip" : "trips"} by status</p>
-                  </div>
-                </div>
-                {stats.pipeline.total === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-border">
-                    <p className="text-sm font-medium text-muted-foreground">No trips in pipeline</p>
-                    <p className="text-xs text-muted-foreground mt-1">Create your first trip to see stats</p>
-                  </div>
-                ) : (
-                <div className="space-y-5">
-                  {[
-                    { name: "Draft", value: stats.pipeline.draft, color: "#64748b", desc: "Not yet published" },
-                    { name: "Published", value: stats.pipeline.published, color: brandHex, desc: "Ready to go" },
-                    { name: "In Progress", value: stats.pipeline.inProgress, color: STATUS_COLORS.pending, desc: "Currently active" },
-                  ].filter(s => s.value > 0).map(s => {
-                    const pct = stats.pipeline.total > 0 ? Math.round((s.value / stats.pipeline.total) * 100) : 0;
-                    return (
-                      <div key={s.name} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
-                            <span className="text-sm font-medium text-foreground">{s.name}</span>
-                            <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">{s.desc}</span>
-                          </div>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-base font-semibold tabular-nums text-foreground">{s.value}</span>
-                            <span className="text-[11px] font-medium text-muted-foreground">{pct}%</span>
-                          </div>
-                        </div>
-                        <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
-
-              {/* ── Team Overview + Trips by Month - 2 col ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Team Overview */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                  <div className="mb-4">
-                    <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Team</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} ${all.length === 1 ? "member" : "members"}`; })()}</p>
-                    </div>
-                  </div>
-                  {(() => {
-                    const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
-                    if (allTravelers.length === 0) return (
-                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
-                        <p className="text-sm font-medium text-muted-foreground">No team members</p>
-                      </div>
-                    );
-                    return (
-                      <div className="space-y-1">
-                        {allTravelers.slice(0, 7).map(t => {
-                          const docs = complianceOverrides[t.id] || t.compliance || [];
-                          const reqDocs = docs.filter(d => d.status !== "Not Required");
-                          const signedDocs = reqDocs.filter(d => d.status === "Signed").length;
-                          const hasIssue = reqDocs.some(d => d.status === "Pending" || d.status === "Expired");
-                          return (
-                            <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-secondary transition-colors">
-                              <div className="h-8 w-8 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-[11px] shrink-0">{t.initials}</div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{t.role || "Other"}</p>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {hasIssue ? (
-                                  <Warning className="h-3.5 w-3.5 text-amber-400" />
-                                ) : reqDocs.length > 0 ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
-                                ) : null}
-                                <span className="text-[10px] font-bold text-muted-foreground tabular-nums">{signedDocs}/{reqDocs.length}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {allTravelers.length > 7 && (
-                          <button onClick={() => navigate("/travelers")} className="w-full text-center py-2 text-xs font-medium text-link hover:underline">
-                            +{allTravelers.length - 7} more
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Trips by Month */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 flex flex-col">
-                  <div className="mb-5">
-                    <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Trips by Month</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Departure schedule</p>
-                    </div>
-                  </div>
-                  {stats.tripsByMonth.length === 0 ? (
-                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
-                      <p className="text-sm font-medium text-muted-foreground">No data yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">Trips will appear here by month</p>
-                    </div>
-                  ) : (
-                    <div className="flex-1 min-h-[200px]">
-                      <ChartContainer config={{ count: { label: "Trips", color: brandHex } } satisfies ChartConfig} className="h-full w-full">
-                        <BarChart data={stats.tripsByMonth} barCategoryGap="20%">
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: tickFill }} />
-                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700, fill: tickFill }} />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} animationDuration={700} />
-                        </BarChart>
-                      </ChartContainer>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Top Airlines + Travelers per Trip - 2 col ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top Airlines */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                  <div className="mb-5">
-                    <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Top Airlines</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Most booked</p>
-                    </div>
-                  </div>
-                  {stats.topAirlines.length > 0 ? (
-                    <div className="space-y-3">
-                      {stats.topAirlines.map((a, i) => {
-                        const maxCount = stats.topAirlines[0]?.count || 1;
-                        const logoUrl = airlineLogoUrl(a.iata);
-                        return (
-                          <div key={a.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-background">
-                            <span className="text-sm font-medium text-muted-foreground w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
-                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-border">
-                              {logoUrl ? (
-                                <img src={logoUrl} alt={a.name} className="h-full w-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
-                              ) : null}
-                              <span className={`fallback text-xs font-black uppercase ${logoUrl ? "hidden" : ""}`} style={{ color: AIRLINE_COLORS[a.iata] || "#888" }}>{a.iata || a.name.slice(0, 2)}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%`, background: AIRLINE_COLORS[a.iata] || brandHex }} />
-                                </div>
-                                <span className="text-xs font-medium tabular-nums text-foreground shrink-0">{a.count}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2">
-                      <p className="text-sm text-muted-foreground">No airline data</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Suppliers */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                  <div className="mb-5">
-                    <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Suppliers</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Most booked, from the supplier on each event</p>
-                    </div>
-                  </div>
-                  {suppliers.length > 0 ? (
-                    <div className="space-y-3">
-                      {suppliers.map((s, i) => (
-                        <div key={s.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-background">
-                          <span className="text-sm font-medium text-muted-foreground w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
-                          <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-brand/10 text-brand"><Storefront className="h-4 w-4" /></div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{[...s.kinds].join(", ")}, {s.trips.size} {s.trips.size === 1 ? "trip" : "trips"}</p>
-                          </div>
-                          <span className="text-xs font-medium tabular-nums text-foreground shrink-0">{s.bookings}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2">
-                      <p className="text-sm text-muted-foreground">No suppliers on events yet</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Travelers per Trip */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-                  <div className="mb-5">
-                    <div>
-                      <h3 className="text-base font-semibold tracking-tight text-foreground leading-none">Travellers per trip</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Group sizes</p>
-                    </div>
-                  </div>
-                  {trips.length > 0 ? (
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 -mr-1">
-                      {trips.map((t) => {
-                        const pax = travellerCount(t);
-                        const maxPax = Math.max(...trips.map(travellerCount), 1);
-                        return (
-                          <button
-                            key={t.id}
-                            onClick={() => navigate(`/trip/${t.id}`)}
-                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl bg-background hover:bg-brand/5 dark:hover:bg-brand/5 transition-colors text-left group"
-                          >
-                            <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0">
-                              <img src={t.image} alt={t.name} className="h-full w-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate group-hover:text-brand transition-colors">{t.name}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                                  <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${maxPax > 0 ? (pax / maxPax) * 100 : 0}%` }} />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm font-semibold tabular-nums text-foreground">{pax || "-"}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2">
-                      <p className="text-sm text-muted-foreground">No trips yet</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <OverviewReport trips={trips} onOpenTab={setTab} />
           ))}
 
           {/* ───────── TEAM & COMPLIANCE ───────── */}

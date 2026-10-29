@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CaretRight, EnvelopeSimple } from "@phosphor-icons/react";
 import { fetchTripMembers, APP_MEMBERS_ERROR, type TripMember } from "@/services/firebaseTrips";
+import { personOf } from "@/lib/appMembers";
 import { Button } from "@/components/ui/button";
 import { parseTripDate } from "@/lib/dates";
 import { timeAgo } from "@/lib/timeAgo";
@@ -12,7 +13,6 @@ import { shortDate } from "./format";
 
 const WEEK_MS = 7 * 86_400_000;
 /** One person in the app, whichever of their docs we read */
-const personOf = (m: TripMember) => m.linked_traveler_id || m.uid || m.device_id;
 
 /** Who travellers are in the app, who has been invited, and who still needs an invite */
 export function TravellersReport({ trips }: { trips: Trip[] }) {

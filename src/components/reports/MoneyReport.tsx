@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CaretRight } from "@phosphor-icons/react";
-import { formatMoney } from "@/lib/tripCosts";
+import { formatMoney, summariseCosts } from "@/lib/tripCosts";
 import { moneyByCurrency } from "@/lib/reportMoney";
 import type { Trip, TravelEvent } from "@/types";
 import { ReportCard, Figure, EmptyNote } from "./ReportParts";
 import { shortDate } from "./format";
+
+// Words typed into the supplier box that name a kind of booking, not a company
+const GENERIC_SUPPLIER = /^(hotels?|flights?|activit(y|ies)|dining|restaurants?|transfers?|transport|tbc|tba|n\/?a|none|other|various)$/i;
 
 const TYPE_LABEL: Record<TravelEvent["type"], string> = { flight: "Flights", hotel: "Stays", activity: "Activities", dining: "Dining", transfer: "Transfers" };
 
@@ -27,6 +30,31 @@ export function MoneyReport({ trips }: { trips: Trip[] }) {
   const tripRows = rows.filter(r => r.currency === current.currency).sort((a, b) => (a.trip.start || "").localeCompare(b.trip.start || ""));
   const maxType = Math.max(1, ...byType.map(t => t.total));
   const budgetUsed = current.budget ? Math.round((current.spendOnBudgeted / current.budget) * 100) : null;
+
+  // Who the money goes to: spend per supplier on this currency's trips, each priced booking counted once
+  const suppliers = (() => {
+    const by = new Map<string, { name: string; spend: number; trips: Set<string>; priced: boolean }>();
+    for (const r of tripRows) {
+      const priced = new Set(summariseCosts(r.trip).lines.map(l => l.event.id));
+      for (const l of summariseCosts(r.trip).lines) {
+        const name = l.event.supplier?.trim();
+        if (!name || GENERIC_SUPPLIER.test(name)) continue;
+        const row = by.get(name.toLowerCase()) ?? { name, spend: 0, trips: new Set<string>(), priced: false };
+        row.spend += l.total; row.trips.add(r.trip.id); row.priced = true;
+        by.set(name.toLowerCase(), row);
+      }
+      for (const e of r.trip.events) {
+        const name = e.supplier?.trim();
+        if (!name || GENERIC_SUPPLIER.test(name) || priced.has(e.id)) continue;
+        const row = by.get(name.toLowerCase()) ?? { name, spend: 0, trips: new Set<string>(), priced: false };
+        row.trips.add(r.trip.id);
+        by.set(name.toLowerCase(), row);
+      }
+    }
+    const all = [...by.values()];
+    return { top: all.filter(x => x.priced).sort((a, b) => b.spend - a.spend).slice(0, 8), unpriced: all.filter(x => !x.priced).length };
+  })();
+  const maxSupplier = Math.max(1, ...suppliers.top.map(x => x.spend));
 
   return (
     <div className="space-y-6 mt-8">
@@ -114,6 +142,26 @@ export function MoneyReport({ trips }: { trips: Trip[] }) {
           </ReportCard>
         </div>
       </div>
+
+      <ReportCard title="Top suppliers" sub="By spend, from the supplier and price on each booking">
+        {suppliers.top.length === 0 ? <EmptyNote>No priced bookings name a supplier yet. Add the supplier on bookings in the Workspace.</EmptyNote> : (
+          <ul className="space-y-3">
+            {suppliers.top.map(x => (
+              <li key={x.name} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 items-baseline">
+                <span className="text-sm text-foreground truncate">{x.name}</span>
+                <span className="text-sm font-medium text-foreground tabular-nums">{money(x.spend)}</span>
+                <div className="col-span-2 mt-1.5 flex items-center gap-3">
+                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden" role="img" aria-label={`${x.name}: ${money(x.spend)}`}>
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((x.spend / maxSupplier) * 100)}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums w-14 text-right">{x.trips.size} {x.trips.size === 1 ? "trip" : "trips"}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {suppliers.unpriced > 0 && <p className="text-xs text-muted-foreground mt-4">{suppliers.unpriced} more {suppliers.unpriced === 1 ? "supplier has" : "suppliers have"} no prices yet.</p>}
+      </ReportCard>
     </div>
   );
 }
