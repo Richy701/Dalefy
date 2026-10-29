@@ -2,16 +2,29 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { firebaseDb, firebaseAuth, isFirebaseConfigured, waitForAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
+import { fetchMyTrips } from "@/services/firebaseTrips";
 import { usePreferences } from "@/context/PreferencesContext";
 
 /**
  * The headshot an organiser attached to this traveller, from any trip their account is linked to.
  * When there is one it is their photo in the app and they can't change it; when there isn't, null.
  */
+// Their photo on file, looked up by sign-in email once per app session and shared by every screen
+let filePhotoRequest: Promise<string | null> | null = null;
+const loadFilePhoto = () => (filePhotoRequest ??= fetchMyTrips().then(r => r.photo).catch(() => { filePhotoRequest = null; return null; }));
+
 export function useOrganiserPhoto(): string | null {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
   const [links, setLinks] = useState<Array<{ tripId: string; travelerId: string }>>([]);
+  const [filePhoto, setFilePhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    let cancelled = false;
+    loadFilePhoto().then(photo => { if (!cancelled) setFilePhoto(photo); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -39,6 +52,8 @@ export function useOrganiserPhoto(): string | null {
     const avatar = trips.find(t => t.id === tripId)?.travelers?.find(t => t.id === travelerId)?.avatar;
     if (avatar && /^https:\/\//.test(avatar)) return avatar;
   }
+  // Their photo on file, matched by the email they signed in with (trip entry or directory)
+  if (filePhoto) return filePhoto;
   // No link to go on (it never saved, or a re-import gave the traveller a new entry): the traveller on these
   // trips with this person's own full name, when exactly one photo answers to it
   const name = prefs.name.trim().toLowerCase();

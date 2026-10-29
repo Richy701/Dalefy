@@ -233,23 +233,24 @@ export interface MyTrip { trip: Trip; travelerId: string | null; travelerName: s
  * The published trips the organiser listed this person's email on, and who they are on each. The server
  * matches the verified sign-in email; the app never sees anyone else's email. Empty for guests.
  */
-export async function fetchMyTrips(): Promise<{ name: string | null; trips: MyTrip[] }> {
+export async function fetchMyTrips(): Promise<{ name: string | null; photo: string | null; trips: MyTrip[] }> {
   await waitForAuth();
   const user = firebaseAuth().currentUser;
-  if (!user || user.isAnonymous) return { name: null, trips: [] };
+  if (!user || user.isAnonymous) return { name: null, photo: null, trips: [] };
   const token = await user.getIdToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(`${API_BASE}/api/my-trips`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
-    if (!response.ok) return { name: null, trips: [] };
-    const data = await response.json() as { name?: string | null; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> };
+    if (!response.ok) return { name: null, photo: null, trips: [] };
+    const data = await response.json() as { name?: string | null; photo?: string | null; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> };
     return {
       name: data.name ?? null,
+      photo: typeof data.photo === "string" && /^https:\/\//.test(data.photo) ? data.photo : null,
       trips: (data.trips ?? []).map(t => ({ trip: docToTrip(String(t.trip.id), t.trip), travelerId: t.travelerId, travelerName: t.travelerName })),
     };
   } catch {
-    return { name: null, trips: [] };
+    return { name: null, photo: null, trips: [] };
   } finally { clearTimeout(timer); }
 }
 

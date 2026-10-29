@@ -970,6 +970,15 @@ export function WorkspacePage() {
     setEditInfoData(trip.info ? trip.info.map(i => ({ ...i, documents: i.documents ? [...i.documents] : undefined })) : []);
     setEditInfoOpen(true);
   };
+  // A card's own pencil: the editor opens on that page with the cursor in its text
+  const openInfoPage = (id: string) => {
+    handleOpenEditInfo();
+    window.setTimeout(() => {
+      const page = document.querySelector<HTMLElement>(`[data-info-page="${window.CSS.escape(id)}"]`);
+      page?.scrollIntoView({ block: "start", behavior: "smooth" });
+      page?.querySelector<HTMLTextAreaElement>("textarea")?.focus({ preventScroll: true });
+    }, 250);
+  };
   const handleSaveInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
@@ -1578,7 +1587,7 @@ export function WorkspacePage() {
                                   <span className="text-xs font-medium hidden sm:inline">Call</span>
                                 </a>
                               )}
-                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
+                              <button onClick={handleOpenEditOrg} aria-label="Edit organiser" className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -1600,7 +1609,7 @@ export function WorkspacePage() {
                               <FileText className="h-3.5 w-3.5 text-brand" />
                               <span className="text-xs font-medium text-muted-foreground">Trip info</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
-                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
+                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
                                 <Pencil className="h-3 w-3" />
                                 <span className="text-[11px] font-medium">Edit</span>
                               </button>
@@ -1628,7 +1637,17 @@ export function WorkspacePage() {
                                 const hasMore = (item.body?.split("\n").length ?? 0) > 2 || (item.body?.length ?? 0) > 160 || (item.documents?.length ?? 0) > 0;
                                 const isExpanded = hasMore && expandedInfoIds.has(item.id);
                                 return (
-                                <div key={item.id} className="rounded-xl bg-background border border-border overflow-hidden hover:border-brand/30 transition-colors">
+                                <div key={item.id} className="group/card relative rounded-xl bg-background border border-border overflow-hidden hover:border-brand/30 transition-colors">
+                                  {!isViewer && (
+                                    <button
+                                      type="button"
+                                      aria-label={`Edit ${item.title || "page"}`}
+                                      onClick={() => openInfoPage(item.id)}
+                                      className={`absolute top-2.5 ${hasMore ? "right-10" : "right-3"} z-10 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary sm:opacity-0 sm:group-hover/card:opacity-100 focus-visible:opacity-100 transition-all`}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
                                   <button type="button" disabled={!hasMore} aria-expanded={hasMore ? isExpanded : undefined} onClick={() => setExpandedInfoIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} className="w-full text-left cursor-pointer disabled:cursor-default">
                                     <div className="flex items-start gap-3 p-3.5">
                                       <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
@@ -3469,7 +3488,7 @@ export function WorkspacePage() {
                 <SortableContext items={editInfoData.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   {editInfoData.map((item, idx) => (
                     <SortableItem key={item.id} id={item.id} handleClass="absolute left-1.5 top-4 z-10 h-7 w-5 flex items-center justify-center text-muted-foreground opacity-0 group-hover/sort:opacity-100 [@media(hover:none)]:opacity-100 hover:text-foreground cursor-grab active:cursor-grabbing transition-opacity">
-                      <div className="rounded-xl border border-border bg-background">
+                      <div data-info-page={item.id} className="rounded-xl border border-border bg-background scroll-mt-4">
                         <div className="flex items-center gap-3 pl-8 pr-3 pt-3">
                           <Input
                             value={item.title}

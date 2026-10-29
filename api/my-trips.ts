@@ -3,13 +3,13 @@
  *
  * Organisers list travellers by (work) email; the app can't search trips itself, so it asks here after sign-in.
  * The email comes from the verified Firebase ID token, never from the request, and the reply carries only the
- * caller's own traveller id and name plus the same published view /api/trip serves. Other travellers' emails
- * are never returned.
+ * caller's own traveller id and name, their own photo on file, plus the same published view /api/trip serves.
+ * Other travellers' emails are never returned.
  *
  * Trips are found through `traveler_emails`, which the web app writes on every save. Trips saved before that
  * field existed are filled in once, on the first lookup after deploy (additive: only that field is written).
  */
-import { getDocument, listCollection, queryArrayContains, setDocument, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { getDocument, listCollection, queryArrayContains, queryDocuments, setDocument, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, publishedTripView } from "./_tripView.js";
@@ -71,7 +71,7 @@ export default async function handler(req: Request, res: Response) {
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   const email = norm(payload.email);
   // Only an email the sign-in proved belongs to them (email link, Google, Apple)
-  if (!email || payload.email_verified !== true) return res.json({ name: null, trips: [] });
+  if (!email || payload.email_verified !== true) return res.json({ name: null, photo: null, trips: [] });
 
   try {
     // Shared by concurrent requests; best effort, the lookup still answers from what is already filled in
@@ -81,6 +81,9 @@ export default async function handler(req: Request, res: Response) {
     }));
     const docs = await queryArrayContains("trips", "traveler_emails", email, 50);
     const trips: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> = [];
+    const isPhoto = (v: unknown): v is string => typeof v === "string" && /^https:\/\//.test(v);
+    // Their own photo on file: from their traveller entry on a trip, else their directory entry
+    let photo: string | null = null;
     for (const doc of docs) {
       const id = docId(doc);
       const data = decode(doc);
@@ -90,6 +93,10 @@ export default async function handler(req: Request, res: Response) {
       const pool = [...(Array.isArray(record(data.published_snapshot).travelers) ? record(data.published_snapshot).travelers as unknown[] : []),
         ...(Array.isArray(data.travelers) ? data.travelers : [])];
       const me = record(pool.find(t => norm(record(t).email) === email));
+      if (!photo) {
+        const withPhoto = pool.map(record).find(t => norm(t.email) === email && isPhoto(t.avatar));
+        if (withPhoto) photo = withPhoto.avatar as string;
+      }
       trips.push({
         trip: view,
         travelerId: typeof me.id === "string" ? me.id : null,
@@ -98,7 +105,12 @@ export default async function handler(req: Request, res: Response) {
     }
     // Soonest first, so the app can lead with the next trip
     trips.sort((a, b) => String(a.trip.start ?? "").localeCompare(String(b.trip.start ?? "")));
-    return res.json({ name: trips.find(t => t.travelerName)?.travelerName ?? null, trips });
+    if (!photo) {
+      const entries = await queryDocuments("directory_travelers", "traveler.email", email, 5).catch(() => []);
+      const entry = entries.map(d => record(decode(d).traveler)).find(t => isPhoto(t.avatar));
+      if (entry) photo = entry.avatar as string;
+    }
+    return res.json({ name: trips.find(t => t.travelerName)?.travelerName ?? null, photo, trips });
   } catch (error) {
     console.error("[my-trips] lookup failed", error);
     return res.status(503).json({ error: "Couldn't look up your trips right now" });
