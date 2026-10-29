@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, LockSimple, UsersThree,
+  ChatCircleText, Megaphone, CaretLeft, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { MOCK_USERS } from "@/data/mock-users";
 import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
+import { EventPhotosDialog } from "@/components/workspace/EventPhotosDialog";
 import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
 import { TaskChecklist } from "@/components/workspace/TaskChecklist";
@@ -247,6 +248,7 @@ export function WorkspacePage() {
   const [showTasks, setShowTasks] = useState(() => searchParams.get("panel") === "tasks");
   const [showCosts, setShowCosts] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   // The phone preview panel is dragged wider or narrower from its left edge; the phone scales to fit
   const [previewWidth, setPreviewWidth] = useState<number | null>(() => {
@@ -1308,6 +1310,7 @@ export function WorkspacePage() {
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Import from document</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setPhotosOpen(true)} className={item}><ImageSquare className="h-4 w-4" /> Event photos</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setHistoryOpen(true)} className={item}><ClockCounterClockwise className="h-4 w-4" /> History</DropdownMenuItem>
                     {canSetPrivate && (
                       <DropdownMenuItem onClick={togglePrivate} className={item}>{trip.private ? <UsersThree className="h-4 w-4" /> : <LockSimple className="h-4 w-4" />} {trip.private ? "Share with team" : "Make private"}</DropdownMenuItem>
@@ -1358,6 +1361,9 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <Upload className="h-4 w-4" /> Import from document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPhotosOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
+                <ImageSquare className="h-4 w-4" /> Event photos
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setHistoryOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <ClockCounterClockwise className="h-4 w-4" /> History
@@ -1753,6 +1759,19 @@ export function WorkspacePage() {
                       )}
                     </div>
                   )}
+
+                  {/* Repeated or missing event photos: one place to sort them all */}
+                  {!isViewer && (() => {
+                    const seen = new Map<string, number>();
+                    for (const e of trip.events) if (e.image) seen.set(e.image, (seen.get(e.image) ?? 0) + 1);
+                    const needs = trip.events.filter(e => !e.image || (seen.get(e.image) ?? 0) > 1).length;
+                    return needs > 0 && (
+                      <div className="mb-6 ml-0 sm:ml-8 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary px-4 py-3">
+                        <p className="text-sm text-foreground">{needs} {needs === 1 ? "event has" : "events have"} a repeated or missing photo.</p>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setPhotosOpen(true)}>Review photos</Button>
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-8">
                     {groupedEvents.length > 0 ? (
@@ -3014,6 +3033,15 @@ export function WorkspacePage() {
         </DialogContent>
       </Dialog>
 
+      <EventPhotosDialog
+        trip={trip}
+        open={photosOpen}
+        onOpenChange={setPhotosOpen}
+        onSave={images => {
+          updateTrip(trip.id, { events: trip.events.map(e => images[e.id] ? { ...e, image: images[e.id], imagePosition: undefined } : e) });
+          toast.success(`${Object.keys(images).length} ${Object.keys(images).length === 1 ? "photo" : "photos"} updated`);
+        }}
+      />
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md bg-card border-l border-border p-0 overflow-y-auto">
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border">
