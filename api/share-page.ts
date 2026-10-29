@@ -74,10 +74,11 @@ export default async function handler(req: any, res: any) {
 <meta name="twitter:image" content="${esc(image)}">
 <link rel="canonical" href="${esc(url)}">
 <meta name="theme-color" content="#0E0E10">
-<script>location.replace(${JSON.stringify(target)})</script>
+<link rel="icon" href="/favicon.svg">
+<script src="/share-redirect.js" data-to="${esc(target)}"></script>
 </head>
 <body style="background:#0E0E10;color:#fff;font-family:-apple-system,system-ui,sans-serif">
-<noscript><a href="${esc(target)}" style="color:#0bd2b5">Open ${esc(title)}</a></noscript>
+<p style="padding:24px"><a href="${esc(target)}" style="color:#0bd2b5">Open ${esc(title)}</a></p>
 </body>
 </html>`;
 
