@@ -1610,10 +1610,10 @@ export function WorkspacePage() {
                           onDrop={handleTripDocDrop}
                         >
                           <div className="p-5">
-                            <div className="flex items-center gap-2 mb-4">
-                              <FileText className="h-3.5 w-3.5 text-brand" />
-                              <span className="text-xs font-medium text-muted-foreground">Trip info</span>
-                              <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
+                            <div className="flex items-center gap-2.5 mb-4">
+                              <FileText className="h-5 w-5 text-muted-foreground" />
+                              <h3 className="text-lg font-semibold tracking-tight text-foreground">Trip information</h3>
+                              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md tabular-nums">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
                                 <Pencil className="h-3 w-3" />
                                 <span className="text-[11px] font-medium">Edit</span>
@@ -1837,32 +1837,50 @@ export function WorkspacePage() {
                 <div className="w-full space-y-8">
                   {/* Trip Travelers */}
                   <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-brand">Trip travellers</h3>
-                      <div className="flex items-center gap-2">
-                        {tripTravelers.length > 2 && !bulkEmailMode && (
-                          <button
-                            onClick={() => {
-                              const init: Record<string, string> = {};
-                              tripTravelers.forEach(t => { init[t.id] = t.email || ""; });
-                              setBulkEmails(init);
-                              setBulkEmailMode(true);
-                            }}
-                            className="text-[11px] font-medium text-link hover:underline"
-                          >
-                            Edit All Emails
-                          </button>
-                        )}
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          {tripTravelers.length} assigned{membersLoaded && tripTravelers.length ? `, ${tripTravelers.filter(t => memberByTraveler.has(t.id)).length} in the app` : ""}
-                        </span>
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground">Trip travellers</h3>
+                        {(() => {
+                          // Who has the app is what an organiser chases, so it leads: a count and a bar
+                          const total = tripTravelers.length;
+                          const inApp = tripTravelers.filter(t => memberByTraveler.has(t.id)).length;
+                          if (!total) return <p className="text-sm text-muted-foreground mt-0.5">No one on this trip yet</p>;
+                          if (!membersLoaded) return <p className="text-sm text-muted-foreground mt-0.5 tabular-nums">{total} on this trip</p>;
+                          return (
+                            <div className="mt-1.5">
+                              <p className="text-sm text-foreground tabular-nums">
+                                <span className="font-semibold">{inApp} of {total}</span> <span className="text-muted-foreground">have the app</span>
+                              </p>
+                              <div className="mt-2 h-1.5 w-48 max-w-full rounded-full bg-secondary overflow-hidden" role="img" aria-label={`${inApp} of ${total} have the app`}>
+                                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((inApp / total) * 100)}%` }} />
+                              </div>
+                              {inApp < total && <p className="text-xs text-muted-foreground mt-2">{total - inApp} still to join. Share the trip PIN or link with them.</p>}
+                            </div>
+                          );
+                        })()}
                         {membersErrorFor === tripId && (
-                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mt-1">
                             {APP_MEMBERS_ERROR}{" "}
                             <button type="button" onClick={() => setMembersReload(n => n + 1)} className="underline underline-offset-2 hover:text-foreground">Try again</button>
-                          </span>
+                          </p>
                         )}
                       </div>
+                      {tripTravelers.length > 2 && !bulkEmailMode && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => {
+                            const init: Record<string, string> = {};
+                            tripTravelers.forEach(t => { init[t.id] = t.email || ""; });
+                            setBulkEmails(init);
+                            setBulkEmailMode(true);
+                          }}
+                        >
+                          <Envelope /> Edit emails
+                        </Button>
+                      )}
                     </div>
 
                     {/* Bulk email editor */}
@@ -3308,7 +3326,7 @@ export function WorkspacePage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-brand" />
-                    <h4 className="text-xs font-medium text-muted-foreground">Trip info</h4>
+                    <h4 className="text-xs font-medium text-muted-foreground">Trip information</h4>
                     {(editingTrip.info?.length ?? 0) > 0 && (
                       <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{editingTrip.info!.length}</span>
                     )}
@@ -3481,7 +3499,7 @@ export function WorkspacePage() {
         <DialogContent initialFocus={() => document.querySelector<HTMLElement>('[aria-label="Page title"]')} className="dialog-mobile-full border-0 bg-card p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-border shadow-2xl flex flex-col">
           <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
             <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
-              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Trip info</DialogTitle>
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Trip information</DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">Pages travellers see in the app, with files for the whole trip below.</p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">

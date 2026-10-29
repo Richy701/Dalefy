@@ -5,27 +5,31 @@ Trip planning without the mess. A modern travel management platform for organize
 ## Features
 
 - **Trip Management** -- Create, edit, and organize trips with itineraries, travelers, budgets, and documents
-- **AI-Powered Itinerary Import** -- Upload travel documents (PDF, Word, PowerPoint, text) and parse them with Claude Haiku 4.5 into structured events with polished descriptions, internal agent notes, traveler extraction, and info sections. Falls back to offline heuristic parser when AI is unavailable
+- **AI-Powered Itinerary Import** -- Upload travel documents (PDF, Word, PowerPoint, text) and parse them with Claude Sonnet 5.5 (copy assist on Claude Haiku 5.5) into structured events with polished descriptions, internal agent notes, traveler extraction, and info sections. Re-importing over a trip keeps its travellers' photos and hand-written Trip information. Falls back to offline heuristic parser when AI is unavailable
+- **Event Photos** -- Each imported event gets its own photo (no two events on a trip share one). The Event photos view (trip menu, or the note above the itinerary when photos repeat or are missing) lists every event with its photo; Find photos searches options on demand, Fix for me picks unused photos for every flagged event, and nothing saves until Save
+- **Private Trips** -- A trip can be made private so only its creator sees it, enforced by Firestore and Storage rules as well as the UI
+- **Safe Concurrent Editing** -- Two people editing the same trip merge card by card (events, travellers, Trip information, documents, tasks, media); only the same card changed twice is a conflict. Trip information can only be emptied after someone confirms it in the Workspace; a stale or background save never wipes it, and if it does go missing the Workspace offers to restore it from the published copy
 - **Live Search** -- Search flights (AeroDataBox), hotels, restaurants, and activities (Google Places API) directly in the workspace
 - **Flight Status Notifications** -- Automated daily cron checks flight status and pushes updates (delays, gate changes, cancellations) to travelers. On-demand status checks when viewing trips with upcoming flights
 - **Image Search** -- Multi-source image search (SerpAPI Google Images, Unsplash, Pexels) with provider picker
 - **Invite-only Team System** -- Admin sends invites, team members join via link. Google OAuth and email/password sign-in supported
 - **Email Verification** -- New email/password signups receive verification emails with resend and status check in-app
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
-- **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
+- **Trip Information** -- Info pages travellers read in the app, edited in one dialog with a Leaders only switch per page (pricing, PNR and supplier details stay off travellers' phones). Each page on the Workspace has its own pencil that opens the editor at that page
 - **Draft/Publish System** -- Edits stay as drafts until explicitly published. Mobile travelers only see the last published version, not work-in-progress changes. Amber indicator shows when unpublished changes exist
 - **Mobile Preview** -- Live phone-frame preview in the workspace that renders the real mobile trip screens (itinerary, event and flight pages, Trip info) from `mobile/` via React Native Web, inside an iPhone 17 Pro or Pixel 10 Pro frame. Preview settings cover screen width, text size, a "simulate today" stepper, role (traveller or leader) and dark/light. It rebuilds with every website deploy, so it only updates when `npm run build` passes (see `mobile-preview/README.md`)
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, lightbox with in-place video playback, multi-select with zip download, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app with four tabs (Home, Today, Gallery, Profile) for travellers. Join a trip with a PIN, a QR scan or a pasted invite link; every trip page uses the same photo-led design in light and dark mode
-- **Trip Links** -- Share links are `https://dalefy.vercel.app/shared/{id}` (also `dalefy.app`). They open the app through iOS universal links and Android app links, fall back to the web trip page, and unfurl with the trip's own title, dates and cover photo in Messages, WhatsApp, Slack and the iOS share sheet
+- **Trip Links** -- Share links are `https://dalefy.app/shared/{id}` (also `dalefy.vercel.app`). They open the app through iOS universal links and Android app links, fall back to the web trip page, and unfurl with the trip's own title, dates and cover photo in Messages, WhatsApp, Slack and the iOS share sheet. The page's redirect is an external script (`public/share-redirect.js`) because the CSP blocks inline scripts
 - **Interactive Maps** -- Mapbox-powered trip maps with Standard 3D basemap on the Today tab (pitched city view with 3D buildings, facades, trees, landmarks), flat Standard style on trip detail, animated flight routes, native symbol-layer plane markers, and destination explorer
 - **Landing Page** -- Public marketing page with interactive map, scroll-reveal feature sections, and trip showcase
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
 - **Transport Types** -- Transfer events support sub-types (Car, Train, Bus, Ferry, Cruise) with matching icons and labels
 - **Overnight Toggle** -- Hotel events can be marked as overnight stays, hiding check-in/check-out time fields
 - **Document Attachments** -- Upload file attachments to info pages with drag-and-drop, editable names, and trip-level document management. Viewable on mobile info screens
-- **Drag-to-Reorder** -- Reorder trip info pages and event documents via drag handles in the workspace editor
+- **Drag-to-Reorder** -- Drag events within a day or onto another day (the moved event takes the time of the one it lands on; every other time stays), and reorder Trip information pages and event documents
+- **Workspace Itinerary** -- Day headings lead with the day number and full date ("Day 4, Monday 9 November"); on wide screens each event row shows its details in fixed columns (flight arrival, duration and ref; hotel check-in, check-out and room; transfer meeting point and driver)
 - **Event Status Indicators** -- Per-state glyphs on events (confirmed, pending, cancelled) synced across web and mobile preview
 - **Clickable URLs** -- URLs typed in info page body text auto-render as clickable hyperlinks
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
@@ -39,10 +43,12 @@ Trip planning without the mess. A modern travel management platform for organize
 - **In-app Inbox** -- Every push is recorded in the server's push log, and the app's notifications list reads the traveller's own entries, so messages sent while the app was closed or with notifications off still show up
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
-- **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
+- **Public Pages** -- About, What's new, Help & support, Privacy, Terms and Delete your account (`*.html`, content in `src/data/public-pages.json`), opened from the app's Profile tab. Photo banners, Help answers in a two-column grid, What's new with a date column, and a plain-English summary on Privacy and Terms
+- **Sign-in Links** -- Email sign-in links land on `/auth-callback`: on a phone that page opens the app, on a computer it shows a QR code to scan with the phone that asked
 - **Dashboard** -- At a Glance stats with animated counters, interactive travel calendar with trip day highlights and multi-trip tooltips, Next Up departures, Needs Attention alerts (including travelers with outstanding compliance docs before departure), live next-trip countdown, trip templates, upcoming trip carousel, and quick actions. Optional compact mode tightens the whole layout
 - **Destinations Explorer** -- Mapbox globe wired to the destination card grid: clicking a pin flies in and highlights the matching card, hovering a card lights up its pin, with a destination stepper and re-center control
-- **Reports** -- Operations overview (travel days, pipeline, trips by month, top airlines) and a Documents tab tracking signed/pending/expired compliance per traveler and per document type, each with tab-aware CSV export
+- **Reports** -- Overview, Trips, Travellers, Documents and Money tabs with period, trip and status filters. Money covers spend against budget per currency, per head, by type, over-budget trips and missing prices. Export a PDF account report or a Money CSV
+- **Traveller Photos** -- Headshots attached to directory entries show on trips, the phone's trip header (people with a photo first) and "Which one is you?". A traveller's Profile shows their matched headshot, and the profile pencil lets them switch to their own photo
 - **Demo Mode** -- Full-featured demo with floating indicator badge, localStorage-only data
 
 ## Tech Stack
@@ -50,7 +56,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS
 - **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12), react-day-picker
 - **Backend:** Firebase Auth (Google OAuth + email/password), Firestore, Firebase Storage
-- **AI:** Anthropic Claude Haiku 4.5 (itinerary parsing)
+- **AI:** Anthropic Claude Sonnet 5.5 (itinerary parsing), Claude Haiku 5.5 (copy assist)
 - **APIs:** RapidAPI (AeroDataBox flights), Google Places API, SerpAPI (image search), Unsplash, Pexels
 - **Maps:** Mapbox GL JS via react-map-gl
 - **Charts:** Recharts
@@ -162,6 +168,8 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/send-invite` | Bearer | Send team invitation emails via Resend |
 | `/api/send-push` | Bearer | Message a trip's travellers: everyone, chosen people or everyone on an event, with an optional title, tap target and urgent flag. `dryRun` returns who it would reach. Caller must organise the trip; each send is logged in `push_log`, which is also the travellers' in-app inbox |
 | `/api/share-page` | — | Serves `/shared/{id}` with the trip's Open Graph tags (title, dates, cover photo) and forwards to the trip page |
+| `/api/auth-email` | — | Branded sign-in, verification and password reset emails through Resend (rate limited) |
+| `/api/my-trips` | Bearer | The published trips a traveller's verified sign-in email is on, who they are on each, and their own photo on file |
 | `/api/check-flight-status` | Bearer | Cron (every 15 min): checks flights around departure (3-hourly from 24h out, every run from 3h before to 1h after, hourly in the air), saves airport codes/coordinates, and pushes delays, cancellations, gate and time changes to travelers |
 
 ## Security
@@ -210,7 +218,7 @@ MAPBOX_TOKEN=
 UNSPLASH_ACCESS_KEY=
 PEXELS_API_KEY=
 
-# AI itinerary parsing (Claude Haiku 4.5)
+# AI itinerary parsing (Claude Sonnet 5.5)
 ANTHROPIC_API_KEY=
 
 # Team invitations (Resend email)
@@ -225,9 +233,22 @@ CRON_SECRET=
 
 Without Firebase credentials, the app runs in demo mode with localStorage-only data.
 
+## Traveller Photos Script
+
+`scripts/attach-avatars.mjs` attaches a folder of headshots to the directory, every trip the person is on and the published copies phones read, then signals phones to reload. It runs against production with your own credentials (dry run unless `--apply`):
+
+```bash
+node scripts/attach-avatars.mjs --project=<VITE_FIREBASE_PROJECT_ID> --folder="/path/to/Avatars" [--apply]
+  --by-email           # match files to the broker name at the start of each work email (ElliotA.png -> elliota@...)
+  --replace            # overwrite photos that are already there
+  --pair="Scot.png=John Mayes; Aiden.png=Aidan Morris-pinder"   # name file and person directly
+  --clear --only="Name"  # take a wrong photo off everywhere
+  --resync             # put directory photos back on trips that lost them (no folder needed)
+```
+
 ## Deployment
 
-Hosted on [Vercel](https://dalefy.vercel.app). Push to `main` to trigger a production deployment. Run `npm run build` first: the mobile preview compiles the mobile source with React Native Web, so a native-only import (such as `ActionSheetIOS` by name) fails the whole deploy.
+Hosted on [Vercel](https://dalefy.app) (also `dalefy.vercel.app`). Push to `main` to trigger a production deployment. Run `npm run build` first: the mobile preview compiles the mobile source with React Native Web, so a native-only import (such as `ActionSheetIOS` by name) fails the whole deploy.
 
 ### Mobile releases
 
