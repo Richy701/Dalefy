@@ -407,8 +407,8 @@ export function DestinationsPage() {
                 onLoad={onMapLoad}
                 interactiveLayerIds={showPlaces ? ["trip-places"] : []}
                 onMouseMove={e => {
-                  const f = e.features?.[0];
-                  setHoveredPlace(f ? { kind: f.properties?.kind, name: f.properties?.name, tripName: f.properties?.trip, x: e.originalEvent.clientX, y: e.originalEvent.clientY } : null);
+                  const p = (e.features?.[0] as { properties?: { kind: Place["kind"]; name: Place["name"]; trip: Place["tripName"] } } | undefined)?.properties;
+                  setHoveredPlace(p ? { kind: p.kind, name: p.name, tripName: p.trip, x: e.originalEvent.clientX, y: e.originalEvent.clientY } : null);
                 }}
                 onMouseLeave={() => setHoveredPlace(null)}
               >

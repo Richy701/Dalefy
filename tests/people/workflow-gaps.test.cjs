@@ -4,7 +4,10 @@ const save=load('src/lib/tripSave.ts');const people=load('src/lib/personChanges.
 const keep={id:'keep',name:'Laura Davies',email:'laura@example.com',avatar:'photo.png',initials:'LD'};
 test('concurrent unrelated trip fields are preserved; same-field collisions stop saving',()=>{
  assert.deepEqual(save.tripPatch({name:'A',events:[]},{name:'B',events:[]},{name:'A',events:[{id:'new'}]}),{name:'B'});
- assert.throws(()=>save.tripPatch({events:[]},{events:[{id:'mine'}]},{events:[{id:'theirs'}]}),/another session/);
+ // Different events added at the same time both stay; the same event changed differently still stops the save
+ assert.deepEqual(save.tripPatch({events:[]},{events:[{id:'mine'}]},{events:[{id:'theirs'}]}).events.map(e=>e.id).sort(),['mine','theirs']);
+ assert.throws(()=>save.tripPatch({events:[{id:'e',title:'Hotel'}]},{events:[{id:'e',title:'Hotel A'}]},{events:[{id:'e',title:'Hotel B'}]}),/another session/);
+ assert.throws(()=>save.tripPatch({name:'A'},{name:'B'},{name:'C'}),/another session/);
  assert.deepEqual(save.tripPatch({name:'A'},{name:'B'},{name:'B'}),{name:'B'});
 });
 test('merging preserves invitation history, trip membership, event assignments and published copies',()=>{
