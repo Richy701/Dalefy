@@ -246,17 +246,31 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     return () => cancelAnimationFrame(planeRafRef.current);
   }, [arcGeoJSON]);
 
-  // Fit map to all points after first render
+  // Fit the map to the trip once the stops are known, and again when the map finishes loading: a fit asked
+  // for before the map is ready is dropped, which left it on the starting world view
+  const [mapLoaded, setMapLoaded] = useState(false);
   useEffect(() => {
-    if (!mapRef.current || allCoords.length === 0) return;
-    const lngs = allCoords.map(c => c[1]);
-    const lats = allCoords.map(c => c[0]);
-    if (allCoords.length === 1) {
+    if (!mapRef.current || !mapLoaded || allCoords.length === 0) return;
+    // A long-haul trip spans a third of the globe, so frame where it happens: the stops within ~1,500 km of
+    // the middle stop. The flight lines still run off toward home, and anyone can zoom out.
+    const km = (a: [number, number], b: [number, number]) => {
+      const r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
+      return 12742 * Math.asin(Math.sqrt(h));
+    };
+    const middle = allCoords[Math.floor(allCoords.length / 2)];
+    const near = allCoords.filter(c => km(c, middle) <= 1500);
+    const framed = near.length >= 2 && near.length < allCoords.length ? near : allCoords;
+    const lngs = framed.map(c => c[1]);
+    const lats = framed.map(c => c[0]);
+    if (framed.length === 1) {
       mapRef.current.flyTo({ center: [lngs[0], lats[0]], zoom: 5, duration: 800 });
       return;
     }
-    const mobile = window.innerWidth < 768;
-    const padding = mobile ? { top: 40, bottom: 100, left: 24, right: 24 } : { top: 120, bottom: 200, left: 120, right: 120 };
+    // Padding scales with the panel, so a narrow side panel isn't squeezed down to a globe; the bottom keeps clear of the route strip
+    const el = mapRef.current.getContainer();
+    const side = Math.round(Math.min(72, el.clientWidth * 0.1));
+    const padding = { top: Math.round(Math.min(72, el.clientHeight * 0.08)), bottom: 120, left: side, right: side };
     // Check if points span across the antimeridian
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
@@ -273,7 +287,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         { padding, maxZoom: 4, duration: 1000 }
       );
     }
-  }, [allCoords]);
+  }, [allCoords, mapLoaded]);
 
   // Marching-ants arc animation + strip Mapbox built-in POI/transit/place icons
   const accentRef = useRef(ACCENT);
@@ -392,7 +406,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         reuseMaps
         attributionControl={false}
         style={{ width: "100%", height: "100%" }}
-        onLoad={startArcAnimation}
+        onLoad={() => { setMapLoaded(true); startArcAnimation(); }}
         onClick={() => setTappedIdx(null)}
       >
         {/* Flight arc - glow halo */}
@@ -419,11 +433,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           const size = isFirst ? 38 : 30;
           const iconSize = isFirst ? 14 : 11;
           const Icon = TYPE_ICONS[pt.type] || MapPin;
-          const bg = isDark ? "#111111" : "#ffffff";
-          const borderColor = isFirst ? ACCENT : (isDark ? "#1f1f1f" : "#e2e8f0");
-          const shadow = isFirst
-            ? `0 0 20px ${ACCENT}33, 0 0 0 4px ${ACCENT}15, 0 4px 16px rgba(0,0,0,0.3)`
-            : `0 2px 8px rgba(0,0,0,${isDark ? "0.5" : "0.12"})`;
+          const bg = "hsl(var(--card))";
+          const borderColor = isFirst ? ACCENT : "hsl(var(--border))";
+          const shadow = `0 2px 8px rgba(0,0,0,${isDark ? "0.45" : "0.12"})`;
 
           return (
             <Marker
@@ -439,28 +451,6 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 onMouseLeave={() => setHoveredIdx(null)}
                 onClick={(e) => { e.stopPropagation(); setTappedIdx(prev => prev === pt.order ? null : pt.order); }}
               >
-                {/* Pulse rings for first marker */}
-                {isFirst && (
-                  <>
-                    <div style={{
-                      position: "absolute", top: "50%", left: "50%",
-                      width: size + 20, height: size + 20,
-                      marginLeft: -(size + 20) / 2, marginTop: -(size + 20) / 2,
-                      borderRadius: "50%", border: `2px solid ${ACCENT}`,
-                      animation: "marker-pulse 2.5s ease-out infinite",
-                      pointerEvents: "none",
-                    }} />
-                    <div style={{
-                      position: "absolute", top: "50%", left: "50%",
-                      width: size + 20, height: size + 20,
-                      marginLeft: -(size + 20) / 2, marginTop: -(size + 20) / 2,
-                      borderRadius: "50%", border: `2px solid ${ACCENT}`,
-                      animation: "marker-pulse 2.5s ease-out 1.25s infinite",
-                      pointerEvents: "none",
-                    }} />
-                  </>
-                )}
-
                 {/* Main dot */}
                 <div style={{
                   width: size, height: size, borderRadius: "50%",
@@ -477,14 +467,12 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 <div style={{
                   position: "absolute", top: -5, right: -5,
                   minWidth: 16, height: 16, borderRadius: 8,
-                  background: isFirst ? ACCENT : (isDark ? "#2a2a2a" : "#e2e8f0"),
-                  color: isFirst ? "#000" : (isDark ? "#ccc" : "#555"),
-                  fontSize: 10, fontWeight: 900,
+                  background: "hsl(var(--secondary))",
+                  color: "hsl(var(--muted-foreground))",
+                  fontSize: 10, fontWeight: 600,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   zIndex: 3, padding: "0 4px",
                   border: `1.5px solid ${bg}`,
-                  letterSpacing: "-0.02em",
-                  fontFamily: "'Barlow Condensed', system-ui, sans-serif",
                 }}>{pt.order + 1}</div>
 
                 {/* Hover / tap tooltip */}
@@ -492,26 +480,18 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 10px)", left: "50%",
                     transform: "translateX(-50%)",
-                    background: isDark ? "#111111" : "#ffffff",
-                    border: `1px solid ${isDark ? "#1f1f1f" : "#e2e8f0"}`,
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
                     borderRadius: 10, padding: "6px 10px",
                     whiteSpace: "nowrap", zIndex: 200,
                     boxShadow: `0 4px 20px rgba(0,0,0,${isDark ? "0.5" : "0.15"})`,
                     pointerEvents: "none",
                   }}>
-                    <div style={{
-                      fontFamily: "'Barlow Condensed', system-ui, sans-serif",
-                      fontWeight: 900, fontSize: 12,
-                      textTransform: "uppercase", letterSpacing: "-0.02em",
-                      color: isDark ? "#fff" : "#111", lineHeight: 1.2,
-                    }}>{pt.label}</div>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: "hsl(var(--foreground))", lineHeight: 1.3 }}>{pt.label}</div>
                     {pt.events.map((ev, i) => (
-                      <div key={i} style={{
-                        fontSize: 10, color: isDark ? "#888" : "#94a3b8",
-                        letterSpacing: "0.1em", textTransform: "uppercase", marginTop: i === 0 ? 3 : 1,
-                      }}>
-                        {ev.role === "depart" && ev.otherCity ? `Day ${ev.day} · Depart → ${ev.otherCity}` :
-                         ev.role === "arrive" && ev.otherCity ? `Day ${ev.day} · Arrive ← ${ev.otherCity}` :
+                      <div key={i} style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", marginTop: i === 0 ? 2 : 1 }}>
+                        {ev.role === "depart" && ev.otherCity ? `Day ${ev.day}, leaves for ${ev.otherCity}` :
+                         ev.role === "arrive" && ev.otherCity ? `Day ${ev.day}, arrives from ${ev.otherCity}` :
                          `Day ${ev.day}`}
                       </div>
                     ))}
@@ -523,73 +503,36 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         })}
       </Map>
 
-      {/* Route timeline strip */}
+      {/* Route strip: every stop in order; a tap flies the map there */}
       <div className="absolute bottom-0 left-0 right-0 z-1000">
-        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl sm:rounded-[1.25rem] border border-border bg-card/95/95 backdrop-blur-xl shadow-2xl">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
-                <span className="text-xs font-medium text-brand">Route</span>
-              </div>
-              <span className="text-xs font-medium text-muted-foreground">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
+        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-lg">
+          <div className="px-3 py-2.5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-foreground">Route</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
             </div>
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
               {points.map((pt, i) => {
                 const color = TYPE_COLORS[pt.type] || ACCENT;
-                const isLast = i === points.length - 1;
-                const isFirst = i === 0;
                 const Icon = TYPE_ICONS[pt.type] || MapPin;
+                const active = tappedIdx === pt.order;
                 return (
                   <div key={pt.order} className="flex items-center shrink-0">
-                    <div
-                      className="flex items-center gap-2 shrink-0 rounded-full border pl-1 pr-3 py-1"
-                      style={{
-                        background: isFirst
-                          ? `${ACCENT}14`
-                          : (isDark ? "#181818" : "#f8fafc"),
-                        borderColor: isFirst
-                          ? `${ACCENT}55`
-                          : (isDark ? "#1f1f1f" : "#e2e8f0"),
-                        boxShadow: isFirst ? `0 0 14px ${ACCENT}22` : "none",
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTappedIdx(pt.order);
+                        mapRef.current?.flyTo({ center: [pt.coords[1], pt.coords[0]], zoom: Math.max(mapRef.current.getZoom(), 5), duration: 800 });
                       }}
+                      className={`flex items-center gap-2 shrink-0 rounded-lg border pl-1 pr-2.5 py-1 transition-colors ${active ? "border-foreground/30 bg-card" : "border-border bg-secondary hover:bg-card"}`}
                     >
-                      <div
-                        className="rounded-full flex items-center justify-center shrink-0"
-                        style={{
-                          width: 22, height: 22,
-                          background: isFirst ? ACCENT : `${color}1f`,
-                          border: `1.5px solid ${isFirst ? ACCENT : color}`,
-                        }}
-                      >
-                        <Icon size={11} color={isFirst ? "#000" : color} weight="bold" />
-                      </div>
-                      <div className="flex items-baseline gap-1.5">
-                        <span
-                          className="text-[10px] font-black leading-none tabular-nums uppercase tracking-[0.08em]"
-                          style={{ color: isFirst ? ACCENT : (isDark ? "#666" : "#94a3b8") }}
-                        >
-                          DAY {pt.day}
-                        </span>
-                        <span
-                          className="text-xs font-medium whitespace-nowrap leading-none"
-                          style={{ color: isDark ? "#e5e5e5" : "#1e293b" }}
-                        >
-                          {pt.label}
-                        </span>
-                      </div>
-                    </div>
-                    {!isLast && (
-                      <div className="flex items-center shrink-0 px-1">
-                        <div style={{ width: 6, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
-                        {pt.type === "flight" ? (
-                          <AirplaneTilt size={10} color={TYPE_COLORS.flight} style={{ opacity: 0.7, margin: "0 1px" }} />
-                        ) : (
-                          <div style={{ width: 3, height: 3, borderRadius: "50%", background: isDark ? "#2a2a2a" : "#cbd5e1", margin: "0 2px" }} />
-                        )}
-                        <div style={{ width: 6, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
-                      </div>
-                    )}
+                      <span className="flex items-center justify-center shrink-0 rounded-md" style={{ width: 22, height: 22, background: `${color}1f` }}>
+                        <Icon size={12} color={color} weight="bold" />
+                      </span>
+                      <span className="text-[11px] text-muted-foreground tabular-nums">Day {pt.day}</span>
+                      <span className="text-xs font-medium text-foreground whitespace-nowrap">{pt.label}</span>
+                    </button>
+                    {i < points.length - 1 && <span aria-hidden className="mx-1 h-px w-3 bg-border shrink-0" />}
                   </div>
                 );
               })}

@@ -1502,17 +1502,25 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     }
 
     // Resolve a per-event image. Throttle to 3 concurrent to stay under rate limits.
+    // Each search returns a handful of photos (still one request) and every event takes the first one not
+    // already on this trip, so events that fall back to the same broad search ("Bangkok") don't share a photo.
     const CACHE_KEY = STORAGE.EVENT_IMAGE_CACHE;
-    let cache: Record<string, string> = {};
+    let cache: Record<string, string | string[]> = {};
     try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { /* ignore */ }
+    const used = new Set<string>([coverImage, ...(includedEvents as TravelEvent[]).map(e => e.image).filter((u): u is string => !!u)]);
     const resolveEventImage = async (ev: TravelEvent): Promise<string | undefined> => {
       if (ev.image) return ev.image;
       const candidates = buildImageQueryCandidates({ title: ev.title, location: ev.location, type: ev.type });
       const cacheKey = candidates.join("|");
-      if (cache[cacheKey]) return cache[cacheKey];
-      const { urls } = await searchImagesProgressive(candidates, 1);
-      const url = urls[0];
-      if (url) { cache[cacheKey] = url; }
+      const cached = cache[cacheKey];
+      let options = Array.isArray(cached) ? cached : [];
+      if (!options.some(u => !used.has(u))) {
+        const { urls } = await searchImagesProgressive(candidates, 8);
+        options = [...new Set([...options, ...urls])];
+        if (options.length) cache[cacheKey] = options;
+      }
+      const url = options.find(u => !used.has(u)) ?? options[0];
+      if (url) used.add(url);
       return url;
     };
     const events: TravelEvent[] = [...includedEvents] as TravelEvent[];

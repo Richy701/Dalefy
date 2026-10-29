@@ -127,9 +127,15 @@ function readBody(resp: IncomingMessage, deadline: number): Promise<Buffer> {
   });
 }
 
+/** Wikimedia originals can be tens of megabytes; its own 1280px copy (a standard width it serves) is plenty for a photo and fits the limit */
+function wikimediaThumb(target: string): string {
+  const m = target.match(/^https:\/\/upload\.wikimedia\.org\/wikipedia\/([a-z-]+)\/([0-9a-f])\/([0-9a-f]{2})\/([^/?#]+\.(?:jpe?g|png|webp))(?:[?#].*)?$/i);
+  return m ? `https://upload.wikimedia.org/wikipedia/${m[1]}/thumb/${m[2]}/${m[3]}/${m[4]}/1280px-${m[4]}` : target;
+}
+
 export async function fetchImage(target: string): Promise<{ contentType: string; buffer: Buffer }> {
   const deadline = Date.now() + TIMEOUT_MS;
-  let url = target;
+  let url = wikimediaThumb(target);
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const resp = await getRaw(url, deadline);

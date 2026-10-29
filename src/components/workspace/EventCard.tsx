@@ -113,6 +113,17 @@ function subtitleFor(event: TravelEvent): string {
   return [event.location, event.endTime && !isPlaceholderTime(event.endTime) ? `until ${event.endTime}` : null].filter(Boolean).join(" · ");
 }
 
+/** Up to three of the event's own details for the row's middle on wide screens; only what the event has */
+function rowFacts(event: TravelEvent, arrTz: string): { label: string; value: string }[] {
+  const t = (v?: string) => (v && !isPlaceholderTime(v) ? v.split(" ")[0] : "");
+  const facts: [string, string | undefined][] =
+    event.type === "flight" ? [["Arrives", [t(event.endTime), t(event.endTime) && arrTz].filter(Boolean).join(" ")], ["Duration", event.duration], ["Ref", event.confNumber]]
+    : event.type === "hotel" ? [["Check-in", event.checkin || t(event.time)], ["Check-out", event.checkout || t(event.endTime)], ["Room", event.roomType]]
+    : event.type === "transfer" ? [["Meet at", event.meetingPoint], ["Driver", event.contactName], ["Ref", event.confNumber]]
+    : [["Until", t(event.endTime)], ["With", event.supplier], ["Ref", event.confNumber]];
+  return facts.map(([label, value]) => ({ label, value: (value ?? "").trim() })).filter(f => f.value);
+}
+
 /**
  * One itinerary row: category circle, title, one line of context, time on the
  * right. Flights add departure and arrival legs underneath. Same shape the
@@ -150,17 +161,30 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
             <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitleFor(event)}</p>
           )}
         </div>
-        {event.image && (
+        {/* Wide screens: the row's middle carries its details, in fixed columns so they line up down the day */}
+        {(() => {
+          const facts = rowFacts(event, arrTz);
+          return facts.length > 0 && (
+            <dl className="hidden xl:grid grid-cols-3 gap-x-6 w-[27rem] shrink-0">
+              {facts.map(f => (
+                <div key={f.label} className="min-w-0">
+                  <dt className="text-[11px] text-muted-foreground">{f.label}</dt>
+                  <dd className="text-xs font-medium text-foreground truncate tabular-nums">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          );
+        })()}
+        {event.image ? (
           <img src={event.image} alt="" style={{ objectPosition: objectPosition(event.imagePosition) }} className="h-9 w-12 rounded-md object-cover shrink-0 hidden sm:block" />
-        )}
+        ) : <span aria-hidden className="w-12 shrink-0 hidden sm:block" />}
         <MediaBadge media={event.media} documents={event.documents} />
         <AssignedDots people={assignedPeople} />
-        {time && (
-          <span className={`text-xs font-medium tabular-nums shrink-0 w-14 text-right ${placeholder ? "text-muted-foreground" : "text-brand"}`}>
-            {time.split(" ")[0]}
-            {!placeholder && (depTz || time.split(" ")[1]) ? <span className="block text-[10px] font-normal text-muted-foreground">{depTz || time.split(" ")[1]}</span> : null}
-          </span>
-        )}
+        {/* The time column keeps its width with no time, so photos stay in line down the day */}
+        <span className={`text-xs font-medium tabular-nums shrink-0 w-14 text-right ${placeholder ? "text-muted-foreground" : "text-brand"}`}>
+          {time && time.split(" ")[0]}
+          {time && !placeholder && (depTz || time.split(" ")[1]) ? <span className="block text-[10px] font-normal text-muted-foreground">{depTz || time.split(" ")[1]}</span> : null}
+        </span>
         <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
 

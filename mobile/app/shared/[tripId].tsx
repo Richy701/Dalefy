@@ -68,9 +68,11 @@ const HERO_H = 380;
  * inside this overlay.) A light hairline along the top edge marks where the sheet starts.
  */
 function SheetSurface({ style, children }: { style: StyleProp<ViewStyle>; children: ReactNode }) {
+  const edge = { borderTopWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.22)" };
+  // Android draws no blur here, so a wash let the trip page show through the names; it gets a solid sheet instead
+  if (Platform.OS !== "ios") return <View style={[style, edge, { backgroundColor: "#17181C" }]}>{children}</View>;
   return (
-    <BlurView intensity={60} tint={Platform.OS === "ios" ? "systemThickMaterialDark" : "dark"} style={[style, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.22)" }]}>
-      {Platform.OS !== "ios" ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(28,28,32,0.6)" }]} /> : null}
+    <BlurView intensity={60} tint="systemThickMaterialDark" style={[style, edge]}>
       {children}
     </BlurView>
   );

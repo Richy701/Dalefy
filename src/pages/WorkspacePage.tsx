@@ -2,7 +2,7 @@ import { useSavePerson } from "@/hooks/useSavePerson";
 import { combinePeople } from "@/lib/peopleDirectory";
 import { OrganizerPersonSelect } from "@/components/workspace/OrganizerPersonSelect";
 import { useBulkPeopleImport } from "@/hooks/useBulkPeopleImport";
-import { formatTimeInput, isValidTimeInput, TIME_INPUT_ERROR } from "@/lib/timeInput";
+import { parseTimeInput, formatTimeInput, isValidTimeInput, TIME_INPUT_ERROR } from "@/lib/timeInput";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   DndContext,
@@ -36,6 +36,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { format, parseISO } from "date-fns";
@@ -1183,7 +1184,7 @@ export function WorkspacePage() {
                 <TooltipTrigger render={<div className="relative" />}>
                     {/* A photo that fails to load falls back to initials instead of an empty circle */}
                     <Avatar className="ring-2 ring-card">
-                      {p.avatar && <AvatarImage src={p.avatar} alt={p.name} />}
+                      {p.avatar && <AvatarImage src={p.avatar} alt={p.name} className="bg-secondary" />}
                       <AvatarFallback className="text-[10px] font-semibold uppercase">{p.initials}</AvatarFallback>
                     </Avatar>
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-card" />
@@ -1623,10 +1624,12 @@ export function WorkspacePage() {
                             {trip.info && trip.info.length > 0 && (
                             <div className="space-y-2">
                               {trip.info.map(item => {
-                                const isExpanded = expandedInfoIds.has(item.id);
+                                // Only a card with more than its two-line preview (or attachments) opens; the rest show in full
+                                const hasMore = (item.body?.split("\n").length ?? 0) > 2 || (item.body?.length ?? 0) > 160 || (item.documents?.length ?? 0) > 0;
+                                const isExpanded = hasMore && expandedInfoIds.has(item.id);
                                 return (
                                 <div key={item.id} className="rounded-xl bg-background border border-border overflow-hidden hover:border-brand/30 transition-colors">
-                                  <button type="button" onClick={() => setExpandedInfoIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} className="w-full text-left cursor-pointer">
+                                  <button type="button" disabled={!hasMore} aria-expanded={hasMore ? isExpanded : undefined} onClick={() => setExpandedInfoIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} className="w-full text-left cursor-pointer disabled:cursor-default">
                                     <div className="flex items-start gap-3 p-3.5">
                                       <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
                                         <FileText className="h-3.5 w-3.5 text-brand" />
@@ -1641,13 +1644,13 @@ export function WorkspacePage() {
                                           )}
                                         </p>
                                         {item.body && (
-                                          <p className={`text-xs text-muted-foreground font-medium mt-1 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
+                                          <p className={`text-xs text-muted-foreground font-medium mt-1 leading-relaxed whitespace-pre-line ${isExpanded || !hasMore ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
                                         )}
                                         {item.documents && item.documents.length > 0 && !isExpanded && (
                                           <p className="text-[10px] text-brand font-bold mt-1">{item.documents.length} attachment{item.documents.length > 1 ? "s" : ""}</p>
                                         )}
                                       </div>
-                                      <CaretRight className={`h-4 w-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                                      {hasMore && <CaretRight className={`h-4 w-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />}
                                     </div>
                                   </button>
                                   {isExpanded && item.documents && item.documents.length > 0 && (
@@ -1740,7 +1743,7 @@ export function WorkspacePage() {
                         <div key={date} id={`day-${date}`} className="scroll-mt-6">
                           <DaySection dayNumber={dayIdx + 1} count={events.length} date={parseTripDate(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                              <div className="ml-0 sm:ml-8 rounded-xl border border-border bg-card shadow-sm divide-y divide-border [&>*:first-child_.group]:rounded-t-xl [&>*:last-child_.group]:rounded-b-xl">
+                              <div className="ml-0 sm:ml-8 rounded-xl border border-border bg-card shadow-sm divide-y divide-border [&>*:first-child>:last-child]:rounded-t-xl [&>*:last-child>:last-child]:rounded-b-xl [&>*:first-child_.group]:rounded-t-xl [&>*:last-child_.group]:rounded-b-xl">
                                 {events.map(event => (
                                   <SortableEventCard
                                     key={event.id}
@@ -2246,7 +2249,8 @@ export function WorkspacePage() {
         onConfirm={discardEventChanges}
       />
       <Dialog open={isEditPanelOpen} onOpenChange={handleEventDialogOpenChange}>
-        <DialogContent className="max-w-2xl w-[95vw] p-0 bg-card border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        {/* Opening focuses the title, not the first status pill (whose focus ring read as a selection) */}
+        <DialogContent initialFocus={() => document.getElementById("event-title")} className="max-w-2xl w-[95vw] p-0 bg-card border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
@@ -2343,7 +2347,7 @@ export function WorkspacePage() {
                       onChange={e => { setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null); if (eventErrors.title) setEventErrors(prev => ({ ...prev, title: undefined })); }}
                       placeholder="What's happening? e.g. Transfer to hotel"
                       aria-invalid={!!eventErrors.title}
-                      className="w-full text-lg font-semibold tracking-tight"
+                      className="w-full h-11 text-lg font-semibold tracking-tight bg-background border-border rounded-lg focus-visible:border-brand focus-visible:ring-0"
                     />
                     {eventErrors.title && <p className="text-[11px] font-semibold text-red-500">{eventErrors.title}</p>}
                   </div>
@@ -2351,7 +2355,7 @@ export function WorkspacePage() {
                   {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Date</label>
+                      <Label className="text-xs font-medium text-muted-foreground">Date</Label>
                       <Popover>
                         <PopoverTrigger className={cn(
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-background border border-border hover:border-brand/50 transition-colors text-left",
@@ -2473,7 +2477,13 @@ export function WorkspacePage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">End time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="14:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
-                        <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
+                        {(() => {
+                          // A same-day end before the start is almost always a typo or a misread document
+                          const start = parseTimeInput(editingEvent?.time), end = parseTimeInput(editingEvent?.endTime);
+                          return start && end && end < start
+                            ? <p className="text-[11px] text-amber-600 dark:text-amber-400">Ends before it starts ({start}). Check the times.</p>
+                            : <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>;
+                        })()}
                         {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
                       <div className="space-y-1.5">
@@ -3422,36 +3432,17 @@ export function WorkspacePage() {
 
       {/* ── Information mini-dialog ── */}
       <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
-        <DialogContent className="dialog-mobile-full border-0 bg-card p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:border-border shadow-2xl flex flex-col">
+        <DialogContent initialFocus={() => document.querySelector<HTMLElement>('[aria-label="Page title"]')} className="dialog-mobile-full border-0 bg-card p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-border shadow-2xl flex flex-col">
           <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
             <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
-                    <FileText className="h-4 w-4 text-brand" />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Information</DialogTitle>
-                    <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pages visible to travelers</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditInfoData(prev => [...prev, { id: Date.now().toString(), title: "", body: "" }])}
-                  className="h-9 px-3 rounded-xl bg-brand/10 hover:bg-brand/20 text-xs font-medium text-brand transition-colors flex items-center gap-1.5"
-                >
-                  <Plus className="h-3 w-3" /> Add Page
-                </button>
-              </div>
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Trip info</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Pages travellers see in the app, with files for the whole trip below.</p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {editInfoData.length === 0 && (
-                <div className="text-center py-14 rounded-xl border-2 border-dashed border-border bg-slate-50/50 dark:bg-[#080808]">
-                  <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
-                    <FileText className="h-6 w-6 text-brand/50" />
-                  </div>
-                  <p className="text-sm text-muted-foreground font-bold">No pages yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Add travel tips, visa info, packing lists</p>
+                <div className="text-center py-10">
+                  <p className="text-sm font-medium text-foreground">No pages yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Visa rules, contacts, packing lists, anything travellers should know.</p>
                   {/* Travellers still see the published copy; if that has cards, they can be brought back here */}
                   {(trip.publishedSnapshot?.info?.length ?? 0) > 0 && (
                     <div className="mt-5 flex flex-col items-center gap-2">
@@ -3477,12 +3468,9 @@ export function WorkspacePage() {
               }}>
                 <SortableContext items={editInfoData.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   {editInfoData.map((item, idx) => (
-                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-muted-foreground opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
-                      <div className="rounded-xl bg-background border border-border overflow-hidden transition-shadow hover:shadow-md">
-                        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-border">
-                          <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
-                            <span className="text-[11px] font-black text-brand">{idx + 1}</span>
-                          </div>
+                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1.5 top-4 z-10 h-7 w-5 flex items-center justify-center text-muted-foreground opacity-0 group-hover/sort:opacity-100 [@media(hover:none)]:opacity-100 hover:text-foreground cursor-grab active:cursor-grabbing transition-opacity">
+                      <div className="rounded-xl border border-border bg-background">
+                        <div className="flex items-center gap-3 pl-8 pr-3 pt-3">
                           <Input
                             value={item.title}
                             onChange={e => {
@@ -3490,30 +3478,33 @@ export function WorkspacePage() {
                               updated[idx] = { ...updated[idx], title: e.target.value };
                               setEditInfoData(updated);
                             }}
-                            placeholder="Page title, e.g. Visa Requirements"
-                            className="h-9 text-sm font-bold bg-transparent border-0 text-foreground focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                            placeholder="Page title, e.g. Visa requirements"
+                            aria-label="Page title"
+                            className="h-9 text-base font-semibold bg-transparent dark:bg-transparent border-0 shadow-none text-foreground focus-visible:ring-0 p-0 flex-1"
                           />
+                          {/* Leaders only: kept from travellers, shown to trip leaders */}
+                          <label className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground cursor-pointer select-none">
+                            <Switch
+                              size="sm"
+                              checked={!!item.leaderOnly}
+                              onCheckedChange={checked => {
+                                const updated = [...editInfoData];
+                                updated[idx] = { ...updated[idx], leaderOnly: checked || undefined };
+                                setEditInfoData(updated);
+                              }}
+                            />
+                            Leaders only
+                          </label>
                           <button
                             type="button"
-                            title={item.leaderOnly ? "Leader only - hidden from travelers" : "Visible to everyone"}
-                            onClick={() => {
-                              const updated = [...editInfoData];
-                              updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
-                              setEditInfoData(updated);
-                            }}
-                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-muted-foreground hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
-                          >
-                            {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          </button>
-                          <button
-                            type="button"
+                            aria-label={`Delete ${item.title || "page"}`}
                             onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
-                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-500/10 sm:opacity-0 sm:group-hover/sort:opacity-100 focus-visible:opacity-100 transition-all"
                           >
                             <Trash className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="p-4 sm:p-5 space-y-3">
+                        <div className="pl-8 pr-4 pb-3 space-y-3">
                           <Textarea
                             value={item.body}
                             onChange={e => {
@@ -3521,9 +3512,10 @@ export function WorkspacePage() {
                               updated[idx] = { ...updated[idx], body: e.target.value };
                               setEditInfoData(updated);
                             }}
-                            placeholder="Write content that travelers will see... URLs become clickable links automatically."
-                            rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
-                            className="min-h-[120px] text-sm leading-relaxed bg-card border border-border text-foreground/80 resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                            placeholder="What travellers should know. Links and phone numbers become tappable."
+                            aria-label="Page text"
+                            rows={Math.max(3, (item.body.match(/\n/g) || []).length + 2)}
+                            className="min-h-[72px] text-sm leading-relaxed bg-transparent dark:bg-transparent border-0 shadow-none text-foreground/80 resize-y rounded-none focus-visible:ring-0 p-0"
                           />
                           {/* Per-page attachments */}
                           {item.documents && item.documents.length > 0 && (
@@ -3586,14 +3578,14 @@ export function WorkspacePage() {
                   ))}
                 </SortableContext>
               </DndContext>
+              <Button type="button" variant="outline" onClick={() => setEditInfoData(prev => [...prev, { id: Date.now().toString(), title: "", body: "" }])} className="w-full">
+                <Plus /> Add page
+              </Button>
 
               {/* Documents section inside edit dialog */}
-              <div className="mt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-px flex-1 bg-secondary" />
-                  <span className="text-[11px] font-medium text-muted-foreground">Documents</span>
-                  <div className="h-px flex-1 bg-secondary" />
-                </div>
+              <div className="mt-8">
+                <p className="text-sm font-medium text-foreground mb-1">Files for the whole trip</p>
+                <p className="text-xs text-muted-foreground mb-3">Tickets, vouchers and guides travellers can open from Trip info.</p>
                 {trip.documents && trip.documents.length > 0 && (
                   <div className="space-y-1.5 mb-3">
                     {trip.documents.map(doc => (
@@ -3629,10 +3621,10 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => tripDocInputRef2.current?.click()}
-                  className="w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-border hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
+                  className="w-full py-3 px-4 rounded-xl border border-dashed border-border hover:border-foreground/30 hover:bg-secondary/50 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Drop files here or click to upload</span>
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Upload files</span>
                 </button>
               </div>
             </div>
