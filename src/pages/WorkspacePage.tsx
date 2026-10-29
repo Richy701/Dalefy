@@ -1226,10 +1226,10 @@ export function WorkspacePage() {
                 <Users className="h-3.5 w-3.5" />
                 <span className={viewAsTraveler ? "" : "hidden xl:inline"}>{viewAsTraveler ? `Viewing as ${viewAsTraveler.name.split(" ")[0]}` : "View as"}</span>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-2 bg-card border border-border shadow-2xl rounded-xl">
+              <PopoverContent align="end" initialFocus={type => type === "keyboard"} className="w-56 p-2 gap-0 bg-card border border-border shadow-2xl rounded-xl max-h-[min(26rem,var(--available-height))] overflow-y-auto">
                 <button
                   onClick={() => setViewAsId(null)}
-                  className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
+                  className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                     !viewAsId ? "bg-brand/10 text-brand" : "text-muted-foreground hover:bg-secondary"
                   }`}
                 >
@@ -1242,7 +1242,7 @@ export function WorkspacePage() {
                   <button
                     key={t.id}
                     onClick={() => setViewAsId(t.id)}
-                    className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                       viewAsId === t.id ? "bg-brand/10 text-brand" : "text-muted-foreground hover:bg-secondary"
                     }`}
                   >
