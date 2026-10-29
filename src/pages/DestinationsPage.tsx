@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MagnifyingGlass, MapPin, Calendar as LucideCalendar, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
 import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useTrips } from "@/context/TripsContext";
@@ -16,6 +16,7 @@ import { DestinationStats } from "@/components/destinations/DestinationStats";
 import { UpcomingTimeline } from "@/components/destinations/UpcomingTimeline";
 import { LocalInfo, type UpcomingPlace } from "@/components/destinations/LocalInfo";
 import { parseTripDate } from "@/lib/dates";
+import { airportPlace } from "@/lib/airports";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -102,7 +103,8 @@ export function DestinationsPage() {
         const flights = sortEvents(trip.events.filter(e => e.type === "flight"));
         for (const f of flights) {
           const match = f.location.match(/^.+?\s+to\s+(.+)$/i);
-          if (match) { destName = match[1].trim(); break; }
+          // An arrival given as an airport code ("BGI") reads as its city instead
+          if (match) { destName = airportPlace(match[1])?.label ?? match[1].trim(); break; }
         }
       }
       // 3. Try activity locations (often contain city/region names)
@@ -373,16 +375,33 @@ export function DestinationsPage() {
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-foreground leading-none">
                   Destinations
                 </h1>
-                <div className="mt-3 sm:mt-5">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Your Travel Footprint</p>
-                  <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-foreground tabular-nums">
-                    {destinations.length}
-                  </span>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-foreground/80 flex-wrap">
-                    <MapPin className="h-3 w-3 text-brand" />
-                    {destinations.length === 1 ? "Destination" : "Destinations"} · {regions.length - 1} {regions.length - 1 === 1 ? "Region" : "Regions"} · {destinations.reduce((s, d) => s + d.eventCount, 0)} Events
-                  </p>
-                </div>
+                <p className="mt-2 text-sm text-muted-foreground tabular-nums">
+                  {destinations.length} {destinations.length === 1 ? "place" : "places"}{regions.length - 1 > 0 && ` in ${regions.length - 1} ${regions.length - 1 === 1 ? "country" : "countries"}`}
+                </p>
+                {/* What's next, not a big count: the next three places with their dates */}
+                {(() => {
+                  const todayIso = new Date().toISOString().slice(0, 10);
+                  const next = destinations.filter(d => d.nextVisit >= todayIso).sort((x, y) => x.nextVisit.localeCompare(y.nextVisit)).slice(0, 3);
+                  if (!next.length) return null;
+                  return (
+                    <div className="mt-6 sm:mt-8">
+                      <p className="text-xs text-muted-foreground mb-2">Next up</p>
+                      <ul className="space-y-1">
+                        {next.map(d => (
+                          <li key={d.name}>
+                            <button type="button" onClick={() => openDest(d)} className="w-full flex items-center gap-3 rounded-lg px-1.5 py-1.5 -mx-1.5 text-left hover:bg-card/70 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
+                              {d.image ? <img src={d.image} alt="" loading="lazy" className="h-9 w-9 rounded-lg object-cover shrink-0" /> : <div className="h-9 w-9 rounded-lg bg-secondary shrink-0" />}
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium text-foreground truncate">{d.name}</span>
+                                <span className="block text-xs text-muted-foreground tabular-nums">{parseTripDate(d.nextVisit).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </div>
               {/* Globe map - below text on mobile, right side on sm+ */}
               <div
@@ -577,59 +596,33 @@ export function DestinationsPage() {
                 onMouseLeave={() => setHoveredCard(null)}
                 onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDest(dest); } if (e.key === "Escape") setExpandedDest(null); }}
                 data-dest-card
-                className={`group relative rounded-xl overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)} ${selectedDest === dest.name ? "ring-2 ring-brand" : ""}`}
-                style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
+                className={`group relative flex flex-col rounded-xl overflow-hidden bg-card border border-border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/40 stagger-${Math.min(idx + 1, 8)} ${selectedDest === dest.name ? "ring-2 ring-brand" : ""}`}
               >
-                <div className="absolute inset-0">
-                  <img src={dest.image} alt={dest.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/5" />
+                {/* Same card as the dashboard trips: photo on top, the facts underneath */}
+                <div className="relative aspect-[16/9] bg-secondary overflow-hidden">
+                  {dest.image && <img src={dest.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />}
+                  {(() => {
+                    const days = Math.round((parseTripDate(dest.nextVisit).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000);
+                    const label = days > 1 ? `In ${days} days` : days === 1 ? "Tomorrow" : days === 0 ? "Today" : "Visited";
+                    return <span className="absolute top-3 left-3 text-[11px] font-semibold px-2 py-1 rounded-md backdrop-blur-md bg-black/55 text-white">{label}</span>;
+                  })()}
                 </div>
-                <div className="relative z-10 flex items-start justify-between p-6">
-                  {dest.region !== "Unknown" && (
-                    <span className="rounded-lg px-3 py-1 text-xs font-medium bg-black/50 text-white border border-white/15">{dest.region}</span>
-                  )}
-                  <span className="ml-auto bg-black/50 text-white text-xs font-medium px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
-                </div>
-                <div className="relative z-10 mt-auto p-6">
-                  <h3 className="text-3xl font-bold tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
-                  <div className="flex items-center gap-1.5 flex-wrap mb-5">
-                    {dest.types.flights > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
-                        <AirplaneTilt className="h-2.5 w-2.5 text-brand" />
-                        <span className="text-[10px] font-bold text-white/90">{dest.types.flights}</span>
-                      </div>
-                    )}
-                    {dest.types.hotels > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
-                        <Bed className="h-2.5 w-2.5 text-brand" />
-                        <span className="text-[10px] font-bold text-white/90">{dest.types.hotels}</span>
-                      </div>
-                    )}
-                    {dest.types.activities > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
-                        <Compass className="h-2.5 w-2.5 text-brand" />
-                        <span className="text-[10px] font-bold text-white/90">{dest.types.activities}</span>
-                      </div>
-                    )}
-                    {dest.types.dining > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
-                        <ForkKnife className="h-2.5 w-2.5 text-brand" />
-                        <span className="text-[10px] font-bold text-white/90">{dest.types.dining}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-white/15">
-                    <div className="flex items-center gap-1.5">
-                      <LucideCalendar className="h-3 w-3 text-brand" />
-                      <span className="text-xs font-medium text-white/80">
-                        {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                <div className="flex-1 flex flex-col p-4">
+                  <h3 className="text-base font-semibold tracking-tight text-foreground leading-snug line-clamp-2">{dest.name}</h3>
+                  {dest.region !== "Unknown" && <p className="text-xs text-muted-foreground truncate mt-0.5">{dest.region}</p>}
+                  <p className="mt-2 flex items-center gap-3 text-xs text-foreground/80 tabular-nums">
+                    <span>{parseTripDate(dest.nextVisit).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    <span>{dest.eventCount} {dest.eventCount === 1 ? "booking" : "bookings"}</span>
+                  </p>
+                  <div className="mt-auto pt-3">
+                    <div className="pt-3 border-t border-border flex items-center justify-between gap-2 text-xs text-muted-foreground tabular-nums">
+                      <span className="flex items-center gap-3">
+                        {dest.types.flights > 0 && <span className="inline-flex items-center gap-1"><AirplaneTilt className="h-3.5 w-3.5" /> {dest.types.flights}</span>}
+                        {dest.types.hotels > 0 && <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {dest.types.hotels}</span>}
+                        {dest.types.activities > 0 && <span className="inline-flex items-center gap-1"><Compass className="h-3.5 w-3.5" /> {dest.types.activities}</span>}
+                        {dest.types.dining > 0 && <span className="inline-flex items-center gap-1"><ForkKnife className="h-3.5 w-3.5" /> {dest.types.dining}</span>}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-white/70" />
-                      <span className="text-xs font-medium text-white/80">
-                        {dest.tripCount} {dest.tripCount === 1 ? "Trip" : "Trips"}
-                      </span>
+                      <span className="shrink-0">{dest.tripCount} {dest.tripCount === 1 ? "trip" : "trips"}</span>
                     </div>
                   </div>
                 </div>

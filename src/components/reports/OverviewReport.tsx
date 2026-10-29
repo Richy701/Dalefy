@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CaretRight, PencilSimple, PaperPlaneTilt, EnvelopeSimple, Coins, Tag, Suitcase, Users, Wallet, DeviceMobile, CalendarBlank, AirplaneTilt, CheckCircle, type Icon } from "@phosphor-icons/react";
+import { CaretRight, PencilSimple, PaperPlaneTilt, EnvelopeSimple, Coins, Tag, Users, Wallet, DeviceMobile, CalendarBlank, AirplaneTilt, CheckCircle, type Icon } from "@phosphor-icons/react";
 import { ComposedChart, Bar, Line, XAxis, YAxis } from "recharts";
 import { EVENT_ICONS, type EventType } from "@/config/eventStyles";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { fetchTripMembers, APP_MEMBERS_ERROR, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, type TripMember } from "@/services/firebaseTrips";
 import { joinedByTrip } from "@/lib/appMembers";
 import { moneyByCurrency } from "@/lib/reportMoney";
 import { formatMoney, summariseCosts } from "@/lib/tripCosts";
@@ -57,17 +57,69 @@ function countdown(t: Trip, today: Date): string {
   return `Day ${Math.min(total, 1 - until)} of ${total}`;
 }
 
-/** A figure with its icon, for the top of the Overview */
-function Stat({ icon: Icon, label, value, sub }: { icon: Icon; label: string; value: string; sub: string }) {
+const MONTH_MS = 30.44 * 86400000;
+
+/** Trips laid on a month axis, each in the first row where it doesn't overlap another */
+function YearTimeline({ trips, today, onOpen }: { trips: Trip[]; today: Date; onOpen: (id: string) => void }) {
+  const dated = trips
+    .map(t => ({ t, a: parseTripDate(t.start).getTime(), b: parseTripDate(t.end || t.start).getTime() + 86400000 }))
+    .filter(x => Number.isFinite(x.a) && Number.isFinite(x.b))
+    .sort((x, y) => x.a - y.a);
+  if (!dated.length) return <EmptyNote>No trip dates yet.</EmptyNote>;
+  // Whole months around the trips, kept to about 15 months around today when they spread wider
+  const first = new Date(Math.max(dated[0].a, today.getTime() - 6 * MONTH_MS));
+  const last = new Date(Math.min(Math.max(...dated.map(x => x.b)), today.getTime() + 9 * MONTH_MS));
+  const from = new Date(first.getFullYear(), first.getMonth(), 1).getTime();
+  const to = new Date(Math.max(last.getTime(), today.getTime()) + MONTH_MS);
+  const end = new Date(to.getFullYear(), to.getMonth(), 1).getTime();
+  const span = end - from;
+  const pct = (ms: number) => Math.min(100, Math.max(0, ((ms - from) / span) * 100));
+  const months: Date[] = [];
+  for (let d = new Date(from); d.getTime() < end; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) months.push(d);
+  // Pills need room for a name, so each is at least ~16% wide; rows are worked out from the final
+  // position (after nudging in from the right edge), so pills never land on each other
+  const minWidth = 16;
+  const lanes: number[] = [];
+  const placed = dated.filter(x => x.b > from && x.a < end).map(x => {
+    const width = Math.max(pct(x.b) - pct(x.a), minWidth);
+    const left = Math.min(pct(x.a), 100 - width);
+    let lane = lanes.findIndex(r => r <= left);
+    if (lane === -1) { lane = lanes.length; lanes.push(0); }
+    lanes[lane] = left + width + 0.5;
+    return { ...x, left, width, lane };
+  });
+  const todayPct = pct(today.getTime());
+
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm px-5 py-4 flex items-start gap-3.5">
-      <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-        <Icon className="h-[18px] w-[18px] text-muted-foreground" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold tracking-tight leading-none mt-1.5 tabular-nums text-foreground truncate">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1.5 truncate">{sub}</p>
+    <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+      <div className="relative min-w-[720px]">
+        <div className="relative h-6 border-b border-border">
+          {months.map(m => (
+            <span key={m.getTime()} className="absolute top-0 text-xs text-muted-foreground" style={{ left: `${pct(m.getTime())}%` }}>
+              {m.toLocaleDateString("en-GB", { month: "short" })}{m.getMonth() === 0 ? ` ${String(m.getFullYear()).slice(2)}` : ""}
+            </span>
+          ))}
+        </div>
+        <div className="relative mt-3 mb-6" style={{ height: lanes.length * 40 }}>
+          {months.map(m => <div key={m.getTime()} className="absolute top-0 bottom-0 w-px bg-border/60" style={{ left: `${pct(m.getTime())}%` }} />)}
+          <div className="absolute -top-3 -bottom-1 w-0.5 bg-emerald-500 z-10" style={{ left: `${todayPct}%` }}>
+            <span className="absolute -bottom-5 -translate-x-1/2 left-1/2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Today</span>
+          </div>
+          {placed.map(x => {
+            const stage = stageOf(x.t, today);
+            return (
+              <button key={x.t.id} onClick={() => onOpen(x.t.id)} title={`${x.t.name}, ${dateRange(x.t)}`}
+                className={`absolute h-8 flex items-center gap-1.5 pl-1 pr-2.5 rounded-lg border text-left text-xs font-medium truncate transition-shadow hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                  stage === "finished" ? "opacity-50 bg-card border-border text-muted-foreground"
+                  : stage === "travelling" ? "bg-emerald-500/10 border-emerald-500/40 text-foreground"
+                  : "bg-card border-border text-foreground shadow-sm"}`}
+                style={{ left: `${x.left}%`, width: `${x.width}%`, top: x.lane * 40 }}>
+                {x.t.image ? <img src={x.t.image} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" style={{ objectPosition: objectPosition(x.t.imagePosition) }} /> : <span className="h-6 w-6 rounded-md bg-secondary shrink-0" />}
+                <span className="truncate">{x.t.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -86,12 +138,11 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
   const [today] = useState(() => new Date());
   const tripIds = useMemo(() => trips.map(t => t.id).sort().join(","), [trips]);
   const [members, setMembers] = useState<TripMember[] | null>(null);
-  const [membersError, setMembersError] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchTripMembers(tripIds ? tripIds.split(",") : [])
-      .then(list => { if (!cancelled) { setMembers(list); setMembersError(false); } })
-      .catch(() => { if (!cancelled) setMembersError(true); });
+      .then(list => { if (!cancelled) setMembers(list); })
+      .catch(() => { /* app counts stay hidden; the Travellers tab shows the error */ });
     return () => { cancelled = true; };
   }, [tripIds]);
 
@@ -103,10 +154,6 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
   }, [trips, today]);
 
   const joined = useMemo(() => (members ? joinedByTrip(members) : null), [members]);
-  // Same rule as the Travellers tab: a trip counts everyone listed, or everyone in the app if more joined
-  const people = useMemo(() => trips.reduce((s, t) => s + Math.max((t.travelers ?? []).length, joined?.get(t.id) ?? 0), 0), [trips, joined]);
-  const inApp = joined ? trips.reduce((s, t) => s + (joined.get(t.id) ?? 0), 0) : null;
-  const invited = trips.reduce((s, t) => s + (t.travelers ?? []).filter(p => p.invitedAt).length, 0);
 
   const money = useMemo(() => moneyByCurrency(trips), [trips]);
   const main = money.currencies[0];
@@ -123,12 +170,12 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
     const notInvited = live.reduce((s, t) => s + (t.travelers ?? []).filter(p => !p.invitedAt).length, 0);
     const names = (list: Trip[]) => list.slice(0, 2).map(t => t.name).join(", ") + (list.length > 2 ? ` and ${list.length - 2} more` : "");
     return [
-      drafts.length && { key: "drafts", icon: PencilSimple, count: drafts.length, text: drafts.length === 1 ? "draft to publish" : "drafts to publish", detail: names(drafts), go: () => (drafts.length === 1 ? navigate(`/trip/${drafts[0].id}`) : onOpenTab("trips")) },
-      unsent.length && { key: "unsent", icon: PaperPlaneTilt, count: unsent.length, text: unsent.length === 1 ? "trip with changes travellers haven't seen" : "trips with changes travellers haven't seen", detail: names(unsent), go: () => onOpenTab("trips") },
-      notInvited && { key: "invite", icon: EnvelopeSimple, count: notInvited, text: notInvited === 1 ? "traveller not invited yet" : "travellers not invited yet", detail: "On current and upcoming trips", go: () => onOpenTab("travellers") },
-      over.length && { key: "over", icon: Coins, count: over.length, text: over.length === 1 ? "trip over budget" : "trips over budget", detail: names(over.map(r => r.trip)), go: () => onOpenTab("money") },
-      noPrice && { key: "price", icon: Tag, count: noPrice, text: noPrice === 1 ? "booking with no price" : "bookings with no price", detail: "On trips with a budget, so spend may be higher", go: () => onOpenTab("money") },
-    ].filter(Boolean) as Array<{ key: string; icon: Icon; count: number; text: string; detail: string; go: () => void }>;
+      drafts.length && { key: "drafts", icon: PencilSimple, tint: "bg-secondary text-muted-foreground", count: drafts.length, text: drafts.length === 1 ? "draft to publish" : "drafts to publish", detail: names(drafts), go: () => (drafts.length === 1 ? navigate(`/trip/${drafts[0].id}`) : onOpenTab("trips")) },
+      unsent.length && { key: "unsent", icon: PaperPlaneTilt, tint: "bg-sky-500/10 text-sky-700 dark:text-sky-400", count: unsent.length, text: unsent.length === 1 ? "trip with changes travellers haven't seen" : "trips with changes travellers haven't seen", detail: names(unsent), go: () => onOpenTab("trips") },
+      notInvited && { key: "invite", icon: EnvelopeSimple, tint: "bg-amber-500/10 text-amber-700 dark:text-amber-400", count: notInvited, text: notInvited === 1 ? "traveller not invited yet" : "travellers not invited yet", detail: "On current and upcoming trips", go: () => onOpenTab("travellers") },
+      over.length && { key: "over", icon: Coins, tint: "bg-red-500/10 text-red-600 dark:text-red-400", count: over.length, text: over.length === 1 ? "trip over budget" : "trips over budget", detail: names(over.map(r => r.trip)), go: () => onOpenTab("money") },
+      noPrice && { key: "price", icon: Tag, tint: "bg-secondary text-muted-foreground", count: noPrice, text: noPrice === 1 ? "booking with no price" : "bookings with no price", detail: "On trips with a budget, so spend may be higher", go: () => onOpenTab("money") },
+    ].filter(Boolean) as Array<{ key: string; icon: Icon; tint: string; count: number; text: string; detail: string; go: () => void }>;
   }, [trips, today, money, navigate, onOpenTab]);
 
   const comingUp = useMemo(() => [...stages.get("travelling")!, ...stages.get("upcoming")!, ...stages.get("draft")!]
@@ -168,7 +215,6 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
   }, [trips, main]);
   const kindsUsed = BOOKING_KINDS.filter(k => byMonth.some(m => m[k.key] > 0));
 
-  const total = trips.length;
   const hasSpend = !!main && byMonth.some(m => m.spend > 0);
 
   return (
@@ -201,12 +247,6 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
         );
       })()}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Stat icon={Suitcase} label="Trips" value={`${total}`} sub={[stages.get("travelling")!.length && `${stages.get("travelling")!.length} travelling now`, `${stages.get("upcoming")!.length + stages.get("draft")!.length} to come`].filter(Boolean).join(", ")} />
-        <Stat icon={Users} label="Travellers" value={`${people}`} sub={invited ? `${invited} invited by email` : "None invited by email yet"} />
-        <Stat icon={Wallet} label="Spend" value={main && main.spend > 0 ? fmt(main.spend) : "No prices yet"} sub={main && main.spend > 0 ? (main.budget ? `of ${fmt(main.budget)} budget${money.currencies.length > 1 ? `, ${main.currency} only` : ""}` : "No budgets set") : "Add prices to bookings to track spend"} />
-        <Stat icon={DeviceMobile} label="In the app" value={membersError ? "Unknown" : inApp === null ? "..." : `${inApp}`} sub={membersError ? APP_MEMBERS_ERROR : people ? `${Math.round(((inApp ?? 0) / people) * 100)}% of ${people} travellers` : "No travellers yet"} />
-      </div>
 
       {later.length > 0 && (
         <section>
@@ -237,58 +277,28 @@ export function OverviewReport({ trips, onOpenTab }: { trips: Trip[]; onOpenTab:
         </section>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 [&>section]:h-full">
-      <ReportCard title="Where trips are" sub="By their dates, so finished trips stop counting as upcoming">
-        <div className="flex h-2.5 rounded-full overflow-hidden bg-secondary gap-0.5" role="img" aria-label={STAGES.map(s => `${s.label} ${stages.get(s.key)!.length}`).join(", ")}>
-          {STAGES.map(s => {
-            const n = stages.get(s.key)!.length;
-            return n ? <div key={s.key} className={s.bar} style={{ width: `${(n / Math.max(1, total)) * 100}%` }} /> : null;
-          })}
-        </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-5 mt-5">
-          {STAGES.map(s => {
-            const list = stages.get(s.key)!;
-            const detail = !list.length ? "None"
-              : s.key === "travelling" ? list.map(t => t.name).join(", ")
-              : s.key === "finished" ? `Last back ${shortDate(list[list.length - 1].end || list[list.length - 1].start)}`
-              : `Next ${shortDate(list[0].start)}`;
-            return (
-              <div key={s.key} className="min-w-0 flex items-start gap-3">
-                <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                  <s.icon className={`h-4 w-4 ${s.tone}`} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-xl font-semibold tracking-tight tabular-nums text-foreground leading-tight">{list.length}</p>
-                  <p className="text-xs text-muted-foreground truncate">{detail}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <ReportCard title="Year at a glance" sub="Every trip on its dates, finished ones faded">
+        <YearTimeline trips={trips} today={today} onOpen={id => navigate(`/trip/${id}`)} />
       </ReportCard>
 
-        <ReportCard title="Needs attention" sub="What to sort out next">
-          {attention.length === 0 ? <EmptyNote>Nothing needs you right now.</EmptyNote> : (
-            <ul className="-mx-2">
-              {attention.map(a => (
-                <li key={a.key}>
-                  <button onClick={a.go} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg text-left hover:bg-secondary transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                      <a.icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground truncate"><span className="font-semibold tabular-nums">{a.count}</span> {a.text}</p>
-                      <p className="text-xs text-muted-foreground truncate">{a.detail}</p>
-                    </div>
-                    <CaretRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ReportCard>
-      </div>
+      <section>
+        <h3 className="text-base font-semibold tracking-tight text-foreground mb-3">Needs attention</h3>
+        {attention.length === 0 ? <EmptyNote>Nothing needs you right now.</EmptyNote> : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {attention.map(a => (
+              <button key={a.key} onClick={a.go} className="group text-left rounded-xl border border-border bg-card shadow-sm p-4 hover:shadow-md transition-shadow flex flex-col">
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${a.tint}`}>
+                  <a.icon className="h-[18px] w-[18px]" />
+                </div>
+                <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground mt-3 leading-none">{a.count}</p>
+                <p className="text-sm text-foreground mt-1.5">{a.text}</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.detail}</p>
+                <span className="mt-auto pt-3 text-xs font-medium text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1">Sort it <CaretRight className="h-3 w-3" /></span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       <ReportCard title="Bookings by month" sub={hasSpend ? `What's booked each month by kind, with spend in ${main!.currency}` : "What's booked each month, by kind"}>
         {byMonth.length === 0 || kindsUsed.length === 0 ? <EmptyNote>No bookings on these trips yet.</EmptyNote> : (

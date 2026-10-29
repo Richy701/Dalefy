@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
+import { formatTimeInput } from "@/lib/timeInput";
 import { objectPosition } from "@/lib/imagePosition";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -7,9 +8,8 @@ import {
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText
-} from "@phosphor-icons/react";
-import { lifecycleLabel, liveTrips } from "@/lib/tripLifecycle";
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText, LockSimple } from "@phosphor-icons/react";
+import { liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
 import { CURRENCIES } from "@/config/currencies";
 import { EVENT_ICONS } from "@/config/eventStyles";
@@ -53,6 +53,7 @@ import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
 import { NextTripSide } from "@/components/dashboard/NextTripSide";
 import { TripCard } from "@/components/dashboard/TripCard";
+import { publishedChanges } from "@/lib/tripChanges";
 import { NeedsAttention, type AttentionItem } from "@/components/dashboard/NeedsAttention";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
@@ -650,30 +651,35 @@ export function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-secondary border-t border-border">
                     {nextEvents.map(({ event: ev, tripName, tripId }) => {
+                      // "QR10 — London to Doha": the flight number moves up beside the date so the route can read in full
+                      const FLIGHT_NO = /^[A-Z0-9]{2}\s?\d{1,4}$/;
+                      const parts = ev.type === "flight" ? ev.title.split(/\s+[—–-]\s+/) : [];
+                      const codeIdx = parts.length === 2 ? parts.findIndex(p => FLIGHT_NO.test(p.trim())) : -1;
+                      const code = codeIdx >= 0 ? parts[codeIdx].trim() : ev.type === "flight" ? ev.flightNum : undefined;
+                      const title = codeIdx >= 0 ? parts[1 - codeIdx].trim() : ev.title;
+                      const time = ev.time ? formatTimeInput(ev.time) : "";
                       return (
                         <button
                           key={ev.id}
                           type="button"
                           onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
                           data-compact-cell
-                          className="bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
+                          className="bg-card px-4 py-4 text-left flex flex-col justify-start hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                         >
                           <div className="flex items-center gap-2 mb-2.5">
                             <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
-                            <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}</span>
+                            <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}{time && <span className="tabular-nums">, {time}</span>}</span>
+                            {code && <span className="ml-auto text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">{code}</span>}
                           </div>
-                          <p className="text-sm font-medium text-foreground leading-tight line-clamp-1 group-hover:text-brand transition-colors">
-                            {ev.title}
+                          <p className="text-sm font-medium text-foreground leading-snug line-clamp-2 group-hover:text-brand transition-colors">
+                            {title}
                           </p>
-                          {ev.location && (
-                            <p className="text-[10px] font-medium text-muted-foreground truncate mt-1 flex items-center gap-1">
-                              <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
+                          {ev.location && !(ev.type === "flight" && / to /i.test(title)) && (
+                            <p className="text-[11px] font-medium text-muted-foreground mt-1 flex items-center gap-1 min-w-0">
+                              <MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{ev.location}</span>
                             </p>
                           )}
-                          <div className="flex items-center justify-between mt-2.5 gap-2">
-                            <p className="text-[11px] font-medium text-muted-foreground truncate">{tripName}</p>
-                            {ev.time && <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
-                          </div>
+                          <p className="text-[11px] font-medium text-muted-foreground truncate mt-auto pt-2.5">{tripName}</p>
                         </button>
                       );
                     })}
@@ -693,11 +699,6 @@ export function DashboardPage() {
             <div data-compact-sidebar className="flex flex-col gap-4">
               {/* Every trip's flights, live: today's statuses, tomorrow a click away */}
               <FlightsBoard trips={trips} directory={customTravelers} onOpen={tripId => navigate(`/trip/${tripId}`)} />
-
-              <div data-compact-section-head className="mb-0">
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">Calendar</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Where your trips fall</p>
-              </div>
 
               {/* Open tasks */}
               {openTasks.total > 0 && (
@@ -772,8 +773,23 @@ export function DashboardPage() {
                   activeDay: activeDays,
                 };
 
+                // Trips that touch the month on screen, and the next one after it when the month is empty
+                const monthStart = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+                const monthEnd = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0);
+                const inMonth = trips
+                  .filter(t => new Date(t.start + "T00:00:00") <= monthEnd && new Date(t.end + "T00:00:00") >= monthStart)
+                  .sort((a, b) => a.start.localeCompare(b.start));
+                const nextAfter = inMonth.length ? null : trips
+                  .filter(t => new Date(t.start + "T00:00:00") > monthEnd)
+                  .sort((a, b) => a.start.localeCompare(b.start))[0];
+                const monthName = calMonth.toLocaleDateString("en-GB", { month: "long" });
+
                 return (
                   <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col">
+                    <div data-compact-card-head className="px-5 pt-5">
+                      <p className="text-base font-semibold tracking-tight text-foreground leading-none">Calendar</p>
+                      <p className="text-xs text-muted-foreground mt-1">Where your trips fall</p>
+                    </div>
                     <div className="flex flex-col px-3 py-2 daf-sidebar-cal">
                       <DayPicker
                         mode="single"
@@ -816,6 +832,35 @@ export function DashboardPage() {
                           IconRight: () => <CaretRight className="h-3 w-3" />,
                         }}
                       />
+                    </div>
+                    <div className="border-t border-border px-3 py-3">
+                      {inMonth.length > 0 ? (
+                        <ul className="space-y-0.5">
+                          {inMonth.slice(0, 4).map(t => (
+                            <li key={t.id}>
+                              <button type="button" onClick={() => navigate(`/trip/${t.id}`)} className="w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-secondary transition-colors group">
+                                {t.image
+                                  ? <img src={t.image} alt="" decoding="async" className="h-8 w-8 rounded-md object-cover shrink-0 bg-secondary" />
+                                  : <span className="h-8 w-8 rounded-md bg-secondary shrink-0" />}
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-sm font-medium text-foreground truncate group-hover:text-brand transition-colors">{t.name}</span>
+                                  <span className="block text-xs text-muted-foreground tabular-nums">{shortDay(t.start)} to {shortDay(t.end)}</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                          {inMonth.length > 4 && <li className="px-2 pt-1 text-xs text-muted-foreground">and {inMonth.length - 4} more in {monthName}</li>}
+                        </ul>
+                      ) : (
+                        <div className="flex items-center justify-between gap-3 px-2 py-1">
+                          <p className="text-xs text-muted-foreground">No trips in {monthName}.</p>
+                          {nextAfter && (
+                            <button type="button" onClick={() => setCalMonth(new Date(nextAfter.start + "T00:00:00"))} className="text-xs font-medium text-link hover:underline shrink-0">
+                              Next starts {shortDay(nextAfter.start)}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1152,74 +1197,54 @@ export function DashboardPage() {
                     {!showArchived && <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-link hover:underline mt-2">Create your first trip →</button>}
                   </div>
                 )}
+                {filteredTrips.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                    <div className="hidden md:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_5rem_minmax(0,1.3fr)_2.5rem] items-center gap-4 px-4 py-2.5 border-b border-border text-xs text-muted-foreground">
+                      <span>Trip</span><span>Dates</span><span className="text-right">Travellers</span><span>Travellers' copy</span><span />
+                    </div>
+                    <ul className="divide-y divide-border">
                 {filteredTrips.map(trip => {
                   const tStart = parseTripDate(trip.start);
                   const tEnd = parseTripDate(trip.end);
-                  const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                  const dm = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                  const tDateStr = tStart.getMonth() === tEnd.getMonth() && tStart.getFullYear() === tEnd.getFullYear() ? `${tStart.getDate()} to ${dm(tEnd)}` : `${dm(tStart)} to ${dm(tEnd)}`;
                   const dLeft = daysUntil(trip.start);
-                  const label = lifecycleLabel(trip);
-                  const isActive = label === "Active";
+                  const ended = tEnd < todayStart;
+                  const whenText = ended ? "Ended" : dLeft <= 0 ? "On now" : dLeft === 1 ? "Tomorrow" : `In ${dLeft} days`;
+                  const changes = trip.status !== "Draft" && trip.publishedSnapshot ? publishedChanges(trip.publishedSnapshot, { events: trip.events, start: trip.start, end: trip.end, info: trip.info }).length : 0;
+                  const copy = trip.status === "Draft" || !trip.publishedSnapshot ? { text: "Draft, not published", tone: "text-muted-foreground" } : changes ? { text: `${changes} ${changes === 1 ? "change" : "changes"} to publish`, tone: "text-amber-700 dark:text-amber-400" } : { text: "Published", tone: "text-muted-foreground" };
                   return (
-                    <div
+                    <li
                       key={trip.id}
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group bg-card border border-border shadow-sm rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      className="group grid grid-cols-[minmax(0,1fr)_2.5rem] md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_5rem_minmax(0,1.3fr)_2.5rem] items-center gap-4 px-4 py-2.5 cursor-pointer hover:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:bg-secondary"
                     >
-                      {/* Image */}
-                      <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden bg-secondary">
-                        <img src={trip.image} alt={trip.name} style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10" />
-                      </div>
-
-                      {/* Content */}
-                      <div data-compact-table-content className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-[14px] font-semibold tracking-tight text-foreground leading-tight truncate group-hover:text-brand transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative h-10 w-14 shrink-0 rounded-lg overflow-hidden bg-secondary">
+                          {trip.image && <img src={trip.image} alt="" loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 h-full w-full object-cover" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {trip.private && <LockSimple className="inline h-3.5 w-3.5 mr-1 -mt-0.5 text-muted-foreground" weight="bold" aria-label="Private trip" />}
                             {trip.name}
                           </p>
-                          <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] ${
-                            isActive
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : trip.status === "Published"
-                              ? "bg-brand/10 text-brand"
-                              : "bg-secondary dark:bg-white/5 text-muted-foreground"
-                          }`}>
-                            <span className={`h-1 w-1 rounded-full ${
-                              isActive ? "bg-emerald-500 dark:bg-emerald-400"
-                              : trip.status === "Published" ? "bg-brand"
-                              : "bg-slate-400 dark:bg-slate-500"
-                            }`} />
-                            {label}
-                          </span>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {trip.destination || <span className="sr-only">No destination</span>}
+                            <span className="md:hidden">{trip.destination ? ", " : ""}{tDateStr}, {whenText.toLowerCase()}</span>
+                          </p>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          {trip.destination && <span>{trip.destination}</span>}
-                          <span>{tDateStr}</span>
-                          <span>{travellerCount(trip)} travellers</span>
-                          <span>{trip.events.length} events</span>
-                        </div>
-                        {trip.events.length > 0 && (
-                          <div className="flex items-center gap-0.5 h-[3px] max-w-[240px]" aria-hidden>
-                            {trip.events.slice(0, 40).map(e => (
-                              <span key={e.id} className={`flex-1 h-[3px] rounded-full ${(CATEGORY_CLASS[e.type] ?? CATEGORY_CLASS.activity).fg.replace("text-", "bg-")}`} />
-                            ))}
-                          </div>
-                        )}
                       </div>
-
-                      {/* Right: countdown + actions */}
-                      <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4">
-                        {dLeft > 0 && parseTripDate(trip.end) >= new Date() && (
-                          <span className="text-[10px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-lg leading-none tracking-wide whitespace-nowrap">
-                            {dLeft === 0 ? "Today" : `${dLeft}d`}
-                          </span>
-                        )}
-                        <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
+                      <div className="hidden md:block min-w-0">
+                        <p className="text-sm text-foreground tabular-nums">{tDateStr}</p>
+                        <p className={`text-xs ${whenText === "On now" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>{whenText}</p>
+                      </div>
+                      <p className="hidden md:block text-sm text-foreground tabular-nums text-right">{travellerCount(trip)}</p>
+                      <p className={`hidden md:block text-sm truncate ${copy.tone}`}>{copy.text}</p>
+                      <div onClick={e => e.stopPropagation()} className="flex justify-end md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors flex items-center justify-center cursor-pointer">
+                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center justify-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand/40" aria-label={`Actions for ${trip.name}`}>
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
@@ -1231,12 +1256,13 @@ export function DashboardPage() {
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <CaretRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors" />
-                        </div>
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
+                    </ul>
+                  </div>
+                )}
                 {filteredTrips.length > 0 && (
                   <button
                     onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}

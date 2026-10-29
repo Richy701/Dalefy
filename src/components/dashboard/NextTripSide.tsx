@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchTripMembers, APP_MEMBERS_ERROR } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/lib/dates";
 import { EVENT_ICONS, EVENT_TEXT_COLORS, type EventType } from "@/config/eventStyles";
+import { publishedChanges } from "@/lib/tripChanges";
 import type { Trip } from "@/types";
 
 /** The next trip at a glance: who's going, who's ready, and what happens first */
@@ -22,46 +23,47 @@ export function NextTripSide({ trip }: { trip: Trip }) {
   const type = (first?.type ?? "activity") as EventType;
   const Icon = EVENT_ICONS[type];
 
+  const changes = trip.status !== "Draft" && trip.publishedSnapshot
+    ? publishedChanges(trip.publishedSnapshot, { events: trip.events, start: trip.start, end: trip.end, info: trip.info }).length : 0;
+  const copy = trip.status === "Draft" || !trip.publishedSnapshot ? { text: "Draft", warn: false }
+    : changes ? { text: `${changes} ${changes === 1 ? "change" : "changes"} to publish`, warn: true } : { text: "Published", warn: false };
+
+  // Label on the left, value on the right, one line each, so the panel reads like a checklist
+  const row = (label: string, value: React.ReactNode, sub?: React.ReactNode) => (
+    <div className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <dt className="text-xs text-muted-foreground pt-0.5 shrink-0">{label}</dt>
+      <dd className="text-sm text-foreground text-right min-w-0">
+        {value}
+        {sub && <span className="block text-xs text-muted-foreground mt-0.5">{sub}</span>}
+      </dd>
+    </div>
+  );
+
   return (
-    <div className="w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-border p-5 sm:p-6 flex flex-col justify-center gap-5">
-      {travellers.length > 0 && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Travellers</p>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2 shrink-0" aria-hidden="true">
-              {travellers.slice(0, 5).map(t => (
-                <span key={t.id} className="h-8 w-8 rounded-full border-2 border-card bg-secondary overflow-hidden flex items-center justify-center text-[10px] font-semibold text-foreground">
+    <div className="w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-border p-5 sm:p-6 flex flex-col justify-center">
+      <dl className="divide-y divide-border">
+        {travellers.length > 0 && row("Travellers", (
+          <span className="inline-flex items-center gap-2">
+            <span className="flex -space-x-1.5" aria-hidden="true">
+              {travellers.slice(0, 4).map(t => (
+                <span key={t.id} className="h-6 w-6 rounded-full ring-2 ring-card bg-secondary overflow-hidden flex items-center justify-center text-[9px] font-semibold text-foreground">
                   {t.avatar ? <img src={t.avatar} alt="" className="h-full w-full object-cover" /> : t.initials}
                 </span>
               ))}
-            </div>
-            <p className="text-sm text-muted-foreground min-w-0">
-              <span className="font-semibold text-foreground">{invited} of {travellers.length}</span> invited
-              {inApp !== null && <>, <span className="font-semibold text-foreground">{inApp}</span> in the app</>}
-              {inAppError && <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{APP_MEMBERS_ERROR}</span>}
-            </p>
-          </div>
-        </div>
-      )}
-      {first && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">First up</p>
-          <div className="flex items-center gap-3">
-            <span className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center shrink-0">
-              <Icon className={`h-4 w-4 ${EVENT_TEXT_COLORS[type]}`} />
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-foreground truncate">{first.title}</span>
-              <span className="block text-xs text-muted-foreground">
-                {parseTripDate(first.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}{first.time && first.time !== "TBD" ? `, ${first.time}` : ""}
-              </span>
-            </span>
-          </div>
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">
-        {trip.status === "Draft" ? "Draft, not visible to travellers yet" : "Published to travellers"}
-      </p>
+            <span className="tabular-nums">{travellers.length}</span>
+          </span>
+        ))}
+        {travellers.length > 0 && row("Invited", <span className={`tabular-nums ${invited < travellers.length ? "text-amber-700 dark:text-amber-400" : ""}`}>{invited} of {travellers.length}</span>)}
+        {travellers.length > 0 && row("In the app", inAppError ? <span className="text-xs text-amber-700 dark:text-amber-400">{APP_MEMBERS_ERROR}</span> : <span className="tabular-nums">{inApp === null ? "..." : `${inApp} of ${travellers.length}`}</span>)}
+        {first && row("First up", (
+          <span className="inline-flex items-center gap-1.5 max-w-[11rem]">
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${EVENT_TEXT_COLORS[type]}`} />
+            <span className="truncate">{first.title}</span>
+          </span>
+        ), `${parseTripDate(first.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}${first.time && first.time !== "TBD" ? `, ${first.time}` : ""}`)}
+        {row("Travellers' copy", <span className={copy.warn ? "text-amber-700 dark:text-amber-400" : ""}>{copy.text}</span>)}
+      </dl>
     </div>
   );
 }

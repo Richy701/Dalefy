@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users } from "@phosphor-icons/react";
 import { parseTripDate } from "@/lib/dates";
 import { travellerCount } from "@/lib/travelerSync";
 import { ReportCard, EmptyNote } from "@/components/reports/ReportParts";
-import { shortDate } from "@/components/reports/format";
 import type { Trip } from "@/types";
 
 /** Where groups are heading next, month by month */
@@ -29,31 +27,37 @@ export function UpcomingTimeline({ trips, destinationOf }: { trips: Trip[]; dest
         <div className="space-y-5">
           {months.groups.map(g => (
             <div key={g.label}>
-              <div className="flex items-center gap-3 mb-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{g.label}</p>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <ul className="grid gap-x-6 gap-y-1 md:grid-cols-2">
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">{g.label}</p>
+              {/* One column in date order, so you read straight down the calendar */}
+              <ul className="-mx-2 divide-y divide-border">
                 {g.trips.map(t => {
-                  const live = parseTripDate(t.start) <= months.today;
+                  const start = parseTripDate(t.start), end = parseTripDate(t.end);
+                  const live = start <= months.today;
+                  const days = Math.round((start.getTime() - months.today.getTime()) / 86_400_000);
+                  const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+                  const pax = travellerCount(t);
                   return (
                     <li key={t.id}>
                       <button
                         type="button"
                         onClick={() => navigate(`/trip/${t.id}`)}
-                        className="w-full flex items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-secondary/50 transition-colors"
+                        className="w-full flex items-center gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-secondary/50 transition-colors outline-none focus-visible:bg-secondary"
                       >
+                        <span className="w-10 shrink-0 text-center leading-none">
+                          <span className="block text-lg font-semibold tabular-nums text-foreground">{start.getDate()}</span>
+                          <span className="block text-[11px] text-muted-foreground mt-0.5">{start.toLocaleDateString("en-GB", { month: "short" })}</span>
+                        </span>
                         <img src={t.image} alt="" className="h-10 w-10 rounded-lg object-cover bg-secondary shrink-0" loading="lazy" />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-foreground truncate">{t.name}</span>
+                          <span className="block text-sm font-medium text-foreground truncate">{t.name}</span>
                           <span className="block text-xs text-muted-foreground truncate">{destinationOf(t)}</span>
                         </span>
                         <span className="text-right shrink-0">
-                          <span className={`block text-xs font-semibold tabular-nums ${live ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
-                            {live ? "On now" : `${shortDate(t.start)} to ${shortDate(t.end)}`}
+                          <span className={`block text-sm tabular-nums ${live ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>
+                            {live ? "On now" : days === 1 ? "Tomorrow" : `In ${days} days`}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Users className="h-3 w-3" /> {travellerCount(t)}
+                          <span className="block text-xs text-muted-foreground tabular-nums">
+                            {nights} {nights === 1 ? "night" : "nights"}, {pax} {pax === 1 ? "traveller" : "travellers"}
                           </span>
                         </span>
                       </button>

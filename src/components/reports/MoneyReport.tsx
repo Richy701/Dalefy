@@ -4,7 +4,7 @@ import { CaretRight } from "@phosphor-icons/react";
 import { formatMoney, summariseCosts } from "@/lib/tripCosts";
 import { moneyByCurrency } from "@/lib/reportMoney";
 import type { Trip, TravelEvent } from "@/types";
-import { ReportCard, Figure, EmptyNote } from "./ReportParts";
+import { ReportCard, EmptyNote } from "./ReportParts";
 import { shortDate } from "./format";
 
 // Words typed into the supplier box that name a kind of booking, not a company
@@ -29,7 +29,6 @@ export function MoneyReport({ trips }: { trips: Trip[] }) {
   const byType = current.byType.filter(t => t.total > 0);
   const tripRows = rows.filter(r => r.currency === current.currency).sort((a, b) => (a.trip.start || "").localeCompare(b.trip.start || ""));
   const maxType = Math.max(1, ...byType.map(t => t.total));
-  const budgetUsed = current.budget ? Math.round((current.spendOnBudgeted / current.budget) * 100) : null;
 
   // Who the money goes to: spend per supplier on this currency's trips, each priced booking counted once
   const suppliers = (() => {
@@ -72,12 +71,6 @@ export function MoneyReport({ trips }: { trips: Trip[] }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Figure label="Spend" value={money(current.spend)} sub={`${current.trips} ${current.trips === 1 ? "trip" : "trips"}`} />
-        <Figure label="Budget" value={current.budget ? money(current.budget) : "None set"} sub={budgetUsed !== null ? `${budgetUsed}% used on budgeted trips` : "Add budgets in the Workspace"} />
-        <Figure label="Per head" value={perHead(current.perHead)} sub={`${current.travellers} ${current.travellers === 1 ? "traveller" : "travellers"}`} />
-        <Figure label="Over budget" value={`${current.overBudget}`} sub={current.unpriced ? `${current.unpriced} ${current.unpriced === 1 ? "price" : "prices"} couldn't be read` : "All prices read"} />
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <ReportCard title="Spend by type" sub="What the money goes on">
@@ -117,20 +110,25 @@ export function MoneyReport({ trips }: { trips: Trip[] }) {
                   {tripRows.map(r => {
                     const gaps = r.missing + r.unpriced.length;
                     return (
-                      <tr key={r.trip.id} onClick={() => navigate(`/trip/${r.trip.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/60 cursor-pointer">
-                        <td className="px-4 sm:px-6 py-3">
-                          <p className="font-medium text-foreground truncate max-w-[16rem]">{r.trip.name}</p>
-                          <p className="text-xs text-muted-foreground">{shortDate(r.trip.start)}</p>
+                      <tr key={r.trip.id} onClick={() => navigate(`/trip/${r.trip.id}`)} className="group border-b border-border last:border-0 hover:bg-secondary/50 cursor-pointer">
+                        <td className="px-4 sm:px-6 py-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {r.trip.image ? <img src={r.trip.image} alt="" loading="lazy" className="h-9 w-12 rounded-md object-cover shrink-0" /> : <div className="h-9 w-12 rounded-md bg-secondary shrink-0" />}
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground truncate max-w-[16rem]">{r.trip.name}</p>
+                              <p className="text-xs text-muted-foreground">{shortDate(r.trip.start)}</p>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-3 text-right tabular-nums text-muted-foreground">{r.budget !== null ? money(r.budget) : "None"}</td>
-                        <td className="py-3 text-right tabular-nums text-foreground">{money(r.spend)}</td>
-                        <td className={`py-3 text-right tabular-nums font-medium ${r.left === null ? "text-muted-foreground" : r.left < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                        <td className="py-2.5 text-right tabular-nums text-muted-foreground">{r.budget !== null ? money(r.budget) : <span className="sr-only">No budget</span>}</td>
+                        <td className="py-2.5 text-right tabular-nums text-foreground">{money(r.spend)}</td>
+                        <td className={`py-2.5 text-right tabular-nums ${r.left === null ? "text-muted-foreground" : r.left < 0 ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                           {r.left === null ? "" : r.left < 0 ? `${money(-r.left)} over` : money(r.left)}
                         </td>
-                        <td className="py-3 text-right tabular-nums text-muted-foreground">{r.priced ? perHead(r.perHead) : ""}</td>
-                        <td className="py-3 pr-4 sm:pr-6 text-right tabular-nums">
-                          <span className={gaps ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}>{gaps || "None"}</span>
-                          <CaretRight className="inline h-3 w-3 ml-2 text-muted-foreground" />
+                        <td className="py-2.5 text-right tabular-nums text-muted-foreground">{r.priced ? perHead(r.perHead) : ""}</td>
+                        <td className="py-2.5 pr-4 sm:pr-6 text-right tabular-nums">
+                          {gaps ? <span className="text-amber-700 dark:text-amber-400">{gaps}</span> : <span className="sr-only">All priced</span>}
+                          <CaretRight className="inline h-3 w-3 ml-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </td>
                       </tr>
                     );

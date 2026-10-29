@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { AirplaneTilt, CaretRight, Flag, ImageSquare, PaperPlaneTilt } from "@phosphor-icons/react";
-import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
+import { AirplaneTilt, CaretRight, Info, ListChecks, Check } from "@phosphor-icons/react";
+import { fetchTripMembers, APP_MEMBERS_ERROR, type TripMember } from "@/services/firebaseTrips";
+import { joinedByTrip } from "@/lib/appMembers";
 import { publishedChanges } from "@/lib/tripChanges";
 import { parseTripDate } from "@/lib/dates";
-import { timeAgo } from "@/lib/timeAgo";
-import type { Trip, TravelEvent } from "@/types";
-import { ReportCard, Figure, EmptyNote } from "./ReportParts";
+import { objectPosition } from "@/lib/imagePosition";
+import { useComplianceRecords, useDirectoryTravelers } from "@/context/directory";
+import type { Trip, TravelEvent, ComplianceDoc } from "@/types";
+import { ReportCard, EmptyNote } from "./ReportParts";
 import { shortDate } from "./format";
+
+const DAY_MS = 86400000;
 
 /** "14:30" or "2:30 PM" in minutes past midnight; null when there's no time */
 function minutes(t?: string): number | null {
@@ -25,36 +28,107 @@ function delayOf(ev: TravelEvent): number {
   return planned == null || revised == null ? 0 : revised - planned;
 }
 
-interface MediaReport { trip_id: string; media_id: string; reported_at: string }
+/** Whole days from today to a date: negative when it has passed */
+function daysFrom(today: Date, value: string): number {
+  const d = parseTripDate(value);
+  return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - today.getTime()) / DAY_MS);
+}
 
-/** Publishing, live flights and the gallery, trip by trip */
+const dateRange = (t: Trip) => (t.end && t.end !== t.start ? `${shortDate(t.start)} to ${shortDate(t.end)}` : shortDate(t.start));
+
+/** One readiness check on one trip: done, needs work, or doesn't apply */
+type Check = { state: "ok" | "todo" | "na"; text: string };
+const CHECKS = ["Published", "Changes sent", "Invited", "In the app", "Documents", "Booking refs", "Tasks"] as const;
+
+// Only open checks draw the eye: done is a quiet tick, not applicable is blank (still read out)
+function CheckCell({ check, label }: { check: Check; label: string }) {
+  if (check.state === "na") return <span className="text-xs text-muted-foreground lg:sr-only"><span className="lg:hidden">{label}, </span>{check.text}</span>;
+  if (check.state === "ok") return (
+    <span className="flex items-center gap-1.5 min-w-0 text-muted-foreground" title={`${label}: ${check.text}`}>
+      <Check className="h-3.5 w-3.5 shrink-0" weight="bold" aria-hidden />
+      <span className="text-xs truncate lg:sr-only"><span className="lg:hidden">{label}, </span>{check.text}</span>
+    </span>
+  );
+  return (
+    <span className="text-xs truncate text-amber-700 dark:text-amber-400" title={`${label}: ${check.text}`}>
+      <span className="lg:hidden text-muted-foreground">{label}, </span>{check.text}
+    </span>
+  );
+}
+
+/** Is each current and upcoming trip ready, what's due soon, and how its flights are doing */
 export function TripsReport({ trips }: { trips: Trip[] }) {
   const navigate = useNavigate();
-  const [loaded, setLoaded] = useState<MediaReport[] | null>(null);
-  const tripIds = useMemo(() => trips.map(t => t.id).sort().join(","), [trips]);
-
-  // Photo reports from travellers, read a trip at a time the way the rules allow
-  useEffect(() => {
-    if (!isFirebaseConfigured() || !tripIds) return;
-    let cancelled = false;
-    Promise.all(tripIds.split(",").map(id =>
-      getDocs(query(collection(firebaseDb(), "media_reports"), where("trip_id", "==", id))).then(s => s.docs.map(d => d.data() as MediaReport)).catch(() => []),
-    )).then(lists => { if (!cancelled) setLoaded(lists.flat()); });
-    return () => { cancelled = true; };
-  }, [tripIds]);
-
-  const reports = useMemo(() => (!isFirebaseConfigured() || !tripIds ? [] : loaded), [tripIds, loaded]);
+  const [complianceOverrides] = useComplianceRecords();
+  const [directory] = useDirectoryTravelers();
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
-  const current = useMemo(() => trips.filter(t => parseTripDate(t.end) >= today), [trips, today]);
+  const current = useMemo(() => trips.filter(t => parseTripDate(t.end || t.start) >= today)
+    .sort((a, b) => (a.start || "").localeCompare(b.start || "")), [trips, today]);
 
-  const publishing = useMemo(() => {
-    const drafts = trips.filter(t => t.status === "Draft");
-    const pending = trips
-      .filter(t => t.status !== "Draft" && t.publishedSnapshot)
-      .map(t => ({ trip: t, changes: publishedChanges(t.publishedSnapshot!, { events: t.events, start: t.start, end: t.end, info: t.info }) }))
-      .filter(r => r.changes.length > 0);
-    return { drafts, pending, published: trips.length - drafts.length };
-  }, [trips]);
+  const currentIds = useMemo(() => current.map(t => t.id).sort().join(","), [current]);
+  const [members, setMembers] = useState<TripMember[] | null>(null);
+  const [membersError, setMembersError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchTripMembers(currentIds ? currentIds.split(",") : [])
+      .then(list => { if (!cancelled) { setMembers(list); setMembersError(false); } })
+      .catch(() => { if (!cancelled) setMembersError(true); });
+    return () => { cancelled = true; };
+  }, [currentIds]);
+  const joined = useMemo(() => (members ? joinedByTrip(members) : null), [members]);
+
+  // A traveller's documents: the saved record first, then the directory entry (matched by id, then name)
+  const docsOf = useMemo(() => {
+    const byId = new Map(directory.map(u => [u.id, u]));
+    const byName = new Map(directory.map(u => [u.name.trim().toLowerCase(), u]));
+    return (tv: { id: string; name: string }): ComplianceDoc[] =>
+      complianceOverrides[tv.id] || byId.get(tv.id)?.compliance || byName.get(tv.name.trim().toLowerCase())?.compliance || [];
+  }, [directory, complianceOverrides]);
+
+  const readiness = useMemo(() => current.map(t => {
+    const travellers = t.travelers ?? [];
+    const draft = t.status === "Draft";
+    const changes = !draft && t.publishedSnapshot
+      ? publishedChanges(t.publishedSnapshot, { events: t.events, start: t.start, end: t.end, info: t.info }).length : 0;
+    const invited = travellers.filter(p => p.invitedAt).length;
+    const inApp = joined?.get(t.id) ?? 0;
+    const required = travellers.map(p => docsOf(p).filter(d => d.status !== "Not Required"));
+    const tracked = required.some(r => r.length > 0);
+    const owing = required.filter(r => r.some(d => d.status !== "Signed")).length;
+    const bookings = t.events.filter(e => e.type === "flight" || e.type === "hotel");
+    const withRef = bookings.filter(e => e.confNumber?.trim()).length;
+    const openTasks = (t.tasks ?? []).filter(k => !k.completed).length;
+
+    const checks: Check[] = [
+      draft ? { state: "todo", text: "Draft" } : { state: "ok", text: "Published" },
+      draft ? { state: "na", text: "Not published" } : changes ? { state: "todo", text: `${changes} to send` } : { state: "ok", text: "Up to date" },
+      !travellers.length ? { state: "na", text: "No travellers" } : invited === travellers.length ? { state: "ok", text: "All invited" } : { state: "todo", text: `${travellers.length - invited} to invite` },
+      membersError ? { state: "na", text: "Unknown" } : !travellers.length ? { state: "na", text: "No travellers" } : inApp >= travellers.length ? { state: "ok", text: `${inApp} of ${travellers.length}` } : { state: "todo", text: `${inApp} of ${travellers.length}` },
+      !tracked ? { state: "na", text: "Not tracked" } : owing ? { state: "todo", text: `${owing} ${owing === 1 ? "person owes" : "people owe"}` } : { state: "ok", text: "Complete" },
+      !bookings.length ? { state: "na", text: "No bookings" } : withRef === bookings.length ? { state: "ok", text: "All have refs" } : { state: "todo", text: `${bookings.length - withRef} missing` },
+      !(t.tasks ?? []).length ? { state: "na", text: "No tasks" } : openTasks ? { state: "todo", text: `${openTasks} open` } : { state: "ok", text: "All done" },
+    ];
+    return { trip: t, checks, todo: checks.filter(c => c.state === "todo").length };
+  }), [current, joined, membersError, docsOf]);
+
+  // Tasks and trip info with a date, overdue or due within a week, most overdue first
+  const due = useMemo(() => {
+    const items: Array<{ key: string; kind: "task" | "info"; title: string; trip: Trip; days: number; who?: string }> = [];
+    for (const t of trips) {
+      for (const k of t.tasks ?? []) {
+        if (k.completed || !k.dueDate) continue;
+        const days = daysFrom(today, k.dueDate);
+        if (days <= 7) items.push({ key: `t-${t.id}-${k.id}`, kind: "task", title: k.title, trip: t, days, who: k.assignee });
+      }
+      for (const i of t.info ?? []) {
+        if (i.completed || !i.deadline) continue;
+        const days = daysFrom(today, i.deadline);
+        if (days <= 7) items.push({ key: `i-${t.id}-${i.id}`, kind: "info", title: i.title, trip: t, days });
+      }
+    }
+    const undated = trips.reduce((n, t) => n + (t.tasks ?? []).filter(k => !k.completed && !k.dueDate).length, 0);
+    return { items: items.sort((a, b) => a.days - b.days), undated };
+  }, [trips, today]);
 
   const flights = useMemo(() => {
     const list = current.flatMap(t => t.events.filter(e => e.type === "flight").map(ev => ({ trip: t, ev, delay: delayOf(ev) })));
@@ -63,117 +137,120 @@ export function TripsReport({ trips }: { trips: Trip[] }) {
       total: list.length,
       delayed: list.filter(f => f.delay >= 15 || status(f.ev.status) === "delayed"),
       cancelled: list.filter(f => ["canceled", "cancelled", "diverted"].includes(status(f.ev.status))),
-      gates: list.filter(f => f.ev.gate).length,
       landed: list.filter(f => f.ev.arrivedAt).length,
     };
   }, [current]);
 
-  const gallery = useMemo(() => trips.map(t => {
-    const photos = (t.media ?? []).filter(m => m.type === "image");
-    return {
-      trip: t,
-      photos: photos.length,
-      people: new Set(photos.map(p => p.uploaderId || p.uploadedBy).filter(Boolean)).size,
-      latest: photos.map(p => p.uploadedAt).filter(Boolean).sort().pop() ?? null,
-      reported: (reports ?? []).filter(r => r.trip_id === t.id && photos.some(p => p.id === r.media_id)).length,
-    };
-  }).filter(g => g.photos > 0).sort((a, b) => b.photos - a.photos), [trips, reports]);
-
+  const flightIssues = flights.cancelled.length + flights.delayed.filter(f => !flights.cancelled.includes(f)).length;
   const openTrip = (id: string) => navigate(`/trip/${id}`);
-  const reportedTotal = gallery.reduce((n, g) => n + g.reported, 0);
+  const dueText = (days: number) => days < 0 ? `${-days} ${days === -1 ? "day" : "days"} overdue` : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `Due in ${days} days`;
 
   return (
     <div className="space-y-6 mt-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Figure label="Published" value={`${publishing.published}`} sub={`${publishing.drafts.length} still in draft`} />
-        <Figure label="Waiting to publish" value={`${publishing.pending.length}`} sub="Published trips with newer changes" />
-        <Figure label="Flights tracked" value={`${flights.total}`} sub={`${flights.delayed.length} delayed, ${flights.gates} with a gate`} />
-        <Figure label="Gallery photos" value={`${gallery.reduce((n, g) => n + g.photos, 0)}`} sub={reports === null ? "Checking reports" : `${reportedTotal} reported by travellers`} />
-      </div>
+
+      <ReportCard title="Readiness" sub="Every current and upcoming trip against the checks that matter before departure">
+        {readiness.length === 0 ? <EmptyNote>No current or upcoming trips in this selection.</EmptyNote> : (
+          <div className="-mx-4 sm:-mx-6">
+            <div className="hidden lg:grid grid-cols-[minmax(0,2.2fr)_repeat(7,minmax(0,1fr))] gap-3 px-4 sm:px-6 pb-2 border-b border-border text-xs text-muted-foreground">
+              <span>Trip</span>
+              {CHECKS.map(c => <span key={c}>{c}</span>)}
+            </div>
+            <ul className="divide-y divide-border">
+              {readiness.map(({ trip, checks, todo }) => {
+                const days = daysFrom(today, trip.start);
+                return (
+                  <li key={trip.id}>
+                    <button type="button" onClick={() => openTrip(trip.id)}
+                      className="w-full text-left px-4 sm:px-6 py-3 hover:bg-secondary/60 transition-colors grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_repeat(7,minmax(0,1fr))] gap-x-3 gap-y-3 items-center">
+                      <span className="flex items-center gap-3 min-w-0">
+                        {trip.image
+                          ? <img src={trip.image} alt="" loading="lazy" className="h-10 w-14 rounded-lg object-cover shrink-0" style={{ objectPosition: objectPosition(trip.imagePosition) }} />
+                          : <span className="h-10 w-14 rounded-lg bg-secondary shrink-0" />}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-foreground truncate">{trip.name}</span>
+                          <span className="block text-xs text-muted-foreground truncate">
+                            {dateRange(trip)}, {days > 0 ? `in ${days} ${days === 1 ? "day" : "days"}` : "travelling now"}
+                            {todo === 0 && <span className="text-emerald-700 dark:text-emerald-400">, ready</span>}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="hidden lg:contents">
+                        {checks.map((c, i) => <CheckCell key={CHECKS[i]} check={c} label={CHECKS[i]} />)}
+                      </span>
+                      {/* Narrow screens: only what still needs doing */}
+                      <span className="lg:hidden flex flex-col gap-1.5">
+                        {todo === 0
+                          ? <CheckCell check={{ state: "ok", text: "Every check done" }} label="Ready" />
+                          : checks.map((c, i) => c.state === "todo" ? <CheckCell key={CHECKS[i]} check={c} label={CHECKS[i]} /> : null)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {membersError && <p className="text-xs text-amber-700 dark:text-amber-400 mt-4">{APP_MEMBERS_ERROR} The In the app check shows Unknown until it loads.</p>}
+      </ReportCard>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ReportCard title="Publishing" sub="Travellers only see what's published">
-          {publishing.pending.length === 0 && publishing.drafts.length === 0 ? (
-            <EmptyNote>Every trip is published and up to date.</EmptyNote>
+        <ReportCard title="Tasks and deadlines" sub="Overdue or due in the next 7 days, most overdue first">
+          {due.items.length === 0 ? (
+            <EmptyNote>Nothing overdue or due this week. Add due dates to tasks in the Workspace to see them here.</EmptyNote>
           ) : (
-            <ul className="divide-y divide-border -my-3">
-              {publishing.pending.map(({ trip, changes }) => (
-                <li key={trip.id}>
-                  <button type="button" onClick={() => openTrip(trip.id)} className="w-full flex items-center gap-3 py-3 text-left rounded-lg hover:bg-secondary/50 px-2 -mx-2 transition-colors">
-                    <PaperPlaneTilt className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-foreground truncate">{trip.name}</span>
-                      <span className="block text-xs text-muted-foreground truncate">{changes.length === 1 ? changes[0] : `${changes.length} changes, including ${changes[0].toLowerCase()}`}</span>
-                    </span>
-                    <span className="text-xs font-medium text-link shrink-0">Publish</span>
-                  </button>
-                </li>
-              ))}
-              {publishing.drafts.map(trip => (
-                <li key={trip.id}>
-                  <button type="button" onClick={() => openTrip(trip.id)} className="w-full flex items-center gap-3 py-3 text-left rounded-lg hover:bg-secondary/50 px-2 -mx-2 transition-colors">
-                    <span className="h-4 w-4 shrink-0 rounded border border-dashed border-muted-foreground/60" aria-hidden="true" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-foreground truncate">{trip.name}</span>
-                      <span className="block text-xs text-muted-foreground">Draft, starts {shortDate(trip.start)}</span>
-                    </span>
-                    <CaretRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                </li>
-              ))}
+            <ul className="-mx-2">
+              {due.items.map(i => {
+                const KindIcon = i.kind === "task" ? ListChecks : Info;
+                return (
+                  <li key={i.key}>
+                    <button type="button" onClick={() => openTrip(i.trip.id)} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg text-left hover:bg-secondary transition-colors">
+                      <span className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                        <KindIcon className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm text-foreground truncate">{i.title}</span>
+                        <span className="block text-xs text-muted-foreground truncate">{i.trip.name}{i.who ? `, ${i.who}` : i.kind === "info" ? ", trip info deadline" : ", unassigned"}</span>
+                      </span>
+                      <span className={`text-xs font-medium shrink-0 ${i.days < 0 ? "text-red-600 dark:text-red-400" : i.days <= 1 ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>{dueText(i.days)}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
+          {due.undated > 0 && <p className="text-xs text-muted-foreground mt-4">{due.undated} open {due.undated === 1 ? "task has" : "tasks have"} no due date, so {due.undated === 1 ? "it isn't" : "they aren't"} listed here.</p>}
         </ReportCard>
 
-        <ReportCard title="Flights" sub={`On current and upcoming trips${flights.landed ? `, ${flights.landed} landed so far` : ""}`}>
-          {flights.delayed.length + flights.cancelled.length === 0 ? (
+        <ReportCard title="Flight disruption" sub={`Delays and cancellations on current and upcoming trips${flights.landed ? `, ${flights.landed} landed so far` : ""}`}>
+          {flightIssues === 0 ? (
             <EmptyNote>{flights.total ? "No delays or cancellations right now." : "No flights on current or upcoming trips."}</EmptyNote>
           ) : (
-            <ul className="divide-y divide-border -my-3">
-              {[...flights.cancelled, ...flights.delayed.filter(f => !flights.cancelled.includes(f))].map(({ trip, ev, delay }) => (
-                <li key={`${trip.id}-${ev.id}`}>
-                  <button type="button" onClick={() => openTrip(trip.id)} className="w-full flex items-center gap-3 py-3 text-left rounded-lg hover:bg-secondary/50 px-2 -mx-2 transition-colors">
-                    <AirplaneTilt className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-foreground truncate">{[ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title}</span>
-                      <span className="block text-xs text-muted-foreground truncate">{trip.name}, {shortDate(ev.date)}</span>
-                    </span>
-                    <span className="text-right shrink-0">
-                      <span className="block text-xs font-semibold text-amber-600 dark:text-amber-400">{delay >= 15 ? `${delay} min late` : ev.status}</span>
-                      {ev.revisedTime && <span className="block text-[11px] text-muted-foreground tabular-nums">{ev.time} now {ev.revisedTime}</span>}
-                    </span>
-                  </button>
-                </li>
-              ))}
+            <ul className="-mx-2">
+              {[...flights.cancelled, ...flights.delayed.filter(f => !flights.cancelled.includes(f))].map(({ trip, ev, delay }) => {
+                const cancelled = ["canceled", "cancelled", "diverted"].includes((ev.status ?? "").toLowerCase());
+                return (
+                  <li key={`${trip.id}-${ev.id}`}>
+                    <button type="button" onClick={() => openTrip(trip.id)} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg text-left hover:bg-secondary transition-colors">
+                      <span className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                        <AirplaneTilt className={`h-4 w-4 ${cancelled ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-foreground truncate">{[ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title}</span>
+                        <span className="block text-xs text-muted-foreground truncate">{trip.name}, {shortDate(ev.date)}</span>
+                      </span>
+                      <span className="text-right shrink-0">
+                        <span className={`block text-xs font-semibold ${cancelled ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>{cancelled ? (ev.status ?? "Cancelled") : delay >= 15 ? `${delay} min late` : ev.status}</span>
+                        {ev.revisedTime && <span className="block text-[11px] text-muted-foreground tabular-nums">{ev.time} now {ev.revisedTime}</span>}
+                      </span>
+                      <CaretRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </ReportCard>
       </div>
-
-      <ReportCard title="Gallery" sub="Photos travellers and your team have shared on each trip">
-        {gallery.length === 0 ? <EmptyNote>No photos shared yet.</EmptyNote> : (
-          <ul className="divide-y divide-border -my-3">
-            {gallery.map(g => (
-              <li key={g.trip.id}>
-                <button type="button" onClick={() => navigate("/media")} className="w-full flex items-center gap-3 py-3 text-left rounded-lg hover:bg-secondary/50 px-2 -mx-2 transition-colors">
-                  <ImageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground truncate">{g.trip.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {g.photos} {g.photos === 1 ? "photo" : "photos"}{g.people ? ` from ${g.people} ${g.people === 1 ? "person" : "people"}` : ""}{g.latest ? `, latest ${timeAgo(g.latest)}` : ""}
-                    </span>
-                  </span>
-                  {g.reported > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 shrink-0">
-                      <Flag className="h-3.5 w-3.5" /> {g.reported} reported
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </ReportCard>
     </div>
   );
 }

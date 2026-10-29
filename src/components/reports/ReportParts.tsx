@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Icon } from "@phosphor-icons/react";
 
 /** A report section: the same card, heading and helper line every Reports tab uses */
 export function ReportCard({ title, sub, action, children }: { title: string; sub?: string; action?: ReactNode; children: ReactNode }) {
@@ -16,12 +17,20 @@ export function ReportCard({ title, sub, action, children }: { title: string; su
   );
 }
 
-export function Figure({ label, value, sub }: { label: string; value: string; sub?: string }) {
+/** A report figure: label, big value, helper line, and an icon tile when given (every tab uses this one) */
+export function Figure({ icon: FigureIcon, label, value, sub, tone = "text-muted-foreground" }: { icon?: Icon; label: string; value: string; sub?: string; tone?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm px-5 py-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-3xl font-semibold tracking-tight leading-none mt-2 tabular-nums text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-2">{sub}</p>}
+    <div className="rounded-xl border border-border bg-card shadow-sm px-5 py-4 flex items-start gap-3.5">
+      {FigureIcon && (
+        <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+          <FigureIcon className={`h-[18px] w-[18px] ${tone}`} />
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-2xl font-semibold tracking-tight leading-none mt-1.5 tabular-nums text-foreground truncate">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-1.5 truncate">{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -45,3 +54,4 @@ export function Share({ label, value, total }: { label: string; value: number; t
 export function EmptyNote({ children }: { children: ReactNode }) {
   return <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{children}</p>;
 }
+

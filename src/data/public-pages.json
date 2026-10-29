@@ -29,7 +29,7 @@
   "changelog": {
     "title": "What's new",
     "eyebrow": "Changelog",
-    "description": "Recent changes across the Dalefy app and workspace. App updates arrive automatically; the App Store version number is shown under Profile → About.",
+    "description": "Recent changes across the Dalefy app and workspace. App updates arrive automatically; the App Store version number is shown under Profile, then About.",
     "updated": "",
     "sections": [],
     "releases": [
@@ -232,7 +232,7 @@
     "sections": [
       {
         "heading": "Contact us",
-        "html": "<p>Email <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a> and we will get back to you as soon as we can. If your question is about a booking, a hotel or a flight, your trip organiser is usually the fastest route, and their details are on the trip's Info page.</p>\n        <p>It helps if you include your app version. You will find it in the app under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">About</span> &rarr; <span class=\"path\">Version</span>. Tap it to copy it.</p>",
+        "html": "<p>Email <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a> and we will get back to you as soon as we can. If your question is about a booking, a hotel or a flight, your trip organiser is usually the fastest route, and their details are on the trip's Info page.</p>\n        <p>It helps if you include your app version. You will find it in the app under <span class=\"path\">Profile</span>, then <span class=\"path\">About</span>, then <span class=\"path\">Version</span>. Tap it to copy it.</p>",
         "faqs": [],
         "signIn": false
       },
@@ -278,7 +278,7 @@
           },
           {
             "question": "Do I need an account?",
-            "answer": "No. You can join and use a trip without one. Signing in with Apple, Google or an email link keeps your trips with you if you change phones. Go to <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Sign in</span>."
+            "answer": "No. You can join and use a trip without one. Signing in with Apple, Google or an email link keeps your trips with you if you change phones. Go to <span class=\"path\">Profile</span>, then <span class=\"path\">Sign in</span>."
           },
           {
             "question": "I asked for a sign-in link but nothing arrived",
@@ -286,11 +286,11 @@
           },
           {
             "question": "How do notifications work?",
-            "answer": "Trip reminders arrive before each event, and itinerary updates and messages arrive when your organiser sends them. Everything also stays in the list behind the bell on Home. If you have not installed the app, updates come by email instead. Both can be turned off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span>."
+            "answer": "Trip reminders arrive before each event, and itinerary updates and messages arrive when your organiser sends them. Everything also stays in the list behind the bell on Home. If you have not installed the app, updates come by email instead. Both can be turned off under <span class=\"path\">Profile</span>, then <span class=\"path\">Notifications</span>."
           },
           {
             "question": "What is Live Activity?",
-            "answer": "On iPhone, flight progress can show on your lock screen and in the Dynamic Island while you travel. Turn it off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span> if you would rather not see it."
+            "answer": "On iPhone, flight progress can show on your lock screen and in the Dynamic Island while you travel. Turn it off under <span class=\"path\">Profile</span>, then <span class=\"path\">Notifications</span> if you would rather not see it."
           },
           {
             "question": "How do I delete my account?",
@@ -305,7 +305,7 @@
         "faqs": [
           {
             "question": "How do I get access to the workspace?",
-            "answer": "Ask your team admin to invite you from Settings &rarr; Team. You will receive an email with a sign-in link that also accepts the invitation."
+            "answer": "Ask your team admin to invite you from Settings, then Team. You will receive an email with a sign-in link that also accepts the invitation."
           },
           {
             "question": "How do travellers get the itinerary?",
@@ -317,7 +317,7 @@
           },
           {
             "question": "Can I use my own branding?",
-            "answer": "Set your company name, logo and accent colour under Settings &rarr; Branding. They appear on the shared itinerary, the app screens for your trips, and the emails Dalefy sends on your behalf."
+            "answer": "Set your company name, logo and accent colour under Settings, then Branding. They appear on the shared itinerary, the app screens for your trips, and the emails Dalefy sends on your behalf."
           }
         ],
         "signIn": false
@@ -386,7 +386,13 @@
         "signIn": false
       }
     ],
-    "releases": []
+    "releases": [],
+    "summary": [
+      "Signing in is optional for travellers. If you do, we keep your name, email address and profile photo.",
+      "Your organiser sees who joined their trip. The other people on the trip see your name and avatar.",
+      "We never store passport details, and we don't sell your data or use it for advertising.",
+      "You can delete your account at any time from Profile in the app."
+    ]
   },
   "terms": {
     "title": "Terms of service",
@@ -467,7 +473,14 @@
         "signIn": false
       }
     ],
-    "releases": []
+    "releases": [],
+    "summary": [
+      "Dalefy is the app. Your organiser plans and runs the trip, and your bookings are with them or the provider.",
+      "You own the photos and text you add. Only add what you have the right to share.",
+      "Keep trip PINs and invite links to the people on the trip.",
+      "Dale's answers are a guide. Check important times in the trip or with your organiser.",
+      "You can stop using Dalefy and delete your account whenever you like."
+    ]
   },
   "delete-account": {
     "title": "Delete your account",
@@ -501,7 +514,7 @@
       },
       {
         "heading": "Organiser accounts",
-        "html": "<p>If you are part of an organiser team, ask your team admin to remove you from the team first under Settings &rarr; Team. Then delete your account the same way, or email us. Trips you created stay with the team.</p>",
+        "html": "<p>If you are part of an organiser team, ask your team admin to remove you from the team first under Settings, then Team. Then delete your account the same way, or email us. Trips you created stay with the team.</p>",
         "faqs": [],
         "signIn": false
       }

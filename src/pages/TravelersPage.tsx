@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useSavePerson } from "@/hooks/useSavePerson";
 import { MergePeopleDialog } from "@/components/shared/MergePeopleDialog";
 import { combinePeople, removePeopleById } from "@/lib/peopleDirectory";
@@ -90,7 +91,7 @@ function appFacts(members: TripMember[]) {
 function appStatus(p: Person): { label: string; tone: "on" | "invited" | "off" } {
   if (p.appKeys.length) {
     const device = p.platform === "ios" ? " on iPhone" : p.platform === "android" ? " on Android" : "";
-    return { label: p.lastSeen ? `Active ${timeAgo(p.lastSeen)}${device}` : "Joined", tone: "on" };
+    return { label: p.lastSeen ? `Opened ${timeAgo(p.lastSeen)}${device ? `,${device.replace(" on", "")}` : ""}` : "Joined", tone: "on" };
   }
   const invited = p.trips.map(t => t.invitedAt).filter((v): v is string => !!v).sort().pop();
   if (invited) return { label: `Invited ${timeAgo(invited)}`, tone: "invited" };
@@ -107,11 +108,12 @@ function docSummary(docs: ComplianceDoc[]): { label: string; tone: "ok" | "pendi
   return { label: "All signed", tone: "ok" };
 }
 
+// Colour only where something needs doing: owed documents amber, expired red; everything else stays neutral
 const TONE_TEXT = {
-  on: "text-emerald-700 dark:text-emerald-400",
-  invited: "text-amber-700 dark:text-amber-400",
+  on: "text-foreground",
+  invited: "text-muted-foreground",
   off: "text-muted-foreground",
-  ok: "text-emerald-700 dark:text-emerald-400",
+  ok: "text-muted-foreground",
   pending: "text-amber-700 dark:text-amber-400",
   expired: "text-red-600 dark:text-red-400",
   none: "text-muted-foreground",
@@ -137,7 +139,10 @@ export function TravelersPage() {
   const { isViewer } = usePermissions();
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [tripFilter, setTripFilter] = useState("all");
+  // Reports links here with ?assign=<trip id> to start tracking documents for that trip's travellers
+  const [searchParams, setSearchParams] = useSearchParams();
+  const assignTrip = trips.find(t => t.id === searchParams.get("assign"));
+  const [tripFilter, setTripFilter] = useState(() => assignTrip?.id ?? "all");
   const [quick, setQuick] = useState<QuickFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openPersonId, setOpenPersonId] = useState<string | null>(null);
@@ -184,9 +189,9 @@ export function TravelersPage() {
   const [sheetUserId, setSheetUserId] = useState("");
 
   // Upload document state
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(() => !!assignTrip);
   const [uploadDocName, setUploadDocName] = useState("");
-  const [uploadAssignees, setUploadAssignees] = useState<string[]>([]);
+  const [uploadAssignees, setUploadAssignees] = useState<string[]>(() => assignTrip?.travelers?.map(t => t.id) ?? []);
 
   // Which trips each traveller has picked their name on in the app
   const appTripsByTraveler = useMemo(() => {
@@ -597,7 +602,6 @@ export function TravelersPage() {
   }, [travelers, showToast]);
 
   const tripItems = [{ value: "all", label: "All trips" }, ...[...trips].sort((a, b) => (b.start || "").localeCompare(a.start || "")).map(t => ({ value: t.id, label: t.name }))];
-  const onAppCount = people.filter(p => p.appKeys.length).length;
   const allVisibleSelected = visible.length > 0 && visible.every(p => selected.has(p.id));
 
   return (
@@ -627,42 +631,17 @@ export function TravelersPage() {
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">Travellers</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {people.length} {people.length === 1 ? "person" : "people"}
-                {!isDemoUser && !appUsersLoading && !appUsersError && `, ${onAppCount} on the app`}
-                {appUsersLoading && ", checking the app..."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={tripFilter} onValueChange={v => setTripFilter(v ?? "all")} items={tripItems}>
-                <SelectTrigger className="w-56 bg-card" aria-label="Trip"><SelectValue /></SelectTrigger>
-                <SelectContent align="start" className="w-[min(28rem,var(--available-width))]">{tripItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
-              </Select>
-              {!isViewer && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground" aria-label="More">
-                    <DotsThree className="h-4 w-4" weight="bold" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
-                    <DropdownMenuItem onClick={() => setUploadOpen(true)}><Upload className="h-4 w-4" /> Assign a document</DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportCSV} disabled={!visible.length}><DownloadSimple className="h-4 w-4" /> Export as CSV</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Travellers</h2>
 
-          {/* Quick filters, counted within the search and trip */}
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter travellers">
+          {/* One toolbar: filters on the left (counted within the search and trip), trip and actions on the right */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter travellers">
             {([
               ["all", "Everyone"],
               ["app", "On the app"],
               ["not-app", "Not on the app"],
               ["docs", "Documents outstanding"],
-            ] as const).map(([key, label]) => (
+            ] as const).filter(([key]) => key === "all" || key === quick || quickCounts[key] > 0).map(([key, label]) => (
               <button
                 key={key}
                 role="tab"
@@ -677,6 +656,25 @@ export function TravelersPage() {
                 <span className="text-xs tabular-nums text-muted-foreground">{quickCounts[key]}</span>
               </button>
             ))}
+            {appUsersLoading && <span className="text-xs text-muted-foreground px-2">Checking the app...</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={tripFilter} onValueChange={v => setTripFilter(v ?? "all")} items={tripItems}>
+              <SelectTrigger className="w-56 bg-card" aria-label="Trip"><SelectValue /></SelectTrigger>
+              <SelectContent align="start" className="w-[min(28rem,var(--available-width))]">{tripItems.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+            </Select>
+            {!isViewer && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground" aria-label="More">
+                  <DotsThree className="h-4 w-4" weight="bold" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => setUploadOpen(true)}><Upload className="h-4 w-4" /> Assign a document</DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportCSV} disabled={!visible.length}><DownloadSimple className="h-4 w-4" /> Export as CSV</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
           </div>
 
           {appUsersError && (
@@ -711,7 +709,7 @@ export function TravelersPage() {
             </div>
           ) : (
             <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-              <div className="hidden md:grid grid-cols-[2rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.3fr)_minmax(0,1fr)_2.5rem] items-center gap-3 px-4 py-2.5 border-b border-border text-xs text-muted-foreground">
+              <div className="hidden md:grid sticky top-0 z-10 bg-card grid-cols-[2rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.3fr)_minmax(0,1fr)_2.5rem] items-center gap-3 px-4 py-2.5 border-b border-border text-xs text-muted-foreground">
                 <Checkbox
                   aria-label="Select everyone shown"
                   checked={allVisibleSelected}
@@ -732,9 +730,9 @@ export function TravelersPage() {
                     <li
                       key={p.id}
                       onClick={() => setOpenPersonId(p.id)}
-                      className="grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] md:grid-cols-[2rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.3fr)_minmax(0,1fr)_2.5rem] items-center gap-3 px-4 py-3 cursor-pointer hover:bg-secondary/60 transition-colors"
+                      className="group grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] md:grid-cols-[2rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,1.3fr)_minmax(0,1fr)_2.5rem] items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-secondary/60 transition-colors"
                     >
-                      <div onClick={e => e.stopPropagation()}>
+                      <div onClick={e => e.stopPropagation()} className={cn("transition-opacity", selected.size || selected.has(p.id) ? "opacity-100" : "md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100")}>
                         <Checkbox
                           aria-label={`Select ${p.name}`}
                           checked={selected.has(p.id)}
@@ -747,23 +745,40 @@ export function TravelersPage() {
                           <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {p.email || "No email"}
-                            <span className="md:hidden">, <span className={TONE_TEXT[status.tone]}>{status.label}</span></span>
+                            {status.tone !== "off" && <span className="md:hidden">, <span className={TONE_TEXT[status.tone]}>{status.label}</span></span>}
                           </p>
                         </div>
                       </div>
                       <div className="hidden md:block min-w-0">
-                        {tripNames.length === 0 ? <span className="text-xs text-muted-foreground">No trips</span> : (
-                          <p className="text-sm text-foreground truncate">
-                            {tripNames.slice(0, 2).join(", ")}
-                            {tripNames.length > 2 && <span className="text-muted-foreground"> and {tripNames.length - 2} more</span>}
-                          </p>
-                        )}
+                        {(() => {
+                          if (tripNames.length === 0) return <span className="sr-only">No trips</span>;
+                          // Their next trip leads, with its date; the rest is a count
+                          const today = new Date().toISOString().slice(0, 10);
+                          const dated = [...p.trips].sort((a, b) => a.start.localeCompare(b.start));
+                          const lead = dated.find(t => t.start >= today) ?? dated[dated.length - 1];
+                          const name = lead?.name ?? tripNames[0];
+                          return (
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="min-w-0">
+                                <p className="text-sm text-foreground truncate">{name}</p>
+                                {lead?.start && <p className="text-xs text-muted-foreground tabular-nums">{new Date(lead.start + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>}
+                              </div>
+                              {tripNames.length > 1 && <span className="shrink-0 text-[11px] font-medium text-muted-foreground bg-secondary rounded-md px-1.5 py-0.5 tabular-nums">+{tripNames.length - 1}</span>}
+                            </div>
+                          );
+                        })()}
                       </div>
-                      <p className={cn("hidden md:block text-sm truncate", TONE_TEXT[status.tone])}>{status.label}</p>
-                      <p className={cn("hidden md:block text-sm truncate", TONE_TEXT[docs.tone])}>{docs.label}</p>
-                      <div onClick={e => e.stopPropagation()} className="flex justify-end">
+                      {/* Only what's notable shows; empty cells still say what they mean to screen readers */}
+                      <p className={cn("hidden md:flex items-center gap-1.5 text-sm min-w-0", TONE_TEXT[status.tone])}>
+                        {status.tone === "off" ? <span className="sr-only">{status.label}</span> : <>
+                          {status.tone === "on" && <DeviceMobile className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                          <span className="truncate">{status.label}</span>
+                        </>}
+                      </p>
+                      <p className={cn("hidden md:block text-sm truncate", TONE_TEXT[docs.tone])}>{docs.tone === "none" ? <span className="sr-only">No documents</span> : docs.label}</p>
+                      <div onClick={e => e.stopPropagation()} className="flex justify-end md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary" aria-label={`Actions for ${p.name}`}>
+                          <DropdownMenuTrigger className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary outline-none focus-visible:ring-2 focus-visible:ring-brand/40" aria-label={`Actions for ${p.name}`}>
                             <DotsThree className="h-4 w-4" weight="bold" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
@@ -1156,7 +1171,7 @@ export function TravelersPage() {
       <ComplianceDocSheet open={sheetOpen} onOpenChange={setSheetOpen} doc={sheetDoc} travelerName={sheetTraveler} onSign={handleSign} />
 
       {/* Assign Document Drawer */}
-      <Drawer.Root open={uploadOpen} onOpenChange={setUploadOpen}>
+      <Drawer.Root open={uploadOpen} onOpenChange={open => { setUploadOpen(open); if (!open && searchParams.has("assign")) setSearchParams({}, { replace: true }); }}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-xl border-t border-border max-h-[85vh] overflow-y-auto">

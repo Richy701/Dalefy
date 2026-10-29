@@ -82,7 +82,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: { global: "globalThis", __DEV__: mode !== "production", "process.env.EXPO_PUBLIC_APP_URL": JSON.stringify(""), "process.env.EXPO_PUBLIC_MAPBOX_TOKEN": JSON.stringify("") },
-    optimizeDeps: { include: ["react-native-reanimated", "react-native-worklets", "mapbox-gl", "react-map-gl/mapbox"], rolldownOptions: { plugins: [nativeWebResolution] } },
+    optimizeDeps: { entries: ["index.html", "src/**/*.{ts,tsx}"], include: ["react-native-reanimated", "react-native-worklets", "mapbox-gl", "react-map-gl/mapbox"], rolldownOptions: { plugins: [nativeWebResolution] } },
     resolve: {
       dedupe: ["react", "react-dom", "react-native-web", "react-native-reanimated", "react-native-worklets"],
       alias: {
