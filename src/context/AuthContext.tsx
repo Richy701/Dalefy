@@ -39,6 +39,7 @@ import {
   reloadCurrentUser,
   isEmailSignInLink,
   completeEmailSignInLink,
+  getSignInLinkEmail,
 } from "@/services/firebaseAuth";
 import { getPendingInviteEmail, setPendingInvite } from "@/lib/pendingInvite";
 
@@ -54,7 +55,7 @@ async function completeInviteLink(): Promise<boolean> {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("invite") ?? "";
 
-  let email = getPendingInviteEmail() ?? "";
+  let email = getPendingInviteEmail() ?? getSignInLinkEmail() ?? "";
   if (token && /^[0-9a-f-]{36}$/i.test(token)) {
     try {
       const data = await apiFetch<{ email?: unknown }>(`/api/invite-preview?token=${encodeURIComponent(token)}`);
@@ -63,7 +64,7 @@ async function completeInviteLink(): Promise<boolean> {
   }
   if (!email) {
     logger.warn("Auth", "sign-in link: no email available");
-    localStorage.setItem("daf-login-notice", "We couldn't complete that sign-in link. Ask your team to resend the invite.");
+    localStorage.setItem("daf-login-notice", "Open the sign-in link in the same browser you requested it from, or send yourself a new one below.");
     window.location.replace(`${window.location.origin}${window.location.pathname}#/login`);
     return true;
   }
@@ -72,8 +73,8 @@ async function completeInviteLink(): Promise<boolean> {
   if (error || !user) {
     logger.warn("Auth", `sign-in link failed: ${error}`);
     localStorage.setItem("daf-login-notice", error && /expired|invalid/i.test(error)
-      ? "That sign-in link has expired or was already used. Ask your team to resend the invite."
-      : "We couldn't complete that sign-in link. Please sign in instead.");
+      ? "That sign-in link has expired or was already used. Send yourself a new one below."
+      : "We couldn't complete that sign-in link. Send yourself a new one below.");
     if (token) setPendingInvite(token, email);
     window.location.replace(`${window.location.origin}${window.location.pathname}#/login`);
     return true;

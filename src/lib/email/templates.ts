@@ -127,12 +127,15 @@ export function resetPasswordEmail(input: { resetUrl: string }): RenderedEmail {
 
 // ── Magic link (mobile sign-in) ─────────────────────────────────────────────
 
-export function magicLinkEmail(input: { signInUrl: string }): RenderedEmail {
+export function magicLinkEmail(input: { signInUrl: string; web?: boolean }): RenderedEmail {
   const brand = DALEFY_BRAND;
+  const lead = input.web
+    ? "Click the button and you'll be signed in to Dalefy, no password needed."
+    : "Tap the button on the phone you signed in from and you'll be taken straight into the app.";
   const bodyHtml =
-    paragraph(`Tap the button on the phone you signed in from and you'll be taken straight into the app.`) +
+    paragraph(lead) +
     paragraph(`If you didn't request this, you can ignore it. Keep this link private.`);
-  const bodyText = "Open the link below on the phone you signed in from and you'll be taken straight into the app.\n\nIf you didn't request this, you can ignore it.";
+  const bodyText = `${lead}\n\nIf you didn't request this, you can ignore it.`;
   const fb = linkFallback(input.signInUrl, "This link expires in 1 hour and works once.");
   const { html, text } = renderEmailShell({
     brand,

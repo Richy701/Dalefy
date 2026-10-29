@@ -9,7 +9,7 @@ import { Logo } from "@/components/shared/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { resetPassword } from "@/services/firebaseAuth";
+import { resetPassword, sendSignInLink } from "@/services/firebaseAuth";
 import { getPendingInvite, getPendingInviteEmail, clearPendingInvite } from "@/lib/pendingInvite";
 
 // ── Shared sub-components ───────────────────────────────────────────────
@@ -54,7 +54,9 @@ const outlineBtn =
 
 // ── Main Component ──────────────────────────────────────────────────────
 
-type View = "signin" | "forgot" | "forgot-sent";
+type View = "signin" | "link-sent" | "forgot" | "forgot-sent";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginPage() {
   const realAuth = isFirebaseConfigured();
@@ -81,10 +83,15 @@ export function LoginPage() {
 
   const [pendingInvite, setPendingInviteToken] = useState(getPendingInvite);
   const pendingInviteEmail = pendingInvite ? getPendingInviteEmail() : null;
+  // Invitees sign in with a link, they never set a password
+  const [usePassword, setUsePassword] = useState(() => !getPendingInvite());
+  const [linkSending, setLinkSending] = useState(false);
+  const [linkEmail, setLinkEmail] = useState("");
 
   const dismissInvite = () => {
     clearPendingInvite();
     setPendingInviteToken(null);
+    setUsePassword(true);
     setEmail("");
     setError(null);
   };
@@ -109,6 +116,23 @@ export function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSendLink = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const address = email.trim();
+    if (!EMAIL_RE.test(address)) {
+      setError("Enter your email address and we'll send you a sign-in link.");
+      document.getElementById("login-email")?.focus();
+      return;
+    }
+    setError(null);
+    setLinkSending(true);
+    const { error: err } = await sendSignInLink(address, pendingInvite ?? undefined);
+    setLinkSending(false);
+    if (err) { setError(err); return; }
+    setLinkEmail(address.toLowerCase());
+    setView("link-sent");
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -145,8 +169,11 @@ export function LoginPage() {
 
   const backToSignIn = () => {
     setForgotError(null);
+    setError(null);
     setView("signin");
   };
+
+  const busy = loading || googleLoading || linkSending;
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -170,9 +197,9 @@ export function LoginPage() {
           {realAuth && view === "signin" && (
             <>
               <div className="mb-8">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">Sign in</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">{pendingInvite ? "Join your team" : "Sign in"}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {pendingInvite ? "Use the account you were invited with." : "Welcome back. Sign in to your workspace."}
+                  {pendingInvite ? "We'll email you a link that signs you in. No password needed." : "Welcome back. Sign in to your workspace."}
                 </p>
               </div>
 
@@ -180,9 +207,9 @@ export function LoginPage() {
                 <div className="mb-6 rounded-xl border border-border bg-card px-4 py-3">
                   <p className="text-xs font-medium text-muted-foreground mb-0.5">Team invitation</p>
                   <p className="text-sm text-foreground">
-                    {pendingInviteEmail ? <>Sign in with <span className="font-medium">{pendingInviteEmail}</span> to join your team.</> : "Sign in to accept your pending team invitation."}
+                    {pendingInviteEmail ? <>Sent to <span className="font-medium">{pendingInviteEmail}</span>. Sign in with that address to join.</> : "Sign in to accept your pending team invitation."}
                   </p>
-                  <Button type="button" variant="link" onClick={dismissInvite} disabled={googleLoading || loading} className="mt-2 h-auto p-0 text-xs text-foreground">
+                  <Button type="button" variant="link" onClick={dismissInvite} disabled={busy} className="mt-2 h-auto p-0 text-xs text-muted-foreground hover:text-foreground">
                     Cancel invitation and sign in normally
                   </Button>
                 </div>
@@ -193,7 +220,7 @@ export function LoginPage() {
               <Button
                 type="button"
                 onClick={handleGoogle}
-                disabled={loading || googleLoading}
+                disabled={busy}
                 variant="outline"
                 className={outlineBtn}
               >
@@ -206,7 +233,7 @@ export function LoginPage() {
                 <div className="flex-1 h-px bg-border" />
               </div>
 
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={usePassword ? handleSignIn : handleSendLink} className="space-y-4">
                 <Field label="Email" htmlFor="login-email">
                   <Input
                     id="login-email"
@@ -222,51 +249,99 @@ export function LoginPage() {
                   />
                 </Field>
 
-                <Field
-                  label="Password"
-                  htmlFor="login-password"
-                  trailing={
-                    <button
-                      type="button"
-                      onClick={openForgot}
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      Forgot password?
-                    </button>
-                  }
-                >
-                  <div className="relative">
-                    <Input
-                      id="login-password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Your password"
-                      className={`${inputClass} pr-11`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      aria-pressed={showPassword}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                    >
-                      {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </Field>
+                {usePassword && (
+                  <Field
+                    label="Password"
+                    htmlFor="login-password"
+                    trailing={
+                      <button
+                        type="button"
+                        onClick={openForgot}
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        Forgot password?
+                      </button>
+                    }
+                  >
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Your password"
+                        className={`${inputClass} pr-11`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      >
+                        {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                )}
 
-                <Button type="submit" disabled={loading} className={`${primaryBtn} mt-2`}>
-                  {loading ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Sign in"}
+                <Button type="submit" disabled={busy} className={`${primaryBtn} mt-2`}>
+                  {usePassword
+                    ? (loading ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Sign in")
+                    : (linkSending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <><EnvelopeSimple className="h-4 w-4" /> Email me a sign-in link</>)}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    if (usePassword) void handleSendLink();
+                    else setUsePassword(true);
+                  }}
+                  disabled={busy}
+                  className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-1 disabled:opacity-40"
+                >
+                  {!usePassword
+                    ? "I have a password"
+                    : linkSending ? "Sending link..." : "No password? Email me a sign-in link"}
+                </button>
               </form>
 
               <p className="text-center text-xs text-muted-foreground mt-8">
                 Access is by invitation. Ask your team admin if you need one.
               </p>
             </>
+          )}
+
+          {/* ── Sign-in link sent ─────────────────────────────── */}
+          {realAuth && view === "link-sent" && (
+            <div className="text-center">
+              <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-5">
+                <EnvelopeSimple className="h-5 w-5 text-foreground" />
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">Check your inbox</h1>
+              <p className="text-sm text-muted-foreground mb-2">
+                We sent a sign-in link to <span className="font-medium text-foreground">{linkEmail}</span>.
+              </p>
+              <p className="text-xs text-muted-foreground mb-8">
+                Open it in this browser. It works once and expires in an hour. Not there? Check spam.
+              </p>
+              {error && <div className="mb-4 text-left"><ErrorNote message={error} /></div>}
+              <div className="space-y-2">
+                <Button type="button" onClick={() => void handleSendLink()} disabled={linkSending} variant="outline" className={outlineBtn}>
+                  {linkSending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Send it again"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={backToSignIn}
+                  className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-2"
+                >
+                  Use a different email
+                </button>
+              </div>
+            </div>
           )}
 
           {/* ── Forgot password ───────────────────────────────── */}

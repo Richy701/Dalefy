@@ -123,9 +123,30 @@ export async function signIn(
     }
     return { user: profile, error: null };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Sign in failed";
-    return { user: null, error: msg.replace("Firebase: ", "") };
+    return { user: null, error: signInErrorMessage(err) };
   }
+}
+
+/** Plain-English message for a password sign-in failure. */
+function signInErrorMessage(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code ?? "";
+  switch (code) {
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+    case "auth/invalid-login-credentials":
+    case "auth/user-not-found":
+      return "That email and password don't match. If you joined by invitation you won't have a password, so use a sign-in link instead.";
+    case "auth/invalid-email":
+      return "That doesn't look like a valid email address.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Wait a few minutes, or use a sign-in link instead.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Ask your team admin for help.";
+    case "auth/network-request-failed":
+      return "Couldn't reach the server. Check your connection and try again.";
+  }
+  const msg = err instanceof Error ? err.message : "Sign in failed";
+  return msg.replace("Firebase: ", "");
 }
 
 // ── Google Sign In ──────────────────────────────────────────────────────────
@@ -190,6 +211,27 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
 
 // ── Email link (used for team invites: no password, email auto-verified) ───
 // The link itself is minted and emailed server-side by /api/send-invite.
+
+const SIGN_IN_EMAIL_KEY = "daf-sign-in-email";
+
+/** Email a one-time sign-in link. With an invite token the link lands back on that invite. */
+export async function sendSignInLink(email: string, inviteToken?: string): Promise<{ error: string | null }> {
+  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
+  const address = email.trim().toLowerCase();
+  try { localStorage.setItem(SIGN_IN_EMAIL_KEY, address); } catch { /* storage unavailable */ }
+  try {
+    await apiFetch("/api/auth-email", { method: "POST", body: { kind: "magic-link", email: address, web: true, invite: inviteToken } });
+    return { error: null };
+  } catch (err: unknown) {
+    if (err instanceof ApiError && err.status !== 0) return { error: err.message };
+    return { error: "Network error, please try again" };
+  }
+}
+
+/** Address the last sign-in link was sent to from this browser. */
+export function getSignInLinkEmail(): string | null {
+  try { return localStorage.getItem(SIGN_IN_EMAIL_KEY); } catch { return null; }
+}
 
 export function isEmailSignInLink(url: string): boolean {
   if (!isFirebaseConfigured()) return false;

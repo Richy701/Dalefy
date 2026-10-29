@@ -4,6 +4,7 @@
  *
  * POST /api/auth-email
  *   { kind: "magic-link", email }   unauthenticated; mobile one-tap sign-in
+ *   { kind: "magic-link", email, web: true, invite? }  same, but lands on the web app (and the invite)
  *   { kind: "reset", email }        unauthenticated; password reset
  *   { kind: "verify" }              bearer token required; verifies the caller's own address
  *
@@ -54,12 +55,15 @@ export default async function handler(req: any, res: any) {
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "A valid email is required" });
 
   if (kind === "magic-link") {
-    const link = await generateSignInLink(email, { url: `${APP_URL}/auth-callback`, handleCodeInApp: true });
+    const web = body.web === true;
+    const invite = typeof body.invite === "string" && /^[0-9a-f-]{36}$/i.test(body.invite) ? body.invite : "";
+    const url = !web ? `${APP_URL}/auth-callback` : invite ? `${APP_URL}/?invite=${encodeURIComponent(invite)}` : `${APP_URL}/`;
+    const link = await generateSignInLink(email, { url, handleCodeInApp: true });
     if (link.ok === false) {
       console.error("[auth-email] magic-link failed:", link.code, link.error);
       return res.status(500).json({ error: friendly(link.error, link.code) });
     }
-    const mail = magicLinkEmail({ signInUrl: link.url });
+    const mail = magicLinkEmail({ signInUrl: link.url, web });
     const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
     if (sent.ok === false) return res.status(502).json({ error: sent.error });
     return res.status(200).json({ ok: true });

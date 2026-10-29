@@ -8,6 +8,7 @@ import { acceptInvite, getInvitePreview } from "@/services/invites";
 import { apiFetch, ApiError } from "@/lib/api";
 import { setPendingInvite, clearPendingInvite } from "@/lib/pendingInvite";
 import { Logo } from "@/components/shared/Logo";
+import { sendSignInLink } from "@/services/firebaseAuth";
 
 type Status =
   | "loading"
@@ -46,6 +47,8 @@ export function AcceptInvitePage() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [linkSent, setLinkSent] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const fail = useCallback((msg: string) => {
     clearPendingInvite();
@@ -157,6 +160,17 @@ export function AcceptInvitePage() {
     }
   };
 
+  const handleSendLink = async () => {
+    if (!token || !preview?.email || busy) return;
+    setBusy(true);
+    setLinkError(null);
+    setPendingInvite(token, preview.email);
+    const { error } = await sendSignInLink(preview.email, token);
+    setBusy(false);
+    if (error) setLinkError(error);
+    else setLinkSent(true);
+  };
+
   const handleSignIn = () => {
     if (token) setPendingInvite(token, preview?.email);
     navigate("/login");
@@ -180,16 +194,46 @@ export function AcceptInvitePage() {
         {(status === "preview" || status === "confirm" || status === "accepting") && preview && (
           <div className="space-y-5">
             <InviteCard preview={preview} inviter={inviter} roleLabel={roleLabel} />
-            {status === "preview" ? (
+            {status === "preview" && linkSent ? (
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center mx-auto">
+                  <EnvelopeSimple className="h-5 w-5 text-foreground" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Check your inbox</h2>
+                <p className="text-sm text-muted-foreground">
+                  We sent a sign-in link to <strong className="text-foreground">{preview.maskedEmail || preview.email}</strong>. Open it in this browser and you'll join {preview.orgName || "the team"} straight away.
+                </p>
+                <p className="text-xs text-muted-foreground">It works once and expires in an hour. Not there? Check spam.</p>
+                {linkError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{linkError}</p>}
+                <Button
+                  onClick={handleSendLink}
+                  disabled={busy}
+                  variant="outline"
+                  className="w-full h-11 rounded-xl text-sm font-medium"
+                >
+                  {busy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Send it again"}
+                </Button>
+              </div>
+            ) : status === "preview" ? (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Sign in or create an account with <strong className="text-foreground">{preview.email}</strong> to accept.
+                  No password needed. We'll email a sign-in link to <strong className="text-foreground">{preview.maskedEmail || preview.email}</strong>.
                 </p>
+                {linkError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{linkError}</p>}
+                <Button
+                  onClick={handleSendLink}
+                  disabled={busy}
+                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium gap-2"
+                >
+                  {busy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <><EnvelopeSimple className="h-4 w-4" /> Email me a sign-in link</>}
+                </Button>
                 <Button
                   onClick={handleSignIn}
-                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
+                  disabled={busy}
+                  variant="ghost"
+                  className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
                 >
-                  Sign in to accept
+                  Sign in with Google or a password
                 </Button>
               </>
             ) : (
@@ -204,11 +248,10 @@ export function AcceptInvitePage() {
                 >
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
-                <div className="flex items-center justify-center gap-4 text-xs font-medium">
+                <div className="flex items-center justify-center gap-6 text-xs font-medium">
                   <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-muted-foreground hover:text-foreground">
                     Not now
                   </button>
-                  <span className="text-muted-foreground">·</span>
                   <button onClick={handleSwitchAccount} className="text-muted-foreground hover:text-foreground">
                     Not you? Switch account
                   </button>
@@ -283,14 +326,14 @@ export function AcceptInvitePage() {
         {status === "error" && (
           <div className="space-y-4">
             <XCircle className="h-10 w-10 text-red-400 mx-auto" />
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Something went wrong</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">This invite can't be used</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
-              onClick={() => navigate("/")}
-              variant="ghost"
-              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
+              onClick={() => navigate(isAuthenticated ? "/dashboard" : "/login")}
+              variant="outline"
+              className="w-full h-11 rounded-xl text-sm font-medium"
             >
-              Go Home
+              {isAuthenticated ? "Go to Dashboard" : "Go to sign in"}
             </Button>
           </div>
         )}
