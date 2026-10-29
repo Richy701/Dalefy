@@ -13,6 +13,13 @@
  * extension and any " - suffix") against the full name first, then a bare first name when exactly one
  * person has it. Anything ambiguous or unmatched is listed and skipped.
  *
+ * --by-email matches each file to the person whose work email starts with it (the broker name: "ElliotA.png" is
+ * elliota@..., "Ash.png" is ash.murray@... when no one else's email starts with ash). Files are named that way,
+ * so it beats name matching. Pair it with --replace to correct photos an earlier name match got wrong.
+ *
+ * --clear --only="Name, Name" takes those people's photos off everywhere (directory, trips, published copies,
+ * organiser cards), for a photo that turned out to be someone else. Needs no folder.
+ *
  * --resync needs no folder: it copies each person's directory photo back onto trip entries (and published
  * copies and organiser cards) that have lost it, e.g. after a re-import blanked them. Existing photos stay.
  */
@@ -49,8 +56,11 @@ const apply = has('apply');
 const replace = has('replace');
 const fromTrips = has('from-trips');
 const resync = has('resync');
+const byEmail = has('by-email');
+const clear = has('clear');
 // Just these people, by full name, when the rest of a match list is still under review
 const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+if (clear && !only.length) throw new Error('--clear needs --only="Name, Name" so it never clears everyone');
 
 const require = createRequire(new URL('../functions/package.json', import.meta.url));
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
@@ -74,9 +84,9 @@ function walk(dir) {
   }
   return out;
 }
-if (!resync && !existsSync(folder)) throw new Error(`Folder not found: ${folder}`);
-const photos = resync ? [] : walk(folder);
-if (!resync) console.log(`${photos.length} photos in ${folder}`);
+if (!resync && !clear && !existsSync(folder)) throw new Error(`Folder not found: ${folder}`);
+const photos = resync || clear ? [] : walk(folder);
+if (!resync && !clear) console.log(`${photos.length} photos in ${folder}`);
 
 // ── People in the directory ─────────────────────────────────────────────────
 const dirSnap = await db.collection('directory_travelers').get();
@@ -106,6 +116,49 @@ const idsFor = (person) => [...new Set([person.id, ...(tripPeople.get(norm(perso
 // The directory doc id and the uploader on record follow the existing entries of the same organisation
 const userIdFor = (org) => dirSnap.docs.find(d => d.data().organization_id === org)?.data().user_id ?? null;
 
+// ── Clear: take named people's photos off everywhere ─────────────────────────
+if (clear) {
+  const targets = people.filter(p => only.includes(norm(p.name)));
+  const missingNames = only.filter(n => !targets.some(p => norm(p.name) === n));
+  if (missingNames.length) console.log(`Not in the directory: ${missingNames.join(', ')}`);
+  for (const person of targets) {
+    const ids = idsFor(person);
+    const onTrips = trips.filter(t => [...(t.data.travelers ?? []), ...(t.data.published_snapshot?.travelers ?? [])].some(x => ids.includes(x?.id) && x.avatar)
+      || [t.data.organizer, t.data.published_snapshot?.organizer].some(o => o?.name && norm(o.name) === norm(person.name) && o.avatar && o.avatar === person.avatar));
+    console.log(`  ${person.name}: photo ${person.avatar ? 'in the directory' : 'not in the directory'}, on ${onTrips.length} trip(s)${onTrips.length ? `: ${onTrips.map(t => t.data.name).join(', ')}` : ''}`);
+  }
+  if (!apply) { console.log('\nDry run. Add --apply to remove these photos.'); process.exit(0); }
+  for (const person of targets) {
+    const ids = idsFor(person);
+    const batch = db.batch();
+    batch.update(person.ref, { 'traveler.avatar': FieldValue.delete(), updated_at: new Date().toISOString() });
+    const strip = (list) => Array.isArray(list) && list.some(t => ids.includes(t?.id) && t.avatar)
+      ? list.map(t => { if (!ids.includes(t?.id)) return t; const { avatar: _gone, ...rest } = t; return rest; })
+      : null;
+    // Only an organiser card showing this very photo loses it; a card with its own photo stays
+    const unOrg = (o) => o?.name && norm(o.name) === norm(person.name) && o.avatar && o.avatar === person.avatar ? (({ avatar: _gone, ...rest }) => rest)(o) : null;
+    for (const trip of trips) {
+      const travelers = strip(trip.data.travelers);
+      const snapTravelers = strip(trip.data.published_snapshot?.travelers);
+      const organiser = unOrg(trip.data.organizer);
+      const snapOrganiser = unOrg(trip.data.published_snapshot?.organizer);
+      if (!travelers && !snapTravelers && !organiser && !snapOrganiser) continue;
+      const updates = {};
+      if (travelers) updates.travelers = travelers;
+      if (snapTravelers) updates['published_snapshot.travelers'] = snapTravelers;
+      if (organiser) updates.organizer = organiser;
+      if (snapOrganiser) updates['published_snapshot.organizer'] = snapOrganiser;
+      batch.update(trip.ref, updates);
+      batch.set(db.collection('trip_versions').doc(trip.ref.id), { updated_at: FieldValue.serverTimestamp() });
+      if (travelers) trip.data.travelers = travelers;
+      if (snapTravelers) trip.data.published_snapshot = { ...trip.data.published_snapshot, travelers: snapTravelers };
+    }
+    await batch.commit();
+    console.log(`Cleared ${person.name}`);
+  }
+  process.exit(0);
+}
+
 function matchTripPerson(file) {
   const stem = stemOf(file);
   const exact = tripPeople.get(stem);
@@ -115,7 +168,24 @@ function matchTripPerson(file) {
   return byFirst.length === 1 ? byFirst[0] : null;
 }
 
+// The broker name: the part of a work email before the @, and its first piece before a dot
+const key = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const emailKeys = (email) => {
+  const local = String(email ?? '').split('@')[0].toLowerCase();
+  return local ? { whole: key(local), first: key(local.split(/[._-]/)[0]) } : null;
+};
+function matchByEmail(file, list) {
+  const stem = key(stemOf(file));
+  const whole = list.filter(p => emailKeys(p.email)?.whole === stem);
+  if (whole.length === 1) return { person: whole[0] };
+  if (whole.length > 1) return { ambiguous: whole };
+  const first = list.filter(p => emailKeys(p.email)?.first === stem);
+  if (first.length === 1) return { person: first[0] };
+  return first.length ? { ambiguous: first } : {};
+}
+
 function matchPerson(file) {
+  if (byEmail) return matchByEmail(file, people);
   const stem = stemOf(file);
   const exact = people.filter(p => norm(p.name) === stem);
   if (exact.length === 1) return { person: exact[0] };
@@ -137,7 +207,7 @@ for (const file of photos.sort((a, b) => depth(a) - depth(b) || a.localeCompare(
   const label = path.relative(folder, file);
   if (m.ambiguous) { skipped.ambiguous.push(`${label} -> ${m.ambiguous.map(p => p.name).join(' | ')}`); continue; }
   if (!m.person && fromTrips) {
-    const tp = matchTripPerson(file);
+    const tp = byEmail ? matchByEmail(file, [...tripPeople.values()].filter(t => t.email)).person : matchTripPerson(file);
     if (tp && !people.some(p => norm(p.name) === norm(tp.name))) {
       const id = tp.ids[0];
       const org = tp.org;
@@ -162,7 +232,15 @@ if (resync) for (const person of people) {
 }
 
 console.log(`\n${plan.length} to ${resync ? 'resync' : 'attach'}:`);
-for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}${p.person.create ? '  (new in the directory, from their trips)' : ''}`);
+for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}${p.person.email ? ` <${p.person.email}>` : ''}${p.person.create ? '  (new in the directory, from their trips)' : ''}${p.person.avatar && !resync ? '  (replaces their current photo)' : ''}`);
+// Photos an earlier first-name match may have got wrong: nobody's file answers to their email
+if (byEmail) {
+  const planned = new Set(plan.map(p => p.person.id));
+  const doubtful = people.filter(p => p.avatar && !planned.has(p.id) && !photos.some(f => matchByEmail(f, [p]).person));
+  if (doubtful.length) { console.log(`\nHave a photo but no file matches their email, check these by eye (${doubtful.length}):`); for (const p of doubtful) console.log(`  ${p.name}${p.email ? ` <${p.email}>` : '  (no email)'}`); }
+  const noEmail = people.filter(p => !p.email);
+  if (noEmail.length) { console.log(`\nNo email in the directory, so not matched (${noEmail.length}):`); for (const p of noEmail) console.log(`  ${p.name}`); }
+}
 const show = (title, list) => { if (list.length) { console.log(`\n${title} (${list.length}):`); for (const l of list) console.log(`  ${l}`); } };
 show('Ambiguous, pick by renaming the file to the full name', skipped.ambiguous);
 show('No one by that name', skipped.unmatched);

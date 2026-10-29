@@ -147,10 +147,10 @@ export default function WelcomeScreen() {
 
   const [name, setName] = useState(prefs.name || providerName);
   const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
-  // An organiser's headshot is the traveller's photo and isn't changed from the phone
+  // Your profile photo is yours to set; an organiser's headshot only shows until you pick one
   const organiserPhoto = useOrganiserPhoto();
-  const photoLocked = isEdit && !!organiserPhoto;
-  const shownAvatar = photoLocked ? organiserPhoto : avatar;
+  const photoLocked = false;
+  const shownAvatar = avatar || (isEdit ? organiserPhoto : null) || "";
   const uploadedUrlRef = useRef<string | null>(null);
   // Save awaits this, so a half-uploaded photo never reaches the trip roster as a phone-local path
   const uploadPromiseRef = useRef<Promise<string | null> | null>(null);

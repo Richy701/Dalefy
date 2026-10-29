@@ -321,7 +321,7 @@ export default function SharedTripScreen() {
                   style={({ pressed }) => [styles.linkPerson, taken && { opacity: 0.35 }, pressed && !taken && { opacity: 0.75 }]}
                 >
                   <View style={[styles.linkFace, on && { borderColor: C.teal }]}>
-                    <Avatar size={60} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} />
+                    <Avatar size={60} uri={t.avatar} initials={t.initials || t.name.trim().charAt(0).toUpperCase()} />
                     {on ? (
                       <View style={[styles.linkTick, { backgroundColor: C.teal }]}>
                         <Check size={13} color={C.onAccent} weight="bold" />

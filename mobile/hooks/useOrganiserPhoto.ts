@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { firebaseDb, firebaseAuth, isFirebaseConfigured, waitForAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
 
 /**
  * The headshot an organiser attached to this traveller, from any trip their account is linked to.
@@ -9,6 +10,7 @@ import { useTrips } from "@/context/TripsContext";
  */
 export function useOrganiserPhoto(): string | null {
   const { trips } = useTrips();
+  const { prefs } = usePreferences();
   const [links, setLinks] = useState<Array<{ tripId: string; travelerId: string }>>([]);
 
   useEffect(() => {
@@ -36,6 +38,15 @@ export function useOrganiserPhoto(): string | null {
   for (const { tripId, travelerId } of links) {
     const avatar = trips.find(t => t.id === tripId)?.travelers?.find(t => t.id === travelerId)?.avatar;
     if (avatar && /^https:\/\//.test(avatar)) return avatar;
+  }
+  // No link to go on (it never saved, or a re-import gave the traveller a new entry): the traveller on these
+  // trips with this person's own full name, when exactly one photo answers to it
+  const name = prefs.name.trim().toLowerCase();
+  if (name.includes(" ")) {
+    const photos = new Set(trips.flatMap(t => t.travelers ?? [])
+      .filter(t => t.name.trim().toLowerCase() === name && t.avatar && /^https:\/\//.test(t.avatar))
+      .map(t => t.avatar!));
+    if (photos.size === 1) return [...photos][0];
   }
   return null;
 }
