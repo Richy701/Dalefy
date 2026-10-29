@@ -186,7 +186,17 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Pr
     if (typeof current.private !== "boolean") current.private = false;
     const patch = before ? tripPatch(tripToDoc(before), desired, current) : data;
     // The fields that did change are written with their uploaded photo addresses
-    if (before) for (const key of Object.keys(patch)) if (key !== 'history' && key in data) patch[key] = data[key];
+    if (before) for (const key of Object.keys(patch)) {
+      if (key === 'history' || !(key in data)) continue;
+      const merged = patch[key], mine = desired[key], uploaded = data[key];
+      if (Array.isArray(merged) && Array.isArray(mine) && Array.isArray(uploaded) && merged !== mine) {
+        // A list merged card by card: only my own cards take their uploaded version, others' edits stay
+        type Card = { id?: string } | null;
+        const mineById = new Map((mine as Card[]).map(i => [i?.id, i]));
+        const uploadedById = new Map((uploaded as Card[]).map(i => [i?.id, i]));
+        patch[key] = (merged as Card[]).map(i => (i && mineById.get(i.id) === i ? uploadedById.get(i.id) ?? i : i));
+      } else patch[key] = uploaded;
+    }
     const merged = syncLinkedOrganizer({ ...current, ...patch });
     if ('travelers' in patch) {
       const travelers = (merged.travelers || []) as Array<{ name: string; email?: string }>;
