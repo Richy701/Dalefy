@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => {
           hostType === "html" ? [] : dependencies,
       },
       rollupOptions: {
-        input: Object.fromEntries(["index", "about", "changelog", "support", "privacy", "terms", "delete-account", "mobile-preview"].map(name => [name, path.resolve(__dirname, `${name}.html`)])),
+        input: Object.fromEntries(["index", "about", "changelog", "support", "privacy", "terms", "delete-account", "mobile-preview", "auth-callback"].map(name => [name, path.resolve(__dirname, `${name}.html`)])),
       },
     },
     define: { global: "globalThis", __DEV__: mode !== "production", "process.env.EXPO_PUBLIC_APP_URL": JSON.stringify(""), "process.env.EXPO_PUBLIC_MAPBOX_TOKEN": JSON.stringify("") },

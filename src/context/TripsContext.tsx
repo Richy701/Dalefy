@@ -25,7 +25,7 @@ interface TripsContextType {
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
   updateTrip: (id: string, updates: Partial<Trip>) => void;
-  saveTrip: (id: string, updates: Partial<Trip>, before?: Trip) => Promise<void>;
+  saveTrip: (id: string, updates: Partial<Trip>, before?: Trip, opts?: { allowClearInfo?: boolean }) => Promise<void>;
   addEvent: (tripId: string, event: TravelEvent) => void;
   updateEvent: (tripId: string, event: TravelEvent) => void;
   deleteEvent: (tripId: string, eventId: string) => void;
@@ -387,12 +387,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     if (useCloud) flushLocal(updater);
   }, [setTrips, useCloud, flushLocal, editor]);
 
-  const saveTrip = useCallback(async (id: string, updates: Partial<Trip>, before?: Trip) => {
+  const saveTrip = useCallback(async (id: string, updates: Partial<Trip>, before?: Trip, opts?: { allowClearInfo?: boolean }) => {
     const original = before || trips.find(t => t.id === id);
     if (!original) throw new Error('Trip no longer available');
     if (!useCloud) { updateTrip(id, updates); return; }
     const next = withHistory({ ...original, ...updates }, describeTripChange(original, updates), editor);
-    const saved = await upsertTrip(next, orgId, original);
+    const saved = await upsertTrip(next, orgId, original, opts);
     qc.setQueryData<Trip[]>(['trips', orgId || user?.id], prev => prev?.map(trip => trip.id === id ? saved : trip));
     flushLocal(prev => prev.map(trip => trip.id === id ? saved : trip));
   }, [trips, useCloud, updateTrip, editor, orgId, qc, user?.id, flushLocal]);

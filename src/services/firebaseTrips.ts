@@ -138,13 +138,13 @@ export async function backfillOrgId(orgId: string): Promise<number> {
 }
 
 const tripSaves = new Map<string, Promise<unknown>>();
-export async function upsertTrip(trip: Trip, orgId?: string | null, before?: Trip): Promise<Trip> {
+export async function upsertTrip(trip: Trip, orgId?: string | null, before?: Trip, opts?: { allowClearInfo?: boolean }): Promise<Trip> {
   const previous = tripSaves.get(trip.id) || Promise.resolve();
-  const save = previous.catch(() => {}).then(() => persistTrip(trip, orgId, before));
+  const save = previous.catch(() => {}).then(() => persistTrip(trip, orgId, before, opts));
   tripSaves.set(trip.id, save);
   try { return await save; } finally { if (tripSaves.get(trip.id) === save) tripSaves.delete(trip.id); }
 }
-async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Promise<Trip> {
+async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip, opts?: { allowClearInfo?: boolean }): Promise<Trip> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
@@ -181,6 +181,13 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip): Pr
     // Trips saved before private trips existed have no flag; they were always shared
     if (typeof current.private !== "boolean") current.private = false;
     const patch = before ? tripPatch(tripToDoc(before), desired, current) : data;
+    // Trip info is only ever emptied by someone confirming it in the Workspace; any other save that would
+    // empty it (a stale copy, a background sync) leaves the stored cards alone
+    const cards = (v: unknown) => Array.isArray(v) ? v.length : 0;
+    if ('info' in patch && cards(patch.info) === 0 && cards(current.info) > 0 && !opts?.allowClearInfo) {
+      logger.warn("upsertTrip", "kept trip info that a save would have emptied:", trip.id);
+      delete patch.info;
+    }
     // The fields that did change are written with their uploaded photo addresses
     if (before) for (const key of Object.keys(patch)) {
       if (key === 'history' || !(key in data)) continue;

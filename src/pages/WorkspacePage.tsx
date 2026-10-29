@@ -626,11 +626,11 @@ export function WorkspacePage() {
     setGeocoding(false);
   };
 
-  const commitChanges = async (updates: Partial<Trip>, before?: Trip) => {
+  const commitChanges = async (updates: Partial<Trip>, before?: Trip, opts?: { allowClearInfo?: boolean }) => {
     if (saveBusy.current) return false;
     saveBusy.current = true; setSavingChanges(true);
     const message = toast.loading('Saving changes…');
-    try { await saveTrip(trip.id, updates, before); toast.dismiss(message); return true; }
+    try { await saveTrip(trip.id, updates, before, opts); toast.dismiss(message); return true; }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save. Your changes are still here.', { id: message }); return false; }
     finally { saveBusy.current = false; setSavingChanges(false); }
   };
@@ -980,7 +980,7 @@ export function WorkspacePage() {
     if (demoGate()) return;
     const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
     const save = async () => {
-      if (!await commitChanges({ info: cleaned.length > 0 ? cleaned : undefined }, editBaseline.current)) return;
+      if (!await commitChanges({ info: cleaned.length > 0 ? cleaned : undefined }, editBaseline.current, { allowClearInfo: true })) return;
       setEditInfoOpen(false);
       toast.success("Information updated");
     };
@@ -1140,7 +1140,7 @@ export function WorkspacePage() {
       if (cleaned.info.length === 0) cleaned.info = undefined;
     }
     const save = async () => {
-      if (!await commitChanges(cleaned, editBaseline.current)) return;
+      if (!await commitChanges(cleaned, editBaseline.current, { allowClearInfo: true })) return;
       setEditTripOpen(false);
       toast.success("Trip updated");
     };
@@ -1612,6 +1612,20 @@ export function WorkspacePage() {
                                 <span className="text-[11px] font-medium">Edit</span>
                               </button>
                             </div>
+
+                            {/* Info emptied here while travellers still see the published pages: offer them back for review */}
+                            {!isViewer && !trip.info?.length && (trip.publishedSnapshot?.info?.length ?? 0) > 0 && (
+                              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary px-4 py-3">
+                                <p className="text-sm text-foreground">Travellers still see {trip.publishedSnapshot!.info!.length} info {trip.publishedSnapshot!.info!.length === 1 ? "page" : "pages"} from the published version, but none are here.</p>
+                                <button
+                                  type="button"
+                                  onClick={() => { handleOpenEditInfo(); setEditInfoData(trip.publishedSnapshot!.info!.map(i => ({ ...i, documents: i.documents ? [...i.documents] : undefined }))); }}
+                                  className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0"
+                                >
+                                  Review and restore
+                                </button>
+                              </div>
+                            )}
 
                             {/* Info pages */}
                             {trip.info && trip.info.length > 0 && (
@@ -3446,6 +3460,19 @@ export function WorkspacePage() {
                   </div>
                   <p className="text-sm text-muted-foreground font-bold">No pages yet</p>
                   <p className="text-xs text-muted-foreground mt-1">Add travel tips, visa info, packing lists</p>
+                  {/* Travellers still see the published copy; if that has cards, they can be brought back here */}
+                  {(trip.publishedSnapshot?.info?.length ?? 0) > 0 && (
+                    <div className="mt-5 flex flex-col items-center gap-2">
+                      <p className="text-xs text-muted-foreground">The published version travellers see has {trip.publishedSnapshot!.info!.length} {trip.publishedSnapshot!.info!.length === 1 ? "page" : "pages"}.</p>
+                      <button
+                        type="button"
+                        onClick={() => setEditInfoData(trip.publishedSnapshot!.info!.map(i => ({ ...i, documents: i.documents ? [...i.documents] : undefined })))}
+                        className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                      >
+                        Restore from published version
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
