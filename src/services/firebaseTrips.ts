@@ -65,12 +65,8 @@ export async function fetchTrips(orgId?: string | null, scope: Scope = { seeAll:
   const uid = await waitForAuth();
   if (!uid) return [];
   const run = async (split: boolean) => (await Promise.all(tripQueries(orgId, uid, split).map(q => getDocs(q)))).flatMap(s => s.docs);
-  try {
-    return visibleTrips(await run(false), uid, scope);
-  } catch (err) {
-    if (!orgId || scope.seeAll || !isDenied(err)) throw err;
-    return visibleTrips(await run(true), uid, scope);
-  }
+  // Teams ask for shared trips plus their own straight away: the rules refuse a whole-team list
+  return visibleTrips(await run(!!orgId && !scope.seeAll), uid, scope);
 }
 
 /** `fromCache` is true when the snapshot came from the offline copy rather than the server. `onGiveUp` fires once retries run out. */
@@ -106,7 +102,7 @@ export function subscribeToTrips(
 
   waitForAuth().then((uid) => {
     if (!uid || cancelled) { onChange([], false); return; }
-    startListener(uid);
+    startListener(uid, 1, !!orgId && !scope.seeAll);
   });
 
   return () => { cancelled = true; stop(); };

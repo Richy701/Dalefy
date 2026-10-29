@@ -31,8 +31,6 @@ export function useSavePerson() {
     // Shared team trips plus my own (private ones included); rules refuse a whole-team list so private trips stay hidden
     const listTrips = async () => {
       const trips = collection(db, 'trips');
-      // Before the private-trip rules are live, older trips have no flag yet; the whole-team list still finds them
-      if (orgId) try { return await getDocs(query(trips, where('organization_id', '==', orgId))); } catch { /* refused: ask for what I can see */ }
       const snaps = await Promise.all(orgId
         ? [getDocs(query(trips, where('organization_id', '==', orgId), where('private', '==', false))), getDocs(query(trips, where('organization_id', '==', orgId), where('user_id', '==', user.id)))]
         : [getDocs(query(trips, where('user_id', '==', user.id)))]);

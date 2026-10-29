@@ -4,7 +4,7 @@ import type { Trip, TravelEvent, User } from "@/types";
 import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, backfillPrivateFlag, repairTripOwnership } from "@/services/firebaseTrips";
+import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId } from "@/services/firebaseTrips";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { describeTripChange, withHistory } from "@/lib/tripHistory";
 import { useOrg } from "@/context/OrgContext";
@@ -285,8 +285,6 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     if (!useCloud || !orgId || !cloud.ready || backfillRan.current) return;
     backfillRan.current = true;
     backfillOrgId(orgId).catch(err => logger.error("TripsProvider", "org backfill failed:", err));
-    repairTripOwnership(orgId).catch(err => logger.error("TripsProvider", "ownership repair failed:", err));
-    if (orgRole === "owner" || orgRole === "admin") backfillPrivateFlag(orgId).catch(err => logger.error("TripsProvider", "private flag backfill failed:", err));
   }, [useCloud, orgId, cloud.ready, orgRole]);
 
   // One-time cleanup: strip structured fields from localStorage that belong in
