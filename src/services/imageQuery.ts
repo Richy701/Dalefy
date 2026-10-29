@@ -15,6 +15,24 @@ const TYPE_HINT: Record<string, string> = {
   activity: "landscape",
 };
 
+// Words that tell one event from another at the same venue ("breakfast" vs "lunch"), kept for the what-is-happening query
+const MOMENT_WORDS = new Set(["breakfast", "lunch", "dinner", "tour", "visit", "welcome", "farewell", "free"]);
+const FILLER = new Set([...STOP].filter(w => !MOMENT_WORDS.has(w)));
+
+/**
+ * What is happening, plus where: "Buffet Breakfast - the Bush Camp" at "The Bush Camp, Elephant Hills" becomes
+ * "buffet breakfast Elephant Hills". Events at one venue then search for their own moment, not the same building.
+ */
+function momentQuery(title: string, location: string): string {
+  const head = title.split(/\s+[–—-]\s+|\s+at\s+/i)[0];
+  const what = head.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/)
+    .filter(w => w && !FILLER.has(w) && !/^\d+$/.test(w)).slice(0, 4).join(" ");
+  if (!what) return "";
+  const places = location.split(",").map(p => p.trim()).filter(p => p && !/\d/.test(p));
+  const where = places.length > 1 ? places[places.length - 1] : places[0] ?? "";
+  return [what, where].filter(Boolean).join(" ");
+}
+
 /** Extract runs of capitalized words (proper nouns) - usually POIs or place names. */
 function properNounPhrases(text: string): string[] {
   // Keep letters, spaces, apostrophes; split on non-word boundaries
@@ -67,6 +85,9 @@ export function buildImageQueryCandidates(opts: {
     push(`${name} hotel ${town}`);
     push(`${name} hotel`);
   }
+
+  // Dining and activities lead with the moment, so events at one venue don't all get the venue's photos
+  if (type === "dining" || type === "activity") push(momentQuery(title, location));
 
   // Location-based candidates
   if (location.trim()) {

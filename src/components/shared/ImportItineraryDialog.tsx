@@ -23,7 +23,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
-import { searchImagesProgressive } from "@/services/imageSearch";
+import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { buildImageQueryCandidates } from "@/services/imageQuery";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
@@ -1515,8 +1515,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       const cached = cache[cacheKey];
       let options = Array.isArray(cached) ? cached : [];
       if (!options.some(u => !used.has(u))) {
-        const { urls } = await searchImagesProgressive(candidates, 8);
+        const { urls, matchedQuery } = await searchImagesProgressive(candidates, 8);
         options = [...new Set([...options, ...urls])];
+        // Every result already on the trip (several events at one venue): the next pages before any repeat
+        for (let page = 2; matchedQuery && page <= 3 && !options.some(u => !used.has(u)); page++) {
+          const more = await searchImages(matchedQuery, page, 8);
+          if (!more.urls.length) break;
+          options = [...new Set([...options, ...more.urls])];
+        }
         if (options.length) cache[cacheKey] = options;
       }
       const url = options.find(u => !used.has(u)) ?? options[0];
