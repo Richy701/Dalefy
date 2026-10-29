@@ -278,15 +278,18 @@ export function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (demoGate()) return;
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
     setChangingPassword(true);
-    const { error } = await changePassword(newPassword);
+    const { error, emailed } = await changePassword(newPassword);
     setChangingPassword(false);
     if (error) {
       toast.error(error);
+    } else if (emailed) {
+      toast.success(`For security we've emailed ${user?.email ?? "you"} a link to set your password`);
+      setNewPassword("");
     } else {
       toast.success("Password updated");
       setNewPassword("");
@@ -413,7 +416,7 @@ export function SettingsPage() {
             >
               <Row
                 label="Change Password"
-                value={newPassword.length > 0 && newPassword.length < 6 ? "At least 6 characters" : "Update your sign-in password"}
+                value={newPassword.length > 0 && newPassword.length < 8 ? "At least 8 characters" : "Set or update your sign-in password"}
                 action={
                   <div className="flex items-center gap-2">
                     <Input
@@ -424,12 +427,12 @@ export function SettingsPage() {
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="New password"
-                      title="At least 6 characters"
+                      title="At least 8 characters"
                       className="w-40"
                     />
                     <Button
                       onClick={handleChangePassword}
-                      disabled={changingPassword || newPassword.length < 6}
+                      disabled={changingPassword || newPassword.length < 8}
                       className="h-9 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 disabled:opacity-40"
                     >
                       {changingPassword ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Update"}

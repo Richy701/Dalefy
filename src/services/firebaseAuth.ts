@@ -104,6 +104,7 @@ export async function signIn(
 
   try {
     const { user: fbUser } = await signInWithEmailAndPassword(firebaseAuth(), email, password);
+    clearNeedsPassword();
     let profile = await fetchProfile(fbUser.uid);
     if (!profile) {
       const name = fbUser.displayName ?? email.split("@")[0] ?? "User";
@@ -201,6 +202,7 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
       throw popupErr;
     }
 
+    clearNeedsPassword();
     const profile = await upsertGoogleProfile(fbUser);
     return { user: profile, error: null };
   } catch (err: unknown) {
@@ -243,6 +245,7 @@ export async function completeEmailSignInLink(email: string, url: string): Promi
   if (!isFirebaseConfigured()) return { user: null, error: "Firebase not configured" };
   try {
     const result = await signInWithEmailLink(firebaseAuth(), email, url);
+    markNeedsPassword();
     const profile = await upsertGoogleProfile(result.user);
     return { user: profile, error: null };
   } catch (err: unknown) {
@@ -258,6 +261,7 @@ export async function handleRedirectResult(): Promise<{ user: User | null; error
   try {
     const result = await getRedirectResult(firebaseAuth());
     if (!result) return { user: null, error: null };
+    clearNeedsPassword();
 
     const profile = await upsertGoogleProfile(result.user);
     return { user: profile, error: null };
@@ -271,6 +275,7 @@ export async function handleRedirectResult(): Promise<{ user: User | null; error
 
 export async function signOut(): Promise<void> {
   if (!isFirebaseConfigured()) return;
+  clearNeedsPassword();
   await fbSignOut(firebaseAuth());
 }
 
@@ -341,7 +346,11 @@ export async function updateProfile(
 
 // ── Password ────────────────────────────────────────────────────────────────
 
-export async function changePassword(newPassword: string): Promise<{ error: string | null }> {
+/**
+ * Set or change the signed-in user's password. Firebase only allows this soon
+ * after sign-in; past that we email a set-password link instead (`emailed: true`).
+ */
+export async function changePassword(newPassword: string): Promise<{ error: string | null; emailed?: boolean }> {
   if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
 
   const user = firebaseAuth().currentUser;
@@ -349,10 +358,37 @@ export async function changePassword(newPassword: string): Promise<{ error: stri
 
   try {
     await updatePassword(user, newPassword);
+    clearNeedsPassword();
     return { error: null };
   } catch (err: unknown) {
-    return { error: err instanceof Error ? err.message : "Failed" };
+    const code = (err as { code?: string } | null)?.code ?? "";
+    if (code === "auth/requires-recent-login" && user.email) {
+      const { error } = await requestAuthEmail({ kind: "reset", email: user.email });
+      return error ? { error } : { error: null, emailed: true };
+    }
+    if (code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements") {
+      return { error: "That password is too weak. Use at least 8 characters with a mix of letters and numbers." };
+    }
+    if (code === "auth/network-request-failed") return { error: "Couldn't reach the server. Check your connection and try again." };
+    const msg = err instanceof Error ? err.message : "Couldn't update your password";
+    return { error: msg.replace("Firebase: ", "") };
   }
+}
+
+// Set when someone signs in with an emailed link, so the invite flow can make
+// them choose a password before they join (shared department accounts need one).
+const NEEDS_PASSWORD_KEY = "daf-needs-password";
+
+export function markNeedsPassword(): void {
+  try { localStorage.setItem(NEEDS_PASSWORD_KEY, "1"); } catch { /* storage unavailable */ }
+}
+
+export function needsPassword(): boolean {
+  try { return localStorage.getItem(NEEDS_PASSWORD_KEY) === "1"; } catch { return false; }
+}
+
+export function clearNeedsPassword(): void {
+  try { localStorage.removeItem(NEEDS_PASSWORD_KEY); } catch { /* storage unavailable */ }
 }
 
 /** Sends a reset link if an account exists. Always succeeds from the caller's view so addresses can't be probed. */

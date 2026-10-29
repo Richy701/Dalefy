@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { SpinnerGap, CheckCircle, XCircle, EnvelopeSimple, UsersThree } from "@phosphor-icons/react";
+import { SpinnerGap, CheckCircle, XCircle, EnvelopeSimple, UsersThree, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { useOrg } from "@/context/OrgContext";
 import { acceptInvite, getInvitePreview } from "@/services/invites";
 import { apiFetch, ApiError } from "@/lib/api";
 import { setPendingInvite, clearPendingInvite } from "@/lib/pendingInvite";
 import { Logo } from "@/components/shared/Logo";
-import { sendSignInLink } from "@/services/firebaseAuth";
+import { sendSignInLink, needsPassword, changePassword } from "@/services/firebaseAuth";
 
 type Status =
   | "loading"
@@ -49,6 +51,10 @@ export function AcceptInvitePage() {
   const [note, setNote] = useState<string | null>(null);
   const [linkSent, setLinkSent] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  // Joined through an emailed link: they must pick a password before joining
+  const [mustSetPassword, setMustSetPassword] = useState(needsPassword);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const fail = useCallback((msg: string) => {
     clearPendingInvite();
@@ -111,10 +117,24 @@ export function AcceptInvitePage() {
   // ── Accept ──
   const handleAccept = async () => {
     if (!token) return;
+    if (mustSetPassword && password.length < 8) {
+      setNote("Choose a password of at least 8 characters.");
+      return;
+    }
     setBusy(true);
     setNote(null);
     setStatus("accepting");
     try {
+      if (mustSetPassword) {
+        const { error, emailed } = await changePassword(password);
+        if (error || emailed) {
+          setNote(error ?? `We've emailed ${user?.email ?? "you"} a link to set your password. Set it, then come back and accept.`);
+          setStatus("confirm");
+          return;
+        }
+        setMustSetPassword(false);
+        setPassword("");
+      }
       const result = await acceptInvite(token);
       if ("error" in result) {
         if (result.code === "unverified") { setStatus("unverified"); return; }
@@ -241,12 +261,43 @@ export function AcceptInvitePage() {
                 <p className="text-sm text-muted-foreground">
                   Accepting as <strong className="text-foreground">{user?.email}</strong>
                 </p>
+                {mustSetPassword && (
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="invite-password" className="text-xs font-medium text-muted-foreground">Set a password</Label>
+                    <div className="relative">
+                      <Input
+                        id="invite-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        autoFocus
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); setNote(null); }}
+                        onKeyDown={e => { if (e.key === "Enter") void handleAccept(); }}
+                        placeholder="At least 8 characters"
+                        className="h-11 rounded-xl bg-card border-border text-sm pr-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(v => !v)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      >
+                        {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      You'll use this with {user?.email ?? "this email"} to sign in on other devices. Share it with anyone who uses this account.
+                    </p>
+                  </div>
+                )}
+                {note && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{note}</p>}
                 <Button
                   onClick={handleAccept}
-                  disabled={busy || status === "accepting"}
-                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
+                  disabled={busy || status === "accepting" || (mustSetPassword && password.length < 8)}
+                  className="w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium disabled:opacity-40"
                 >
-                  {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
+                  {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : mustSetPassword ? "Set password and join" : "Accept invitation"}
                 </Button>
                 <div className="flex items-center justify-center gap-6 text-xs font-medium">
                   <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-muted-foreground hover:text-foreground">
