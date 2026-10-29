@@ -1481,12 +1481,11 @@ export function WorkspacePage() {
               <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
               <div className="absolute inset-0 bg-linear-to-r from-black/30 to-transparent" />
 
-              {/* Top row: status + event count pill */}
-              <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
+              {/* Top row: status */}
+              <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center">
                 <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${lifecycle === "Published" || lifecycle === "Active" ? "bg-primary text-primary-foreground" : "bg-white/20 text-white"}`}>
                   {lifecycle}
                 </Badge>
-                <span className="text-xs font-medium text-white/80 tabular-nums">{trip.events.length} events · {groupedEvents.length} days</span>
               </div>
 
               {/* Bottom: trip identity */}
