@@ -377,7 +377,7 @@ export function SettingsPage() {
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
             <div className="px-5 py-4 flex items-center gap-4">
-              <label className={cn("group relative h-14 w-14 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", realAuth && "cursor-pointer")}>
+              <label className={cn("group relative h-16 w-16 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", realAuth && "cursor-pointer")}>
                 {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
                 {realAuth && (
                   <>
@@ -389,19 +389,13 @@ export function SettingsPage() {
                 )}
               </label>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold tracking-tight text-foreground truncate">
+                <p className="text-base font-semibold tracking-tight text-foreground truncate">
                   {user?.name ?? ""}
                 </p>
-                <p className="text-[11px] text-muted-foreground truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
-                <p className="text-[13px] font-medium text-brand mt-1">
-                  {user?.role ?? ""}
-                </p>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                {user?.status ?? "Active"}
+                {realAuth && <p className="text-[11px] text-muted-foreground mt-1">Click your photo to change it</p>}
               </div>
             </div>
           </Section>
@@ -415,7 +409,7 @@ export function SettingsPage() {
               description="Manage your account security and password."
             >
               <Row
-                label="Change Password"
+                label="Password"
                 value={newPassword.length > 0 && newPassword.length < 8 ? "At least 8 characters" : "Set or update your sign-in password"}
                 action={
                   <div className="flex items-center gap-2">
@@ -477,29 +471,29 @@ export function SettingsPage() {
             id="branding"
               icon={Buildings}
               wide
-              title="White-Label"
-              description="How clients see your agency on shared trips and PDFs."
+              title="Branding"
+              description="How clients see your agency on shared trips, PDFs and in the app."
             >
               {orgLoading && !currentOrg ? (
                 <Row label="Loading" value="Fetching your organization branding..." />
               ) : !currentOrg ? (
-                <Row label="No Organization" value="Create an agency above to configure white-label branding" />
+                <Row label="No organisation" value="Create an agency above to set up your branding" />
               ) : <>
               {/* Logo */}
               <Row
                 label="Logo"
-                value={brandLogo ? "Uploaded" : "No logo - first letter will be used"}
+                value={brandLogo ? "Shown on shared trips, PDFs and in the app" : "No logo yet. The first letter of your company name is used"}
                 action={
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {brandLogo ? (
-                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-border bg-card p-0.5" />
+                      <img src={brandLogo} alt="" className="h-12 w-12 rounded-lg object-contain border border-border bg-card p-1" />
                     ) : (
-                      <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-bold text-white" style={{ background: brandColor }}>
+                      <div className="h-12 w-12 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: brandColor }}>
                         {(brandName || BRAND.name).charAt(0)}
                       </div>
                     )}
-                    <label className="cursor-pointer text-[13px] font-medium text-brand hover:opacity-80 transition-opacity">
-                      {uploadingLogo ? "Uploading..." : "Upload"}
+                    <label className="ml-1 cursor-pointer h-8 px-3 inline-flex items-center rounded-lg border border-border bg-card text-[13px] font-medium text-foreground hover:bg-secondary transition-colors">
+                      {uploadingLogo ? "Uploading…" : brandLogo ? "Replace" : "Upload"}
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -510,7 +504,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 text-[13px] font-medium text-muted-foreground hover:text-red-400 transition-colors"
+                        className="h-8 px-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 text-[13px] font-medium text-muted-foreground hover:text-red-500 hover:bg-secondary transition-colors"
                       >
                         Remove
                       </button>
@@ -523,7 +517,7 @@ export function SettingsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
                     <label htmlFor="settings-agency-code" className="block text-[13px] font-medium text-foreground mb-0.5">
-                      Agency Code
+                      Agency code
                     </label>
                     <p className="text-[11px] text-muted-foreground">
                       Share this code with your travellers. They enter it when they first open the mobile app to connect to your agency.
@@ -595,8 +589,8 @@ export function SettingsPage() {
               </div>
               {/* Company Name */}
               <Row
-                label="Company Name"
-                value="Replaces platform name on shared pages"
+                label="Company name"
+                value="Shown instead of Dalefy on shared trips and in the app"
                 action={
                   <Input
                     type="text"
@@ -610,22 +604,36 @@ export function SettingsPage() {
               {/* Preview + Save */}
               <div className="px-5 py-4 space-y-3">
                 <p className="text-[13px] font-medium text-muted-foreground">Preview</p>
-                {/* A sample of the shared-page header, so the row reads as the
-                    thing being previewed rather than a label stranded from Save. */}
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background px-4 py-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {brandLogo ? (
-                    <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
-                  ) : (
-                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-bold text-white" style={{ background: resolvedAccent }}>
-                      {(brandName || BRAND.name).charAt(0)}
+                {/* What clients see: a trip's photo header with the agency's logo and name on it */}
+                {(() => {
+                  // The next trip coming up with a photo; otherwise one of the app's own holiday photos
+                  const today = new Date().toISOString().slice(0, 10);
+                  const sample = [...trips].filter(t => t.image && t.end >= today).sort((x, y) => x.start.localeCompare(y.start))[0]
+                    ?? { name: "Your next trip", image: "/pages/changelog.jpg" };
+                  return (
+                    <div className="relative h-40 overflow-hidden rounded-xl border border-border bg-secondary">
+                      <img src={sample.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-black/10" />
+                      <div className="absolute left-4 top-4 flex items-center gap-2.5">
+                        {brandLogo ? (
+                          <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain bg-white/90 p-1" />
+                        ) : (
+                          <div className="h-9 w-9 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: resolvedAccent }}>
+                            {(brandName || BRAND.name).charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-white leading-tight">{brandName || BRAND.name}</p>
+                          <p className="text-[11px] text-white/75">Powered by {BRAND.name}</p>
+                        </div>
+                      </div>
+                      <div className="absolute left-4 bottom-4 right-4">
+                        <p className="text-lg font-semibold text-white truncate">{sample.name}</p>
+                        <p className="text-xs text-white/80">Hosted by {brandName || BRAND.name}</p>
+                      </div>
                     </div>
-                  )}
-                  <span className="text-[13px] font-semibold text-foreground">{brandName || BRAND.name}</span>
-                  <span className="text-[11px] text-muted-foreground">·</span>
-                  <span className="text-[11px] text-muted-foreground">Powered by {BRAND.name}</span>
-                </div>
-                </div>
+                  );
+                })()}
                 <div className="flex justify-end">
                   <Button
                     onClick={handleSaveBranding}

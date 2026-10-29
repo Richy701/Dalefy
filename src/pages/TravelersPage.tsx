@@ -145,7 +145,8 @@ export function TravelersPage() {
   const [tripFilter, setTripFilter] = useState(() => assignTrip?.id ?? "all");
   const [quick, setQuick] = useState<QuickFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openPersonId, setOpenPersonId] = useState<string | null>(null);
+  // The search palette links here with ?person=<id> to open that person
+  const [openPersonId, setOpenPersonId] = useState<string | null>(() => searchParams.get("person"));
   const [message, setMessage] = useState<{ tripIds: string[]; tripId?: string; people: string[] } | null>(null);
 
   const [complianceOverrides, setComplianceOverrides] = useComplianceRecords();

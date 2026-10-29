@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
 import { formatTimeInput } from "@/lib/timeInput";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { objectPosition } from "@/lib/imagePosition";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -509,13 +510,18 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* The search bar opens the search palette: every trip and traveller, plus pages and actions */}
       <PageHeader
         left={
-          <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
-            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
-            <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-card border-none rounded-lg text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
-          </div>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent(OPEN_COMMAND_PALETTE_EVENT))}
+            className="max-w-full sm:max-w-xs w-full h-10 flex items-center gap-2.5 pl-3 sm:pl-4 pr-2 rounded-lg bg-card border border-border shadow-sm text-left text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+          >
+            <MagnifyingGlass className="h-4 w-4 shrink-0" />
+            <span className="flex-1 truncate">Search trips and travellers</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">⌘K</kbd>
+          </button>
         }
         cta={
           <div className="flex items-center gap-2">

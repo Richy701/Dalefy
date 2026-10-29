@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useOrg } from "@/context/OrgContext";
+import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { getOrgMembersWithProfiles, updateMemberRole, removeMember, transferOwnership } from "@/services/orgMembers";
@@ -24,6 +26,7 @@ interface Member {
   name: string;
   email: string;
   initials: string;
+  avatar?: string;
 }
 
 type PendingAction =
@@ -53,6 +56,13 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [pendingInviteCount, setPendingInviteCount] = useState<number | null>(null);
+
+  // Staff travel too: someone without an account photo shows the headshot on their directory entry
+  const [directory] = useDirectoryTravelers();
+  const directoryPhoto = (email: string) => {
+    const e = email.trim().toLowerCase();
+    return e ? directory.find(p => (p.email ?? "").trim().toLowerCase() === e && p.avatar)?.avatar ?? "" : "";
+  };
 
   const isOwner = orgRole === "owner";
   const isAdmin = orgRole === "owner" || orgRole === "admin";
@@ -138,7 +148,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-4 sm:p-5">
       {/* Pending invites summary (admins) */}
       {isAdmin && pendingInviteCount !== null && pendingInviteCount > 0 && (
         <button
@@ -175,9 +185,10 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
             className="bg-card border border-border rounded-xl overflow-hidden"
           >
             <div className="flex items-center gap-3 p-3">
-              <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-black text-xs shrink-0">
-                {member.initials}
-              </div>
+              <Avatar className="h-10 w-10 shrink-0">
+                {(member.avatar || directoryPhoto(member.email)) && <AvatarImage src={member.avatar || directoryPhoto(member.email)} alt="" />}
+                <AvatarFallback className="text-xs font-semibold">{member.initials}</AvatarFallback>
+              </Avatar>
 
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-foreground truncate">

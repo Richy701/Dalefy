@@ -33,7 +33,7 @@ export async function transferOwnership(
   await batch.commit();
 }
 
-export async function getMemberProfile(userId: string): Promise<{ name: string; email: string; initials: string } | null> {
+export async function getMemberProfile(userId: string): Promise<{ name: string; email: string; initials: string; avatar: string } | null> {
   const profileDoc = await getDoc(doc(firebaseDb(), "profiles", userId));
   if (!profileDoc.exists()) return null;
   const data = profileDoc.data();
@@ -41,6 +41,7 @@ export async function getMemberProfile(userId: string): Promise<{ name: string; 
     name: data.name || data.display_name || "",
     email: data.email || "",
     initials: data.initials || (data.name || "?").slice(0, 2).toUpperCase(),
+    avatar: typeof data.avatar === "string" && /^https:\/\//.test(data.avatar) ? data.avatar : "",
   };
 }
 
@@ -51,6 +52,7 @@ export async function getOrgMembersWithProfiles(orgId: string): Promise<Array<{
   name: string;
   email: string;
   initials: string;
+  avatar: string;
 }>> {
   const snap = await getDocs(
     query(collection(firebaseDb(), "org_members"), where("organization_id", "==", orgId)),
@@ -67,6 +69,7 @@ export async function getOrgMembersWithProfiles(orgId: string): Promise<Array<{
         name: profile?.name || "Team Member",
         email: profile?.email || "",
         initials: profile?.initials || data.user_id.slice(0, 2).toUpperCase(),
+        avatar: profile?.avatar || "",
       };
     }),
   );

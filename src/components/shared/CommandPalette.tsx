@@ -5,6 +5,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
+import { useDirectoryTravelers } from "@/context/directory";
 import {
   SquaresFour, Users, Globe, ChartBar, Sun, Moon,
   AirplaneTilt, MapPin, MagnifyingGlass, ArrowRight, Command as CmdIcon, Gear,
@@ -20,6 +21,7 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
   // On a trip, the palette can publish, share or email it; the workspace listens for these
   const onTrip = /^\/trip\/[^/]+/.test(useLocation().pathname);
@@ -27,6 +29,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
     window.dispatchEvent(new CustomEvent("dalefy:trip-action", { detail: { action } }));
   const { theme, toggleTheme } = useTheme();
   const { trips } = useTrips();
+  const [people] = useDirectoryTravelers();
   const { canInviteMembers, isOrgMember } = usePermissions();
   const { currentOrg: _currentOrg } = useOrg();
 
@@ -53,7 +56,10 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   if (!open) return null;
 
   // Most recently departing/upcoming first, so "recent" means something
-  const recentTrips = [...trips].sort((a, b) => (b.start ?? "").localeCompare(a.start ?? "")).slice(0, 4);
+  // Empty: the four latest trips. Typing: every trip and every traveller, matched by name, place or traveller
+  const typing = query.trim().length > 0;
+  const recentTrips = [...trips].sort((a, b) => (b.start ?? "").localeCompare(a.start ?? "")).slice(0, typing ? undefined : 4);
+  const travellers = typing ? people.filter(p => p.name?.trim()) : [];
 
   return (
     <div className="fixed inset-0 z-100 flex items-start justify-center pt-[12vh] px-4" role="dialog" aria-modal="true" aria-label="Command palette">
@@ -73,7 +79,9 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           <MagnifyingGlass className="h-4 w-4 text-muted-foreground shrink-0" />
           <Command.Input
             autoFocus
-            placeholder="Type a command or search..."
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Search trips, travellers or commands"
             className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-foreground outline-none placeholder:text-slate-400 dark:placeholder:text-muted-foreground"
           />
           <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-muted-foreground bg-secondary border border-border rounded-md px-1.5 py-0.5">
@@ -188,13 +196,13 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {/* Recent Trips */}
           {recentTrips.length > 0 && (
             <Command.Group
-              heading="Recent Trips"
+              heading={typing ? "Trips" : "Recent trips"}
               className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:font-black **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-[0.35em] **:[[cmdk-group-heading]]:text-slate-500 dark:**:[[cmdk-group-heading]]:text-[#666]"
             >
               {recentTrips.map((trip) => (
                 <Command.Item
                   key={trip.id}
-                  value={`trip ${trip.name} ${trip.destination ?? ""}`}
+                  value={`trip ${trip.name} ${trip.destination ?? ""} ${trip.attendees ?? ""} ${trip.id}`}
                   onSelect={() => run(() => navigate(`/trip/${trip.id}`))}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-foreground font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-secondary"
                 >
@@ -209,6 +217,30 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                       </p>
                     )}
                   </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+          {travellers.length > 0 && (
+            <Command.Group
+              heading="Travellers"
+              className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground"
+            >
+              {travellers.map(person => (
+                <Command.Item
+                  key={person.id}
+                  value={`person ${person.name} ${person.email ?? ""} ${person.id}`}
+                  onSelect={() => run(() => navigate(`/travelers?person=${encodeURIComponent(person.id)}`))}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-foreground text-sm transition-colors data-[selected=true]:bg-secondary hover:bg-secondary"
+                >
+                  <span className="h-8 w-8 rounded-full overflow-hidden shrink-0 bg-secondary flex items-center justify-center text-[11px] font-semibold text-muted-foreground">
+                    {person.avatar ? <img src={person.avatar} alt="" className="h-full w-full object-cover" /> : (person.initials || person.name.charAt(0))}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate font-medium">{person.name}</span>
+                    {person.email && <span className="block truncate text-[11px] text-muted-foreground">{person.email}</span>}
+                  </span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 </Command.Item>
               ))}
