@@ -147,10 +147,11 @@ export default function WelcomeScreen() {
 
   const [name, setName] = useState(prefs.name || providerName);
   const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
-  // Your profile photo is yours to set; an organiser's headshot only shows until you pick one
+  // With an organiser's headshot, the traveller picks which photo is theirs: the headshot, or one of their own
   const organiserPhoto = useOrganiserPhoto();
-  const photoLocked = false;
-  const shownAvatar = avatar || (isEdit ? organiserPhoto : null) || "";
+  const [useOwn, setUseOwn] = useState(prefs.useOwnPhoto);
+  const photoLocked = isEdit && !!organiserPhoto && !useOwn;
+  const shownAvatar = photoLocked ? organiserPhoto : avatar;
   const uploadedUrlRef = useRef<string | null>(null);
   // Save awaits this, so a half-uploaded photo never reaches the trip roster as a phone-local path
   const uploadPromiseRef = useRef<Promise<string | null> | null>(null);
@@ -438,6 +439,7 @@ export default function WelcomeScreen() {
     if (isEdit) {
       setPref("name", trimmed);
       if (finalAvatar) setPref("avatar", finalAvatar);
+      if (organiserPhoto) setPref("useOwnPhoto", useOwn && !!finalAvatar);
       updateMemberProfile(trimmed, finalAvatar || null);
       // Without an organiser headshot, their own photo shows on the trip for everyone
       if (finalAvatar && !organiserPhoto) void shareMyPhoto(finalAvatar);
@@ -688,8 +690,31 @@ export default function WelcomeScreen() {
                   </View>
                 )}
               </Pressable>
-              {photoLocked ? (
-                <Text style={{ marginTop: S.xs, fontSize: T.sm, color: C.textSecondary }}>Photo from your organiser</Text>
+              {/* Two photos to choose from: the headshot their organiser matched to them, or their own */}
+              {isEdit && organiserPhoto ? (
+                <View style={styles.photoChoices} accessibilityRole="radiogroup">
+                  {([
+                    { own: false, label: "Headshot", uri: organiserPhoto },
+                    { own: true, label: "My photo", uri: avatar },
+                  ] as const).map(choice => {
+                    const on = useOwn === choice.own;
+                    return (
+                      <Pressable
+                        key={choice.label}
+                        onPress={() => { haptic.selection(); setUseOwn(choice.own); if (choice.own && !avatar) pickAvatar(); }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on }}
+                        accessibilityLabel={choice.own && !avatar ? "Use my own photo, pick one" : `Use ${choice.label.toLowerCase()}`}
+                        style={({ pressed }) => [styles.photoChoice, on && { borderColor: C.teal }, pressed && { opacity: 0.75 }]}
+                      >
+                        <View style={styles.photoChoiceFace}>
+                          {choice.uri ? <CachedImage uri={choice.uri} style={styles.photoChoiceImage} blurhash={null} /> : <Camera size={18} color={C.textTertiary} weight="regular" />}
+                        </View>
+                        <Text style={[styles.photoChoiceLabel, on && { color: C.textPrimary }]}>{choice.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               ) : null}
               {!photoLocked && (!avatar || isEdit) && (
                 <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
@@ -867,6 +892,15 @@ function makeStyles(C: ThemeColors, onPhoto = false) {
       width: 88, height: 88, borderRadius: 44,
     },
     avatarLarge: { width: 112, height: 112, borderRadius: 56 },
+    photoChoices: { flexDirection: "row", gap: S.sm, marginTop: S.md },
+    photoChoice: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      paddingVertical: S.xs, paddingLeft: S.xs, paddingRight: S.md,
+      borderRadius: R.xl, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.elevated,
+    },
+    photoChoiceFace: { width: 32, height: 32, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+    photoChoiceImage: { width: 32, height: 32, borderRadius: 16 },
+    photoChoiceLabel: { fontSize: T.sm, fontWeight: T.medium, color: C.textSecondary },
     avatarInitial: { fontSize: 44, fontWeight: T.semibold, color: C.textSecondary },
     cameraBadge: {
       position: "absolute", bottom: 0, right: -2,

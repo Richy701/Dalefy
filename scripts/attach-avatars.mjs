@@ -17,6 +17,9 @@
  * elliota@..., "Ash.png" is ash.murray@... when no one else's email starts with ash). Files are named that way,
  * so it beats name matching. Pair it with --replace to correct photos an earlier name match got wrong.
  *
+ * --pair="Scot.png=John Mayes; Aiden.png=Aidan Morris-pinder" attaches named files to named people, for a file
+ * whose name matches neither the person nor their email. Use with --replace to overwrite a photo.
+ *
  * --clear --only="Name, Name" takes those people's photos off everywhere (directory, trips, published copies,
  * organiser cards), for a photo that turned out to be someone else. Needs no folder.
  *
@@ -58,6 +61,8 @@ const fromTrips = has('from-trips');
 const resync = has('resync');
 const byEmail = has('by-email');
 const clear = has('clear');
+// "File.png=Full Name; Other.png=Full Name"
+const pairs = (flag('pair') ?? '').split(';').map(v => v.split('=').map(x => x.trim())).filter(v => v.length === 2 && v[0] && v[1]);
 // Just these people, by full name, when the rest of a match list is still under review
 const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
 if (clear && !only.length) throw new Error('--clear needs --only="Name, Name" so it never clears everyone');
@@ -221,6 +226,19 @@ for (const file of photos.sort((a, b) => depth(a) - depth(b) || a.localeCompare(
   if (m.person.avatar && !replace) { skipped.hasPhoto.push(`${label} -> ${m.person.name}`); continue; }
   taken.add(m.person.id);
   plan.push({ file, label, person: m.person });
+}
+
+// Pairs: the file and person are named outright, so no matching rules apply
+if (pairs.length) {
+  plan.length = 0;
+  for (const [fileName, personName] of pairs) {
+    const file = photos.find(f => path.relative(folder, f).toLowerCase() === fileName.toLowerCase()) ?? photos.find(f => path.basename(f).toLowerCase() === fileName.toLowerCase());
+    const person = people.find(x => norm(x.name) === norm(personName));
+    if (!file) { console.log(`No file called ${fileName} in ${folder}`); continue; }
+    if (!person) { console.log(`No one called ${personName} in the directory`); continue; }
+    if (person.avatar && !replace) { console.log(`${person.name} already has a photo, pass --replace to overwrite`); continue; }
+    plan.push({ file, label: path.relative(folder, file), person });
+  }
 }
 
 // Resync: everyone in the directory who has a photo, put back where a trip copy lost it

@@ -25,11 +25,14 @@ export interface Preferences {
   introducedTrips: string[];
   /** Agreed that Dale sends their questions and trip details to Anthropic's AI to answer them */
   daleConsent: boolean;
+  /** Picked their own photo over the headshot their organiser matched to them */
+  useOwnPhoto: boolean;
 }
 
 const DEFAULT_PREFS: Preferences = {
   name: "",
   avatar: "",
+  useOwnPhoto: false,
   uid: "",
   orgId: "",
   orgSlug: "",

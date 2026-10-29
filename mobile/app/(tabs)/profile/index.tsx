@@ -45,9 +45,9 @@ export default function ProfileScreen() {
   const { C: themeC, isDark: themeDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
   // The organiser's headshot when there is one, else the photo they chose
-  // Your own photo first; the headshot an organiser attached only stands in until you set one
+  // The headshot matched to this traveller, unless they picked their own photo instead (pencil, then My photo)
   const organiserPhoto = useOrganiserPhoto();
-  const myPhoto = prefs.avatar || organiserPhoto;
+  const myPhoto = prefs.useOwnPhoto && prefs.avatar ? prefs.avatar : organiserPhoto || prefs.avatar;
   const auth = useAuth();
   const { brand } = useBrand();
   const { trips, reload } = useTrips();

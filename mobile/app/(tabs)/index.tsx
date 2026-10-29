@@ -103,9 +103,9 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
   // The organiser's headshot when there is one, else the photo they chose
-  // Your own photo first; the headshot an organiser attached only stands in until you set one
+  // The headshot matched to this traveller, unless they picked their own photo instead (pencil, then My photo)
   const organiserPhoto = useOrganiserPhoto();
-  const myPhoto = prefs.avatar || organiserPhoto;
+  const myPhoto = prefs.useOwnPhoto && prefs.avatar ? prefs.avatar : organiserPhoto || prefs.avatar;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ join?: string }>();
