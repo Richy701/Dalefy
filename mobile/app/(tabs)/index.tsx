@@ -861,7 +861,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
 
-    section: { marginTop: S.lg },
+    section: { marginTop: S.xl },
 
     // ── Cover ──
     hero: { justifyContent: "flex-end" },
