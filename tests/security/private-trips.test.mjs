@@ -24,9 +24,9 @@ before(async () => {
 after(async () => { await env?.cleanup(); });
 const db = uid => env.authenticatedContext(uid).firestore();
 
-test('creator, owner and admin read a private trip; other teammates cannot', async () => {
-  for (const uid of ['agent', 'owner', 'admin']) await assertSucceeds(db(uid).doc('trips/secret').get());
-  for (const uid of ['agent2', 'viewer']) await assertFails(db(uid).doc('trips/secret').get());
+test('only the creator reads a private trip, not even owners or admins', async () => {
+  await assertSucceeds(db('agent').doc('trips/secret').get());
+  for (const uid of ['owner', 'admin', 'agent2', 'viewer']) await assertFails(db(uid).doc('trips/secret').get());
 });
 
 test('shared and older trips without the flag stay readable by the whole team', async () => {
@@ -41,17 +41,18 @@ test('teammates list shared trips plus their own; a whole-team query is refused 
   await assertSucceeds(db('agent2').collection('trips').where('organization_id', '==', 'agency').where('user_id', '==', 'agent2').get());
   await assertSucceeds(db('agent').collection('trips').where('organization_id', '==', 'agency').where('user_id', '==', 'agent').get());
   await assertFails(db('agent2').collection('trips').where('organization_id', '==', 'agency').get());
-  await assertSucceeds(db('admin').collection('trips').where('organization_id', '==', 'agency').get());
+  await assertFails(db('admin').collection('trips').where('organization_id', '==', 'agency').get());
+  await assertSucceeds(db('admin').collection('trips').where('organization_id', '==', 'agency').where('private', '==', false).get());
 });
 
-test('only the creator or an owner/admin edits a private trip or flips the switch', async () => {
+test('only the creator edits a private trip or flips the switch', async () => {
   await assertSucceeds(db('agent').doc('trips/secret').update({ name: 'Mine' }));
-  await assertSucceeds(db('admin').doc('trips/secret').update({ name: 'Admin edit' }));
-  await assertFails(db('agent2').doc('trips/secret').update({ name: 'Nope' }));
+  for (const uid of ['admin', 'owner', 'agent2']) await assertFails(db(uid).doc('trips/secret').update({ name: 'Nope' }));
   await assertFails(db('agent2').doc('trips/shared').update({ private: true }));
+  await assertFails(db('admin').doc('trips/shared').update({ private: true }));
   await assertSucceeds(db('agent2').doc('trips/shared').update({ name: 'Team edit' }));
   await assertSucceeds(db('agent').doc('trips/shared').update({ private: true }));
-  await assertSucceeds(db('owner').doc('trips/shared').update({ private: false }));
+  await assertSucceeds(db('agent').doc('trips/shared').update({ private: false }));
 });
 
 test('admins can stamp older trips as shared', async () => {

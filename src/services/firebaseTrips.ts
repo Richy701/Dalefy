@@ -37,8 +37,8 @@ export function waitForAuth(): Promise<string | null> {
   });
 }
 
-// Private trips are seen by their creator and the team's owners and admins. Firestore checks a query's
-// permissions as a whole, so other teammates ask only for shared trips plus their own.
+// Private trips are seen only by their creator. Firestore checks a query's permissions as a whole,
+// so teammates ask only for shared trips plus their own.
 type Scope = { seeAll: boolean };
 
 function visibleTrips(docs: Array<{ id: string; data(): Record<string, unknown> }>, uid: string, scope: Scope): Trip[] {

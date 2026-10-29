@@ -153,7 +153,7 @@ export function WorkspacePage() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { addNotification } = useNotifications();
-  const { canDeleteTrip, isOrgMember, isViewer, canManageOrg } = usePermissions();
+  const { canDeleteTrip, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
   const { others: presenceUsers, updateActivity } = usePresence(tripId);
@@ -1095,14 +1095,14 @@ export function WorkspacePage() {
     }
   };
 
-  /** Hide a trip from the rest of the team, or share it again. Only its creator or an owner/admin can. */
-  const canSetPrivate = isOrgMember && (trip.ownerId === user?.id || canManageOrg);
+  /** Hide a trip from everyone else on the team, owners and admins included, or share it again. Only its creator can. */
+  const canSetPrivate = isOrgMember && trip.ownerId === user?.id;
   const togglePrivate = () => {
     if (demoGate()) return;
     updateTrip(trip.id, { private: !trip.private });
     toast.success(trip.private
       ? `${trip.name} is shared with your team again`
-      : `${trip.name} is private. Only you and your team's owners and admins can see it.`);
+      : `${trip.name} is private. Only you can see it.`);
   };
 
   const handleOpenEditTrip = () => {

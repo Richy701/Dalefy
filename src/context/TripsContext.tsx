@@ -264,8 +264,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const local = useLocalTrips(isDemoUser && !authLoading);
   const { currentOrg, orgRole, isLoading: orgLoading } = useOrg();
   const orgId = currentOrg?.id ?? null;
-  // Owners and admins see private trips too; everyone else sees shared trips and their own
-  const seeAllTrips = !orgId || orgRole === "owner" || orgRole === "admin";
+  // Private trips are seen only by their creator, so in a team everyone asks for shared trips plus their own
+  const seeAllTrips = !orgId;
   // Don't fire cloud queries while org is still loading - avoids a user_id-only
   // query that returns incomplete results, then a second org-scoped query that
   // briefly flashes empty while it resolves.

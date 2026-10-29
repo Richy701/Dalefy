@@ -199,7 +199,7 @@ export interface Trip {
   history?: TripHistoryEntry[];
   /** Set when the trip is put away after it's over: hidden from the dashboard and reports, never deleted */
   archivedAt?: string;
-  /** Only the creator and the team's owners and admins can see it */
+  /** Only the person who created it can see it */
   private?: boolean;
   /** Account that created the trip (read-only, from the stored user_id) */
   ownerId?: string;

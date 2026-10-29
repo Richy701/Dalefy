@@ -24,9 +24,9 @@ service cloud.firestore {
         && request.auth.uid == get(/databases/$(database)/documents/app_config/server_identity).data.uid;
     }
 
-    // A private trip is seen and edited only by its creator and the team's owners and admins
+    // A private trip is seen and edited only by the person who created it, not even owners or admins
     function canSeePrivate(t) {
-      return t.get('private', false) != true || t.user_id == request.auth.uid || isOrgAdmin(t.organization_id);
+      return t.get('private', false) != true || t.user_id == request.auth.uid;
     }
 
     function isTripEditor(tripId) {
@@ -189,10 +189,9 @@ service cloud.firestore {
       allow update: if request.auth != null
         && (isTripEditor(tripId) || isCronUser())
         && request.resource.data.user_id == resource.data.user_id
-        // Only the creator or an owner/admin can make a trip private or share it again
+        // Only the trip's creator can make it private or share it again
         && (request.resource.data.get('private', false) == resource.data.get('private', false)
-            || isCronUser() || resource.data.user_id == request.auth.uid
-            || (resource.data.get('organization_id', null) != null && isOrgAdmin(resource.data.organization_id)))
+            || isCronUser() || resource.data.user_id == request.auth.uid)
         && (request.resource.data.get('organization_id', null) == resource.data.get('organization_id', null)
             || (resource.data.user_id == request.auth.uid
                 && resource.data.get('organization_id', null) == null
