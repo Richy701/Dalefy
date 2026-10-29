@@ -52,17 +52,19 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
   const pendingDeletes = useRef<Set<string>>(new Set());
   const queryKey = ["trips", orgId || uid];
 
+  // The live listener below fills this query; a separate fetch would download every trip twice
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
     queryKey,
     queryFn: () => fetchTrips(orgId),
-    staleTime: 1000 * 60 * 5,
-    retry: 2,
-    enabled: !!uid,
+    staleTime: Infinity,
+    enabled: false,
   });
 
   useEffect(() => {
     if (!uid) return;
-    const unsub = subscribeToTrips((updated) => {
+    const unsub = subscribeToTrips((updated, fromCache) => {
+      // An empty offline copy only means nothing is cached yet; wait for the server unless we're offline
+      if (fromCache && updated.length === 0 && navigator.onLine) return;
       // Filter out trips that are pending deletion to prevent snapshot revert
       let incoming = pendingDeletes.current.size > 0
         ? updated.filter(t => !pendingDeletes.current.has(t.id))
@@ -83,7 +85,11 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
       }
 
       qc.setQueryData<Trip[]>(queryKey, incoming);
-    }, orgId);
+    }, orgId, () => {
+      fetchTrips(orgId)
+        .then(list => qc.setQueryData<Trip[]>(queryKey, list))
+        .catch(err => logger.error("TripsProvider", "trips fallback fetch failed:", err));
+    });
     return () => unsub();
   }, [qc, uid, orgId]);
 
@@ -110,7 +116,10 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
     setTimeout(() => recentLocalEdits.current.clear(), 5000);
 
     qc.setQueryData<Trip[]>(queryKey, next);
-    syncToCloud(prev, next, orgId, () => { recentLocalEdits.current.clear(); void qc.invalidateQueries({ queryKey }); },
+    syncToCloud(prev, next, orgId, () => {
+      recentLocalEdits.current.clear();
+      fetchTrips(orgId).then(list => qc.setQueryData<Trip[]>(queryKey, list)).catch(() => {});
+    },
       // The stored trip carries uploaded photo addresses; keep it unless the trip was edited again meanwhile
       (saved, sent) => qc.setQueryData<Trip[]>(queryKey, list => list?.map(t => (t.id === saved.id && JSON.stringify(t) === JSON.stringify(sent) ? saved : t))));
   }, [qc, uid, orgId]);

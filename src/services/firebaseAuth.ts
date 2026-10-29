@@ -13,7 +13,7 @@ import {
   type User as FbUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { firebaseAuth, firebaseDb, isFirebaseConfigured } from "./firebase";
+import { firebaseAuth, firebaseDb, isFirebaseConfigured, clearFirestoreCache } from "./firebase";
 import { initialsFrom } from "@/lib/names";
 import type { User } from "@/types";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -277,6 +277,7 @@ export async function signOut(): Promise<void> {
   if (!isFirebaseConfigured()) return;
   clearNeedsPassword();
   await fbSignOut(firebaseAuth());
+  await clearFirestoreCache();
 }
 
 // ── Session ─────────────────────────────────────────────────────────────────

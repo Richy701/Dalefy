@@ -55,7 +55,8 @@ export async function fetchTrips(orgId?: string | null): Promise<Trip[]> {
   return filtered;
 }
 
-export function subscribeToTrips(onChange: (trips: Trip[]) => void, orgId?: string | null): Unsubscribe {
+/** `fromCache` is true when the snapshot came from the offline copy rather than the server. `onGiveUp` fires once retries run out. */
+export function subscribeToTrips(onChange: (trips: Trip[], fromCache: boolean) => void, orgId?: string | null, onGiveUp?: () => void): Unsubscribe {
   let innerUnsub: Unsubscribe | null = null;
   let cancelled = false;
 
@@ -70,17 +71,17 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void, orgId?: stri
       const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
       const blocked = all.length - filtered.length;
       if (blocked > 0) logger.log("subscribeToTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
-      onChange(filtered);
+      onChange(filtered, snap.metadata.fromCache);
     }, (err) => {
       logger.log("subscribeToTrips", `snapshot error (attempt ${attempt}):`, err.message);
-      if (attempt < 3 && !cancelled) {
-        setTimeout(() => startListener(uid, attempt + 1), attempt * 1500);
-      }
+      if (cancelled) return;
+      if (attempt < 3) setTimeout(() => startListener(uid, attempt + 1), attempt * 1500);
+      else onGiveUp?.();
     });
   };
 
   waitForAuth().then((uid) => {
-    if (!uid || cancelled) { onChange([]); return; }
+    if (!uid || cancelled) { onChange([], false); return; }
     startListener(uid);
   });
 

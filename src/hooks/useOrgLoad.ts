@@ -116,6 +116,8 @@ export function useOrgLoad() {
         setResolvedUserId(uid);
         setCurrentOrg(current);
         setOrgRole(membership.role as OrgRole);
+        // Trips and the dashboard only need the org; the member list fills in behind them
+        setIsLoading(false);
 
         // Get all members for this org
         const membersSnap = await getDocs(
@@ -136,10 +138,7 @@ export function useOrgLoad() {
               profile: p ? { id: m.user_id, name: p.name || "", email: p.email || "", initials: p.initials || "", avatar: p.avatar || "", role: p.role || "", status: p.status || "Active" } : undefined,
             };
           }));
-          if (mounted) {
-            setOrgMembers(members);
-            setIsLoading(false);
-          }
+          if (mounted) setOrgMembers(members);
         }
       } catch (err) {
         // Transient failure: leave org state unknown (tablesReady=false) so the
