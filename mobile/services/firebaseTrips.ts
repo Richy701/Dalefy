@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, getDoc,
+  collection, doc, getDocs, getDocsFromServer, setDoc, deleteDoc, getDoc,
   query, where, onSnapshot, limit,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -57,9 +57,10 @@ export async function fetchTrips(): Promise<Trip[]> {
   await waitForAuth();
   const uid = firebaseAuth().currentUser?.uid;
   if (!uid) throw new Error("Waiting for sign-in");
-  const members = await withTimeout(getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid))));
+  // Server only: offline getDocs answers from an empty cold cache, which would wipe the saved trips
+  const members = await withTimeout(getDocsFromServer(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid))));
   const deviceId = await getDeviceId();
-  const legacyMembers = USE_TRIP_API ? [] : (await withTimeout(getDocs(query(
+  const legacyMembers = USE_TRIP_API ? [] : (await withTimeout(getDocsFromServer(query(
     collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId),
   )))).docs;
   const ids = [...new Set([...members.docs, ...legacyMembers].map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
