@@ -876,7 +876,7 @@ export function WorkspacePage() {
     const accepted = files.filter(f => f.size <= MAX_SIZE);
     const uploads = accepted.map(async (file) => {
       const ext = file.name.split(".").pop();
-      const path = `trips/${tripId}/events/${editingEvent.id}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const path = `trips/${tripId}/docs-${editingEvent.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
       const url = await uploadToStorage(file, path);
       return {
         id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
