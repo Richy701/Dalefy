@@ -22,6 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -447,30 +448,23 @@ export function WorkspacePage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    const allEvents = [...trip.events];
-    const activeEvent = allEvents.find(e => e.id === activeId);
-    const overEvent = allEvents.find(e => e.id === overId);
-    if (!activeEvent || !overEvent || activeEvent.date !== overEvent.date) return;
+    const activeEvent = trip.events.find(e => e.id === activeId);
+    const overEvent = trip.events.find(e => e.id === overId);
+    if (!activeEvent || !overEvent) return;
 
-    const dayDate = activeEvent.date;
-    const dayEvents = allEvents.filter(e => e.date === dayDate);
-    const otherEvents = allEvents.filter(e => e.date !== dayDate);
+    // Days list by time, so the moved event takes the time (and day) of the one it was dropped on and sits
+    // next to it; ties keep the stored order. Only the moved event changes, every other time stays as it was.
+    const moved = { ...activeEvent, date: overEvent.date, time: overEvent.time };
+    const rest = trip.events.filter(e => e.id !== activeId);
+    const overIdx = rest.findIndex(e => e.id === overId);
+    const sameDay = activeEvent.date === overEvent.date;
+    const shown = trip.events.filter(e => e.date === activeEvent.date).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    const movingDown = sameDay && shown.findIndex(e => e.id === activeId) < shown.findIndex(e => e.id === overId);
+    rest.splice(movingDown ? overIdx + 1 : overIdx, 0, moved);
 
-    const oldIndex = dayEvents.findIndex(e => e.id === activeId);
-    const newIndex = dayEvents.findIndex(e => e.id === overId);
-    const reorderedDayEvents = arrayMove(dayEvents, oldIndex, newIndex);
-
-    // Swap only the two affected events' times so the time-based sort preserves the new order
-    const timeA = dayEvents[oldIndex].time;
-    const timeB = dayEvents[newIndex].time;
-    const finalEvents = reorderedDayEvents.map(e => {
-      if (e.id === activeId) return { ...e, time: timeB };
-      if (e.id === overId) return { ...e, time: timeA };
-      return e;
-    });
-
-    updateTrip(trip.id, { events: [...otherEvents, ...finalEvents] });
-    toast.success("Events reordered");
+    updateTrip(trip.id, { events: rest });
+    const when = [!sameDay && parseTripDate(overEvent.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), moved.time !== activeEvent.time && (moved.time || "no time")].filter(Boolean).join(", ");
+    toast.success(when ? `Moved ${activeEvent.title || "event"} to ${when}` : "Events reordered");
   }, [trip, updateTrip]);
 
   const runImageSearch = async (query: string, page = 1, sourceOverride?: "auto" | "google" | "unsplash" | "pexels") => {
@@ -1187,13 +1181,11 @@ export function WorkspacePage() {
             {presenceUsers.slice(0, 5).map((p) => (
               <Tooltip key={p.userId}>
                 <TooltipTrigger render={<div className="relative" />}>
-                    {p.avatar ? (
-                      <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full border-2 border-white dark:border-card object-cover" />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full border-2 border-white dark:border-card bg-brand/15 flex items-center justify-center text-[9px] font-black text-brand uppercase">
-                        {p.initials}
-                      </div>
-                    )}
+                    {/* A photo that fails to load falls back to initials instead of an empty circle */}
+                    <Avatar className="ring-2 ring-card">
+                      {p.avatar && <AvatarImage src={p.avatar} alt={p.name} />}
+                      <AvatarFallback className="text-[10px] font-semibold uppercase">{p.initials}</AvatarFallback>
+                    </Avatar>
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-card" />
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
@@ -1748,7 +1740,7 @@ export function WorkspacePage() {
                         <div key={date} id={`day-${date}`} className="scroll-mt-6">
                           <DaySection dayNumber={dayIdx + 1} count={events.length} date={parseTripDate(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                              <div className="ml-0 sm:ml-8 rounded-xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
+                              <div className="ml-0 sm:ml-8 rounded-xl border border-border bg-card shadow-sm divide-y divide-border [&>*:first-child_.group]:rounded-t-xl [&>*:last-child_.group]:rounded-b-xl">
                                 {events.map(event => (
                                   <SortableEventCard
                                     key={event.id}

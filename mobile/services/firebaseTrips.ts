@@ -330,14 +330,26 @@ export async function logTripJoin(
       ...(linkedTravelerId ? { linked_traveler_id: linkedTravelerId } : {}),
     };
 
-    // Device-keyed doc (includes uid so rules can verify ownership)
-    const memberId = `${deviceId}_${tripId}`;
-    await setDoc(doc(firebaseDb(), TRIP_MEMBERS, memberId), memberData, { merge: true });
+    const denied = (err: unknown) => (err as { code?: string })?.code === "permission-denied";
+    // Only these fields may change on a record that already exists (see firestore.rules)
+    const updatable = Object.fromEntries(Object.entries(memberData).filter(([k]) => !['device_id', 'trip_id', 'uid'].includes(k)));
 
-    // UID-keyed doc so Firestore rules can verify membership via isTripMember()
+    // Device-keyed doc (includes uid so rules can verify ownership). A record this phone wrote before signing in,
+    // or under another account, belongs to that identity and refuses the update; the account record below is
+    // what membership rests on, so that refusal doesn't fail the join.
+    const memberId = `${deviceId}_${tripId}`;
+    await setDoc(doc(firebaseDb(), TRIP_MEMBERS, memberId), memberData, { merge: true }).catch((err) => {
+      if (!uid || !denied(err)) throw err;
+    });
+
+    // UID-keyed doc so Firestore rules can verify membership via isTripMember(). The same account joining again
+    // from another phone can't change device_id on its existing record, so that case updates the rest.
     if (uid) {
-      const uidMemberId = `${uid}_${tripId}`;
-      await setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidMemberId), memberData, { merge: true });
+      const ref = doc(firebaseDb(), TRIP_MEMBERS, `${uid}_${tripId}`);
+      await setDoc(ref, memberData, { merge: true }).catch((err) => {
+        if (!denied(err)) throw err;
+        return setDoc(ref, updatable, { merge: true });
+      });
     }
     return true;
   } catch {
