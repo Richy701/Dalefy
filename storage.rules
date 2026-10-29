@@ -7,16 +7,21 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/org_members/$(request.auth.uid + '_' + orgId)).data.role in roles;
     }
 
+    // A private trip's files belong to its creator alone, matching the Firestore rules
+    function sharedOrMine(trip) {
+      return trip.get('private', false) != true || trip.user_id == request.auth.uid;
+    }
+
     function tripEditor(tripId) {
       let trip = firestore.get(/databases/(default)/documents/trips/$(tripId)).data;
       return request.auth != null && (trip.user_id == request.auth.uid
-        || orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent']));
+        || (orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent']) && sharedOrMine(trip)));
     }
 
     function tripStaff(tripId) {
       let trip = firestore.get(/databases/(default)/documents/trips/$(tripId)).data;
       return request.auth != null && (trip.user_id == request.auth.uid
-        || orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent', 'viewer']));
+        || (orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent', 'viewer']) && sharedOrMine(trip)));
     }
 
     function tripMember(tripId) {

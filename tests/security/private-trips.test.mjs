@@ -63,3 +63,4 @@ test('a private trip roster is hidden from other teammates', async () => {
   await assertSucceeds(db('agent').collection('trip_members').where('trip_id', '==', 'secret').get());
   await assertFails(db('agent2').collection('trip_members').where('trip_id', '==', 'secret').get());
 });
+

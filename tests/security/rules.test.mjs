@@ -23,11 +23,12 @@ before(async () => {
     for (const [id, status] of [['published', 'Published'], ['private', 'Draft']]) {
       await db.doc(`trips/${id}`).set({ user_id: 'owner', organization_id: 'agency', status, name: 'Original', events: [], published_snapshot: { events: [], publishedAt: 'now' } });
     }
+    await db.doc('trips/mine-only').set({ user_id: 'agent', organization_id: 'agency', status: 'Draft', name: 'Private', private: true, events: [] });
     await db.doc('trip_members/traveler_published').set({ uid: 'traveler', device_id: 'device', trip_id: 'published', role: 'traveler' });
     await db.doc('trip_members/leader_published').set({ uid: 'leader', device_id: 'leader-device', trip_id: 'published', role: 'leader' });
     await db.doc('trip_members/traveler_private').set({ uid: 'traveler', device_id: 'device', trip_id: 'private', role: 'traveler' });
     const storage = c.storage();
-    for (const path of ['trips/published/voucher.pdf', 'trips/private/secret.pdf', 'trips/published/events/event', 'trips/published/media/traveler/a.jpg']) {
+    for (const path of ['trips/mine-only/voucher.pdf', 'trips/mine-only/events/e1/photo.jpg', 'trips/mine-only/media/agent/a.jpg', 'trips/published/voucher.pdf', 'trips/private/secret.pdf', 'trips/published/events/event', 'trips/published/media/traveler/a.jpg']) {
       await storage.ref(path).put(new Uint8Array([1, 2]), { contentType: 'image/jpeg' });
     }
   });
@@ -197,4 +198,18 @@ test('travellers stamp when they last opened the app, and nothing else that way'
   await assertSucceeds(mine.set({ last_seen_at: '2026-01-02T00:00:00.000Z', platform: 'ios' }, { merge: true }));
   await assertFails(mine.set({ last_seen_at: '2026-01-02T00:00:00.000Z', role: 'leader' }, { merge: true }));
   await assertFails(context('leader').firestore().doc('trip_members/traveler_published').set({ last_seen_at: 'x' }, { merge: true }));
+});
+
+test('a private trip\'s files are its creator\'s alone; shared trip files stay team-wide', async () => {
+  const storage = uid => context(uid).storage();
+  for (const path of ['trips/mine-only/voucher.pdf', 'trips/mine-only/events/e1/photo.jpg', 'trips/mine-only/media/agent/a.jpg']) {
+    await assertSucceeds(storage('agent').ref(path).getMetadata());
+    for (const uid of ['owner', 'admin', 'viewer']) await assertFails(storage(uid).ref(path).getMetadata());
+  }
+  for (const uid of ['owner', 'admin']) {
+    await assertFails(storage(uid).ref('trips/mine-only/new.pdf').put(new Uint8Array([1]), { contentType: 'application/pdf' }));
+    await assertFails(storage(uid).ref('trips/mine-only/voucher.pdf').delete());
+  }
+  await assertSucceeds(storage('agent').ref('trips/mine-only/new.pdf').put(new Uint8Array([1]), { contentType: 'application/pdf' }));
+  for (const uid of ['owner', 'admin', 'agent', 'viewer']) await assertSucceeds(storage(uid).ref('trips/published/voucher.pdf').getMetadata());
 });
