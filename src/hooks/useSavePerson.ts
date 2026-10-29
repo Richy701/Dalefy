@@ -28,8 +28,18 @@ export function useSavePerson() {
       return;
     }
     const db = firebaseDb(), orgId = currentOrg?.id || null, scope = orgId || `u-${user.id}`;
+    // Shared team trips plus my own (private ones included); rules refuse a whole-team list so private trips stay hidden
+    const listTrips = async () => {
+      const trips = collection(db, 'trips');
+      // Before the private-trip rules are live, older trips have no flag yet; the whole-team list still finds them
+      if (orgId) try { return await getDocs(query(trips, where('organization_id', '==', orgId))); } catch { /* refused: ask for what I can see */ }
+      const snaps = await Promise.all(orgId
+        ? [getDocs(query(trips, where('organization_id', '==', orgId), where('private', '==', false))), getDocs(query(trips, where('organization_id', '==', orgId), where('user_id', '==', user.id)))]
+        : [getDocs(query(trips, where('user_id', '==', user.id)))]);
+      return { docs: [...new Map(snaps.flatMap(s => s.docs).map(d => [d.id, d])).values()] };
+    };
     const scoped = (name: string) => query(collection(db, name), ...(orgId ? [where('organization_id', '==', orgId)] : [where('organization_id', '==', null), where('user_id', '==', user.id)]));
-    const [contacts, tripList, compliance] = await Promise.all([getDocs(scoped('directory_travelers')), getDocs(orgId ? query(collection(db, 'trips'), where('organization_id', '==', orgId)) : query(collection(db, 'trips'), where('user_id', '==', user.id))), duplicate ? getDocs(scoped('traveler_compliance')) : Promise.resolve(null)]);
+    const [contacts, tripList, compliance] = await Promise.all([getDocs(scoped('directory_travelers')), listTrips(), duplicate ? getDocs(scoped('traveler_compliance')) : Promise.resolve(null)]);
     const ids = [person.id, duplicate?.id].filter(Boolean);
     const relevant = tripList.docs.filter(d => { const data = d.data(); return ids.some(id => data.travelers?.some((p: User) => p.id === id) || data.traveler_ids?.includes(id) || data.organizer?.travelerId === id || data.published_snapshot?.travelers?.some((p: User) => p.id === id)); });
     const members = duplicate ? (await Promise.all(relevant.map(trip => getDocs(query(collection(db, 'trip_members'), where('trip_id', '==', trip.id)))))).flatMap(s => s.docs).filter(d => d.data().linked_traveler_id === duplicate.id) : [];

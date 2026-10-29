@@ -50,7 +50,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null, seeAll = true)
   const qc = useQueryClient();
   const recentLocalEdits = useRef<Set<string>>(new Set());
   const pendingDeletes = useRef<Set<string>>(new Set());
-  const queryKey = ["trips", orgId || uid, seeAll ? "all" : "mine"];
+  const queryKey = ["trips", orgId || uid];
 
   // The live listener below fills this query; a separate fetch would download every trip twice
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({

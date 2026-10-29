@@ -54,7 +54,9 @@ for (const uid of ['owner', 'admin', 'agent', 'viewer']) {
   test(`${uid} retains organization trip reads`, async () => {
     const db = context(uid).firestore();
     await assertSucceeds(db.doc('trips/private').get());
-    await assertSucceeds(db.collection('trips').where('organization_id', '==', 'agency').get());
+    // Team lists ask for shared trips explicitly, so private trips can never ride along
+    await assertSucceeds(db.collection('trips').where('organization_id', '==', 'agency').where('private', '==', false).get());
+    await assertFails(db.collection('trips').where('organization_id', '==', 'agency').get());
   });
 }
 test('editors retain writes, but identities are immutable and viewer cannot write', async () => {

@@ -177,11 +177,18 @@ service cloud.firestore {
 
     // Working records are private. Shared clients use the filtered trip API.
     match /trips/{tripId} {
-      allow read: if request.auth != null && (
+      allow get: if request.auth != null && (
         resource.data.user_id == request.auth.uid || isCronUser()
         || (resource.data.get('organization_id', null) != null
             && isOrgMember(resource.data.organization_id)
             && canSeePrivate(resource.data)));
+      // A query can't lean on a default for 'private' (the engine assumes the default for unfiltered fields),
+      // so team queries must ask for shared trips explicitly; your own trips are listed by user_id
+      allow list: if request.auth != null && (
+        resource.data.user_id == request.auth.uid || isCronUser()
+        || (resource.data.get('organization_id', null) != null
+            && isOrgMember(resource.data.organization_id)
+            && resource.data.private == false));
       allow create: if request.auth != null
         && request.resource.data.user_id == request.auth.uid
         && (request.resource.data.get('organization_id', null) == null

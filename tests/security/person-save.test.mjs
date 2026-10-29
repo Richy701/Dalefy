@@ -18,15 +18,19 @@ test('merge transfers event assignments, published roster, organiser, compliance
  const current={...keep,avatar:'new-photo.png'};await saver()(current,{},other);
  await env.withSecurityRulesDisabled(async c=>{const db=c.firestore(), trip=(await db.doc('trips/test-trip').get()).data(), member=(await db.doc('trip_members/member').get()).data();assert.equal(trip.travelers.length,1);assert.deepEqual(trip.events[0].assignedTo,['keep']);assert.equal(trip.published_snapshot.travelers[0].id,'keep');assert.equal(trip.organizer.travelerId,'keep');assert.equal(trip.organizer.avatar,'new-photo.png');assert.equal(member.linked_traveler_id,'keep');assert.equal(member.role,'leader');assert.equal((await db.doc(`directory_travelers/${org}__duplicate`).get()).exists,false);assert.equal((await db.doc(`directory_travelers/${org}__keep`).get()).data().traveler.profile.dietary,'Vegetarian');assert.equal((await db.doc(`traveler_compliance/${org}__keep`).get()).data().docs[0].status,'Signed');assert.equal((await db.doc(`traveler_compliance/${org}__duplicate`).get()).exists,false);});
 });
-test('real trip save preserves unrelated remote changes and rejects concurrent list edits',async()=>{
+test('real trip save preserves unrelated remote changes, merges edits to different cards and rejects edits to the same card',async()=>{
  const db=env.authenticatedContext(uid,{email:`${uid}@example.test`,email_verified:true}).firestore();
  const service=load('src/services/firebaseTrips.ts',{'firebase/firestore':firestore,'firebase/storage':{},'firebase/auth':{},'./firebase':{firebaseDb:()=>db,firebaseAuth:()=>({currentUser:{uid}})},'@/lib/shrinkImage':{},'@/lib/logger':{logger:{log:()=>{},error:()=>{}}},'@/lib/tripSave':save,'@/lib/travelerSync':sync});
  const baseline={id:'concurrent-trip',name:'Original',start:'2026-11-01',end:'2026-11-02',status:'Draft',events:[],image:'',travelers:[],travelerIds:[],organizationId:org};
  await env.withSecurityRulesDisabled(async c=>c.firestore().doc('trips/concurrent-trip').set({user_id:uid,organization_id:org,name:baseline.name,start:baseline.start,end_date:baseline.end,status:'Draft',events:[{id:'remote',title:'Remote change'}],travelers:[],traveler_ids:[],image:''}));
  await service.upsertTrip({...baseline,name:'Renamed'},org,baseline);
  const data=(await firestore.getDoc(firestore.doc(db,'trips','concurrent-trip'))).data();assert.equal(data.name,'Renamed');assert.equal(data.events[0].id,'remote');
- await assert.rejects(service.upsertTrip({...baseline,events:[{id:'local',title:'Local change'}]},org,baseline),/another session/);
- assert.equal((await firestore.getDoc(firestore.doc(db,'trips','concurrent-trip'))).data().events[0].id,'remote');
+ await service.upsertTrip({...baseline,events:[{id:'local',title:'Local change'}]},org,baseline);
+ assert.deepEqual((await firestore.getDoc(firestore.doc(db,'trips','concurrent-trip'))).data().events.map(e=>e.id).sort(),['local','remote']);
+ const seen={...baseline,events:[{id:'remote',title:'Remote change'}]};
+ await env.withSecurityRulesDisabled(async c=>c.firestore().doc('trips/concurrent-trip').update({events:[{id:'remote',title:'Edited elsewhere'},{id:'local',title:'Local change'}]}));
+ await assert.rejects(service.upsertTrip({...seen,events:[{id:'remote',title:'Edited here'}]},org,seen),/"Edited here" was changed in another session/);
+ assert.equal((await firestore.getDoc(firestore.doc(db,'trips','concurrent-trip'))).data().events[0].title,'Edited elsewhere');
 });
 
 test('a trip creator downgraded to viewer cannot edit or delete the organisation trip',async()=>{
