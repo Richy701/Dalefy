@@ -12,6 +12,9 @@
  * list and on the published copies, which is how the phone picks it up. Matching: the file name (without
  * extension and any " - suffix") against the full name first, then a bare first name when exactly one
  * person has it. Anything ambiguous or unmatched is listed and skipped.
+ *
+ * --resync needs no folder: it copies each person's directory photo back onto trip entries (and published
+ * copies and organiser cards) that have lost it, e.g. after a re-import blanked them. Existing photos stay.
  */
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
@@ -45,6 +48,7 @@ const orgFilter = flag('org') ?? null;
 const apply = has('apply');
 const replace = has('replace');
 const fromTrips = has('from-trips');
+const resync = has('resync');
 // Just these people, by full name, when the rest of a match list is still under review
 const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
 
@@ -70,9 +74,9 @@ function walk(dir) {
   }
   return out;
 }
-if (!existsSync(folder)) throw new Error(`Folder not found: ${folder}`);
-const photos = walk(folder);
-console.log(`${photos.length} photos in ${folder}`);
+if (!resync && !existsSync(folder)) throw new Error(`Folder not found: ${folder}`);
+const photos = resync ? [] : walk(folder);
+if (!resync) console.log(`${photos.length} photos in ${folder}`);
 
 // ── People in the directory ─────────────────────────────────────────────────
 const dirSnap = await db.collection('directory_travelers').get();
@@ -149,7 +153,15 @@ for (const file of photos.sort((a, b) => depth(a) - depth(b) || a.localeCompare(
   plan.push({ file, label, person: m.person });
 }
 
-console.log(`\n${plan.length} to attach:`);
+// Resync: everyone in the directory who has a photo, put back where a trip copy lost it
+if (resync) for (const person of people) {
+  if (!person.avatar || (only.length && !only.includes(norm(person.name)))) continue;
+  const ids = idsFor(person);
+  const missing = trips.filter(t => [...(t.data.travelers ?? []), ...(t.data.published_snapshot?.travelers ?? [])].some(x => ids.includes(x?.id) && !x.avatar)).map(t => t.data.name);
+  if (missing.length) plan.push({ label: `${person.name} (missing on: ${[...new Set(missing)].join(', ')})`, person, url: person.avatar });
+}
+
+console.log(`\n${plan.length} to ${resync ? 'resync' : 'attach'}:`);
 for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}${p.person.create ? '  (new in the directory, from their trips)' : ''}`);
 const show = (title, list) => { if (list.length) { console.log(`\n${title} (${list.length}):`); for (const l of list) console.log(`  ${l}`); } };
 show('Ambiguous, pick by renaming the file to the full name', skipped.ambiguous);
@@ -157,21 +169,24 @@ show('No one by that name', skipped.unmatched);
 show('Already have a photo, pass --replace to overwrite', skipped.hasPhoto);
 show('Second file for the same person', skipped.duplicate);
 
-if (!apply) { console.log('\nDry run. Add --apply to upload and attach.'); process.exit(0); }
+if (!apply) { console.log(`\nDry run. Add --apply to ${resync ? 'write these photos back onto the trips' : 'upload and attach'}.`); process.exit(0); }
 
 // ── Shrink, upload, write ───────────────────────────────────────────────────
 const tmp = mkdtempSync(path.join(tmpdir(), 'avatars-'));
 let done = 0;
-for (const { file, person } of plan) {
-  const small = path.join(tmp, `${person.id}.jpg`);
-  execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', '-Z', '512', file, '--out', small], { stdio: 'ignore' });
-  const dest = `avatars/directory/${person.id}-${Date.now()}.jpg`;
-  const token = randomUUID();
-  await bucket.upload(small, { destination: dest, contentType: 'image/jpeg', metadata: { metadata: { firebaseStorageDownloadTokens: token } } });
-  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(dest)}?alt=media&token=${token}`;
+for (const { file, person, url: existingUrl } of plan) {
+  let url = existingUrl;
+  if (!resync) {
+    const small = path.join(tmp, `${person.id}.jpg`);
+    execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', '-Z', '512', file, '--out', small], { stdio: 'ignore' });
+    const dest = `avatars/directory/${person.id}-${Date.now()}.jpg`;
+    const token = randomUUID();
+    await bucket.upload(small, { destination: dest, contentType: 'image/jpeg', metadata: { metadata: { firebaseStorageDownloadTokens: token } } });
+    url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(dest)}?alt=media&token=${token}`;
+  }
 
   const batch = db.batch();
-  if (person.create) {
+  if (resync) { /* the directory already has this photo */ } else if (person.create) {
     const initials = person.initials || person.name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2);
     batch.set(person.ref, {
       organization_id: person.org,
@@ -184,8 +199,10 @@ for (const { file, person } of plan) {
   }
   const ids = idsFor(person);
   for (const trip of trips) {
-    const withPhoto = (list) => Array.isArray(list) && list.some(t => ids.includes(t?.id))
-      ? list.map(t => (ids.includes(t?.id) ? { ...t, avatar: url } : t))
+    // A resync only fills entries that lost their photo
+    const wants = (t) => ids.includes(t?.id) && (!resync || !t.avatar);
+    const withPhoto = (list) => Array.isArray(list) && list.some(wants)
+      ? list.map(t => (wants(t) ? { ...t, avatar: url } : t))
       : null;
     const travelers = withPhoto(trip.data.travelers);
     const snapTravelers = withPhoto(trip.data.published_snapshot?.travelers);

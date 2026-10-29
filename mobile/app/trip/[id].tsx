@@ -495,7 +495,8 @@ export default function TripScreen() {
             <View style={styles.groupRow}>
               {travellers.length > 0 && (
                 <View style={styles.avatars}>
-                  {travellers.slice(0, 5).map((t, i) => (
+                  {/* Faces first: the row holds five, so people with a photo lead and initials fill the rest */}
+                  {[...travellers].sort((a, b) => Number(!!b.avatar) - Number(!!a.avatar)).slice(0, 5).map((t, i) => (
                     <View key={t.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -6 }]}>
                       <Avatar size={26} uri={t.avatar} initials={t.initials} color="rgba(255,255,255,0.92)" solid ringColor="rgba(0,0,0,0.28)" />
                     </View>

@@ -1631,7 +1631,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       const onTrip = (isReimport && existingTripId ? trips.find(t => t.id === existingTripId)?.travelers : undefined) ?? [];
       const onTripIds = new Set(onTrip.map(t => t.id));
       const candidates: User[] = [
-        ...onTrip.map(t => ({ id: t.id, name: t.name, email: t.email ?? "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const })),
+        // Their photo comes along too: a blank here wiped every headshot on the trip when it was re-imported
+        ...onTrip.map(t => ({ id: t.id, name: t.name, email: t.email ?? "", role: "Traveler" as const, avatar: t.avatar ?? "", initials: t.initials, status: "Active" as const })),
         ...stored.filter(u => !onTripIds.has(u.id)),
       ];
       const result = matchOrCreateTravelers(parsed.parsedTravelerNames, candidates, onTripIds);
