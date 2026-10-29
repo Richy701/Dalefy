@@ -7,6 +7,7 @@ import { NotificationToast } from "@/components/shared/NotificationToast";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { EmailVerificationBanner } from "@/components/shared/EmailVerificationBanner";
+import { SetPasswordDialog } from "@/components/shared/SetPasswordDialog";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
@@ -78,6 +79,7 @@ export function AppLayout() {
         <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
         <GlobalShortcuts />
         <DemoBadge />
+        <SetPasswordDialog />
       </SidebarProvider>
     </TooltipProvider>
   );

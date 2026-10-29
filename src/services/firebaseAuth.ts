@@ -375,6 +375,35 @@ export async function changePassword(newPassword: string): Promise<{ error: stri
   }
 }
 
+/**
+ * Whether the signed-in account can sign in with a password. Asks Identity
+ * Toolkit about the user's own account. Google accounts count as having a
+ * sign-in method; "unknown" means the check failed and nothing should block.
+ */
+export async function accountPasswordStatus(): Promise<"has-password" | "needs-password" | "unknown"> {
+  if (!isFirebaseConfigured()) return "unknown";
+  const user = firebaseAuth().currentUser;
+  if (!user) return "unknown";
+  try {
+    const idToken = await user.getIdToken();
+    const key = firebaseAuth().app.options.apiKey;
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(key ?? "")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+    if (!r.ok) return "unknown";
+    const data = (await r.json()) as { users?: Array<{ passwordUpdatedAt?: number; providerUserInfo?: Array<{ providerId?: string }> }> };
+    const account = data.users?.[0];
+    if (!account) return "unknown";
+    if (account.passwordUpdatedAt) return "has-password";
+    const federated = (account.providerUserInfo ?? []).some(p => p.providerId && p.providerId !== "password");
+    return federated ? "has-password" : "needs-password";
+  } catch {
+    return "unknown";
+  }
+}
+
 // Set when someone signs in with an emailed link, so the invite flow can make
 // them choose a password before they join (shared department accounts need one).
 const NEEDS_PASSWORD_KEY = "daf-needs-password";
