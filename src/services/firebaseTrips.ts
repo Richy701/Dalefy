@@ -274,28 +274,36 @@ async function memberDocsOfTrips(tripIds: string[]) {
   return snaps.flatMap(snap => snap?.docs ?? []);
 }
 
+/** Shown wherever app joins are counted, so a failed lookup never reads as "0 on the app" */
+export const APP_MEMBERS_ERROR = "Couldn't load who's on the app.";
+
+/** Everyone who joined these trips in the app. Throws if any trip's list can't be read. */
 export async function fetchTripMembers(tripIds: string[]): Promise<TripMember[]> {
-  try {
-    const docs = await memberDocsOfTrips(tripIds);
-    // Deduplicate: logTripJoin creates two docs per join (device_id + uid keyed).
-    // Keep one entry per device_id+trip_id pair - prefer the device-keyed doc.
-    const all = docs.map((d) => d.data() as TripMember)
-      .sort((a, b) => String(b.joined_at ?? "").localeCompare(String(a.joined_at ?? "")));
-    const seen = new Map<string, TripMember>();
-    for (const m of all) {
-      const key = `${m.device_id}_${m.trip_id}`;
-      const kept = seen.get(key);
-      if (!kept) { seen.set(key, m); continue; }
-      // The app writes a confirmed email and the account onto the account-keyed doc only; carry them over
-      if (!kept.email && m.email) kept.email = m.email;
-      if (!kept.uid && m.uid) kept.uid = m.uid;
-      if (!kept.linked_traveler_id && m.linked_traveler_id) kept.linked_traveler_id = m.linked_traveler_id;
-      if (m.last_seen_at && (!kept.last_seen_at || m.last_seen_at > kept.last_seen_at)) { kept.last_seen_at = m.last_seen_at; kept.platform = m.platform; }
-    }
-    return Array.from(seen.values());
-  } catch {
-    return [];
+  const ids = [...new Set(tripIds.filter(Boolean))];
+  const snaps = await Promise.all(ids.map(id =>
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", id))).catch((err: unknown) => {
+      logger.warn("fetchTripMembers", `trip ${id}:`, (err as { code?: string })?.code ?? err);
+      return null;
+    }),
+  ));
+  if (snaps.some(s => !s)) throw new Error(APP_MEMBERS_ERROR);
+  const docs = snaps.flatMap(snap => snap?.docs ?? []);
+  // Deduplicate: logTripJoin creates two docs per join (device_id + uid keyed).
+  // Keep one entry per device_id+trip_id pair - prefer the device-keyed doc.
+  const all = docs.map((d) => d.data() as TripMember)
+    .sort((a, b) => String(b.joined_at ?? "").localeCompare(String(a.joined_at ?? "")));
+  const seen = new Map<string, TripMember>();
+  for (const m of all) {
+    const key = `${m.device_id}_${m.trip_id}`;
+    const kept = seen.get(key);
+    if (!kept) { seen.set(key, m); continue; }
+    // The app writes a confirmed email and the account onto the account-keyed doc only; carry them over
+    if (!kept.email && m.email) kept.email = m.email;
+    if (!kept.uid && m.uid) kept.uid = m.uid;
+    if (!kept.linked_traveler_id && m.linked_traveler_id) kept.linked_traveler_id = m.linked_traveler_id;
+    if (m.last_seen_at && (!kept.last_seen_at || m.last_seen_at > kept.last_seen_at)) { kept.last_seen_at = m.last_seen_at; kept.platform = m.platform; }
   }
+  return Array.from(seen.values());
 }
 
 /** Point a member's app account at one of the trip's travellers, on both of their docs (null unlinks them) */

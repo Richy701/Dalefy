@@ -27,7 +27,7 @@ import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { MessageDialog } from "@/components/shared/MessageDialog";
-import { fetchTripMembers, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, renameAppUser, unlinkTraveler, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
+import { fetchTripMembers, APP_MEMBERS_ERROR, deleteAppUsers, removeUserFromTrip, updateTripMemberRole, renameAppUser, unlinkTraveler, fetchPushLog, type TripMember, type TripMemberRole, type PushLogEntry } from "@/services/firebaseTrips";
 import { timeAgo } from "@/lib/timeAgo";
 import { cn } from "@/lib/utils";
 import { withoutTravelers } from "@/lib/removeTravelers";
@@ -173,7 +173,7 @@ export function TravelersPage() {
     setAppUsersError(null);
     fetchTripMembers(tripIds)
       .then(list => { if (!cancelled) setAppUsers(list); })
-      .catch(() => { if (!cancelled) setAppUsersError("Couldn't load who's on the app. Check your connection and try again."); })
+      .catch(() => { if (!cancelled) setAppUsersError(`${APP_MEMBERS_ERROR} Check your connection and try again.`); })
       .finally(() => { if (!cancelled) setAppUsersLoading(false); });
     return () => { cancelled = true; };
   }, [appUsersReload, tripIds]);
@@ -632,7 +632,7 @@ export function TravelersPage() {
               <h2 className="text-2xl font-semibold tracking-tight text-foreground">Travellers</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {people.length} {people.length === 1 ? "person" : "people"}
-                {!isDemoUser && `, ${onAppCount} on the app`}
+                {!isDemoUser && !appUsersLoading && !appUsersError && `, ${onAppCount} on the app`}
                 {appUsersLoading && ", checking the app..."}
               </p>
             </div>

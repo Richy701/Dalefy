@@ -72,7 +72,7 @@ import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { publishedChanges } from "@/lib/tripChanges";
-import { fetchTripMembers, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, APP_MEMBERS_ERROR, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
@@ -340,6 +340,7 @@ export function WorkspacePage() {
   const [tripMembers, setTripMembers] = useState<TripMember[]>([]);
   const [membersLoadedFor, setMembersLoadedFor] = useState<string | null>(null);
   const [membersReload, setMembersReload] = useState(0);
+  const [membersErrorFor, setMembersErrorFor] = useState<string | null>(null);
   useEffect(() => {
     if (!tripId || isDemo || !isFirebaseConfigured()) return;
     let cancelled = false;
@@ -347,7 +348,8 @@ export function WorkspacePage() {
       if (cancelled) return;
       setTripMembers(list);
       setMembersLoadedFor(tripId);
-    });
+      setMembersErrorFor(null);
+    }).catch(() => { if (!cancelled) setMembersErrorFor(tripId); });
     return () => { cancelled = true; };
   }, [tripId, isDemo, membersReload]);
   const membersLoaded = !!tripId && membersLoadedFor === tripId;
@@ -1792,6 +1794,12 @@ export function WorkspacePage() {
                         <span className="text-[11px] font-medium text-muted-foreground">
                           {tripTravelers.length} assigned{membersLoaded && tripTravelers.length ? `, ${tripTravelers.filter(t => memberByTraveler.has(t.id)).length} in the app` : ""}
                         </span>
+                        {membersErrorFor === tripId && (
+                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                            {APP_MEMBERS_ERROR}{" "}
+                            <button type="button" onClick={() => setMembersReload(n => n + 1)} className="underline underline-offset-2 hover:text-foreground">Try again</button>
+                          </span>
+                        )}
                       </div>
                     </div>
 

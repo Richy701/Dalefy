@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchTripMembers } from "@/services/firebaseTrips";
+import { fetchTripMembers, APP_MEMBERS_ERROR } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/lib/dates";
 import { EVENT_ICONS, EVENT_TEXT_COLORS, type EventType } from "@/config/eventStyles";
 import type { Trip } from "@/types";
@@ -7,11 +7,12 @@ import type { Trip } from "@/types";
 /** The next trip at a glance: who's going, who's ready, and what happens first */
 export function NextTripSide({ trip }: { trip: Trip }) {
   const [inApp, setInApp] = useState<number | null>(null);
+  const [inAppError, setInAppError] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchTripMembers([trip.id]).then(members => {
-      if (!cancelled) setInApp(new Set(members.map(m => m.linked_traveler_id || m.uid || m.device_id)).size);
-    });
+      if (!cancelled) { setInApp(new Set(members.map(m => m.linked_traveler_id || m.uid || m.device_id)).size); setInAppError(false); }
+    }).catch(() => { if (!cancelled) { setInApp(null); setInAppError(true); } });
     return () => { cancelled = true; };
   }, [trip.id]);
 
@@ -37,6 +38,7 @@ export function NextTripSide({ trip }: { trip: Trip }) {
             <p className="text-sm text-muted-foreground min-w-0">
               <span className="font-semibold text-foreground">{invited} of {travellers.length}</span> invited
               {inApp !== null && <>, <span className="font-semibold text-foreground">{inApp}</span> in the app</>}
+              {inAppError && <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{APP_MEMBERS_ERROR}</span>}
             </p>
           </div>
         </div>

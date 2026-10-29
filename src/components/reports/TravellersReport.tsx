@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CaretRight, EnvelopeSimple } from "@phosphor-icons/react";
-import { fetchTripMembers, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, APP_MEMBERS_ERROR, type TripMember } from "@/services/firebaseTrips";
+import { Button } from "@/components/ui/button";
 import { parseTripDate } from "@/lib/dates";
 import { timeAgo } from "@/lib/timeAgo";
 import { Spinner } from "@/components/ui/spinner";
@@ -21,11 +22,15 @@ export function TravellersReport({ trips }: { trips: Trip[] }) {
   const [now] = useState(() => Date.now());
   const tripIds = useMemo(() => trips.map(t => t.id).sort().join(","), [trips]);
 
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    fetchTripMembers(tripIds ? tripIds.split(",") : []).then(list => { if (!cancelled) setMembers(list); });
+    fetchTripMembers(tripIds ? tripIds.split(",") : [])
+      .then(list => { if (!cancelled) setMembers(list); })
+      .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
-  }, [tripIds]);
+  }, [tripIds, reload]);
 
   const rows = useMemo(() => {
     if (!members) return [];
@@ -52,6 +57,15 @@ export function TravellersReport({ trips }: { trips: Trip[] }) {
       };
     }).sort((a, b) => a.trip.start.localeCompare(b.trip.start));
   }, [members, trips, now]);
+
+  if (error) {
+    return (
+      <div className="mt-8 flex items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5">
+        <p className="text-sm text-amber-700 dark:text-amber-400">{APP_MEMBERS_ERROR} Check your connection and try again.</p>
+        <Button variant="outline" size="sm" onClick={() => { setError(false); setMembers(null); setReload(n => n + 1); }}>Try again</Button>
+      </div>
+    );
+  }
 
   if (!members) {
     return <div className="flex items-center justify-center py-24"><Spinner className="size-6 text-muted-foreground" /></div>;
