@@ -144,8 +144,9 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
   const placeholder = isPlaceholderTime(time);
   const cat = CATEGORY_CLASS[event.type] ?? CATEGORY_CLASS.activity;
 
+  // The row sizes itself to its own width, not the window's, so it still fits when the phone preview narrows the column
   return (
-    <div className="bg-card">
+    <div className="bg-card @container">
       <div
         onClick={onClick}
         {...cardA11y(event.title, onClick)}
@@ -161,11 +162,11 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
             <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitleFor(event)}</p>
           )}
         </div>
-        {/* Wide screens: the row's middle carries its details, in fixed columns so they line up down the day */}
+        {/* Wide rows: the middle carries its details, in fixed columns so they line up down the day */}
         {(() => {
           const facts = rowFacts(event, arrTz);
           return facts.length > 0 && (
-            <dl className="hidden xl:grid grid-cols-3 gap-x-6 w-[27rem] shrink-0">
+            <dl className="hidden @4xl:grid grid-cols-3 gap-x-6 w-[27rem] shrink-0">
               {facts.map(f => (
                 <div key={f.label} className="min-w-0">
                   <dt className="text-[11px] text-muted-foreground">{f.label}</dt>
