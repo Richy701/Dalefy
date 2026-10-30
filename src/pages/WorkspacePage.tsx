@@ -94,25 +94,12 @@ import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { CategoryDot } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
+import { sortEvents, inDayOrder } from "@/lib/sortEvents";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
 // The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function timeToMinutes(t: string): number {
-  const ampm = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (ampm) {
-    let h = parseInt(ampm[1]);
-    const min = parseInt(ampm[2]);
-    const pm = ampm[3].toUpperCase() === "PM";
-    if (pm && h < 12) h += 12;
-    if (!pm && h === 12) h = 0;
-    return h * 60 + min;
-  }
-  const h24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (h24) return parseInt(h24[1]) * 60 + parseInt(h24[2]);
-  return 720;
-}
 
 type EventErrors = Partial<Record<"title" | "date" | "time" | "endTime" | "checkout", string>>;
 
@@ -461,7 +448,7 @@ export function WorkspacePage() {
     const rest = trip.events.filter(e => e.id !== activeId);
     const overIdx = rest.findIndex(e => e.id === overId);
     const sameDay = activeEvent.date === overEvent.date;
-    const shown = trip.events.filter(e => e.date === activeEvent.date).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    const shown = inDayOrder(trip.events.filter(e => e.date === activeEvent.date));
     const movingDown = sameDay && shown.findIndex(e => e.id === activeId) < shown.findIndex(e => e.id === overId);
     rest.splice(movingDown ? overIdx + 1 : overIdx, 0, moved);
 
@@ -505,10 +492,8 @@ export function WorkspacePage() {
       );
     }
     const groups: Record<string, TravelEvent[]> = {};
-    const sorted = [...events].sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return timeToMinutes(a.time) - timeToMinutes(b.time);
-    });
+    // The traveller app's order: timed events by time, untimed ones where the organiser put them
+    const sorted = sortEvents(events);
     sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [trip?.events, viewAsId]);

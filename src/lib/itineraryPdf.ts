@@ -8,6 +8,7 @@
  */
 import type { jsPDF as JsPdfType } from "jspdf";
 import type { Trip, TravelEvent } from "@/types";
+import { sortEvents } from "@/lib/sortEvents";
 
 export interface PdfBrand {
   name: string;
@@ -507,19 +508,6 @@ function documents(d: Doc, trip: Trip) {
 }
 
 /* ---------- public API ---------- */
-
-function sortEvents(events: TravelEvent[]): TravelEvent[] {
-  const key = (e: TravelEvent) => {
-    const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(e.time ?? "");
-    if (!m) return 24 * 60;
-    let h = Number(m[1]);
-    const ap = m[3]?.toUpperCase();
-    if (ap === "PM" && h < 12) h += 12;
-    if (ap === "AM" && h === 12) h = 0;
-    return h * 60 + Number(m[2]);
-  };
-  return [...events].sort((a, b) => a.date.localeCompare(b.date) || key(a) - key(b));
-}
 
 /** Build the PDF document. The caller decides whether to save, open, or inspect it. */
 export async function buildItineraryPdf(opts: ItineraryPdfOptions): Promise<JsPdfType> {
