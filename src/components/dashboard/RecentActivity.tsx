@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PaperPlaneTilt, Plus, PlusCircle, Trash, PencilSimple, UploadSimple } from "@phosphor-icons/react";
 import { timeAgo } from "@/lib/timeAgo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTeamPhoto } from "@/hooks/useStaffPhoto";
 import type { Trip } from "@/types";
 
 /** "richmond lamptey" reads as a name: "Richmond Lamptey" */
@@ -33,6 +35,7 @@ const initials = (name: string) => name.split(/\s+/).map(w => w[0]).join("").sli
 /** The latest changes across every trip, by day: who did what, repeats folded together */
 export function RecentActivity({ trips, limit = 10 }: { trips: Trip[]; limit?: number }) {
   const navigate = useNavigate();
+  const photoOf = useTeamPhoto();
   const days = useMemo(() => {
     const images = new Map(trips.map(t => [t.id, t.image]));
     const sorted = trips
@@ -87,7 +90,10 @@ export function RecentActivity({ trips, limit = 10 }: { trips: Trip[]; limit?: n
                       >
                         {/* Who, with a badge for what kind of change */}
                         <span className="relative shrink-0">
-                          <span className="h-9 w-9 rounded-full bg-secondary text-foreground flex items-center justify-center text-[11px] font-semibold">{initials(who)}</span>
+                          <Avatar className="h-9 w-9">
+                            {photoOf(e.by) && <AvatarImage src={photoOf(e.by)} alt="" />}
+                            <AvatarFallback className="text-[11px] font-semibold text-foreground">{initials(who)}</AvatarFallback>
+                          </Avatar>
                           <span className={`absolute -bottom-0.5 -right-0.5 h-4.5 w-4.5 rounded-full border-2 border-card flex items-center justify-center ${tone}`}>
                             <Icon className="h-2.5 w-2.5" weight="bold" />
                           </span>

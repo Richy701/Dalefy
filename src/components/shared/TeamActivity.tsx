@@ -5,9 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTrips } from "@/context/TripsContext";
-import { useOrg } from "@/context/OrgContext";
 import { initialsFrom } from "@/lib/names";
-import { useStaffPhoto } from "@/hooks/useStaffPhoto";
+import { useTeamPhoto } from "@/hooks/useStaffPhoto";
 import { fetchTeamActivity, type TeamActivityEntry } from "@/services/teamAdmin";
 
 type Kind = TeamActivityEntry["kind"] | "edit";
@@ -46,8 +45,6 @@ function dayLabel(ms: number): string {
 /** Everything the team did, for owners and admins: trip edits from each trip's history, team changes and "Sign in as" sessions */
 export function TeamActivity({ orgId }: { orgId: string }) {
   const { trips } = useTrips();
-  const { orgMembers } = useOrg();
-  const staffPhoto = useStaffPhoto();
   const navigate = useNavigate();
   const [logged, setLogged] = useState<TeamActivityEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -73,30 +70,8 @@ export function TeamActivity({ orgId }: { orgId: string }) {
     return out.sort((a, b) => b.at - a.at);
   }, [trips, logged]);
 
-  // Each person's photo: their account picture, else the headshot on their directory entry (staff travel too)
-  const photoFor = useMemo(() => {
-    const byUid = new Map<string, string>();
-    const byName = new Map<string, string>();
-    const byFirst = new Map<string, string | null>();
-    for (const m of orgMembers) {
-      const p = m.profile;
-      if (!p) continue;
-      const photo = (p.avatar && /^https?:\/\//.test(p.avatar) ? p.avatar : "") || staffPhoto(p.email ?? "", p.name ?? "");
-      if (!photo) continue;
-      byUid.set(m.userId, photo);
-      if (p.name) {
-        byName.set(p.name.trim().toLowerCase(), photo);
-        // A first name counts only when one teammate has it
-        const first = p.name.trim().split(/\s+/)[0].toLowerCase();
-        byFirst.set(first, byFirst.has(first) ? null : photo);
-      }
-    }
-    // History only keeps names; "Richy as Maya Chen" shows the person who was really there
-    return (item: Item) => {
-      const who = item.by.split(" as ")[0].trim().toLowerCase();
-      return (item.byUid && byUid.get(item.byUid)) || byName.get(who) || (!who.includes(" ") && byFirst.get(who)) || "";
-    };
-  }, [orgMembers, staffPhoto]);
+  const teamPhoto = useTeamPhoto();
+  const photoFor = (item: Item) => teamPhoto(item.by, item.byUid);
 
   const people = useMemo(() => [...new Set(items.map(i => i.by).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [items]);
   const filtered = items.filter(i => (person === ALL || i.by === person) && (kind === ALL || i.kind === kind));

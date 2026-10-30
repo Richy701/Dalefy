@@ -89,44 +89,12 @@ function suggestionsFor(trip: Trip) {
   return out.slice(0, 4);
 }
 
-const CATEGORY_ORDER: TravelEvent["type"][] = ["flight", "hotel", "transfer", "activity", "dining"];
-const CATEGORY_NOUN: Record<TravelEvent["type"], [string, string]> = {
-  flight: ["flight", "flights"],
-  hotel: ["stay", "stays"],
-  transfer: ["transfer", "transfers"],
-  activity: ["activity", "activities"],
-  dining: ["meal", "meals"],
-};
-
-function TripSummary({ trip }: { trip: Trip }) {
-  const counts = CATEGORY_ORDER
-    .map(type => ({ type, n: trip.events.filter(e => e.type === type).length }))
-    .filter(c => c.n > 0);
+/** "Thailand VIP Trip 2026, 7 days, 35 events": the trip the assistant is reading, for the header */
+function tripLine(trip: Trip) {
   const start = parseISO(trip.start);
   const end = parseISO(trip.end);
-  const range = isValid(start) && isValid(end)
-    ? `${format(start, "d MMM")} to ${format(end, "d MMM yyyy")}`
-    : "";
   const days = isValid(start) && isValid(end) ? differenceInCalendarDays(end, start) + 1 : 0;
-
-  return (
-    <div className="rounded-xl border border-border bg-background p-3.5 shadow-sm">
-      <p className="truncate text-sm font-semibold text-foreground">{trip.name}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        {[range, days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "", `${trip.events.length} ${trip.events.length === 1 ? "event" : "events"}`].filter(Boolean).join(", ")}
-      </p>
-      {counts.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-          {counts.map(({ type, n }) => (
-            <span key={type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CategoryDot type={type} size="sm" />
-              <span><span className="font-semibold text-foreground">{n}</span> {CATEGORY_NOUN[type][n === 1 ? 0 : 1]}</span>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return [trip.name, days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "", `${trip.events.length} ${trip.events.length === 1 ? "event" : "events"}`].filter(Boolean).join(", ");
 }
 
 /** Outline an itinerary card from the panel. Only on wide screens, where both are visible side by side. */
@@ -583,7 +551,7 @@ export function ItineraryAssistant({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight text-foreground">Trip assistant</p>
-          <p className="truncate text-xs leading-tight text-muted-foreground">Nothing changes until you apply it</p>
+          <p className="truncate text-xs leading-tight text-muted-foreground">{tripLine(trip)}</p>
         </div>
         {messages.length > 0 && (
           <Button variant="ghost" size="sm" onClick={reset} disabled={loading} className="text-muted-foreground">
@@ -598,28 +566,15 @@ export function ItineraryAssistant({
       {/* Conversation */}
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto px-4 py-5">
         {messages.length === 0 && !loading ? (
-          <div className="mx-auto flex max-w-sm flex-col pt-4">
-            <h3 className="text-base font-semibold text-foreground">What should change?</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Describe edits in your own words. The assistant reads the whole itinerary, and you approve every change.
+          // Empty: a short greeting in the middle; the suggestions wait by the message box
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+              <ChatCircleText className="h-5 w-5" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-foreground">Ask about this trip, or describe a change</p>
+            <p className="mt-1 max-w-64 text-[13px] leading-relaxed text-muted-foreground">
+              The assistant reads the whole itinerary. Nothing changes until you approve it.
             </p>
-            <div className="mt-5">
-              <TripSummary trip={trip} />
-            </div>
-            <div className="mt-6 space-y-2">
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Try</p>
-              {suggestions.map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => void send(s)}
-                  className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-background px-3.5 py-2.5 text-left text-sm text-foreground transition-colors hover:border-brand/40 hover:bg-brand/5"
-                >
-                  <span className="min-w-0">{s}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="space-y-5">
@@ -681,6 +636,20 @@ export function ItineraryAssistant({
 
       {/* Composer */}
       <div className="shrink-0 border-t border-border p-3">
+        {messages.length === 0 && !loading && suggestions.length > 0 && (
+          <div className="mb-2.5 flex flex-wrap gap-1.5" aria-label="Suggestions">
+            {suggestions.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => void send(s)}
+                className="max-w-full truncate rounded-lg border border-border bg-background px-2.5 py-1.5 text-left text-[13px] text-foreground transition-colors hover:border-brand/40 hover:bg-brand/5"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         <form
           onSubmit={e => { e.preventDefault(); void send(draft); }}
           className="flex items-end gap-2 rounded-xl border border-border bg-background p-1.5 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-brand/50 focus-within:ring-3 focus-within:ring-brand/15"
