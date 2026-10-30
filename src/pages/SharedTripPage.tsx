@@ -17,7 +17,7 @@ import { sortEvents } from "@/lib/sortEvents";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
-import { topicIcon, factRows, balanceColumns } from "@/lib/infoTopics";
+import { topicIcon, factRows } from "@/lib/infoTopics";
 
 type Brand = ReturnType<typeof resolvedBrand>;
 
@@ -456,14 +456,11 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
                   </div>
                 );
               };
-              // One column in list order on narrow screens; two columns of matching height on wide ones
+              // Keep DOM and visual reading order aligned with the organiser's list.
               return (
-                <>
-                  <div className="flex flex-col gap-3 lg:hidden">{trip.info!.map(renderCard)}</div>
-                  <div className="hidden gap-3 lg:flex items-start">
-                    {balanceColumns(trip.info!).map((col, i) => <div key={i} className="flex min-w-0 flex-1 flex-col gap-3">{col.map(renderCard)}</div>)}
-                  </div>
-                </>
+                <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 print:grid-cols-1">
+                  {trip.info!.map(renderCard)}
+                </div>
               );
             })()}
           </section>

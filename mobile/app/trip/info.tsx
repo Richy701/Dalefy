@@ -268,13 +268,8 @@ export default function InfoScreen() {
     return isLeader ? all : all.filter(i => !i.leaderOnly);
   }, [trip?.info, trip?.events, trip?.start, isLeader]);
 
-  // Essentials first: what's due (soonest at the top), what's still to sort, where you're staying,
-  // then everything else, with costs last
-  const ordered = useMemo(() => {
-    const rank: Record<TopicKind, number> = { todo: 1, stay: 2, contacts: 2, text: 3, costs: 4 };
-    const score = (i: TripInfo) => (!i.completed && i.deadline ? 0 : rank[topicKind(i.title || "")]);
-    return [...infoItems].sort((x, y) => score(x) - score(y) || (x.deadline ?? "").localeCompare(y.deadline ?? ""));
-  }, [infoItems]);
+  // The organiser's order, as on the web page and in the email link; deadlines show on their cards
+  const ordered = infoItems;
 
   const headerOptions = (title: string) => ({
     headerShown: true,

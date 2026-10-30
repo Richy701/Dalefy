@@ -72,20 +72,3 @@ export function sentences(text: string): string[] {
   }
   return out.map(s => s.trim()).filter(Boolean);
 }
-
-/**
- * Two columns that end at about the same height: each card goes to the shorter column so far, by a rough
- * height from its rows and text. Cards keep their order within each column.
- */
-export function balanceColumns<T extends { title?: string; body?: string }>(items: T[]): [T[], T[]] {
-  const cols: [T[], T[]] = [[], []];
-  const height = [0, 0];
-  for (const item of items) {
-    const rows = item.body ? factRows(item.body) : [];
-    const size = 2 + rows.reduce((n, r) => n + 1 + Math.ceil(r.text.length / 70) + (r.label ? 1 : 0), 0);
-    const i = height[0] <= height[1] ? 0 : 1;
-    cols[i].push(item);
-    height[i] += size;
-  }
-  return cols;
-}

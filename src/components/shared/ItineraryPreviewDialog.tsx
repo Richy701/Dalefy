@@ -16,7 +16,7 @@ import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
-import { topicIcon, factRows, balanceColumns } from "@/lib/infoTopics";
+import { topicIcon, factRows } from "@/lib/infoTopics";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { CategoryDot } from "@/components/ui/category-dot";
 
@@ -161,14 +161,11 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
                   </div>
                 );
               };
-              // One column in list order on narrow screens; two columns of matching height on wide ones
+              // Keep DOM and visual reading order aligned with the organiser's list.
               return (
-                <>
-                  <div className="flex flex-col gap-3 sm:hidden print:hidden">{travelerInfo.map(renderCard)}</div>
-                  <div className="hidden gap-3 sm:flex items-start print:flex">
-                    {balanceColumns(travelerInfo).map((col, i) => <div key={i} className="flex min-w-0 flex-1 flex-col gap-3">{col.map(renderCard)}</div>)}
-                  </div>
-                </>
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 print:grid-cols-1">
+                  {travelerInfo.map(renderCard)}
+                </div>
               );
             })()}
           </div>
