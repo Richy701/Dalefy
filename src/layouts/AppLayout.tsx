@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/shared/CommandPalette";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { EmailVerificationBanner } from "@/components/shared/EmailVerificationBanner";
 import { ImpersonationBanner } from "@/components/shared/ImpersonationBanner";
+import { UpdateBanner } from "@/components/shared/UpdateBanner";
 import { SetPasswordDialog } from "@/components/shared/SetPasswordDialog";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -68,6 +69,7 @@ export function AppLayout() {
       >
         <AppSidebar />
         <SidebarInset className="bg-background h-dvh overflow-hidden flex flex-col">
+          <UpdateBanner />
           <ImpersonationBanner />
           <EmailVerificationBanner />
           <div className="flex-1 flex flex-col overflow-hidden">

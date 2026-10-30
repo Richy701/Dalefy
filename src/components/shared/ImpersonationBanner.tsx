@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useOrg } from "@/context/OrgContext";
+import { useStaffPhoto } from "@/hooks/useStaffPhoto";
 import type { OrgRole } from "@/types";
 
 const ROLE_LABEL: Record<OrgRole, string> = { owner: "Owner", admin: "Admin", agent: "Agent", viewer: "Viewer" };
@@ -12,6 +13,7 @@ const ROLE_LABEL: Record<OrgRole, string> = { owner: "Owner", admin: "Admin", ag
 export function ImpersonationBanner() {
   const { user, impersonation, returnToOwnAccount } = useAuth();
   const { currentOrg, orgRole } = useOrg();
+  const staffPhoto = useStaffPhoto();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +37,7 @@ export function ImpersonationBanner() {
   }, [until, back]);
 
   if (!impersonation || !user) return null;
+  const photo = user.avatar || staffPhoto(user.email, user.name);
 
   const by = impersonation.byName.trim().split(/\s+/)[0] || "your account";
   const ends = new Date(impersonation.until).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -43,7 +46,7 @@ export function ImpersonationBanner() {
   return (
     <div role="status" aria-live="polite" className="bg-brand/8 border-b border-brand/25 px-4 py-2 flex items-center gap-3">
       <Avatar className="h-7 w-7 shrink-0">
-        {user.avatar && <AvatarImage src={user.avatar} alt="" />}
+        {photo && <AvatarImage src={photo} alt="" />}
         <AvatarFallback className="text-[10px] font-semibold">{user.initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">

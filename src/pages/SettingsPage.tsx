@@ -33,6 +33,7 @@ import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { TeamManagement } from "@/components/shared/TeamManagement";
 import { TeamActivity } from "@/components/shared/TeamActivity";
+import { useStaffPhoto } from "@/hooks/useStaffPhoto";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { playChime } from "@/lib/sound";
 
@@ -128,6 +129,9 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
 export function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const { user, updateProfile, logout, impersonation } = useAuth();
+  const staffPhoto = useStaffPhoto();
+  // No account photo yet: the one on the Travellers page, until they upload their own
+  const profilePhoto = user?.avatar || (user ? staffPhoto(user.email, user.name) : "");
   const { trips } = useTrips();
   const {
     compactMode, setCompactMode,
@@ -381,7 +385,7 @@ export function SettingsPage() {
           >
             <div className="px-5 py-4 flex items-center gap-4">
               <label className={cn("group relative h-16 w-16 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", ownAccount && "cursor-pointer")}>
-                {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
+                {profilePhoto ? <img src={profilePhoto} alt="" className="h-full w-full object-cover" /> : initials}
                 {ownAccount && (
                   <>
                     <span className="absolute inset-0 bg-black/45 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

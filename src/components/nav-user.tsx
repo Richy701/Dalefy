@@ -11,10 +11,12 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/AuthContext";
 import { useOrg } from "@/context/OrgContext";
+import { useStaffPhoto } from "@/hooks/useStaffPhoto";
 
 export function NavUser() {
   const { user, logout } = useAuth();
   const { orgRole } = useOrg();
+  const staffPhoto = useStaffPhoto();
   const navigate = useNavigate();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
@@ -25,6 +27,9 @@ export function NavUser() {
   const initials = user?.initials ?? (
     displayName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?"
   );
+
+  // No account photo yet: the one on the Travellers page, like Settings > Team
+  const photo = user?.avatar || (user ? staffPhoto(user.email, user.name) : "");
 
   const handleSignOut = () => { logout(); navigate("/login"); };
 
@@ -40,7 +45,7 @@ export function NavUser() {
               title={collapsed ? `${displayName} · Settings` : undefined}
             >
               <div className="h-8 w-8 rounded-full overflow-hidden bg-sidebar-accent text-sidebar-foreground flex items-center justify-center text-[10px] font-semibold shrink-0">
-                {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
+                {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : initials}
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0 text-left">
