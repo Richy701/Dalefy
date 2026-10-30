@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { doc, setDoc, deleteDoc, onSnapshot, query, collection, where } from "firebase/firestore";
 import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
 import { waitForAuth } from "@/services/firebaseTrips";
 import { useAuth } from "@/context/AuthContext";
+import { useTeamPhoto } from "@/hooks/useStaffPhoto";
 
 export interface PresenceUser {
   userId: string;
@@ -107,5 +108,9 @@ export function usePresence(tripId: string | undefined) {
     [writePresence],
   );
 
-  return { others, updateActivity };
+  // Someone without an account photo shows the one from the Travellers page, as on the Team list
+  const teamPhoto = useTeamPhoto();
+  const withPhotos = useMemo(() => others.map(p => (p.avatar ? p : { ...p, avatar: teamPhoto(p.name, p.userId) })), [others, teamPhoto]);
+
+  return { others: withPhotos, updateActivity };
 }
