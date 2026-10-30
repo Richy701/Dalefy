@@ -14,7 +14,7 @@ const SNOOZE_KEY = "daf-set-password-emailed";
  * shared department account can't sign in on another device. Make them set one.
  */
 export function SetPasswordDialog() {
-  const { user } = useAuth();
+  const { user, impersonation } = useAuth();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -22,7 +22,8 @@ export function SetPasswordDialog() {
   const [error, setError] = useState<string | null>(null);
   const [emailed, setEmailed] = useState(false);
 
-  const realUser = !!user && user.id !== "demo" && (user.id?.length ?? 0) >= 20;
+  // Signed in as a teammate, their password is theirs to set
+  const realUser = !!user && user.id !== "demo" && (user.id?.length ?? 0) >= 20 && !impersonation;
 
   useEffect(() => {
     if (!realUser) return;

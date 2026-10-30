@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User } from "@/types";
-import { firebaseAuth, isFirebaseConfigured } from "@/services/firebase";
+import { firebaseAuth, isFirebaseConfigured, clearFirestoreCache } from "@/services/firebase";
 import { initialsFrom } from "@/lib/names";
 import { STORAGE } from "@/config/storageKeys";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError, getIdToken } from "@/lib/api";
+import { type Impersonation, storedImpersonation, rememberImpersonation, tokenImpersonation, signInWithSwitchToken } from "@/services/impersonation";
 import { logger } from "@/lib/logger";
 
 /** Wrapper around setUser that logs every state change */
@@ -122,6 +123,12 @@ interface AuthContextType {
   resendVerification: () => Promise<string | null>;
   refreshEmailVerified: () => Promise<boolean>;
   logout: () => Promise<void>;
+  /** Set while an owner or admin is using the app as this teammate ("Sign in as") */
+  impersonation: Impersonation | null;
+  /** Use the app as a teammate with a lower role. Resolves to an error message, or never (the app restarts as them) */
+  signInAs: (orgId: string, uid: string) => Promise<string | null>;
+  /** End "Sign in as" and restart the app on the account that opened it */
+  returnToOwnAccount: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -137,6 +144,9 @@ const AuthContext = createContext<AuthContextType>({
   resendVerification: async () => null,
   refreshEmailVerified: async () => true,
   logout: async () => {},
+  impersonation: null,
+  signInAs: async () => null,
+  returnToOwnAccount: async () => null,
 });
 
 // ── Provider ────────────────────────────────────────────────────────────────
@@ -155,7 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !saved; // only show loading when there's no cached user
   });
   const [emailVerified, setEmailVerified] = useState(true);
+  const [impersonation, setImpersonation] = useState<Impersonation | null>(() => storedImpersonation());
   const useFirebase = isFirebaseConfigured();
+  const userId = user?.id ?? null;
 
   // ── Boot: validate session with Firebase (background) ──────────────────
 
@@ -412,7 +424,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem(STORAGE.AUTH);
     clearUserData();
+    rememberImpersonation(null);
+    setImpersonation(null);
   }, [useFirebase]);
+
+  // ── Sign in as a teammate ───────────────────────────────────────────────
+
+  // The ID token has the final say on whether this is a "Sign in as" session
+  useEffect(() => {
+    if (!useFirebase || !userId || userId === "demo") return;
+    let live = true;
+    tokenImpersonation().then(value => {
+      if (!live) return;
+      rememberImpersonation(value);
+      setImpersonation(value);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [useFirebase, userId]);
+
+  // Hand this browser to the account in a custom token from /api/impersonate, then start the app over as them
+  const switchAccount = useCallback(async (token: string, path: string) => {
+    const fbUser = await signInWithSwitchToken(token);
+    const [value, profile] = await Promise.all([
+      tokenImpersonation().catch(() => null),
+      fetchProfile(fbUser.uid).catch(() => null),
+    ]);
+    clearUserData();
+    rememberImpersonation(value);
+    if (profile) localStorage.setItem(STORAGE.AUTH, JSON.stringify(profile));
+    else localStorage.removeItem(STORAGE.AUTH);
+    await clearFirestoreCache();
+    window.location.hash = `#${path}`;
+    window.location.reload();
+  }, []);
+
+  const signInAs = useCallback(async (orgId: string, uid: string): Promise<string | null> => {
+    if (!useFirebase || !user) return "Sign in first";
+    try {
+      const { token, until } = await apiFetch<{ token: string; until: number }>("/api/impersonate", {
+        method: "POST",
+        auth: await getIdToken(),
+        body: { action: "start", orgId, uid },
+      });
+      // Known before the switch, so this page's last moments as them already stay inside the team
+      rememberImpersonation({ byUid: user.id, byName: user.name, orgId, until });
+      await switchAccount(token, "/dashboard");
+      return null;
+    } catch (err) {
+      rememberImpersonation(null);
+      return err instanceof Error ? err.message : "Couldn't sign in as them";
+    }
+  }, [useFirebase, user, switchAccount]);
+
+  const returnToOwnAccount = useCallback(async (): Promise<string | null> => {
+    try {
+      // Another tab may have switched back already
+      if (!(await tokenImpersonation())) {
+        rememberImpersonation(null);
+        window.location.reload();
+        return null;
+      }
+      const { token } = await apiFetch<{ token: string }>("/api/impersonate", {
+        method: "POST",
+        auth: await getIdToken(),
+        body: { action: "return" },
+      });
+      await switchAccount(token, "/settings");
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 410)) {
+        localStorage.setItem("daf-login-notice", "Sign in again to get back to your own account.");
+        await logout();
+        window.location.hash = "#/login";
+        return null;
+      }
+      return err instanceof Error ? err.message : "Couldn't switch back";
+    }
+  }, [switchAccount, logout]);
 
   return (
     <AuthContext.Provider
@@ -429,6 +517,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resendVerification: handleResendVerification,
         refreshEmailVerified: handleRefreshEmailVerified,
         logout,
+        impersonation,
+        signInAs,
+        returnToOwnAccount,
       }}
     >
       {children}

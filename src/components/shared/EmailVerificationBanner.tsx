@@ -3,7 +3,7 @@ import { EnvelopeSimple, SpinnerGap, CheckCircle, ArrowClockwise } from "@phosph
 import { useAuth } from "@/context/AuthContext";
 
 export function EmailVerificationBanner() {
-  const { user, emailVerified, resendVerification, refreshEmailVerified } = useAuth();
+  const { user, emailVerified, resendVerification, refreshEmailVerified, impersonation } = useAuth();
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [checking, setChecking] = useState(false);
@@ -16,7 +16,7 @@ export function EmailVerificationBanner() {
   }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The link opens in another tab; coming back here checks again, so "I verified" is only a fallback
-  const pending = !!user && !emailVerified && user.id !== "demo" && (user.id?.length ?? 0) >= 20;
+  const pending = !!user && !emailVerified && user.id !== "demo" && (user.id?.length ?? 0) >= 20 && !impersonation;
   useEffect(() => {
     if (!pending) return;
     // Focus and visibilitychange both fire on one return to the tab: one check is enough, and offline it just waits
@@ -31,7 +31,7 @@ export function EmailVerificationBanner() {
     return () => { window.removeEventListener("focus", check); document.removeEventListener("visibilitychange", check); };
   }, [pending, refreshEmailVerified]);
 
-  if (!user || emailVerified || user.id === "demo" || (user.id?.length ?? 0) < 20) return null;
+  if (!pending || !user) return null;
 
   const handleResend = async () => {
     setSending(true);

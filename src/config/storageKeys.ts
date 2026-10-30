@@ -16,4 +16,5 @@ export const STORAGE = {
   PENDING_BRANDING:  "daf-pending-branding",
   BRANDING:          "daf-branding",
   CURRENCY:          "daf-default-currency",
+  IMPERSONATION:     "daf-impersonation",
 } as const;

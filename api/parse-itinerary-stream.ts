@@ -15,7 +15,7 @@ const json = (status: number, body: unknown) =>
  * the trip is written ({type:"partial"}), then {type:"done", result} or {type:"error"}.
  */
 export async function POST(request: Request): Promise<Response> {
-  const payload = await verifyFirebaseToken((request.headers.get("authorization") ?? "").replace("Bearer ", ""));
+  const payload = await verifyFirebaseToken((request.headers.get("authorization") ?? "").replace("Bearer ", ""), { allowImpersonation: true });
   if (!payload) return json(401, { error: "Unauthorized" });
 
   let limited: Response | null = null;

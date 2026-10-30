@@ -13,6 +13,10 @@ import { Label } from "@/components/ui/label";
 import { useNotifications } from "@/context/NotificationContext";
 import { useOrg } from "@/context/OrgContext";
 import { useAuth } from "@/context/AuthContext";
+import { logTeamActivity } from "@/services/teamAdmin";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useStaffPhoto } from "@/hooks/useStaffPhoto";
+import { initialsFrom } from "@/lib/names";
 import {
   sendInvite, resendInvite, fetchPendingInvites, revokeInvite,
   type OrgInvite, type SendInviteResult,
@@ -79,7 +83,11 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const { showToast } = useNotifications();
   const { currentOrg, orgMembers } = useOrg();
-  const { user } = useAuth();
+  const { user, impersonation } = useAuth();
+  // Account photo, else the one on the Travellers page (directory entry or trip copy), like Settings > Team
+  const staffPhoto = useStaffPhoto();
+  const photoOf = (m: (typeof orgMembers)[number]) => (m.profile?.avatar && /^https?:\/\//.test(m.profile.avatar) ? m.profile.avatar : "") || staffPhoto(m.profile?.email ?? "", m.profile?.name ?? "");
+  const actor = user ? { uid: user.id, name: impersonation ? `${impersonation.byName} as ${user.name}` : user.name } : null;
   const navigate = useNavigate();
 
   const loadPending = useCallback(async (orgId: string) => {
@@ -130,6 +138,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       const result = await sendInvite({ email: normalizedEmail, role, orgId: currentOrg.id, inviterName: user?.name || "" });
       if (!result.ok) { showToast(result.error || "Failed to send invite"); return; }
       applyResult(result, normalizedEmail, role);
+      if (actor) logTeamActivity(currentOrg.id, actor, "team", `Invited ${normalizedEmail} as ${role}`);
       setEmail("");
       void loadPending(currentOrg.id);
     } catch (err) {
@@ -170,6 +179,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
     setBusyId(invite.id);
     try {
       await revokeInvite(invite.id);
+      if (currentOrg && actor) logTeamActivity(currentOrg.id, actor, "team", `Cancelled the invite for ${invite.email}`);
       setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
       if (lastInvite?.email === invite.email) setLastInvite(null);
       showToast("Invite revoked");
@@ -395,9 +405,10 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 const isYou = m.userId === user?.id;
                 return (
                   <div key={m.id} className="flex items-center gap-3 px-3 py-2.5">
-                    <div className="h-9 w-9 rounded-full overflow-hidden bg-secondary text-foreground flex items-center justify-center font-semibold text-[11px] shrink-0">
-                      {m.profile?.avatar ? <img src={m.profile.avatar} alt="" className="h-full w-full object-cover" /> : (m.profile?.initials || m.userId.slice(0, 2).toUpperCase())}
-                    </div>
+                    <Avatar className="h-9 w-9 shrink-0">
+                      {photoOf(m) && <AvatarImage src={photoOf(m)} alt="" />}
+                      <AvatarFallback className="text-[11px] font-semibold">{m.profile?.initials || initialsFrom(m.profile?.name || "") || m.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate leading-tight">
                         {m.profile?.name || "Team member"}

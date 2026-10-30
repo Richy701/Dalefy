@@ -258,7 +258,7 @@ function useMergedTrips(
 export function TripsProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const firebaseOn = isFirebaseConfigured();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, impersonation } = useAuth();
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
   const useCloud = firebaseOn && !isDemoUser;
   const local = useLocalTrips(isDemoUser && !authLoading);
@@ -336,8 +336,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   // ── CRUD operations ────────────────────────────────────────────────────────
 
-  // Every change is signed with the editor's name on the trip's history
-  const editor = user?.name || "Someone";
+  // Every change is signed with the editor's name on the trip's history, and who was signed in as them
+  const editor = impersonation ? `${impersonation.byName || "Someone"} as ${user?.name || "a teammate"}` : user?.name || "Someone";
 
   const addTrip = useCallback((trip: Trip) => {
     const withOrg = currentOrg ? { ...trip, organizationId: trip.organizationId ?? currentOrg.id } : trip;

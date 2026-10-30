@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, getDocs, getDocsFromServer, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
 import { waitForAuth } from "@/services/firebaseTrips";
+import { storedImpersonation } from "@/services/impersonation";
 import { useAuth } from "@/context/AuthContext";
 import type { Organization, OrgMember, OrgRole } from "@/types";
 import { logger } from "@/lib/logger";
@@ -68,7 +69,10 @@ export function useOrgLoad() {
         );
 
         if (!mounted) return;
-        if (membershipsSnap.empty) {
+        // Signed in as a teammate: only the team the session was opened for
+        const scope = storedImpersonation()?.orgId;
+        const memberDocs = membershipsSnap.docs.filter(d => !scope || d.data().organization_id === scope);
+        if (!memberDocs.length) {
           setResolvedUserId(uid);
           setTablesReady(true);
           clear();
@@ -76,7 +80,7 @@ export function useOrgLoad() {
         }
 
         // Spreading DocumentData loses its fields, so name the shape we read.
-        const memberships = membershipsSnap.docs.map(d => ({
+        const memberships = memberDocs.map(d => ({
           id: d.id,
           ...(d.data() as { organization_id: string; role: string }),
         }));

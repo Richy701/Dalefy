@@ -30,6 +30,7 @@ function mount({ empty = false, offline = false, missingOrg = false, failOrg = f
       if (name === '@/context/AuthContext') return { useAuth: () => ({ user, isAuthenticated: !!user }) };
       if (name === '@/services/firebase') return { isFirebaseConfigured: () => true, firebaseDb: () => ({}) };
       if (name === '@/services/firebaseTrips') return { waitForAuth: async () => authUid };
+      if (name === '@/services/impersonation') return { storedImpersonation: () => null };
       if (name === '@/lib/logger') return { logger: { log() {}, warn() {} } };
       if (name === '@/config/constants') return { ORG_LOAD_TIMEOUT_MS: 10000 };
       if (name === 'firebase/firestore') return {

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
   Sun, Moon, Download, Trash, Lock, Buildings, Users, SpinnerGap,
-  DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera,
+  DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera, ClockCounterClockwise,
 } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
 import { isFirebaseConfigured, firebaseDb, firebaseStorage } from "@/services/firebase";
@@ -32,6 +32,7 @@ import { usePreferences, ACCENT_PRESETS } from "@/context/PreferencesContext";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { TeamManagement } from "@/components/shared/TeamManagement";
+import { TeamActivity } from "@/components/shared/TeamActivity";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { playChime } from "@/lib/sound";
 
@@ -126,7 +127,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
 
 export function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, logout, impersonation } = useAuth();
   const { trips } = useTrips();
   const {
     compactMode, setCompactMode,
@@ -142,6 +143,8 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const realAuth = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+  // Signed in as a teammate: their photo, password and email settings stay theirs
+  const ownAccount = realAuth && !impersonation;
   const canManageOrg = realAuth && currentOrg && (orgRole === "owner" || orgRole === "admin");
   // Show branding section: org owners/admins, or demo mode (localStorage branding)
   const showBrandingSection = canManageOrg || (realAuth && orgLoading) || !isFirebaseConfigured();
@@ -377,9 +380,9 @@ export function SettingsPage() {
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
             <div className="px-5 py-4 flex items-center gap-4">
-              <label className={cn("group relative h-16 w-16 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", realAuth && "cursor-pointer")}>
+              <label className={cn("group relative h-16 w-16 rounded-full shrink-0 overflow-hidden border border-border bg-secondary flex items-center justify-center text-lg font-semibold text-foreground", ownAccount && "cursor-pointer")}>
                 {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials}
-                {realAuth && (
+                {ownAccount && (
                   <>
                     <span className="absolute inset-0 bg-black/45 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       {uploadingAvatar ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -395,13 +398,13 @@ export function SettingsPage() {
                 <p className="text-xs text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
-                {realAuth && <p className="text-[11px] text-muted-foreground mt-1">Click your photo to change it</p>}
+                {ownAccount && <p className="text-[11px] text-muted-foreground mt-1">Click your photo to change it</p>}
               </div>
             </div>
           </Section>
 
           {/* ── Security (only for real Firebase auth users) ── */}
-          {realAuth && (
+          {ownAccount && (
             <Section
             id="security"
               icon={Lock}
@@ -663,6 +666,18 @@ export function SettingsPage() {
             </Section>
           )}
 
+          {/* ── Team activity (owners and admins) ── */}
+          {canManageOrg && currentOrg && (
+            <Section
+            id="activity"
+              icon={ClockCounterClockwise}
+              title="Team activity"
+              description="Trip edits, team changes, emails sent to teammates and times someone signed in as a teammate."
+            >
+              <TeamActivity orgId={currentOrg.id} />
+            </Section>
+          )}
+
           {/* ── Traveller app ── */}
           <Section
             id="traveller-app"
@@ -697,7 +712,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Email notifications ── */}
-          {realAuth && (
+          {ownAccount && (
             <Section
             id="email"
               icon={EnvelopeSimple}

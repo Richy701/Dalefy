@@ -95,10 +95,12 @@ export interface FirestoreDoc {
   updateTime?: string;
 }
 
-export async function queryDocuments(collection: string, field: string, value: string, limit = 1): Promise<FirestoreDoc[]> {
+/** Documents whose field equals the value. `select` reads only those fields, for big documents like trips */
+export async function queryDocuments(collection: string, field: string, value: string, limit = 1, select?: string[]): Promise<FirestoreDoc[]> {
   const response = await firestoreFetch(`${BASE}:runQuery`, {
     method: "POST",
     body: JSON.stringify({ structuredQuery: {
+      ...(select ? { select: { fields: select.map(fieldPath => ({ fieldPath })) } } : {}),
       from: [{ collectionId: collection }],
       where: { fieldFilter: { field: { fieldPath: field }, op: "EQUAL", value: { stringValue: value } } },
       limit,

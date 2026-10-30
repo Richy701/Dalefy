@@ -9,6 +9,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
+import { storedImpersonation } from "./impersonation";
 import type { Trip } from "@/types";
 import { logger } from "@/lib/logger";
 
@@ -55,7 +56,8 @@ function tripQueries(orgId: string | null | undefined, uid: string, split: boole
   if (!split) return [query(trips, where("organization_id", "==", orgId), orderBy("start", "desc"))];
   return [
     query(trips, where("organization_id", "==", orgId), where("private", "==", false)),
-    query(trips, where("organization_id", "==", orgId), where("user_id", "==", uid)),
+    // Signed in as a teammate, the rules hide their private trips; their shared ones come with the team's
+    ...(storedImpersonation() ? [] : [query(trips, where("organization_id", "==", orgId), where("user_id", "==", uid))]),
   ];
 }
 
@@ -119,7 +121,8 @@ export async function backfillPrivateFlag(orgId: string): Promise<number> {
 
 export async function backfillOrgId(orgId: string): Promise<number> {
   const uid = await waitForAuth();
-  if (!uid) return 0;
+  // A teammate's personal trips are theirs to move into the team, not for someone signed in as them
+  if (!uid || storedImpersonation()) return 0;
 
   const snap = await getDocs(
     query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid)),

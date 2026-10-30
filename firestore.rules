@@ -3,19 +3,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── "Sign in as": an owner or admin using the app as a teammate (api/impersonate.ts) ──
+    // The session reaches only the team it was opened for, never the person's private or personal
+    // records, and stops working when its hour is up.
+    function impersonating() {
+      return request.auth != null && request.auth.token.get('imp_by', null) != null;
+    }
+
+    function inScope(orgId) {
+      return !impersonating()
+        || (orgId == request.auth.token.get('imp_org', null)
+            && request.time.toMillis() < request.auth.token.get('imp_until', 0));
+    }
+
     // ── Helper: check if the caller is an admin/owner of a given org ────────
     function isOrgAdmin(orgId) {
       let mem = get(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
-      return mem != null && mem.data.role in ["owner", "admin"];
+      return mem != null && mem.data.role in ["owner", "admin"] && inScope(orgId);
     }
 
     function isOrgMember(orgId) {
-      return exists(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
+      return exists(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId)) && inScope(orgId);
     }
 
     function isOrgEditor(orgId) {
       let mem = get(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
-      return mem != null && mem.data.role in ["owner", "admin", "agent"];
+      return mem != null && mem.data.role in ["owner", "admin", "agent"] && inScope(orgId);
     }
 
     // Server identity is provisioned by an administrator, never by a client.
@@ -26,18 +39,18 @@ service cloud.firestore {
 
     // A private trip is seen and edited only by the person who created it, not even owners or admins
     function canSeePrivate(t) {
-      return t.get('private', false) != true || t.user_id == request.auth.uid;
+      return t.get('private', false) != true || (t.user_id == request.auth.uid && !impersonating());
     }
 
     function isTripEditor(tripId) {
       let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
       return request.auth != null && (t.get('organization_id', null) == null
-        ? t.user_id == request.auth.uid : isOrgEditor(t.organization_id) && canSeePrivate(t));
+        ? t.user_id == request.auth.uid && !impersonating() : isOrgEditor(t.organization_id) && canSeePrivate(t));
     }
 
     function isTripStaff(tripId) {
       let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
-      return request.auth != null && (t.user_id == request.auth.uid
+      return request.auth != null && ((t.user_id == request.auth.uid && !impersonating())
         || (t.get('organization_id', null) != null && isOrgMember(t.organization_id) && canSeePrivate(t)));
     }
 
@@ -49,7 +62,7 @@ service cloud.firestore {
     // ── Profiles: any authenticated user can read; only owner can write ──
     match /profiles/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId && !impersonating();
     }
 
     // ── App config (allowlists etc.) — console-managed, read-only to clients ──
@@ -69,7 +82,8 @@ service cloud.firestore {
       // Internal tool: only allowlisted users (app_config/org_creators) can create agencies
       allow create: if request.auth != null
                     && request.resource.data.created_by == request.auth.uid
-                    && canCreateOrg();
+                    && canCreateOrg()
+                    && !impersonating();
       // Only admins/owners can update or delete
       allow update, delete: if request.auth != null && isOrgAdmin(orgId);
     }
@@ -109,6 +123,7 @@ service cloud.firestore {
           // Accepting an invite: user adds themselves with the invited role, from a
           // pending, unexpired invite addressed to their verified email
           (request.resource.data.user_id == request.auth.uid
+           && !impersonating()
            && request.auth.token.email_verified == true
            && request.resource.data.invite_token is string
            && inviteFor(request.resource.data.invite_token).status == "pending"
@@ -133,7 +148,7 @@ service cloud.firestore {
       // Users can leave (unless they are the owner); admins can remove non-owners
       allow delete: if request.auth != null
         && resource.data.role != "owner"
-        && (resource.data.user_id == request.auth.uid
+        && ((resource.data.user_id == request.auth.uid && inScope(resource.data.organization_id))
             || isOrgAdmin(resource.data.organization_id));
     }
 
@@ -160,6 +175,7 @@ service cloud.firestore {
                       ||
                       (resource.data.status == "pending"
                        && request.resource.data.status == "accepted"
+                       && !impersonating()
                        && request.auth.token.email != null
                        && resource.data.email.lower() == request.auth.token.email.lower())
                     );
@@ -178,34 +194,35 @@ service cloud.firestore {
     // Working records are private. Shared clients use the filtered trip API.
     match /trips/{tripId} {
       allow get: if request.auth != null && (
-        resource.data.user_id == request.auth.uid || isCronUser()
+        (resource.data.user_id == request.auth.uid && !impersonating()) || isCronUser()
         || (resource.data.get('organization_id', null) != null
             && isOrgMember(resource.data.organization_id)
             && canSeePrivate(resource.data)));
       // A query can't lean on a default for 'private' (the engine assumes the default for unfiltered fields),
       // so team queries must ask for shared trips explicitly; your own trips are listed by user_id
       allow list: if request.auth != null && (
-        resource.data.user_id == request.auth.uid || isCronUser()
+        (resource.data.user_id == request.auth.uid && !impersonating()) || isCronUser()
         || (resource.data.get('organization_id', null) != null
             && isOrgMember(resource.data.organization_id)
             && resource.data.private == false));
       allow create: if request.auth != null
         && request.resource.data.user_id == request.auth.uid
-        && (request.resource.data.get('organization_id', null) == null
+        && ((request.resource.data.get('organization_id', null) == null && !impersonating())
             || isOrgEditor(request.resource.data.organization_id));
       allow update: if request.auth != null
         && (isTripEditor(tripId) || isCronUser())
-        && request.resource.data.user_id == resource.data.user_id
+        // Only the server hands a trip to someone else (api/team-trips.ts)
+        && (request.resource.data.user_id == resource.data.user_id || isCronUser())
         // Only the trip's creator can make it private or share it again
         && (request.resource.data.get('private', false) == resource.data.get('private', false)
-            || isCronUser() || resource.data.user_id == request.auth.uid)
+            || isCronUser() || (resource.data.user_id == request.auth.uid && !impersonating()))
         && (request.resource.data.get('organization_id', null) == resource.data.get('organization_id', null)
             || (resource.data.user_id == request.auth.uid
                 && resource.data.get('organization_id', null) == null
                 && isOrgEditor(request.resource.data.organization_id)));
       allow delete: if request.auth != null && (
         isCronUser() || (resource.data.get('organization_id', null) == null
-          ? resource.data.user_id == request.auth.uid
+          ? resource.data.user_id == request.auth.uid && !impersonating()
           : isOrgAdmin(resource.data.organization_id)));
     }
 
@@ -253,12 +270,12 @@ service cloud.firestore {
     function canReadDirectory(data) {
       return request.auth != null && (
         (data.get('organization_id', null) != null && isOrgMember(data.organization_id))
-        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid));
+        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid && !impersonating()));
     }
     function canWriteDirectory(data) {
       return request.auth != null && (
         (data.get('organization_id', null) != null && isOrgEditor(data.organization_id))
-        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid));
+        || (data.get('organization_id', null) == null && data.user_id == request.auth.uid && !impersonating()));
     }
     function validDirectoryWrite(docId) {
       return canWriteDirectory(request.resource.data)
@@ -311,10 +328,32 @@ service cloud.firestore {
     // ── Trip presence: real-time editing presence ────────────────────────
     match /trip_presence/{docId} {
       allow read: if request.auth != null;
+      // Someone signed in as a teammate isn't shown as them
       allow create, update: if request.auth != null
-                            && request.resource.data.user_id == request.auth.uid;
+                            && request.resource.data.user_id == request.auth.uid
+                            && !impersonating();
       allow delete: if request.auth != null
                     && resource.data.user_id == request.auth.uid;
+    }
+
+    // ── "Sign in as" log: who used the app as whom, and when. The team's owners and admins
+    // read their own team's entries; only the server writes them (api/impersonate.ts).
+    match /impersonation_log/{logId} {
+      allow read: if request.auth != null && isOrgAdmin(resource.data.organization_id);
+      allow write: if isCronUser();
+    }
+
+    // ── Team activity: role changes, removals, invites and handovers. Owners and admins read
+    // their team's; members add entries about what they did themselves, never edit or remove them.
+    match /team_activity/{entryId} {
+      allow read: if request.auth != null && isOrgAdmin(resource.data.organization_id);
+      allow create: if isCronUser() || (request.auth != null
+        && isOrgMember(request.resource.data.organization_id)
+        && request.resource.data.by_uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['organization_id', 'at', 'by_uid', 'by_name', 'kind', 'summary'])
+        && request.resource.data.summary is string && request.resource.data.summary.size() <= 300
+        && request.resource.data.at is string);
+      allow update, delete: if false;
     }
 
     // ── Push tokens: scoped to owning user (cron can read all for notifications)

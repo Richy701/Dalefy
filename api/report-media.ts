@@ -1,5 +1,5 @@
 import { getDocument, queryDocuments, setDocument, deleteDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
-import { verifyFirebaseToken } from "./_verifyToken.js";
+import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, membershipMatches } from "./_tripView.js";
 import { sendEmail } from "./_mailer.js";
@@ -25,8 +25,9 @@ export default async function handler(req: any, res: any) {
   res.setHeader("Cache-Control", "private, no-store");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const payload = await verifyFirebaseToken(String(req.headers["authorization"] ?? "").replace(/^Bearer\s+/i, ""));
+  const payload = await verifyFirebaseToken(String(req.headers["authorization"] ?? "").replace(/^Bearer\s+/i, ""), { allowImpersonation: true });
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
+  const imp = impersonationOf(payload);
   if (!rateLimit(req, res, { bucket: "report-media", limit: 20, windowMs: 10 * 60_000 })) return;
 
   const body = record(req.body);
@@ -39,13 +40,18 @@ export default async function handler(req: any, res: any) {
     const trip = decode(await getDocument("trips", tripId));
     const orgId = typeof trip.organization_id === "string" ? trip.organization_id : "";
     const role = orgId ? decode(await getDocument("org_members", `${payload.sub}_${orgId}`)).role : null;
-    const staff = trip.user_id === payload.sub || ["owner", "admin", "agent"].includes(String(role ?? ""));
+    const inScope = (!imp || (orgId === imp.org && trip.private !== true))
+      // A private trip is its creator's alone
+      && (trip.private !== true || trip.user_id === payload.sub);
+    const staff = inScope && (trip.user_id === payload.sub || ["owner", "admin", "agent"].includes(String(role ?? "")));
     if (!staff) return res.status(403).json({ error: "Only the trip's team can clear reports" });
     const reports = (await queryDocuments("media_reports", "trip_id", tripId, 500)).filter(d => decode(d).media_id === mediaId);
     await Promise.all(reports.map(d => deleteDocument("media_reports", docId(d))));
     return res.status(200).json({ cleared: reports.length });
   }
 
+  // Reporting is a traveller's own call, never made from a "Sign in as" session
+  if (imp) return res.status(403).json({ error: "Join this trip to report a photo" });
   const member = decode(await getDocument("trip_members", `${payload.sub}_${tripId}`));
   if (!membershipMatches(member, payload.sub, tripId)) return res.status(403).json({ error: "Join this trip to report a photo" });
   const trip = decode(await getDocument("trips", tripId));

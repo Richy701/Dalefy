@@ -11,7 +11,7 @@ import { canEditTrip } from "./_tripPermissions.js";
  */
 
 import { getDocument, decodeValue, encodeValue, updateDocument } from "./_firebaseAdmin.js";
-import { verifyFirebaseToken } from "./_verifyToken.js";
+import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
 import { renderItineraryEmail } from "../src/lib/itineraryEmail.js";
@@ -46,7 +46,7 @@ export default async function handler(req: any, res: any) {
 
   const auth: string = req.headers["authorization"] ?? "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
-  const payload = await verifyFirebaseToken(token);
+  const payload = await verifyFirebaseToken(token, { allowImpersonation: true });
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   if (!rateLimit(req, res, { bucket: "send-itinerary", limit: 20, windowMs: 10 * 60_000 })) return;
 
@@ -63,7 +63,7 @@ export default async function handler(req: any, res: any) {
   if (!trip) return res.status(404).json({ error: "Trip not found" });
   const f = trip.fields ?? {};
   const orgId = decodeValue(f.organization_id);
-  const allowed = await canEditTrip(payload.sub!, f);
+  const allowed = await canEditTrip(payload.sub!, f, impersonationOf(payload));
   if (!allowed) return res.status(403).json({ error: "Not authorized for this trip" });
 
   const branding = typeof orgId === "string" && orgId

@@ -18,14 +18,15 @@ const HEARTBEAT_MS = 30_000;
 const STALE_MS = 90_000;
 
 export function usePresence(tripId: string | undefined) {
-  const { user } = useAuth();
+  const { user, impersonation } = useAuth();
   const [others, setOthers] = useState<PresenceUser[]>([]);
   const docIdRef = useRef<string | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const writePresence = useCallback(
     async (extra?: { activeDay?: string; activeEventId?: string | null }) => {
-      if (!tripId || !user || !isFirebaseConfigured()) return;
+      // Someone signed in as a teammate isn't shown as them
+      if (!tripId || !user || !isFirebaseConfigured() || impersonation) return;
       const id = `${user.id}_${tripId}`;
       docIdRef.current = id;
       await setDoc(doc(firebaseDb(), "trip_presence", id), {
@@ -39,7 +40,7 @@ export function usePresence(tripId: string | undefined) {
         last_seen: Date.now(),
       }).catch(() => {});
     },
-    [tripId, user],
+    [tripId, user, impersonation],
   );
 
   const clearPresence = useCallback(async () => {

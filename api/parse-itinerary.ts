@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
 
   // Require a valid Firebase token — this endpoint spends Anthropic credits.
   const auth = req.headers["authorization"] ?? "";
-  const payload = await verifyFirebaseToken(auth.replace("Bearer ", ""));
+  const payload = await verifyFirebaseToken(auth.replace("Bearer ", ""), { allowImpersonation: true });
   if (!payload) return res.status(401).json({ error: "Unauthorized" });
 
   // Cap per-user request rate as a second line of defence against abuse.

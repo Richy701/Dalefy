@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { verifyFirebaseToken } from "./_verifyToken.js";
+import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail } from "./_mailer.js";
 import { generateSignInLink } from "./_firebaseAuthAdmin.js";
@@ -87,15 +87,17 @@ export default async function handler(req: any, res: any) {
 
   const auth: string = req.headers["authorization"] ?? "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
-  const payload = await verifyFirebaseToken(token);
+  const payload = await verifyFirebaseToken(token, { allowImpersonation: true });
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   const callerUid = payload.sub;
+  const imp = impersonationOf(payload);
 
   const body = (req.body ?? {}) as InviteRequest;
   const orgId = typeof body.orgId === "string" ? body.orgId.trim() : "";
   const inviterName = typeof body.inviterName === "string" ? body.inviterName.trim().slice(0, 80) : "";
   const resendToken = typeof body.resendToken === "string" ? body.resendToken.trim() : "";
   if (!orgId) return res.status(400).json({ error: "orgId required" });
+  if (imp && imp.org !== orgId) return res.status(403).json({ error: "Only owners and admins can invite team members" });
 
   // Caller must be an owner/admin of this org (rules enforce it too, but fail early with a clear message)
   const [member, orgDoc] = await Promise.all([

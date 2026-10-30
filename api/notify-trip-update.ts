@@ -14,7 +14,7 @@ import { canEditTrip } from "./_tripPermissions.js";
  */
 
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
-import { verifyFirebaseToken } from "./_verifyToken.js";
+import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 
@@ -23,7 +23,7 @@ export default async function handler(req: any, res: any) {
 
   const auth = req.headers["authorization"] ?? "";
   const token = auth.replace("Bearer ", "");
-  const payload = await verifyFirebaseToken(token);
+  const payload = await verifyFirebaseToken(token, { allowImpersonation: true });
   if (!payload) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -41,7 +41,7 @@ export default async function handler(req: any, res: any) {
     const trip = await getDocument("trips", String(tripId)).catch(() => null);
     if (!trip) return res.status(404).json({ error: "Trip not found" });
     const tripFields = trip.fields ?? {};
-    const allowed = await canEditTrip(payload.sub!, tripFields);
+    const allowed = await canEditTrip(payload.sub!, tripFields, impersonationOf(payload));
     if (!allowed) return res.status(403).json({ error: "Not authorized for this trip" });
 
     // 1. This trip's members

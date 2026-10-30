@@ -78,6 +78,37 @@ export async function getServiceAccessToken(): Promise<string | null> {
   return token ?? null;
 }
 
+/**
+ * A Firebase custom token for `uid`, signed by the service account through IAM signJwt, so no private
+ * key is needed (the account holds Service Account Token Creator). `claims` ride along into its ID tokens.
+ */
+export async function createCustomToken(uid: string, claims?: Record<string, unknown>): Promise<string> {
+  const client = await getClient();
+  const email = env("GCP_SERVICE_ACCOUNT") || String(readServiceAccount()?.client_email ?? "");
+  if (!client || !email) throw new Error("Auth admin isn't configured. Set GCP_WIF_AUDIENCE and GCP_SERVICE_ACCOUNT.");
+  const { token } = await client.getAccessToken();
+  if (!token) throw new Error("Token exchange returned no access token");
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: email,
+    sub: email,
+    aud: "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
+    iat: now,
+    exp: now + 3600,
+    uid,
+    ...(claims ? { claims } : {}),
+  };
+  const resp = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(email)}:signJwt`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ payload: JSON.stringify(payload) }),
+  });
+  const data = await resp.json().catch(() => ({})) as { signedJwt?: string; error?: { message?: string } };
+  if (!resp.ok || !data.signedJwt) throw new Error(data.error?.message ?? `signJwt ${resp.status}`);
+  return data.signedJwt;
+}
+
 type RequestType = "EMAIL_SIGNIN" | "VERIFY_EMAIL" | "PASSWORD_RESET";
 
 async function mintLink(requestType: RequestType, email: string, settings?: ActionCodeSettings): Promise<LinkResult> {

@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope } from "@phosphor-icons/react";
+import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope, UserSwitch, EnvelopeSimple, LockKey, Suitcase } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrg } from "@/context/OrgContext";
-import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { getOrgMembersWithProfiles, updateMemberRole, removeMember, transferOwnership } from "@/services/orgMembers";
 import { fetchPendingInvites } from "@/services/invites";
+import { fetchTripHolders, handOverTrips, emailTeammate, logTeamActivity, type TripHolder } from "@/services/teamAdmin";
+import { useStaffPhoto } from "@/hooks/useStaffPhoto";
 import type { OrgRole } from "@/types";
 
 const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: string; blurb: string }> = {
@@ -18,6 +20,9 @@ const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: s
   agent: { icon: UserGear, label: "Agent", color: "text-muted-foreground", blurb: "Builds and edits trips and manages travellers" },
   viewer: { icon: Eye, label: "Viewer", color: "text-muted-foreground", blurb: "Views trips and itineraries only" },
 };
+
+// "Sign in as" reaches only people whose role is below yours
+const ROLE_RANK: Record<OrgRole, number> = { viewer: 0, agent: 1, admin: 2, owner: 3 };
 
 interface Member {
   userId: string;
@@ -33,11 +38,17 @@ type PendingAction =
   | { kind: "role"; userId: string; role: OrgRole }
   | { kind: "remove"; userId: string }
   | { kind: "transfer"; userId: string }
-  | { kind: "leave"; userId: string };
+  | { kind: "leave"; userId: string }
+  | { kind: "signInAs"; userId: string }
+  | { kind: "email"; userId: string; email: "sign-in" | "reset" }
+  | { kind: "handover"; userId: string };
 
 interface TeamManagementProps {
   onInvite: () => void;
 }
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+const tripCount = (h: TripHolder) => `${h.trips} ${h.trips === 1 ? "trip" : "trips"}${h.privateTrips ? ` (${h.privateTrips} private)` : ""}`;
 
 function joinedLabel(iso: string): string {
   if (!iso) return "";
@@ -48,7 +59,7 @@ function joinedLabel(iso: string): string {
 
 export function TeamManagement({ onInvite }: TeamManagementProps) {
   const { currentOrg, orgRole, orgMembers, refreshOrg } = useOrg();
-  const { user } = useAuth();
+  const { user, impersonation, signInAs } = useAuth();
   const { showToast } = useNotifications();
   const navigate = useNavigate();
   const [members, setMembers] = useState<Member[]>([]);
@@ -56,24 +67,26 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [pendingInviteCount, setPendingInviteCount] = useState<number | null>(null);
+  // Who holds the team's trips (counted on the server, private ones too), and where a handover sends them
+  const [holders, setHolders] = useState<TripHolder[]>([]);
+  const [handTo, setHandTo] = useState("");
 
   // Staff travel too: someone without an account photo shows the headshot on their directory entry
-  const [directory] = useDirectoryTravelers();
-  const directoryPhoto = (email: string) => {
-    const e = email.trim().toLowerCase();
-    return e ? directory.find(p => (p.email ?? "").trim().toLowerCase() === e && p.avatar)?.avatar ?? "" : "";
-  };
+  const staffPhoto = useStaffPhoto();
+  const photoOf = (m: Member) => m.avatar || staffPhoto(m.email, m.name);
 
   const isOwner = orgRole === "owner";
   const isAdmin = orgRole === "owner" || orgRole === "admin";
 
   const load = useCallback(async (orgId: string, admin: boolean) => {
-    const [list, invites] = await Promise.all([
+    const [list, invites, tripHolders] = await Promise.all([
       getOrgMembersWithProfiles(orgId),
       admin ? fetchPendingInvites(orgId).catch(() => null) : Promise.resolve(null),
+      // A "Sign in as" session can't move trips, so it doesn't ask
+      admin && !impersonation ? fetchTripHolders(orgId).catch(() => []) : Promise.resolve([]),
     ]);
-    return { list, inviteCount: invites ? invites.filter(i => new Date(i.expiresAt) > new Date()).length : null };
-  }, []);
+    return { list, tripHolders, inviteCount: invites ? invites.filter(i => new Date(i.expiresAt) > new Date()).length : null };
+  }, [impersonation]);
 
   useEffect(() => {
     if (!currentOrg) return;
@@ -82,7 +95,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
     const t = setTimeout(() => {
       setLoading(true);
       load(orgId, isAdmin)
-        .then(({ list, inviteCount }) => { if (!cancelled) { setMembers(list); setPendingInviteCount(inviteCount); } })
+        .then(({ list, tripHolders, inviteCount }) => { if (!cancelled) { setMembers(list); setHolders(tripHolders); setPendingInviteCount(inviteCount); } })
         .catch(() => { if (!cancelled) showToast("Failed to load team"); })
         .finally(() => { if (!cancelled) setLoading(false); });
     }, 0);
@@ -104,25 +117,64 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
     }
   };
 
+  const holding = (uid: string) => holders.find(h => h.uid === uid && h.trips > 0);
+  // People who can be handed trips: owners, admins and agents other than the one giving them up
+  const receivers = (fromUid: string) => members.filter(m => m.userId !== fromUid && m.role !== "viewer");
+  // Someone who left still holds trips; they get a row of their own below the team
+  const departed = holders.filter(h => !h.member && h.trips > 0);
+  const actor = user ? { uid: user.id, name: impersonation ? `${impersonation.byName} as ${user.name}` : user.name } : null;
+
+  const ask = (action: PendingAction) => {
+    const fromUid = action.kind === "remove" || action.kind === "handover" ? action.userId : "";
+    const choices = fromUid ? receivers(fromUid) : [];
+    // Default to yourself when you can hold trips, so nothing is left stranded unless you choose it
+    setHandTo(choices.find(m => m.userId === user?.id)?.userId ?? choices[0]?.userId ?? "");
+    setPending(action);
+  };
+
   const confirmAction = async () => {
-    if (!pending || !currentOrg || !user) return;
-    const member = members.find(m => m.userId === pending.userId);
+    if (!pending || !currentOrg || !user || !actor) return;
+    const gone = departed.find(h => h.uid === pending.userId);
+    const member = members.find(m => m.userId === pending.userId)
+      ?? (gone && { userId: gone.uid, role: "viewer" as OrgRole, joinedAt: "", name: gone.name, email: gone.email, initials: gone.name.slice(0, 2).toUpperCase() });
     if (!member) { setPending(null); return; }
+    const receiver = members.find(m => m.userId === handTo);
+    const held = holding(member.userId);
+    const handOver = async () => {
+      if (!held || !receiver || impersonation) return;
+      await handOverTrips(currentOrg.id, member.userId, receiver.userId);
+      setHolders(prev => prev.filter(h => h.uid !== member.userId).map(h => h.uid === receiver.userId
+        ? { ...h, trips: h.trips + held.trips, privateTrips: h.privateTrips + held.privateTrips } : h)
+        .concat(prev.some(h => h.uid === receiver.userId) ? [] : [{ uid: receiver.userId, name: receiver.name, email: receiver.email, member: true, trips: held.trips, privateTrips: held.privateTrips }]));
+    };
 
     if (pending.kind === "role") {
       const role = pending.role;
       await run(member.userId, async () => {
         await updateMemberRole(member.userId, currentOrg.id, role);
         setMembers(prev => prev.map(m => m.userId === member.userId ? { ...m, role } : m));
+        logTeamActivity(currentOrg.id, actor, "team", `Made ${member.name} ${ROLE_CONFIG[role].label.toLowerCase()}`);
       }, `${member.name} is now ${ROLE_CONFIG[role].label.toLowerCase()}`, "Failed to update role");
     } else if (pending.kind === "remove") {
       await run(member.userId, async () => {
+        // Their trips move first, while they're still on the team to move them from
+        await handOver();
         await removeMember(member.userId, currentOrg.id);
         setMembers(prev => prev.filter(m => m.userId !== member.userId));
-      }, `${member.name} removed from team`, "Failed to remove member");
+        logTeamActivity(currentOrg.id, actor, "team", `Removed ${member.name} from the team`);
+      }, held && receiver && !impersonation ? `${member.name} removed. Their trips went to ${receiver.name}` : `${member.name} removed from team`, "Failed to remove member");
+    } else if (pending.kind === "handover") {
+      await run(member.userId, handOver, receiver ? `${member.name}'s trips went to ${receiver.name}` : "Nothing to hand over", "Couldn't hand over the trips");
+    } else if (pending.kind === "email") {
+      const kind = pending.email;
+      await run(member.userId, async () => {
+        await emailTeammate(kind, member.email);
+        logTeamActivity(currentOrg.id, actor, "email", kind === "sign-in" ? `Emailed ${member.name} a sign-in link` : `Emailed ${member.name} a password reset`);
+      }, kind === "sign-in" ? `Sign-in link sent to ${member.email}` : `Password reset sent to ${member.email}`, "Couldn't send the email");
     } else if (pending.kind === "transfer") {
       await run(member.userId, async () => {
         await transferOwnership(user.id, member.userId, currentOrg.id);
+        logTeamActivity(currentOrg.id, actor, "team", `Handed ownership of the team to ${member.name}`);
         setMembers(prev => prev.map(m => {
           if (m.userId === member.userId) return { ...m, role: "owner" as OrgRole };
           if (m.userId === user.id) return { ...m, role: "admin" as OrgRole };
@@ -130,8 +182,18 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
         }));
         refreshOrg();
       }, `Ownership transferred to ${member.name}`, "Failed to transfer ownership");
+    } else if (pending.kind === "signInAs") {
+      setActionLoading(member.userId);
+      // On success the app starts over as them, so only a failure comes back here
+      const error = await signInAs(currentOrg.id, member.userId);
+      if (error) {
+        showToast(error);
+        setActionLoading(null);
+        setPending(null);
+      }
     } else if (pending.kind === "leave") {
       await run(member.userId, async () => {
+        logTeamActivity(currentOrg.id, actor, "team", "Left the team");
         await removeMember(user.id, currentOrg.id);
         refreshOrg();
         navigate("/dashboard");
@@ -177,7 +239,11 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
         const rowPending = pending?.userId === member.userId ? pending : null;
         const busy = actionLoading === member.userId;
         const canManageRow = isAdmin && !isSelf && !isTargetOwner;
-        const canLeave = isSelf && !isTargetOwner;
+        const canLeave = isSelf && !isTargetOwner && !impersonation;
+        const outranked = !!orgRole && ROLE_RANK[member.role] < ROLE_RANK[orgRole];
+        const canSignInAs = canManageRow && !impersonation && outranked;
+        const held = holding(member.userId);
+        const canHandOver = canManageRow && !impersonation && outranked && !!held && receivers(member.userId).length > 0;
 
         return (
           <div
@@ -186,7 +252,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
           >
             <div className="flex items-center gap-3 p-3">
               <Avatar className="h-10 w-10 shrink-0">
-                {(member.avatar || directoryPhoto(member.email)) && <AvatarImage src={member.avatar || directoryPhoto(member.email)} alt="" />}
+                {photoOf(member) && <AvatarImage src={photoOf(member)} alt="" />}
                 <AvatarFallback className="text-xs font-semibold">{member.initials}</AvatarFallback>
               </Avatar>
 
@@ -210,7 +276,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     {config.label}
                     <CaretDown className="h-3 w-3 opacity-40" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[180px] bg-card border border-border rounded-xl p-1">
+                  <DropdownMenuContent align="end" className="min-w-[230px] bg-card border border-border rounded-xl p-1">
                     {canManageRow && (["admin", "agent", "viewer"] as OrgRole[])
                       .filter(r => r !== member.role)
                       .map(r => {
@@ -228,6 +294,38 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                         );
                       })}
                     {canManageRow && <DropdownMenuSeparator className="bg-secondary" />}
+                    {canSignInAs && (
+                      <DropdownMenuItem
+                        onClick={() => setPending({ kind: "signInAs", userId: member.userId })}
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
+                      >
+                        <UserSwitch className="h-3.5 w-3.5" /> Sign in as {firstName(member.name)}
+                      </DropdownMenuItem>
+                    )}
+                    {canManageRow && member.email && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => setPending({ kind: "email", userId: member.userId, email: "sign-in" })}
+                          className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
+                        >
+                          <EnvelopeSimple className="h-3.5 w-3.5" /> Email a sign-in link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setPending({ kind: "email", userId: member.userId, email: "reset" })}
+                          className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
+                        >
+                          <LockKey className="h-3.5 w-3.5" /> Email a password reset
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {canHandOver && held && (
+                      <DropdownMenuItem
+                        onClick={() => ask({ kind: "handover", userId: member.userId })}
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
+                      >
+                        <Suitcase className="h-3.5 w-3.5" /> Hand over {held.trips === 1 ? "their trip" : `their ${held.trips} trips`}
+                      </DropdownMenuItem>
+                    )}
                     {canManageRow && isOwner && (
                       <DropdownMenuItem
                         onClick={() => setPending({ kind: "transfer", userId: member.userId })}
@@ -238,7 +336,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     )}
                     {canManageRow && (
                       <DropdownMenuItem
-                        onClick={() => setPending({ kind: "remove", userId: member.userId })}
+                        onClick={() => ask({ kind: "remove", userId: member.userId })}
                         className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer text-red-500 focus:text-red-500"
                       >
                         <UserMinus className="h-3.5 w-3.5" /> Remove from team
@@ -272,6 +370,49 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                 member={member}
                 orgName={currentOrg?.name ?? "this team"}
                 busy={busy}
+                held={impersonation ? undefined : held}
+                picker={held && !impersonation && (rowPending.kind === "remove" || rowPending.kind === "handover")
+                  ? <HandToPicker value={handTo} onChange={setHandTo} people={receivers(member.userId)} allowNone={rowPending.kind === "remove"} you={user?.id} />
+                  : null}
+                receiverName={members.find(m => m.userId === handTo)?.name}
+                onConfirm={confirmAction}
+                onCancel={() => setPending(null)}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      {/* People who left still holding trips: without a handover their private trips are out of everyone's reach */}
+      {isAdmin && departed.map(h => {
+        const rowPending = pending?.userId === h.uid ? pending : null;
+        const busy = actionLoading === h.uid;
+        const person: Member = { userId: h.uid, role: "viewer", joinedAt: "", name: h.name, email: h.email, initials: h.name.slice(0, 2).toUpperCase() };
+        return (
+          <div key={h.uid} className="bg-card border border-dashed border-border rounded-xl overflow-hidden">
+            <div className="flex items-center gap-3 p-3">
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarFallback className="text-xs font-semibold">{person.initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{h.name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">Left the team. Still holds {tripCount(h)}</p>
+              </div>
+              {!rowPending && receivers(h.uid).length > 0 && (
+                <Button variant="outline" disabled={!!actionLoading} onClick={() => ask({ kind: "handover", userId: h.uid })} className="h-8 rounded-lg text-[13px] gap-1.5 shrink-0">
+                  <Suitcase className="h-3.5 w-3.5" /> Hand over
+                </Button>
+              )}
+            </div>
+            {rowPending && (
+              <ConfirmStrip
+                action={rowPending}
+                member={person}
+                orgName={currentOrg?.name ?? "this team"}
+                busy={busy}
+                held={h}
+                picker={<HandToPicker value={handTo} onChange={setHandTo} people={receivers(h.uid)} allowNone={false} you={user?.id} />}
+                receiverName={members.find(m => m.userId === handTo)?.name}
                 onConfirm={confirmAction}
                 onCancel={() => setPending(null)}
               />
@@ -298,11 +439,42 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   );
 }
 
-function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
+/** Who gets someone's trips. "Keep with them" strands their private trips, so it's offered only when removing */
+const KEEP = "keep";
+
+function HandToPicker({ value, onChange, people, allowNone, you }: {
+  value: string;
+  onChange: (uid: string) => void;
+  people: Member[];
+  allowNone: boolean;
+  you?: string;
+}) {
+  const label = (uid: string) => {
+    const m = people.find(p => p.userId === uid);
+    return m ? `${m.name}${m.userId === you ? " (you)" : ""}` : "Keep with them";
+  };
+  return (
+    <Select value={value || KEEP} onValueChange={v => onChange(typeof v === "string" && v !== KEEP ? v : "")}>
+      <SelectTrigger className="h-8 w-full sm:w-56 text-xs" aria-label="Who gets their trips">
+        <SelectValue>{(v: string) => label(v)}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {people.map(p => <SelectItem key={p.userId} value={p.userId} className="text-xs">{label(p.userId)}</SelectItem>)}
+        {allowNone && <SelectItem value={KEEP} className="text-xs">Keep with them</SelectItem>}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ConfirmStrip({ action, member, orgName, busy, held, picker, receiverName, onConfirm, onCancel }: {
   action: PendingAction;
   member: Member;
   orgName: string;
   busy: boolean;
+  /** Their trips, when the action can move them */
+  held?: TripHolder;
+  picker?: React.ReactNode;
+  receiverName?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -316,7 +488,23 @@ function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
   } else if (action.kind === "remove") {
     tone = "danger";
     text = `Remove ${member.name} from ${orgName}? They lose access to all team trips immediately.`;
+    if (held) text += receiverName
+      ? ` Their ${tripCount(held)} go to:`
+      : ` Their ${tripCount(held)} stay theirs${held.privateTrips ? ", and nobody else can open the private ones" : ""}. Send them to:`;
     label = "Remove";
+  } else if (action.kind === "handover") {
+    text = held
+      ? `Give ${member.name}'s ${tripCount(held)} to someone else? They'll own them from now on${held.privateTrips ? ", and the private ones stay private to them" : ""}. Send them to:`
+      : `${member.name} has no trips to hand over.`;
+    label = "Hand over";
+  } else if (action.kind === "email") {
+    text = action.email === "sign-in"
+      ? `Email ${member.name} a link that signs them straight in? It goes to ${member.email} and works once.`
+      : `Email ${member.name} a link to set a new password? It goes to ${member.email}. Their current password keeps working until they change it.`;
+    label = "Send";
+  } else if (action.kind === "signInAs") {
+    text = `Sign in as ${member.name} for up to an hour? You'll see ${orgName} exactly as they do. Trip history notes it was you, and their private trips stay hidden.`;
+    label = `Sign in as ${firstName(member.name)}`;
   } else if (action.kind === "transfer") {
     tone = "warn";
     text = `Transfer ownership to ${member.name}? You become an admin. Only they can transfer it back.`;
@@ -333,7 +521,10 @@ function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
   }[tone];
   return (
     <div className={`px-3 py-3 border-t flex flex-col sm:flex-row sm:items-center gap-2 ${tones.wrap}`}>
-      <p className={`text-xs font-semibold flex-1 ${tones.text}`}>{text}</p>
+      <div className="flex-1 min-w-0 space-y-2">
+        <p className={`text-xs font-semibold ${tones.text}`}>{text}</p>
+        {picker}
+      </div>
       <div className="flex gap-2 shrink-0">
         <Button onClick={onConfirm} disabled={busy} className={`h-8 rounded-lg text-[13px] font-mediumwider px-4 ${tones.btn}`}>
           {busy ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : label}

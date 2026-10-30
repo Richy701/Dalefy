@@ -1,14 +1,14 @@
 import { canEditTrip } from "./_tripPermissions.js";
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
-import { verifyFirebaseToken } from "./_verifyToken.js";
+import { verifyFirebaseToken, impersonationOf, type Impersonation } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 
 /** True if the user owns the trip or belongs to the trip's organization. */
-async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
+async function canManageTrip(uid: string, tripId: string, imp: Impersonation | null): Promise<boolean> {
   const trip = await getDocument("trips", tripId).catch(() => null);
   if (!trip) return false;
-  return canEditTrip(uid, trip.fields ?? {});
+  return canEditTrip(uid, trip.fields ?? {}, imp);
 }
 
 interface Person { key: string; name: string; uid: string; deviceIds: string[]; travelerIds: string[] }
@@ -39,8 +39,9 @@ export default async function handler(req: any, res: any) {
 
   const auth = req.headers["authorization"] ?? "";
   const token = auth.replace("Bearer ", "");
-  const payload = await verifyFirebaseToken(token);
+  const payload = await verifyFirebaseToken(token, { allowImpersonation: true });
   if (!payload) return res.status(401).json({ error: "Unauthorized" });
+  const imp = impersonationOf(payload);
 
   if (!rateLimit(req, res, { bucket: "send-push", limit: 30, windowMs: 60_000 })) return;
 
@@ -66,12 +67,12 @@ export default async function handler(req: any, res: any) {
         ...await queryDocuments("trip_members", "device_id", key, 500),
       ];
       for (const id of new Set(memberships.map(d => String(decodeValue(d.fields?.trip_id) ?? "")).filter(Boolean))) {
-        if (await canManageTrip(payload.sub!, id)) { tripId = id; break; }
+        if (await canManageTrip(payload.sub!, id, imp)) { tripId = id; break; }
       }
     }
     if (typeof tripId !== "string" || !tripId) return res.status(403).json({ error: "Not authorized to message this user" });
     // Only the trip's own organisers may message its travellers
-    if (!(await canManageTrip(payload.sub!, tripId))) return res.status(403).json({ error: "Not authorized for this trip" });
+    if (!(await canManageTrip(payload.sub!, tripId, imp))) return res.status(403).json({ error: "Not authorized for this trip" });
 
     const trip = await getDocument("trips", tripId);
     const tripName = String(decodeValue(trip?.fields?.name) ?? "");

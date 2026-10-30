@@ -5,6 +5,7 @@ import { useOrg } from '@/context/OrgContext';
 import { useDirectoryTravelers } from '@/context/directory';
 import { useTrips } from '@/context/TripsContext';
 import { firebaseDb, isFirebaseConfigured } from '@/services/firebase';
+import { storedImpersonation } from '@/services/impersonation';
 import { combinePersonDetails, changePersonOnTrip } from '@/lib/personChanges';
 import { deriveAttendeesString } from '@/lib/travelerSync';
 import { initialsFrom } from '@/lib/names';
@@ -32,7 +33,7 @@ export function useSavePerson() {
     const listTrips = async () => {
       const trips = collection(db, 'trips');
       const snaps = await Promise.all(orgId
-        ? [getDocs(query(trips, where('organization_id', '==', orgId), where('private', '==', false))), getDocs(query(trips, where('organization_id', '==', orgId), where('user_id', '==', user.id)))]
+        ? [getDocs(query(trips, where('organization_id', '==', orgId), where('private', '==', false))), ...(storedImpersonation() ? [] : [getDocs(query(trips, where('organization_id', '==', orgId), where('user_id', '==', user.id)))])]
         : [getDocs(query(trips, where('user_id', '==', user.id)))]);
       return { docs: [...new Map(snaps.flatMap(s => s.docs).map(d => [d.id, d])).values()] };
     };
