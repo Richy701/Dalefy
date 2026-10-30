@@ -17,7 +17,7 @@ import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  Clock, Hash, FileText,
+  Clock, Hash,
   Calendar, Users, Copy, CaretRight, CaretLeft,
   AirplaneTakeoff, AirplaneLanding, Armchair, Door,
   Ruler, MapPin, Phone,
@@ -362,6 +362,22 @@ function parseDocFilename(filename: string, size: number) {
     return { label: `${type} ${num}`, date: `${day} ${mon} ${year}`, size: formatFileSize(size) };
   }
   return { label: base, date: "", size: formatFileSize(size) };
+}
+
+/** What kind of file it is, for the tile ("PDF") and the line under the name ("PDF document") */
+function docKind(name: string, url = ""): { tag: string; label: string } {
+  const ext = (name.match(/\.([a-z0-9]+)$/i)?.[1] ?? url.split("?")[0].match(/\.([a-z0-9]+)$/i)?.[1] ?? "").toLowerCase();
+  if (ext === "pdf") return { tag: "PDF", label: "PDF document" };
+  if (["jpg", "jpeg", "png", "heic", "webp", "gif"].includes(ext)) return { tag: ext === "jpeg" ? "JPG" : ext.toUpperCase(), label: "Photo" };
+  if (["doc", "docx", "pages"].includes(ext)) return { tag: "DOC", label: "Document" };
+  if (["xls", "xlsx", "csv", "numbers"].includes(ext)) return { tag: "XLS", label: "Spreadsheet" };
+  return { tag: ext ? ext.slice(0, 4).toUpperCase() : "FILE", label: "File" };
+}
+
+/** "Tuesday-Italian Night - Chomtalay" reads as "Tuesday Italian Night, Chomtalay" */
+function tidyDocName(name: string): string {
+  // A hyphen only splits words when a new capitalised one follows, so "Check-in" and "E-ticket" survive
+  return name.replace(/\s+-\s+/g, ", ").replace(/_+/g, " ").replace(/(\p{L})-(?=\p{Lu})/gu, "$1 ").replace(/\s{2,}/g, " ").trim();
 }
 
 function formatFileSize(bytes: number): string {
@@ -752,20 +768,21 @@ export default function EventDetailScreen() {
                   key={doc.id}
                   onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
                   accessibilityRole="button"
-                  accessibilityLabel={`Open document ${parsed.label}`}
+                  accessibilityLabel={`Open ${docKind(doc.name, doc.url).label}, ${tidyDocName(parsed.label)}`}
                   style={({ pressed }) => [
                     styles.detailListRow,
                     { backgroundColor: pressed ? C.elevated : "transparent" },
                     i < ev.documents!.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
-                  <View style={[styles.docIcon, { backgroundColor: C.tealDim }]}>
-                    <FileText size={16} color={C.textTertiary} weight="regular" />
+                  {/* A tile that says what it is, like Files */}
+                  <View style={[styles.docIcon, { backgroundColor: C.elevated }]}>
+                    <Text style={[styles.docTag, { color: C.textSecondary }]}>{docKind(doc.name, doc.url).tag}</Text>
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{parsed.label}</Text>
+                    <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={2}>{tidyDocName(parsed.label)}</Text>
                     <Text style={[styles.docMeta, { color: C.textTertiary }]}>
-                      {parsed.date ? `${parsed.date}, ` : ""}{parsed.size}
+                      {docKind(doc.name, doc.url).label}{parsed.date ? `, ${parsed.date}` : ""}
                     </Text>
                   </View>
                   <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
@@ -1225,15 +1242,15 @@ function FlightDetailScreen({
                     key={doc.id}
                     onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open document ${doc.name}`}
+                    accessibilityLabel={`Open ${docKind(doc.name, doc.url).label}, ${tidyDocName(doc.name.replace(/\.[^.]+$/, ""))}`}
                     style={({ pressed }) => [fs.docRow, { opacity: pressed ? 0.8 : 1 }]}
                   >
-                    <View style={[fs.docIcon, { backgroundColor: C.elevated }]}>
-                      <FileText size={16} color={C.textSecondary} weight="regular" />
+                    <View style={[fs.docIcon, { backgroundColor: C.elevated, borderWidth: StyleSheet.hairlineWidth, borderColor: C.borderLight }]}>
+                      <Text style={{ fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.4, color: C.textSecondary }}>{docKind(doc.name, doc.url).tag}</Text>
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[{ fontSize: T.md, fontWeight: T.medium, color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
-                      <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{Math.round(doc.size / 1024)} KB</Text>
+                      <Text style={[{ fontSize: T.md, fontWeight: T.medium, color: C.textPrimary }]} numberOfLines={2}>{tidyDocName(doc.name.replace(/\.[^.]+$/, ""))}</Text>
+                      <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{docKind(doc.name, doc.url).label}</Text>
                     </View>
                     <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                   </Pressable>
@@ -1310,7 +1327,7 @@ function makeFlightStyles(C: ThemeColors) {
     countText: { fontSize: T.md },
 
     docRow: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.md, borderRadius: R.lg, marginBottom: S["2xs"] },
-    docIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+    docIcon: { width: 40, height: 40, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
   });
 }
 
@@ -1385,16 +1402,14 @@ function makeStyles(C: ThemeColors) {
     detailListValue: { fontSize: T.base, fontWeight: T.medium },
 
     docIcon: {
-      width: 40, height: 40, borderRadius: 20,
+      width: 40, height: 40, borderRadius: R.sm,
       alignItems: "center", justifyContent: "center",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: C.borderLight,
     },
+    docTag: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.4 },
     docName: { fontSize: T.sm, fontWeight: T.semibold },
-    docMeta: {
-      fontSize: T.xs, fontWeight: T.medium, marginTop: 2,
-      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    },
+    docMeta: { fontSize: T.xs, fontWeight: T.medium, marginTop: 2 },
 
     actionBarWrap: {
       position: "absolute", bottom: 0, left: 0, right: 0,
