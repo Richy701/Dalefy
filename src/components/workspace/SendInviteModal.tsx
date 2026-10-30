@@ -329,12 +329,16 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent }:
             {results && (
               <div className="rounded-lg border border-border divide-y divide-border text-sm">
                 {results.map(r => (
-                  <div key={r.email} className="flex items-center gap-2 px-3 py-2">
+                  <div key={r.email} className="flex items-start gap-2 px-3 py-2">
                     {r.ok
-                      ? <Check className="h-4 w-4 text-emerald-500 shrink-0" weight="bold" />
-                      : <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />}
-                    <span className="truncate flex-1 text-foreground">{r.email}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{r.ok ? "Sent" : r.error || "Failed"}</span>
+                      ? <Check className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" weight="bold" />
+                      : <Warning className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" weight="fill" />}
+                    {/* Who it was for stays readable; a failure's reason goes underneath */}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-foreground">{r.email}</p>
+                      {!r.ok && <p className="text-xs text-muted-foreground">{r.error || "Failed"}</p>}
+                    </div>
+                    {r.ok && <span className="text-xs text-muted-foreground shrink-0">Sent</span>}
                   </div>
                 ))}
               </div>

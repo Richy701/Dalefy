@@ -28,7 +28,21 @@ function safeName(name: string): string {
   return name.replace(/[<>"\r\n]/g, "").trim();
 }
 
+const RATE_LIMITED = /rate.?limit|too many requests/i;
+const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** Sends one email. Resend refuses bursts over its per-second limit, so a refused send waits and tries again */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  for (let attempt = 1; ; attempt++) {
+    const result = await sendOnce(input);
+    if (result.ok === true || attempt === 4 || !RATE_LIMITED.test(result.error)) {
+      return result.ok === true || !RATE_LIMITED.test(result.error) ? result : { ok: false, error: "Email service was busy. Try sending to this person again." };
+    }
+    await wait(1100 * attempt);
+  }
+}
+
+async function sendOnce(input: SendEmailInput): Promise<SendEmailResult> {
   if (!emailEnabled()) return { ok: false, error: "Email sending isn't set up yet. Add RESEND_FROM_EMAIL on a verified domain." };
   try {
     const { Resend } = await import("resend");

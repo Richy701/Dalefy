@@ -20,6 +20,7 @@ const env = (k: string) => (process.env[k] ?? "").trim();
 const APP_URL = (env("VITE_APP_URL") || "https://dalefy.app").replace(/\/$/, "");
 const PLATFORM_NAME = "Dalefy";
 const MAX_RECIPIENTS = 50;
+const PER_SECOND = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Recipient { name: string; email: string }
@@ -98,10 +99,17 @@ export default async function handler(req: any, res: any) {
     organizer,
   });
 
-  const results = await Promise.all(recipients.map(async r => {
+  const sendTo = async (r: Recipient) => {
     const sent = await sendEmail({ to: r.email, toName: r.name, subject, html, text, replyTo, fromName: brandName });
     return sent.ok === true ? { email: r.email, ok: true, id: sent.id } : { email: r.email, ok: false, error: sent.error };
-  }));
+  };
+  // Resend takes 10 emails a second across the account: send in groups of 5, one group a second
+  const results: Awaited<ReturnType<typeof sendTo>>[] = [];
+  for (let i = 0; i < recipients.length; i += PER_SECOND) {
+    const started = Date.now();
+    results.push(...await Promise.all(recipients.slice(i, i + PER_SECOND).map(sendTo)));
+    if (i + PER_SECOND < recipients.length) await new Promise(r => setTimeout(r, Math.max(0, 1000 - (Date.now() - started))));
+  }
 
   const sent = results.filter(r => r.ok).length;
   // Stamp "invited" here rather than from the browser: this writes onto the newest copy of the trip, so it can't
