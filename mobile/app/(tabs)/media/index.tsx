@@ -872,6 +872,8 @@ export default function MediaScreen() {
   // Clean up pending items that have been uploaded, are stale, have dead local URIs,
   // or belong to trips the user is no longer a member of
   useEffect(() => {
+    // An empty or offline list says nothing about membership, and dropping these loses the photos for good
+    if (!ready || offline || !trips.length) return;
     let changed = false;
     const staleMs = 60 * 60 * 1000; // 1 hour
     const now = Date.now();
@@ -892,8 +894,9 @@ export default function MediaScreen() {
       if (remaining.length !== items.length) changed = true;
       if (remaining.length > 0) cleaned[tripId] = remaining;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- only writes when something was removed, so it settles after one pass
     if (changed) setPendingMedia(() => cleaned);
-  }, [trips, pendingMedia, setPendingMedia]);
+  }, [trips, ready, offline, pendingMedia, setPendingMedia]);
 
   const isValidMediaUrl = useCallback((url?: string) =>
     !!url && (url.startsWith("https://") || url.startsWith("file://") || url.startsWith("ph://")),
@@ -1177,7 +1180,7 @@ export default function MediaScreen() {
           setUploadProgress(null);
         });
     });
-  }, [trips, updateTripLocal, setPendingMedia, toast]);
+  }, [trips, updateTripLocal, setPendingMedia, toast, deviceId, prefs.name]);
 
   const handleUploadNew = useCallback(() => {
     if (trips.length === 0) {

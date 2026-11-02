@@ -1,8 +1,10 @@
-import type { ReactElement, ReactNode } from 'react';
+import { useEffect, type EffectCallback, type ReactElement, type ReactNode } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native-web';
 import { CaretLeft } from '@phosphor-icons/react';
 import { usePreview, useTheme } from './context';
 export { useRouter, useLocalSearchParams } from './context';
+// The preview has one screen in focus at a time, so focus is just being mounted
+export const useFocusEffect = (effect: EffectCallback) => { useEffect(effect, [effect]); };
 export const Link = {};
 type BoxProps = { style?: unknown; children?: ReactNode };
 type GradientStops = { colors: string[]; locations?: number[] };

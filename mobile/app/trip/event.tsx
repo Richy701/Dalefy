@@ -28,6 +28,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { T, R, S, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS, toLngLat, isSamePoint, distanceKm } from "@/shared/coordinates";
 import { useMemo, useCallback, useState, useEffect } from "react";
@@ -370,6 +371,7 @@ function formatFileSize(bytes: number): string {
 
 export default function EventDetailScreen() {
   const { tripId, eventId } = useLocalSearchParams<{ tripId: string; eventId: string }>();
+  const nowMs = useMinuteClock();
   const { trips } = useTrips();
   const router = useRouter();
   const { C: themeC, isDark: themeDark } = useTheme();
@@ -452,7 +454,6 @@ export default function EventDetailScreen() {
     ? ((storedIsCentroid || storedIsFar ? undefined : storedLngLat) ?? resolved.geo ?? undefined)
     : undefined;
   // Live timing: "Starts in" within 24h, "Ends in" while underway (needs an end time)
-  const nowMs = Date.now();
   const startAt = ev.date ? parseEventDateTime(ev.date, ev.time).getTime() : NaN;
   const endAt = ev.date && ev.endTime ? parseEventDateTime(ev.endDate || ev.date, ev.endTime).getTime() : NaN;
   const startsIn = !isNaN(startAt) && startAt > nowMs && startAt - nowMs < 24 * 3600000 ? formatGap(startAt - nowMs) : null;
@@ -864,16 +865,17 @@ function FlightDetailScreen({
   const arrTime = ev.endTime ? formatTo24h(ev.endTime) : "";
   const dur = parseDuration(ev.duration);
   // "In 22 days" / "Tomorrow" / "In 5h 20m" until the flight goes
+  const now = useMinuteClock();
   const untilLabel = useMemo(() => {
     if (!ev.date) return null;
-    const ms = parseEventDateTime(ev.date, ev.time || "").getTime() - Date.now();
+    const ms = parseEventDateTime(ev.date, ev.time || "").getTime() - now;
     if (isNaN(ms) || ms <= 0) return null;
     const days = Math.floor(ms / 86400000);
     if (days >= 2) return `In ${days} days`;
     if (days === 1) return "Tomorrow";
     const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
     return h > 0 ? `In ${h}h ${m}m` : `In ${m}m`;
-  }, [ev.date, ev.time]);
+  }, [ev.date, ev.time, now]);
 
   const { arrivalDate, dayOffset } = useMemo(() => {
     if (ev.endDate && ev.date && ev.endDate !== ev.date) {
@@ -902,8 +904,8 @@ function FlightDetailScreen({
   const isPast = useMemo(() => {
     if (!ev.date) return false;
     const d = new Date(ev.date + "T23:59:59");
-    return d.getTime() < Date.now();
-  }, [ev.date]);
+    return d.getTime() < now;
+  }, [ev.date, now]);
   const statusLabel = statusLower.includes("cancel") ? "Cancelled"
     : statusLower.includes("delay") ? "Delayed"
     : (statusLower.includes("land") || statusLower.includes("arrived") || isPast) ? "Landed" : "On Time";
