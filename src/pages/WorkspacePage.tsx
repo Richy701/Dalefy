@@ -409,6 +409,27 @@ export function WorkspacePage() {
   const [sendInviteOpen, setSendInviteOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [reimportOpen, setReimportOpen] = useState(false);
+  const [invitePreselect, setInvitePreselect] = useState<string[]>();
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+
+  // Dashboard "needs you" buttons land on the job itself. Publishing asks first, because it notifies travellers
+  useEffect(() => {
+    const job = searchParams.get("do");
+    if (!job || !trip) return;
+    searchParams.delete("do");
+    setSearchParams(searchParams, { replace: true });
+    if (isViewer) return;
+    if (job === "publish") setPublishConfirmOpen(true);
+    if (job === "email") {
+      setInvitePreselect((trip.travelers ?? []).filter(t => !t.invitedAt && t.email).map(t => t.id));
+      setSendInviteOpen(true);
+    }
+    if (job === "add-emails") {
+      setBulkEmails(Object.fromEntries(tripTravelers.map(t => [t.id, t.email || ""])));
+      setBulkEmailMode(true);
+      setActiveTab("people");
+    }
+  }, [trip, tripTravelers, isViewer, searchParams, setSearchParams]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
@@ -3093,11 +3114,23 @@ export function WorkspacePage() {
 
       {messageOpen && <MessageDialog open onOpenChange={setMessageOpen} trips={[trip]} />}
 
+      <ConfirmDialog
+        open={publishConfirmOpen}
+        onOpenChange={setPublishConfirmOpen}
+        title={pendingChanges > 0 ? `Publish ${pendingChanges} ${pendingChanges === 1 ? "change" : "changes"}?` : "Publish this trip?"}
+        description={pendingChanges > 0
+          ? `Travellers on ${trip.name} get the latest version and a notification about what changed.`
+          : `Travellers can open ${trip.name} and get a notification that it's published.`}
+        confirmLabel="Publish"
+        onConfirm={handlePublish}
+      />
+
       <SendInviteModal
         open={sendInviteOpen}
-        onOpenChange={setSendInviteOpen}
+        onOpenChange={open => { setSendInviteOpen(open); if (!open) setInvitePreselect(undefined); }}
         trip={trip}
         travelers={tripTravelers}
+        preselectedIds={invitePreselect}
         // The send endpoint stamps who was invited onto the trip itself; the trip listener brings it in
       />
 

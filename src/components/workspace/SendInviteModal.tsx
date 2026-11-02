@@ -26,6 +26,8 @@ interface SendInviteModalProps {
   travelers: UserType[];
   /** The travellers the itinerary actually reached, so the trip can remember they were invited */
   onSent?: (travelerIds: string[]) => void;
+  /** Ticked when the modal opens, e.g. the travellers not emailed yet */
+  preselectedIds?: string[];
 }
 
 type SendResult = { email: string; ok: boolean; error?: string };
@@ -49,10 +51,13 @@ function formatDates(start: string, end: string) {
   }
 }
 
-export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent }: SendInviteModalProps) {
+export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent, preselectedIds }: SendInviteModalProps) {
   const { brand } = useBrand();
   const { resolvedAccent } = usePreferences();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (open && preselectedIds?.length) setSelectedIds(new Set(preselectedIds));
+  }, [open, preselectedIds]);
   const [template, setTemplate] = useState<EmailTemplate>(EMAIL_TEMPLATES[0]);
   const [subject, setSubject] = useState(EMAIL_TEMPLATES[0].subject);
   const [body, setBody] = useState(EMAIL_TEMPLATES[0].body);

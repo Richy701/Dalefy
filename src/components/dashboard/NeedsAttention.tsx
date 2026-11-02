@@ -73,12 +73,12 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
       const when = live ? "on now" : daysOut === 1 ? "departs tomorrow" : `departs in ${daysOut} days`;
 
       if (t.status === "Draft" && daysOut >= 0 && daysOut <= 14) {
-        out.push({ key: `${t.id}-draft`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, urgent: daysOut <= 7, to: open, action: "Publish",
+        out.push({ key: `${t.id}-draft`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, urgent: daysOut <= 7, to: `${open}?do=publish`, action: "Publish",
           message: `Still a draft, departs ${daysOut === 0 ? "today" : daysOut === 1 ? "tomorrow" : `in ${daysOut} days`}` });
       }
       if (t.status !== "Draft" && t.publishedSnapshot) {
         const changes = publishedChanges(t.publishedSnapshot, { events: t.events, start: t.start, end: t.end, info: t.info });
-        if (changes.length) out.push({ key: `${t.id}-changes`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, to: open, action: "Publish",
+        if (changes.length) out.push({ key: `${t.id}-changes`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, to: `${open}?do=publish`, action: "Publish",
           message: changes.length === 1 ? `Not published yet: ${changes[0].toLowerCase()}` : `${plural(changes.length, "change")} travellers can't see yet` });
       }
       const notInvited = (t.travelers ?? []).filter(tv => !tv.invitedAt);
@@ -86,7 +86,7 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
         const noEmail = notInvited.filter(tv => !tv.email).length;
         const canEmail = notInvited.length - noEmail;
         // Without an email address there's nobody to invite, so the job is adding addresses
-        out.push({ key: `${t.id}-invite`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: open, soon: daysOut <= 14,
+        out.push({ key: `${t.id}-invite`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=${canEmail ? "email" : "add-emails"}`, soon: daysOut <= 14,
           detail: when,
           action: canEmail ? "Email them" : "Add emails",
           message: canEmail
