@@ -413,23 +413,28 @@ export function WorkspacePage() {
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
 
   // Dashboard "needs you" buttons land on the job itself. Publishing asks first, because it notifies travellers
+  const job = trip ? searchParams.get("do") : null;
+  const [lastJob, setLastJob] = useState<string | null>(null);
+  if (job !== lastJob) {
+    setLastJob(job);
+    if (trip && !isViewer) {
+      if (job === "publish") setPublishConfirmOpen(true);
+      if (job === "email") {
+        setInvitePreselect((trip.travelers ?? []).filter(t => !t.invitedAt && t.email).map(t => t.id));
+        setSendInviteOpen(true);
+      }
+      if (job === "add-emails") {
+        setBulkEmails(Object.fromEntries(tripTravelers.map(t => [t.id, t.email || ""])));
+        setBulkEmailMode(true);
+        setActiveTab("people");
+      }
+    }
+  }
   useEffect(() => {
-    const job = searchParams.get("do");
-    if (!job || !trip) return;
+    if (!job) return;
     searchParams.delete("do");
     setSearchParams(searchParams, { replace: true });
-    if (isViewer) return;
-    if (job === "publish") setPublishConfirmOpen(true);
-    if (job === "email") {
-      setInvitePreselect((trip.travelers ?? []).filter(t => !t.invitedAt && t.email).map(t => t.id));
-      setSendInviteOpen(true);
-    }
-    if (job === "add-emails") {
-      setBulkEmails(Object.fromEntries(tripTravelers.map(t => [t.id, t.email || ""])));
-      setBulkEmailMode(true);
-      setActiveTab("people");
-    }
-  }, [trip, tripTravelers, isViewer, searchParams, setSearchParams]);
+  }, [job, searchParams, setSearchParams]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);

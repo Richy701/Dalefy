@@ -55,9 +55,11 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent, p
   const { brand } = useBrand();
   const { resolvedAccent } = usePreferences();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open && preselectedIds?.length) setSelectedIds(new Set(preselectedIds));
-  }, [open, preselectedIds]);
+  }
   const [template, setTemplate] = useState<EmailTemplate>(EMAIL_TEMPLATES[0]);
   const [subject, setSubject] = useState(EMAIL_TEMPLATES[0].subject);
   const [body, setBody] = useState(EMAIL_TEMPLATES[0].body);
