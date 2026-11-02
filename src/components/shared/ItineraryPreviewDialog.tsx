@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { objectPosition } from "@/lib/imagePosition";
 import {
   CalendarDots, MapPin, Users, Compass,
@@ -19,6 +19,7 @@ import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
 import { topicIcon, factRows } from "@/lib/infoTopics";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { CategoryDot } from "@/components/ui/category-dot";
+import { SharedTripView } from "@/pages/SharedTripPage";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -264,6 +265,34 @@ interface ItineraryPreviewDialogProps {
 export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPreviewDialogProps) {
   const { brand } = useBrand();
 
+  // What a traveller's link gets: the server never sends them these fields or leader-only notes (api/_tripView.ts)
+  const travellerTrip = useMemo(() => ({
+    ...trip,
+    info: trip.info?.filter(item => !item.leaderOnly),
+    events: trip.events.map(ev => {
+      const copy = { ...ev };
+      delete copy.supplier;
+      delete copy.price;
+      delete copy.confNumber;
+      delete copy.notes;
+      delete copy.seatDetails;
+      return copy;
+    }),
+  }), [trip]);
+
+  // The traveller page is always light, so the preview is too; the organiser's theme comes back on close
+  useEffect(() => {
+    if (!open) return;
+    const html = document.documentElement;
+    if (!html.classList.contains("dark")) return;
+    html.classList.remove("dark");
+    html.classList.add("light");
+    return () => {
+      html.classList.remove("light");
+      html.classList.add("dark");
+    };
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -284,7 +313,8 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
             <X className="h-4 w-4" />
           </button>
         </div>
-        <ItineraryPreviewContent trip={trip} />
+        {/* min-w-0: the dialog is a grid, and the wide tab row would otherwise push it past the screen */}
+        <div className="min-w-0"><SharedTripView trip={travellerTrip} brand={brand} preview /></div>
       </DialogContent>
     </Dialog>
   );

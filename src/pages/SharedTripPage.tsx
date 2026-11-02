@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { objectPosition } from "@/lib/imagePosition";
 import { useParams } from "react-router-dom";
 import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, Info, Bed, ListChecks } from "@phosphor-icons/react";
@@ -6,7 +6,7 @@ import { tabsListVariants } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
-import { parseTimeInput } from "@/lib/timeInput";
+import { clockTime, stayTime } from "@/lib/timeInput";
 import { airlineLogoUrl } from "@/data/airlines";
 import { tzAbbr, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured } from "@/services/firebase";
@@ -21,7 +21,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { topicIcon, factRows } from "@/lib/infoTopics";
 
-type Brand = ReturnType<typeof resolvedBrand>;
+type Brand = Omit<ReturnType<typeof resolvedBrand>, "platformName"> & { platformName: string };
 
 function rowToTrip(row: Record<string, unknown>): Trip {
   return {
@@ -133,7 +133,7 @@ function FlightEnd({ code, time, tz, dayOffset, align }: { code: string; time?: 
     <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
       <p className={`font-semibold tracking-tight text-foreground ${isCode(code) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{code || "—"}</p>
       <p className={`mt-1 text-base font-medium tabular-nums whitespace-nowrap ${known ? "text-foreground" : "text-muted-foreground"}`}>
-        {known ? parseTimeInput(time) || time : "TBC"}
+        {known ? clockTime(time) : "TBC"}
         {known && dayOffset && <span className="ml-1 text-xs font-normal text-muted-foreground">{dayOffset}</span>}
       </p>
       {known && tz && <p className="text-xs text-muted-foreground">{tz}</p>}
@@ -192,7 +192,8 @@ function FlightCard({ ev }: { ev: TravelEvent }) {
 
 function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string }) {
   const nights = checkoutDate ? Math.max(0, Math.round((parseTripDate(checkoutDate).getTime() - parseTripDate(ev.date).getTime()) / DAY_MS)) : 0;
-  const checkin = ev.checkin || (isPlaceholderTime(ev.time) ? "" : ev.time);
+  const checkin = stayTime(ev.checkin) || (isPlaceholderTime(ev.time) ? "" : clockTime(ev.time));
+  const checkout = stayTime(ev.checkout);
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
       <div className="flex gap-4">
@@ -213,7 +214,7 @@ function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string
         <div>
           <p className="text-xs text-muted-foreground">Check out</p>
           <p className="mt-0.5 text-foreground">
-            {checkoutDate ? fmtShort(checkoutDate) : "—"}{ev.checkout ? `, ${ev.checkout}` : ""}
+            {checkoutDate ? fmtShort(checkoutDate) : "—"}{checkout ? `, ${checkout}` : ""}
           </p>
         </div>
       </div>
@@ -239,7 +240,7 @@ function eventMeta(ev: TravelEvent): string {
   if (ev.type === "hotel") {
     return [ev.location, ev.roomType].filter(Boolean).join(", ");
   }
-  const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${ev.endTime}` : "";
+  const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${clockTime(ev.endTime)}` : "";
   // A transfer's meeting point has its own line; don't say the same place twice.
   const repeated = ev.type === "transfer" && ev.location?.trim().toLowerCase() === ev.meetingPoint?.trim().toLowerCase();
   return [repeated ? "" : ev.location, ev.duration, until].filter(Boolean).join(", ");
@@ -248,7 +249,7 @@ function eventMeta(ev: TravelEvent): string {
 function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const isFlight = ev.type === "flight";
-  const time = isPlaceholderTime(ev.time) ? (isFlight ? "TBC" : "") : isFlight ? parseTimeInput(ev.time) || ev.time : ev.time;
+  const time = isPlaceholderTime(ev.time) ? (isFlight ? "TBC" : "") : clockTime(ev.time);
   const marker = (size: "sm" | "md", className: string) => {
     const dot = <CategoryDot type={ev.type} transferType={ev.transferType} size={size} className={className} />;
     return isFlight ? <AirlineMark flightNum={ev.flightNum} className={`${size === "md" ? "h-9 w-9" : "h-7 w-7"} ${className}`} fallback={dot} /> : dot;
@@ -324,8 +325,10 @@ function HeroText({ trip, nights, travelers, onPhoto = false, titleId }: { trip:
 
 /* ---------- the document ---------- */
 
-export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
-  const [activeSection, setActiveSection] = useState(trip.info?.length ? "information" : "schedule");
+/** `preview` is the organiser's look at the traveller view, inside the Workspace, where printing would print the app. */
+export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; brand: Brand; preview?: boolean }) {
+  const [activeSection, setActiveSection] = useState("schedule");
+  const tabsTop = useRef<HTMLDivElement>(null);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const travelers = trip.travelers ?? [];
   const viewAsTraveler = viewAsId ? travelers.find(t => t.id === viewAsId) ?? null : null;
@@ -358,25 +361,24 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
   const org = trip.organizer;
   const hasDetails = !!(flights.length || stays.length || org?.name || trip.documents?.length);
   const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
-  useEffect(() => {
-    const ids = ["information", "schedule", "flights", "stays", "documents"];
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const sections = ids.map(id => document.getElementById(id)).filter((element): element is HTMLElement => !!element);
-      const current = sections.filter(element => element.getBoundingClientRect().top <= 160).at(-1) || sections[0];
-      if (current) setActiveSection(current.id);
-    };
-    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [trip, viewAsId]);
+  const tabs = [
+    { id: "information", label: "Good to know", icon: Info, show: !!trip.info?.length },
+    { id: "schedule", label: "Itinerary", icon: ListChecks, show: true },
+    { id: "flights", label: "Flights", icon: AirplaneTilt, show: flights.length > 0 },
+    { id: "stays", label: "Stays", icon: Bed, show: stays.length > 0 },
+    { id: "documents", label: "Documents", icon: Paperclip, show: !!trip.documents?.length },
+  ].filter(tab => tab.show);
+  // Viewing as one traveller can empty a tab, such as Flights; fall back rather than show nothing
+  const currentTab = tabs.some(tab => tab.id === activeSection) ? activeSection : "schedule";
+  // One section at a time on screen; print always has them all
+  const panel = (id: string) => (currentTab === id ? "" : "hidden print:block");
+  const showTab = (id: string, button: HTMLElement) => {
+    setActiveSection(id);
+    // On a phone the tabs scroll sideways; keep the neighbours of the chosen one in view
+    button.scrollIntoView({ inline: "center", block: "nearest", behavior: "instant" });
+    // Back to the top of the section if the reader had scrolled past the tabs
+    if ((tabsTop.current?.getBoundingClientRect().top ?? 0) < 0) tabsTop.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  };
   const dayNumber = (date: string) => Math.round((parseTripDate(date).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS) + 1;
 
   return (
@@ -391,7 +393,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
             {brand.logoUrl && <img src={brand.logoUrl} alt="" className="h-9 w-auto max-w-[140px] shrink-0 object-contain" />}
             <p className="text-base font-semibold tracking-tight text-foreground truncate">{brand.name}</p>
           </div>
-          <Button variant="outline"
+          {!preview && <Button variant="outline"
             type="button"
             onClick={() => window.print()}
             className="print:hidden min-h-11 gap-2 px-3 sm:px-4 shrink-0"
@@ -399,7 +401,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">Print or save PDF</span>
             <span className="sm:hidden">Print</span>
-          </Button>
+          </Button>}
         </header>
 
         {/* Hero: the trip's photo with its name over it, like the trip screen in the app */}
@@ -418,10 +420,11 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </div>
         </section>
 
+        <div ref={tabsTop} />
         <nav aria-label="Itinerary sections" className="sticky top-0 z-10 -mx-4 mt-5 overflow-x-auto bg-background px-4 py-3 sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10 xl:-mx-14 xl:px-14 print:hidden">
           <div className={tabsListVariants({ className: "gap-1 p-1" })}>
-          {[{ id: "information", label: "Good to know", icon: Info, show: !!trip.info?.length }, { id: "schedule", label: "Itinerary", icon: ListChecks, show: true }, { id: "flights", label: "Flights", icon: AirplaneTilt, show: flights.length > 0 }, { id: "stays", label: "Stays", icon: Bed, show: stays.length > 0 }, { id: "documents", label: "Documents", icon: Paperclip, show: !!trip.documents?.length }].filter(section => section.show).map(section => (
-            <Button key={section.id} variant="ghost" aria-current={activeSection === section.id ? "location" : undefined} className={`min-h-11 shrink-0 gap-2 rounded-md px-4 text-sm ${activeSection === section.id ? "bg-background text-foreground shadow-sm hover:bg-background" : "text-muted-foreground"}`} onClick={() => { setActiveSection(section.id); jumpTo(section.id); }}><section.icon aria-hidden="true" className="h-4 w-4" />{section.label}</Button>
+          {tabs.map(tab => (
+            <Button key={tab.id} variant="ghost" aria-current={currentTab === tab.id ? "true" : undefined} className={`min-h-11 shrink-0 gap-2 rounded-md px-4 text-sm ${currentTab === tab.id ? "bg-background text-foreground shadow-sm hover:bg-background" : "text-muted-foreground"}`} onClick={e => showTab(tab.id, e.currentTarget)}><tab.icon aria-hidden="true" className="h-4 w-4" />{tab.label}</Button>
           ))}
           </div>
         </nav>
@@ -458,7 +461,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           <main className="min-w-0 space-y-10">
         {/* Good to know */}
         {trip.info && trip.info.length > 0 && (
-          <section id="information" className="min-w-0 scroll-mt-24">
+          <section id="information" className={`min-w-0 scroll-mt-24 ${panel("information")}`}>
             <SectionTitle>Good to know</SectionTitle>
             {(() => {
               const renderCard = (item: NonNullable<Trip["info"]>[number]) => {
@@ -510,7 +513,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Day by day */}
         {days.length > 0 && (
-          <section id="schedule" aria-labelledby="daily-schedule" className="min-w-0 scroll-mt-24">
+          <section id="schedule" aria-labelledby="daily-schedule" className={`min-w-0 scroll-mt-24 ${panel("schedule")}`}>
             <h2 id="daily-schedule" className="mb-4 text-lg font-semibold tracking-tight text-foreground">Day by day</h2>
 
             {days.length > 1 && (
@@ -547,16 +550,16 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         )}
 
         {days.length === 0 && (
-          <div className="mt-10 rounded-xl border border-dashed border-border p-8 text-center">
+          <div className={`rounded-xl border border-dashed border-border p-8 text-center ${panel("schedule")}`}>
             <p className="text-sm text-muted-foreground">No itinerary items yet.</p>
           </div>
         )}
 
           </main>
-          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 print:mt-8">
+          {hasDetails && <aside aria-label="Trip details" className="min-w-0 flex flex-col gap-8 print:block print:space-y-8 print:mt-8">
         {/* Flights */}
         {flights.length > 0 && (
-          <section id="flights" className="min-w-0 scroll-mt-24">
+          <section id="flights" className={`min-w-0 scroll-mt-24 ${panel("flights")}`}>
             <SectionTitle>Flights</SectionTitle>
             <div className="space-y-3">
               {flights.map(ev => <FlightCard key={ev.id} ev={ev} />)}
@@ -566,7 +569,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Stays */}
         {stays.length > 0 && (
-          <section id="stays" className="min-w-0 scroll-mt-24">
+          <section id="stays" className={`min-w-0 scroll-mt-24 ${panel("stays")}`}>
             <SectionTitle>Where you're staying</SectionTitle>
             <div className="space-y-3">
               {stays.map(({ ev, checkoutDate }) => <StayCard key={ev.id} ev={ev} checkoutDate={checkoutDate} />)}
@@ -576,7 +579,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Organiser */}
         {org?.name && (
-          <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
+          <div className="order-last rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
             <div className="flex items-center gap-3">
               {org.avatar ? (
                 <img src={org.avatar} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
@@ -602,7 +605,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Documents */}
         {trip.documents && trip.documents.length > 0 && (
-          <section id="documents" className="min-w-0 scroll-mt-24">
+          <section id="documents" className={`min-w-0 scroll-mt-24 ${panel("documents")}`}>
             <SectionTitle>Documents</SectionTitle>
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
               {trip.documents.map(doc => (

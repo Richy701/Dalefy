@@ -8,7 +8,7 @@
 import type { jsPDF as JsPdfType } from "jspdf";
 import type { Trip, TravelEvent } from "@/types";
 import { sortEvents } from "@/lib/sortEvents";
-import { parseTimeInput } from "@/lib/timeInput";
+import { clockTime, stayTime } from "@/lib/timeInput";
 import { tzAbbr, eventTz } from "@/lib/timezone";
 
 export interface PdfBrand {
@@ -123,7 +123,7 @@ function safe(text: string, extended = false): string {
 type Weight = "normal" | "bold";
 
 const airlineCode = (flightNum?: string) => flightNum?.trim().toUpperCase().match(/^([A-Z0-9]{2})/)?.[1] ?? "";
-const flightTime = (t?: string) => (isPlaceholderTime(t) ? "TBC" : parseTimeInput(t) || t || "");
+const flightTime = (t?: string) => (isPlaceholderTime(t) ? "TBC" : clockTime(t));
 /** Only statuses a traveller needs to act on; "Expected" or "Scheduled" just mean nothing has changed. */
 function flightNotice(status?: string): { text: string; color: [number, number, number] } | null {
   const group = (status ?? "").toLowerCase().replace(/\s+/g, "");
@@ -454,7 +454,8 @@ function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean
   evs.forEach((ev, i) => {
     const checkout = ev.endDate || evs[i + 1]?.date || tripEnd;
     const n = nights(ev.date, checkout);
-    const checkin = ev.checkin || (isPlaceholderTime(ev.time) ? "" : ev.time);
+    const checkin = stayTime(ev.checkin) || (isPlaceholderTime(ev.time) ? "" : clockTime(ev.time));
+    const checkoutTime = stayTime(ev.checkout);
     const meta = [
       n > 0 ? `${n} night${n === 1 ? "" : "s"}` : "",
       includeRefs && ev.confNumber ? `Booking ref ${ev.confNumber}` : "",
@@ -475,7 +476,7 @@ function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean
     d.text(`${fmtShort(ev.date)}${checkin ? `, ${checkin}` : ""}`, x, rowY + 7, { size: 9.5, weight: "bold" });
     const half = MARGIN + CONTENT_W / 2;
     d.text("Check out", half, rowY + 3, { size: 8, color: MUTED });
-    d.text(`${fmtShort(checkout)}${ev.checkout ? `, ${ev.checkout}` : ""}`, half, rowY + 7, { size: 9.5, weight: "bold" });
+    d.text(`${fmtShort(checkout)}${checkoutTime ? `, ${checkoutTime}` : ""}`, half, rowY + 7, { size: 9.5, weight: "bold" });
     if (meta) d.text(meta, x, rowY + 12, { size: 8, color: MUTED });
     d.y += h + 4;
   });
@@ -493,7 +494,7 @@ function eventMeta(ev: TravelEvent): string {
     return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join(", ");
   }
   if (ev.type === "hotel") return [ev.location, ev.roomType].filter(Boolean).join(", ");
-  const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${ev.endTime}` : "";
+  const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${clockTime(ev.endTime)}` : "";
   // A transfer's meeting point has its own line; don't say the same place twice.
   const repeated = ev.type === "transfer" && ev.location?.trim().toLowerCase() === ev.meetingPoint?.trim().toLowerCase();
   return [repeated ? "" : ev.location, ev.duration, until].filter(Boolean).join(", ");
@@ -552,7 +553,7 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
 
       // connector to the next row, drawn first so the marker sits on top of it
       if (i < evs.length - 1) d.vline(dotX, d.y + 4.5, d.y + h + 1.5);
-      const time = isFlight ? flightTime(ev.time) : isPlaceholderTime(ev.time) ? "" : ev.time;
+      const time = isFlight ? flightTime(ev.time) : isPlaceholderTime(ev.time) ? "" : clockTime(ev.time);
       if (time) d.text(time, timeX, d.y + 3.4, { size: 9.5, weight: "bold" });
       if (isFlight) d.airline(ev.flightNum, dotX, d.y + 2.2, 2.4);
       else d.marker(dotX, d.y + 2.2);

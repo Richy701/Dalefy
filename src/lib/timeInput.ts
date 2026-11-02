@@ -1,5 +1,15 @@
 export const TIME_INPUT_ERROR = "Enter a time like 11:00 or 4pm, or leave blank if not confirmed.";
 
+/** A hotel's check-in or check-out field can hold a date as well as a time; only a time adds anything beside the day. */
+export function stayTime(value: string | undefined): string {
+  return value && !/^\d{4}-\d{2}-\d{2}/.test(value) ? clockTime(value) : "";
+}
+
+/** "11:40 AM" reads as "11:40" so a schedule stays in one format; anything that isn't a time is left as written. */
+export function clockTime(value: string | undefined): string {
+  return parseTimeInput(value) || value?.trim() || "";
+}
+
 /** Empty means unscheduled; never invent an appointment for an unknown time. */
 export function parseTimeInput(raw: string | undefined): string | null {
   const value = (raw ?? "").trim().toLowerCase();
