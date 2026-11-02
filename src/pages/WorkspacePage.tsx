@@ -926,11 +926,13 @@ export function WorkspacePage() {
   const handleExportPdf = async () => {
     setExporting(true);
     try {
-      const { buildItineraryPdf, loadImage, loadLogo } = await import("@/lib/itineraryPdf");
-      const [mapUrl, coverDataUrl, logo] = await Promise.all([
+      const { buildItineraryPdf, loadImage, loadLogo, loadPdfFonts, loadAirlineLogos, COVER_RATIO } = await import("@/lib/itineraryPdf");
+      const [mapUrl, coverDataUrl, logo, fonts, airlineLogos] = await Promise.all([
         Promise.race([buildStaticMapUrl(), new Promise<null>(r => setTimeout(() => r(null), 5000))]),
-        trip.image ? loadImage(trip.image, 16 / 7) : Promise.resolve(null),
+        trip.image ? loadImage(trip.image, COVER_RATIO) : Promise.resolve(null),
         brand.logoUrl ? loadLogo(brand.logoUrl) : Promise.resolve(null),
+        loadPdfFonts(),
+        loadAirlineLogos(trip.events),
       ]);
       const mapDataUrl = mapUrl ? await loadImage(mapUrl, 800 / 300) : null;
       const pdf = await buildItineraryPdf({
@@ -939,6 +941,8 @@ export function WorkspacePage() {
         coverDataUrl,
         mapDataUrl,
         includeReferences: true,
+        fonts,
+        airlineLogos,
       });
       pdf.save(`${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`);
       toast.success("PDF exported");

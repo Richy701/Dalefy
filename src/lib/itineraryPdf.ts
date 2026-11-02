@@ -1,7 +1,6 @@
 /**
- * Vector itinerary PDF. Text stays selectable, pages break between rows, and
- * the layout mirrors the shared itinerary page: masthead, cover, overview,
- * flights, stays, day by day, good to know, documents.
+ * Vector itinerary PDF. Text stays selectable and pages break between rows:
+ * a cover page, then route, flights, stays, day by day, good to know, documents.
  *
  * Keep this browser-optional: only `loadImage` touches the DOM, so the layout
  * can be exercised under Node for tests.
@@ -9,6 +8,8 @@
 import type { jsPDF as JsPdfType } from "jspdf";
 import type { Trip, TravelEvent } from "@/types";
 import { sortEvents } from "@/lib/sortEvents";
+import { parseTimeInput } from "@/lib/timeInput";
+import { tzAbbr, eventTz } from "@/lib/timezone";
 
 export interface PdfBrand {
   name: string;
@@ -27,7 +28,19 @@ export interface ItineraryPdfOptions {
   coverDataUrl?: string | null;
   /** Booking references are for the organiser's copy only. Private notes never appear. */
   includeReferences?: boolean;
+  /** Geist as base64 TrueType, from `loadPdfFonts`. Without it the document falls back to Helvetica. */
+  fonts?: PdfFonts | null;
+  /** Airline logos as PNG data URLs keyed by IATA code, from `loadAirlineLogos`. */
+  airlineLogos?: Record<string, string>;
 }
+
+export interface PdfFonts {
+  regular: string;
+  semibold: string;
+}
+
+/** The cover photo runs edge to edge across the first page. */
+export const COVER_RATIO = 1.3;
 
 /** Phosphor AirplaneTilt (fill weight), rotated to point right, rasterised for jsPDF. */
 const PLANE_PNG =
@@ -37,7 +50,8 @@ const PLANE_PNG =
 const INK: [number, number, number] = [24, 24, 27];
 const MUTED: [number, number, number] = [107, 114, 128];
 const LINE: [number, number, number] = [229, 231, 235];
-const PANEL: [number, number, number] = [247, 247, 249];
+const RED: [number, number, number] = [220, 38, 38];
+const AMBER: [number, number, number] = [180, 83, 9];
 const CATEGORY_LABEL: Record<TravelEvent["type"], string> = {
   flight: "Flight", hotel: "Stay", dining: "Meal", activity: "Activity", transfer: "Transfer",
 };
@@ -95,21 +109,34 @@ function hexToRgb(hex?: string | null): [number, number, number] | null {
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-/** Core PDF fonts only cover WinAnsi; swap the few glyphs we use that fall outside it. */
-function safe(text: string): string {
+/** Core PDF fonts only cover WinAnsi; swap the few glyphs we use that fall outside it. Embedded Geist also has Latin Extended-A, so names like Şişli survive. */
+function safe(text: string, extended = false): string {
   return (text ?? "")
     .replace(/→/g, "to")
     .replace(/[–—]/g, "-")
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/…/g, "...")
-    .replace(/[^\x20-\xFF]/g, c => (c === "\n" ? c : ""));
+    .replace(extended ? /[^\x20-\xFF\u0100-\u017F]/g : /[^\x20-\xFF]/g, c => (c === "\n" ? c : ""));
 }
 
 type Weight = "normal" | "bold";
 
+const airlineCode = (flightNum?: string) => flightNum?.trim().toUpperCase().match(/^([A-Z0-9]{2})/)?.[1] ?? "";
+const flightTime = (t?: string) => (isPlaceholderTime(t) ? "TBC" : parseTimeInput(t) || t || "");
+/** Only statuses a traveller needs to act on; "Expected" or "Scheduled" just mean nothing has changed. */
+function flightNotice(status?: string): { text: string; color: [number, number, number] } | null {
+  const group = (status ?? "").toLowerCase().replace(/\s+/g, "");
+  if (group.startsWith("cancel")) return { text: "Cancelled", color: RED };
+  if (group === "diverted") return { text: "Diverted", color: RED };
+  if (group.startsWith("delay")) return { text: "Delayed", color: AMBER };
+  return null;
+}
+
 class Doc {
   y = TOP;
+  family = "helvetica";
+  airlineLogos: Record<string, string> = {};
   page = 1;
   private pdf: JsPdfType;
   private trip: Trip;
@@ -122,17 +149,17 @@ class Doc {
 
   /* text primitives */
   font(size: number, weight: Weight = "normal", color: [number, number, number] = INK) {
-    this.pdf.setFont("helvetica", weight);
+    this.pdf.setFont(this.family, weight);
     this.pdf.setFontSize(size);
     this.pdf.setTextColor(...color);
   }
   text(str: string, x: number, y: number, opts: { size: number; weight?: Weight; color?: [number, number, number]; align?: "left" | "right" | "center" } ) {
     this.font(opts.size, opts.weight, opts.color);
-    this.pdf.text(safe(str), x, y, { align: opts.align ?? "left", baseline: "alphabetic" });
+    this.pdf.text(safe(str, this.family === "Geist"), x, y, { align: opts.align ?? "left", baseline: "alphabetic" });
   }
-  wrap(str: string, size: number, width: number): string[] {
-    this.font(size);
-    return this.pdf.splitTextToSize(safe(str), width) as string[];
+  wrap(str: string, size: number, width: number, weight: Weight = "normal"): string[] {
+    this.font(size, weight);
+    return this.pdf.splitTextToSize(safe(str, this.family === "Geist"), width) as string[];
   }
   /** Draw wrapped lines; returns height used. */
   paragraph(str: string, x: number, y: number, width: number, opts: { size: number; weight?: Weight; color?: [number, number, number]; leading?: number }): number {
@@ -156,7 +183,7 @@ class Doc {
     this.pdf.line(x, y1, x, y2);
   }
   panel(x: number, y: number, w: number, h: number) {
-    this.pdf.setFillColor(...PANEL);
+    this.pdf.setFillColor(255, 255, 255);
     this.pdf.setDrawColor(...LINE);
     this.pdf.setLineWidth(0.25);
     this.pdf.roundedRect(x, y, w, h, 2, 2, "FD");
@@ -164,6 +191,33 @@ class Doc {
   /** Plane icon centred on (x, y), from the same icon set the app uses. */
   plane(x: number, y: number, size = 5) {
     this.pdf.addImage(PLANE_PNG, "PNG", x - size / 2, y - size / 2, size, size);
+  }
+  /** The airline's logo in a circle, or the plane when we have no logo for it. */
+  airline(flightNum: string | undefined, cx: number, cy: number, r: number) {
+    const code = airlineCode(flightNum);
+    const logo = code ? this.airlineLogos[code] : undefined;
+    this.pdf.setFillColor(255, 255, 255);
+    this.pdf.setDrawColor(...LINE);
+    this.pdf.setLineWidth(0.25);
+    this.pdf.circle(cx, cy, r, "FD");
+    if (!logo) {
+      this.plane(cx, cy, r * 1.3);
+      return;
+    }
+    try {
+      this.pdf.saveGraphicsState();
+      this.pdf.circle(cx, cy, r, null);
+      this.pdf.clip();
+      this.pdf.discardPath();
+      this.pdf.addImage(logo, "PNG", cx - r, cy - r, r * 2, r * 2, `airline-${code}`);
+      this.pdf.restoreGraphicsState();
+      this.pdf.setDrawColor(...LINE);
+      this.pdf.setLineWidth(0.25);
+      this.pdf.circle(cx, cy, r, "S");
+    } catch {
+      this.pdf.restoreGraphicsState();
+      this.plane(cx, cy, r * 1.3);
+    }
   }
   /** Timeline marker: one quiet ring for every row, so the column reads as a timeline rather than a legend. */
   marker(x: number, y: number) {
@@ -202,48 +256,65 @@ class Doc {
   }
   footers() {
     const total = this.pdf.getNumberOfPages();
-    for (let p = 1; p <= total; p++) {
+    // The cover stands alone
+    for (let p = 2; p <= total; p++) {
       this.pdf.setPage(p);
       this.rule(PAGE_H - 14);
       this.text(`Prepared by ${this.brand.name}`, MARGIN, PAGE_H - 9, { size: 7.5, color: MUTED });
       this.text(`Page ${p} of ${total}`, PAGE_W - MARGIN, PAGE_H - 9, { size: 7.5, color: MUTED, align: "right" });
     }
   }
-  sectionTitle(title: string) {
-    this.ensure(22);
+  /** `keep` is the height of what follows, so a title never sits alone at the foot of a page. */
+  sectionTitle(title: string, keep = 0) {
+    this.ensure(20 + keep);
     this.y += 4;
-    this.text(title, MARGIN, this.y + 4.5, { size: 13, weight: "bold" });
-    this.y += 10;
+    this.text(title, MARGIN, this.y + 5.5, { size: 15, weight: "bold" });
+    this.y += 12;
   }
 }
 
 /* ---------- sections ---------- */
 
-function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl?: string | null, mapDataUrl?: string | null) {
+function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl?: string | null) {
   // Masthead: the logo when there is one, otherwise the organiser's name
-  const logoW = d.logo(MARGIN, 11, 10);
+  const logoW = d.logo(MARGIN, 7, 9);
   // A square mark gets the name beside it; a wordmark already carries the name.
-  if (!logoW || (brand.logo && brand.logo.ratio < 2)) d.text(brand.name, MARGIN + (logoW ? logoW + 3 : 0), 18, { size: 10.5, weight: "bold" });
-  d.text("Travel itinerary", PAGE_W - MARGIN, 18, { size: 8.5, color: MUTED, align: "right" });
-  const accent = hexToRgb(brand.accentColor);
-  d.rule(25, MARGIN, PAGE_W - MARGIN, accent ?? LINE);
-  d.y = 33;
+  if (!logoW || (brand.logo && brand.logo.ratio < 2)) d.text(brand.name, MARGIN + (logoW ? logoW + 3 : 0), 13.5, { size: 11, weight: "bold" });
+  d.text("Travel itinerary", PAGE_W - MARGIN, 13.5, { size: 9, color: MUTED, align: "right" });
 
-  // Cover photo, 16:7
+  const photoY = 20;
+  const photoH = PAGE_W / COVER_RATIO;
+  let hasPhoto = false;
   if (coverDataUrl) {
-    const h = CONTENT_W * 7 / 16;
     try {
-      pdf.addImage(coverDataUrl, "JPEG", MARGIN, d.y, CONTENT_W, h);
-      d.y += h + 10;
+      pdf.addImage(coverDataUrl, "JPEG", 0, photoY, PAGE_W, photoH);
+      hasPhoto = true;
     } catch { /* skip photo */ }
+  }
+  // The organiser's colour as a band under the photo; a near-white accent would vanish on the page
+  const accent = hexToRgb(brand.accentColor);
+  const visible = accent && accent[0] * 0.2126 + accent[1] * 0.7152 + accent[2] * 0.0722 < 235;
+  if (hasPhoto) {
+    if (visible) {
+      pdf.setFillColor(...accent);
+      pdf.rect(0, photoY + photoH, PAGE_W, 1.2, "F");
+    }
+    d.y = photoY + photoH + 10;
+  } else {
+    d.rule(photoY, MARGIN, PAGE_W - MARGIN, visible ? accent : LINE);
+    d.y = 70;
   }
 
   // Title
-  const titleLines = d.wrap(trip.name, 26, CONTENT_W);
-  titleLines.forEach((line, i) => d.text(line, MARGIN, d.y + 8 + i * 11, { size: 26, weight: "bold" }));
-  d.y += 8 + titleLines.length * 11;
-  d.text([dateRange(trip.start, trip.end), trip.destination].filter(Boolean).join("  ·  "), MARGIN, d.y + 2, { size: 11, color: MUTED });
-  d.y += 9;
+  const titleLines = d.wrap(trip.name, 30, CONTENT_W, "bold").slice(0, 3);
+  titleLines.forEach((line, i) => d.text(line, MARGIN, d.y + 9 + i * 12.5, { size: 30, weight: "bold" }));
+  d.y += 9 + (titleLines.length - 1) * 12.5 + 7.5;
+  d.text(dateRange(trip.start, trip.end), MARGIN, d.y, { size: 12 });
+  if (trip.destination) {
+    d.y += 2;
+    d.y += d.paragraph(trip.destination, MARGIN, d.y + 3.5, CONTENT_W, { size: 11, color: MUTED, leading: 4.8 });
+  }
+  d.y += 6;
 
   // Overview strip
   const n = nights(trip.start, trip.end);
@@ -258,44 +329,41 @@ function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl
   cells.forEach(([label, value], i) => {
     const x = MARGIN + i * cellW;
     d.text(label, x, d.y + 6, { size: 8, color: MUTED });
-    d.text(value, x, d.y + 11.5, { size: 10.5, weight: "bold" });
+    d.text(value, x, d.y + 11.5, { size: 11, weight: "bold" });
   });
   d.y += 16;
   d.rule(d.y);
-  d.y += 8;
+  d.y += 7;
 
-  // Organiser
+  // Organiser: who they are on the left, how to reach them on the right
   const org = trip.organizer;
   if (org?.name?.trim()) {
-    const lines = [
-      [org.role, org.company].filter(Boolean).join(", "),
-      [org.phone, org.email].filter(Boolean).join("   "),
-    ].filter(Boolean);
-    const h = 12 + lines.length * 4.5;
-    d.panel(MARGIN, d.y, CONTENT_W, h);
-    d.text("Your travel organiser", MARGIN + 5, d.y + 5.5, { size: 8, color: MUTED });
-    d.text(org.name, MARGIN + 5, d.y + 10.5, { size: 10.5, weight: "bold" });
-    lines.forEach((line, i) => d.text(line, MARGIN + 5, d.y + 15 + i * 4.5, { size: 8.5, color: MUTED }));
-    d.y += h + 8;
+    const right = PAGE_W - MARGIN;
+    d.text("Your travel organiser", MARGIN, d.y, { size: 8, color: MUTED });
+    d.text(org.name, MARGIN, d.y + 5.5, { size: 11, weight: "bold" });
+    const line = [org.role, org.company].filter(Boolean).join(", ");
+    if (line) d.text(line, MARGIN, d.y + 10, { size: 9, color: MUTED });
+    if (org.phone) d.text(org.phone, right, d.y + 5.5, { size: 9, align: "right" });
+    if (org.email) d.text(org.email, right, d.y + (org.phone ? 10 : 5.5), { size: 9, align: "right" });
   }
+}
 
-  // Route map, if there is room; otherwise it goes on the next page
-  if (mapDataUrl) {
-    const h = CONTENT_W * 300 / 800;
-    if (d.y + h + 8 > BOTTOM) d.newPage();
-    try {
-      pdf.addImage(mapDataUrl, "JPEG", MARGIN, d.y, CONTENT_W, h);
-      pdf.setDrawColor(...LINE);
-      pdf.setLineWidth(0.25);
-      pdf.rect(MARGIN, d.y, CONTENT_W, h);
-      d.y += h + 6;
-    } catch { /* skip map */ }
-  }
+function routeMap(d: Doc, pdf: JsPdfType, mapDataUrl?: string | null) {
+  if (!mapDataUrl) return;
+  const h = CONTENT_W * 300 / 800;
+  d.sectionTitle("Your route", h);
+  try {
+    pdf.addImage(mapDataUrl, "JPEG", MARGIN, d.y, CONTENT_W, h);
+    pdf.setDrawColor(...LINE);
+    pdf.setLineWidth(0.25);
+    pdf.rect(MARGIN, d.y, CONTENT_W, h);
+    d.y += h + 8;
+  } catch { /* skip map */ }
 }
 
 function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
   if (evs.length === 0) return;
-  d.sectionTitle("Flights");
+  d.sectionTitle("Your flights", 40);
   const x = MARGIN + 5;
   const right = PAGE_W - MARGIN - 5;
   const mid = PAGE_W / 2;
@@ -306,99 +374,112 @@ function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
     const dep = endpoint(from);
     const arr = endpoint(to);
     const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title;
-    const extras = [
-      ev.gate ? `Gate ${ev.gate}` : "",
-      ev.aircraft ?? "",
-      includeRefs && ev.confNumber ? `Ref ${ev.confNumber}` : "",
-      ev.status ?? "",
-    ].filter(Boolean).join("   ·   ");
+    const notice = flightNotice(ev.status);
+    const departs = [ev.terminal && `Terminal ${ev.terminal.replace(/^T/i, "")}`, ev.gate && `Gate ${ev.gate}`].filter(Boolean).join(", ");
+    const arrives = [ev.arrTerminal && `Terminal ${ev.arrTerminal.replace(/^T/i, "")}`, ev.arrGate && `Gate ${ev.arrGate}`, ev.baggageBelt && `Belt ${ev.baggageBelt}`].filter(Boolean).join(", ");
+    const details = [
+      departs && `Departs ${departs}`,
+      arrives && `Arrives ${arrives}`,
+      ev.aircraft,
+      includeRefs && ev.seatDetails && `Seat ${ev.seatDetails}`,
+      includeRefs && ev.confNumber && `Booking ref ${ev.confNumber}`,
+    ].filter(Boolean).join(", ");
+    const detailLines = details ? d.wrap(details, 8, right - x - (notice ? 24 : 0)) : [];
+    const footLines = Math.max(detailLines.length, notice ? 1 : 0);
 
-    // Each endpoint: a big code (or the wrapped name when there is no code), time, small name, terminal.
-    const side = (e: { code: string | null; name: string }, time: string, terminal?: string) => {
-      const nameLines = e.code ? (e.name ? d.wrap(e.name, 7.5, colW).slice(0, 1) : []) : e.name ? d.wrap(e.name, 11, colW).slice(0, 2) : [];
-      const headH = e.code ? 6.5 : 4.5 + Math.max(0, nameLines.length - 1) * 4.6;
-      const h = headH + 5.5 + (e.code && nameLines.length ? 4 : 0) + (terminal ? 4 : 0);
-      return { nameLines, headH, h, time, terminal };
+    const days = ev.endDate ? Math.round((parseDate(ev.endDate).getTime() - parseDate(ev.date).getTime()) / DAY_MS) : 0;
+    const dayOffset = days ? ` ${days > 0 ? "+" : ""}${days}` : "";
+    const known = (t?: string) => !isPlaceholderTime(t);
+    const depTz = tzAbbr(eventTz(ev, undefined, "dep"), ev.date);
+    const arrTz = tzAbbr(eventTz(ev, undefined, "arr"), ev.endDate || ev.date);
+
+    // Each end: a big code (or the wrapped name when there is no code), the time, then the place and zone in small.
+    const side = (e: { code: string | null; name: string }, time: string, muted: boolean, tz: string) => {
+      const nameLines = e.code ? [] : e.name ? d.wrap(e.name, 11, colW, "bold").slice(0, 2) : [];
+      const small = [e.code ? e.name : "", muted ? "" : tz].filter(Boolean).join(", ");
+      const smallLines = small ? d.wrap(small, 8, colW).slice(0, 1) : [];
+      const headH = e.code ? 7.5 : 4.5 + Math.max(0, nameLines.length - 1) * 4.8;
+      return { nameLines, smallLines, headH, h: headH + 6.5 + (smallLines.length ? 4 : 0), time, muted };
     };
-    const depTime = isPlaceholderTime(ev.time) ? "" : ev.time;
-    const arrTime = isPlaceholderTime(ev.endTime) ? "" : `${ev.endTime}${ev.endDate && ev.endDate !== ev.date ? " (+1)" : ""}`;
-    const L = side(dep, depTime, ev.terminal);
-    const R = side(arr, arrTime, ev.arrTerminal);
+    const L = side(dep, flightTime(ev.time), !known(ev.time), depTz);
+    const R = side(arr, known(ev.endTime) ? `${flightTime(ev.endTime)}${dayOffset}` : "TBC", !known(ev.endTime), arrTz);
     const bodyH = Math.max(L.h, R.h);
-    const h = 11 + bodyH + 4 + (extras ? 5 : 0);
-    d.ensure(h + 4);
+    const footH = footLines ? 3 + footLines * 3.6 + 1.5 : 0;
+    const h = 12 + bodyH + 3 + footH;
+    d.ensure(h);
 
     d.panel(MARGIN, d.y, CONTENT_W, h);
-    d.text(carrier, x, d.y + 6.5, { size: 9.5, weight: "bold" });
-    d.text(fmtShort(ev.date), right, d.y + 6.5, { size: 8.5, color: MUTED, align: "right" });
+    d.airline(ev.flightNum, x + 3, d.y + 6, 3);
+    d.text(carrier, x + 8, d.y + 7.1, { size: 10, weight: "bold" });
+    d.text(fmtShort(ev.date), right, d.y + 7.1, { size: 9, color: MUTED, align: "right" });
 
-    const y0 = d.y + 11;
+    const y0 = d.y + 12;
     const drawSide = (S: ReturnType<typeof side>, e: { code: string | null; name: string }, sx: number, align: "left" | "right") => {
       let yy: number;
       if (e.code) {
-        d.text(e.code, sx, y0 + 6.5, { size: 18, weight: "bold", align });
+        d.text(e.code, sx, y0 + 6.5, { size: 20, weight: "bold", align });
         yy = y0 + 6.5;
       } else {
-        S.nameLines.forEach((line, i) => d.text(line, sx, y0 + 4.5 + i * 4.6, { size: 11, weight: "bold", align }));
-        yy = y0 + 4.5 + Math.max(0, S.nameLines.length - 1) * 4.6;
+        const lines = S.nameLines.length ? S.nameLines : ["-"];
+        lines.forEach((line, i) => d.text(line, sx, y0 + 4.5 + i * 4.8, { size: 11, weight: "bold", align }));
+        yy = y0 + 4.5 + Math.max(0, lines.length - 1) * 4.8;
       }
-      if (S.time) d.text(S.time, sx, yy + 5.5, { size: 9, align });
-      let next = yy + 5.5;
-      if (e.code && S.nameLines.length) { d.text(S.nameLines[0], sx, next + 4, { size: 7.5, color: MUTED, align }); next += 4; }
-      if (S.terminal) d.text(`Terminal ${S.terminal.replace(/^T/i, "")}`, sx, next + 4, { size: 7.5, color: MUTED, align });
+      d.text(S.time, sx, yy + 6, { size: 11, weight: S.muted ? "normal" : "bold", color: S.muted ? MUTED : INK, align });
+      if (S.smallLines.length) d.text(S.smallLines[0], sx, yy + 10, { size: 8, color: MUTED, align });
     };
     drawSide(L, dep, x, "left");
     drawSide(R, arr, right, "right");
 
     // Route line with a plane in the middle and the duration underneath
-    const lineY = y0 + 4.5;
+    const lineY = y0 + 4;
     d.rule(lineY, mid - 24, mid - 5);
     d.rule(lineY, mid + 5, mid + 24);
     d.plane(mid, lineY, 5.5);
-    if (ev.duration) d.text(ev.duration, mid, lineY + 6.5, { size: 7.5, color: MUTED, align: "center" });
+    if (ev.duration) d.text(ev.duration, mid, lineY + 6.5, { size: 8, color: MUTED, align: "center" });
 
-    let bottom = y0 + bodyH + 2;
-    if (extras) {
-      d.rule(bottom, x, right);
-      d.text(extras, x, bottom + 4, { size: 7.5, color: MUTED });
-      bottom += 5;
+    if (footLines) {
+      const footY = y0 + bodyH + 2;
+      d.rule(footY, x, right);
+      detailLines.forEach((line, i) => d.text(line, x, footY + 4.4 + i * 3.6, { size: 8, color: MUTED }));
+      if (notice) d.text(notice.text, detailLines.length ? right : x, footY + 4.4, { size: 8, weight: "bold", color: notice.color, align: detailLines.length ? "right" : "left" });
     }
-    d.y += h + 4;
+    d.y += h + 3;
   }
+  d.y += 4;
 }
 
 function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean) {
   if (evs.length === 0) return;
-  d.sectionTitle("Where you're staying");
+  d.sectionTitle("Where you're staying", 40);
   evs.forEach((ev, i) => {
     const checkout = ev.endDate || evs[i + 1]?.date || tripEnd;
     const n = nights(ev.date, checkout);
     const checkin = ev.checkin || (isPlaceholderTime(ev.time) ? "" : ev.time);
     const meta = [
       n > 0 ? `${n} night${n === 1 ? "" : "s"}` : "",
-      includeRefs && ev.confNumber ? `Ref ${ev.confNumber}` : "",
-      ev.status ?? "",
-    ].filter(Boolean).join("   ·   ");
-    const h = 30 + (meta ? 5 : 0);
-    d.ensure(h + 4);
+      includeRefs && ev.confNumber ? `Booking ref ${ev.confNumber}` : "",
+    ].filter(Boolean).join(", ");
+    const h = 31 + (meta ? 6.5 : 0);
+    d.ensure(h);
 
     d.panel(MARGIN, d.y, CONTENT_W, h);
     const x = MARGIN + 5;
     const right = PAGE_W - MARGIN - 5;
-    d.text(ev.title, x, d.y + 7, { size: 10.5, weight: "bold" });
-    if (ev.location) d.text(ev.location, x, d.y + 11.5, { size: 8.5, color: MUTED });
-    if (ev.roomType) d.text(ev.roomType, x, d.y + 16.5, { size: 8.5 });
+    d.text(ev.title, x, d.y + 7.5, { size: 11, weight: "bold" });
+    if (ev.location) d.text(ev.location, x, d.y + 12, { size: 9, color: MUTED });
+    if (ev.roomType) d.text(ev.roomType, x, d.y + 17, { size: 9 });
 
-    const rowY = d.y + 21;
+    const rowY = d.y + 22;
     d.rule(rowY - 1.5, x, right);
-    d.text("Check in", x, rowY + 3, { size: 7.5, color: MUTED });
-    d.text(`${fmtShort(ev.date)}${checkin ? `  ·  ${checkin}` : ""}`, x, rowY + 7, { size: 9 });
+    d.text("Check in", x, rowY + 3, { size: 8, color: MUTED });
+    d.text(`${fmtShort(ev.date)}${checkin ? `, ${checkin}` : ""}`, x, rowY + 7, { size: 9.5, weight: "bold" });
     const half = MARGIN + CONTENT_W / 2;
-    d.text("Check out", half, rowY + 3, { size: 7.5, color: MUTED });
-    d.text(`${fmtShort(checkout)}${ev.checkout ? `  ·  ${ev.checkout}` : ""}`, half, rowY + 7, { size: 9 });
-    if (meta) d.text(meta, x, rowY + 12, { size: 7.5, color: MUTED });
+    d.text("Check out", half, rowY + 3, { size: 8, color: MUTED });
+    d.text(`${fmtShort(checkout)}${ev.checkout ? `, ${ev.checkout}` : ""}`, half, rowY + 7, { size: 9.5, weight: "bold" });
+    if (meta) d.text(meta, x, rowY + 12, { size: 8, color: MUTED });
     d.y += h + 4;
   });
+  d.y += 4;
 }
 
 function eventMeta(ev: TravelEvent): string {
@@ -409,11 +490,20 @@ function eventMeta(ev: TravelEvent): string {
     const route = from && to ? `${dep.code ?? dep.name} to ${arr.code ?? arr.name}` : ev.location;
     const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ");
     const titled = ev.flightNum && ev.title.includes(ev.flightNum);
-    return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join("  ·  ");
+    return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join(", ");
   }
-  if (ev.type === "hotel") return [ev.location, ev.roomType].filter(Boolean).join("  ·  ");
+  if (ev.type === "hotel") return [ev.location, ev.roomType].filter(Boolean).join(", ");
   const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${ev.endTime}` : "";
-  return [ev.location, ev.duration, until].filter(Boolean).join("  ·  ");
+  // A transfer's meeting point has its own line; don't say the same place twice.
+  const repeated = ev.type === "transfer" && ev.location?.trim().toLowerCase() === ev.meetingPoint?.trim().toLowerCase();
+  return [repeated ? "" : ev.location, ev.duration, until].filter(Boolean).join(", ");
+}
+
+/** Where to meet a transfer and who to call. */
+function transferContact(ev: TravelEvent): string {
+  if (ev.type !== "transfer") return "";
+  const who = [ev.contactName, ev.contactPhone].filter(Boolean).join(" ");
+  return [ev.meetingPoint && `Meet at ${ev.meetingPoint}`, who].filter(Boolean).join(", ");
 }
 
 function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
@@ -423,56 +513,68 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
     if (!days.has(ev.date)) days.set(ev.date, []);
     days.get(ev.date)!.push(ev);
   }
+  // The schedule starts its own page
+  if (d.y > TOP) d.newPage();
   d.sectionTitle("Day by day");
 
   const timeX = MARGIN;
   const dotX = MARGIN + 23;
   const textX = MARGIN + 28;
   const textW = CONTENT_W - 28;
+  const rowH = (ev: TravelEvent) => {
+    const meta = eventMeta(ev);
+    const contact = transferContact(ev);
+    return d.paragraphHeight(ev.title, 10, textW - 22, 4.4)
+      + (meta ? d.paragraphHeight(meta, 9, textW, 4.1) : 0)
+      + (contact ? d.paragraphHeight(contact, 9, textW, 4.1) : 0)
+      + (ev.description ? d.paragraphHeight(ev.description, 9, textW, 4.1) + 1 : 0)
+      + 4;
+  };
 
   for (const [date, evs] of [...days.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const dayNo = Math.round((parseDate(date).getTime() - parseDate(tripStart).getTime()) / DAY_MS) + 1;
-    // Keep the day header with at least its first row
-    d.ensure(36);
+    // Keep a whole day together when it fits on one page, otherwise its header with at least the first row
+    const dayH = 17 + evs.reduce((sum, ev) => sum + rowH(ev) + 2, 0);
+    d.ensure(dayH <= BOTTOM - TOP ? dayH : 36);
     d.y += 2;
-    if (dayNo >= 1) d.text(`Day ${dayNo}`, MARGIN, d.y + 4, { size: 8.5, color: MUTED });
-    d.text(fmtLong(date), MARGIN + (dayNo >= 1 ? 16 : 0), d.y + 4, { size: 10.5, weight: "bold" });
+    if (dayNo >= 1) d.text(`Day ${dayNo}`, MARGIN, d.y + 4, { size: 9, color: MUTED });
+    d.text(fmtLong(date), textX, d.y + 4, { size: 11, weight: "bold" });
     d.y += 7;
     d.rule(d.y);
     d.y += 6;
 
     evs.forEach((ev, i) => {
       const meta = eventMeta(ev);
-      const description = ev.description ?? "";
-      const titleH = d.paragraphHeight(ev.title, 9.5, textW - 22, 4.2);
-      const metaH = meta ? d.paragraphHeight(meta, 8.5, textW, 3.9) : 0;
-      const descH = description ? d.paragraphHeight(description, 8.5, textW, 3.9) + 1 : 0;
-      const h = titleH + metaH + descH + 3;
+      const contact = transferContact(ev);
+      const isFlight = ev.type === "flight";
+      const h = rowH(ev);
       d.ensure(h + 2);
 
-      if (!isPlaceholderTime(ev.time)) d.text(ev.time, timeX, d.y + 3.2, { size: 9, weight: "bold" });
-      d.marker(dotX, d.y + 2);
-
-      let y = d.y + 3.2;
-      const label = ev.type === "hotel" ? "Check in" : ev.type === "activity" ? "" : CATEGORY_LABEL[ev.type];
-      const used = d.paragraph(ev.title, textX, y, textW - 22, { size: 9.5, weight: "bold", leading: 4.2 });
-      if (label) d.text(label, PAGE_W - MARGIN, y, { size: 7.5, color: MUTED, align: "right" });
-      y += used;
-      if (meta) y += d.paragraph(meta, textX, y, textW, { size: 8.5, color: MUTED, leading: 3.9 });
-      if (description) y += 1 + d.paragraph(description, textX, y, textW, { size: 8.5, leading: 3.9 });
-
-      // connector to the next row
+      // connector to the next row, drawn first so the marker sits on top of it
       if (i < evs.length - 1) d.vline(dotX, d.y + 4.5, d.y + h + 1.5);
+      const time = isFlight ? flightTime(ev.time) : isPlaceholderTime(ev.time) ? "" : ev.time;
+      if (time) d.text(time, timeX, d.y + 3.4, { size: 9.5, weight: "bold" });
+      if (isFlight) d.airline(ev.flightNum, dotX, d.y + 2.2, 2.4);
+      else d.marker(dotX, d.y + 2.2);
+
+      let y = d.y + 3.4;
+      const label = ev.type === "hotel" ? "Check in" : ev.type === "activity" ? "" : CATEGORY_LABEL[ev.type];
+      const used = d.paragraph(ev.title, textX, y, textW - 22, { size: 10, weight: "bold", leading: 4.4 });
+      if (label) d.text(label, PAGE_W - MARGIN, y, { size: 8, color: MUTED, align: "right" });
+      y += used;
+      if (meta) y += d.paragraph(meta, textX, y, textW, { size: 9, color: MUTED, leading: 4.1 });
+      if (contact) y += d.paragraph(contact, textX, y, textW, { size: 9, leading: 4.1 });
+      if (ev.description) y += 1 + d.paragraph(ev.description, textX, y, textW, { size: 9, leading: 4.1 });
       d.y += h + 2;
     });
-    d.y += 4;
+    d.y += 5;
   }
 }
 
 function goodToKnow(d: Doc, trip: Trip) {
   const items = (trip.info ?? []).filter(i => !i.leaderOnly);
   if (items.length === 0) return;
-  d.sectionTitle("Good to know");
+  d.sectionTitle("Good to know", 16);
   for (const item of items) {
     const bodyH = item.body ? d.paragraphHeight(item.body, 8.5, CONTENT_W, 3.9) : 0;
     const extra = [
@@ -494,11 +596,11 @@ function goodToKnow(d: Doc, trip: Trip) {
 function documents(d: Doc, trip: Trip) {
   const docs = trip.documents ?? [];
   if (docs.length === 0) return;
-  d.sectionTitle("Documents");
+  d.sectionTitle("Documents", 10);
   docs.forEach(doc => {
     d.ensure(7);
     d.text(doc.name, MARGIN, d.y + 3.5, { size: 9 });
-    d.text(doc.size < 1024 * 1024 ? `${Math.max(1, Math.round(doc.size / 1024))} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`, PAGE_W - MARGIN, d.y + 3.5, { size: 8, color: MUTED, align: "right" });
+    if (doc.size > 0) d.text(doc.size < 1024 * 1024 ? `${Math.max(1, Math.round(doc.size / 1024))} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`, PAGE_W - MARGIN, d.y + 3.5, { size: 8, color: MUTED, align: "right" });
     d.y += 6;
     d.rule(d.y - 1);
   });
@@ -515,10 +617,22 @@ export async function buildItineraryPdf(opts: ItineraryPdfOptions): Promise<JsPd
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
   pdf.setProperties({ title: `${opts.trip.name} - Itinerary`, author: opts.brand.name, creator: opts.brand.platformName });
   const d = new Doc(pdf, opts.trip, opts.brand);
+  d.airlineLogos = opts.airlineLogos ?? {};
+  if (opts.fonts) {
+    try {
+      pdf.addFileToVFS("Geist-Regular.ttf", opts.fonts.regular);
+      pdf.addFont("Geist-Regular.ttf", "Geist", "normal");
+      pdf.addFileToVFS("Geist-SemiBold.ttf", opts.fonts.semibold);
+      pdf.addFont("Geist-SemiBold.ttf", "Geist", "bold");
+      d.family = "Geist";
+    } catch { /* stay on Helvetica */ }
+  }
   const includeRefs = opts.includeReferences ?? true;
   const sorted = sortEvents(opts.trip.events);
 
-  cover(d, pdf, opts.trip, opts.brand, opts.coverDataUrl, opts.mapDataUrl);
+  cover(d, pdf, opts.trip, opts.brand, opts.coverDataUrl);
+  d.newPage();
+  routeMap(d, pdf, opts.mapDataUrl);
   flights(d, sorted.filter(e => e.type === "flight"), includeRefs);
   stays(d, sorted.filter(e => e.type === "hotel"), opts.trip.end, includeRefs);
   dayByDay(d, sorted, opts.trip.start);
@@ -526,6 +640,31 @@ export async function buildItineraryPdf(opts: ItineraryPdfOptions): Promise<JsPd
   documents(d, opts.trip);
   d.footers();
   return pdf;
+}
+
+/** Fetch the bundled Geist files as base64 for embedding. Browser only; null keeps the Helvetica fallback. */
+export async function loadPdfFonts(): Promise<PdfFonts | null> {
+  const fetchBase64 = async (path: string) => {
+    const resp = await fetch(path);
+    if (!resp.ok) throw new Error(`${path}: ${resp.status}`);
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+  };
+  try {
+    const [regular, semibold] = await Promise.all([fetchBase64("/fonts/Geist-Regular.ttf"), fetchBase64("/fonts/Geist-SemiBold.ttf")]);
+    return { regular, semibold };
+  } catch {
+    return null;
+  }
+}
+
+/** Logos for the airlines on this trip, keyed by IATA code. Airlines without a bundled logo are left out. Browser only. */
+export async function loadAirlineLogos(events: TravelEvent[]): Promise<Record<string, string>> {
+  const codes = [...new Set(events.filter(e => e.type === "flight").map(e => airlineCode(e.flightNum)).filter(Boolean))];
+  const loaded = await Promise.all(codes.map(async code => [code, (await loadLogo(`/airlines/${code}.png`))?.dataUrl] as const));
+  return Object.fromEntries(loaded.filter((entry): entry is [string, string] => Boolean(entry[1])));
 }
 
 /** Fetch a remote image (via the proxy when CORS blocks it) and crop it to a JPEG data URL. Browser only. */
