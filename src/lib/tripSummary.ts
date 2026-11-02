@@ -14,18 +14,35 @@ export function tripLengthDays(trip: { start: string; end: string }): number {
 
 /** "Starts in 60 days · 6-day trip", "Day 3 of 6", "Ended 4 days ago · 6-day trip" */
 export function tripFactLine(trip: { start: string; end: string }, from?: string): string {
+  const timing = tripTimingLine(trip, from);
+  // "Day 3 of 6" already says how long the trip is
+  return daysUntil(trip.start, from) <= 0 && daysUntil(trip.end, from) >= 0 ? timing : `${timing} · ${tripLengthDays(trip)}-day trip`;
+}
+
+/** "Starts in 60 days", "Day 3 of 6", "Ended 4 days ago": for places that show the trip's length separately. */
+export function tripTimingLine(trip: { start: string; end: string }, from?: string): string {
   const days = daysUntil(trip.start, from);
   const endDays = daysUntil(trip.end, from);
-  const len = tripLengthDays(trip);
-  const lenText = `${len}-day trip`;
-  if (endDays < 0) return `Ended ${-endDays === 1 ? "yesterday" : `${-endDays} days ago`} · ${lenText}`;
-  if (days <= 0) return `Day ${Math.min(len, 1 - days)} of ${len}`;
-  if (days === 1) return `Starts tomorrow · ${lenText}`;
-  return `Starts in ${days} days · ${lenText}`;
+  if (endDays < 0) return `Ended ${-endDays === 1 ? "yesterday" : `${-endDays} days ago`}`;
+  if (days <= 0) return `Day ${Math.min(tripLengthDays(trip), 1 - days)} of ${tripLengthDays(trip)}`;
+  if (days === 1) return "Starts tomorrow";
+  return `Starts in ${days} days`;
 }
 
 export function shortDay(dateStr: string): string {
   return parseTripDate(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/** "6 to 12 Nov, 6 nights", "28 Nov to 2 Dec, 4 nights", or "6 Nov, day trip". */
+export function tripDatesLine(trip: { start: string; end: string }): string {
+  const start = parseTripDate(trip.start);
+  const end = parseTripDate(trip.end);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return "";
+  const nights = Math.round((end.getTime() - start.getTime()) / 86400000);
+  if (nights === 0) return `${shortDay(trip.start)}, day trip`;
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const from = sameMonth ? String(start.getDate()) : shortDay(trip.start);
+  return `${from} to ${shortDay(trip.end)}, ${nights} night${nights === 1 ? "" : "s"}`;
 }
 
 // ── Destination flag ─────────────────────────────────────────────────────────

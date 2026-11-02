@@ -50,7 +50,7 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
-import { tripFactLine, shortDay } from "@/lib/tripSummary";
+import { tripTimingLine, tripDatesLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
 import { NextTripSide } from "@/components/dashboard/NextTripSide";
 import { TripCard } from "@/components/dashboard/TripCard";
@@ -622,9 +622,9 @@ export function DashboardPage() {
                       {upcomingCards[0].name}
                     </button>
                     <p className="text-base font-medium text-foreground/90 mt-1">
-                      {tripFactLine(upcomingCards[0])}
+                      {tripTimingLine(upcomingCards[0])}
                     </p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{shortDay(upcomingCards[0].start)} → {shortDay(upcomingCards[0].end)} · {upcomingCards[0].events.length} events</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{tripDatesLine(upcomingCards[0])}</p>
                   </div>
                   <NextTripHero trip={upcomingCards[0]} onOpen={() => handleOpenTrip(upcomingCards[0])} />
                 </div>
