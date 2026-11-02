@@ -19,5 +19,21 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Only affects hot reload during development, and every context and shadcn file trips it
+      'react-refresh/only-export-components': 'off',
+      // A catch left empty on purpose: best-effort native and storage calls
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      // _name is unused on purpose, and { id, ...rest } is how a field gets dropped
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
+    },
+  },
+  {
+    // React Native: require() loads images and optional native modules, and Reanimated's shared values are written with .value
+    files: ['mobile/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'react-hooks/immutability': 'off',
+    },
   },
 ])
