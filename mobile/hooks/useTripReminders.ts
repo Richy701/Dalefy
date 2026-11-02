@@ -110,6 +110,7 @@ export function useTripReminders() {
   const { prefs } = usePreferences();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tzRef = useRef(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  // eslint-disable-next-line react-hooks/refs -- seeds the state from the ref's first value, which is the same timezone it was just created with
   const [tz, setTz] = useState(tzRef.current);
 
   // Detect timezone change when app comes back to foreground

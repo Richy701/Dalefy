@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
+import type { LiveActivity } from "expo-widgets";
 import type { useSurfaceTrips } from "./useSurfaceTrips";
 import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -15,7 +16,7 @@ const BOARDING_LEAD_MS = 40 * 60000;
 const FLIGHT_STALE_MS = 30 * 60000;
 
 // Lazy-load to avoid crash on Android / Expo Go
-let FlightTracker: any = null;
+let FlightTracker: typeof import("@/widgets/FlightTracker").default | null = null;
 try {
   FlightTracker = require("@/widgets/FlightTracker").default;
 } catch {
@@ -24,7 +25,7 @@ try {
 
 type LiveActivityRef = {
   eventId: string;
-  activity: any; // LiveActivity<FlightTrackerProps>
+  activity: LiveActivity<FlightTrackerProps>;
 };
 
 const API_BASE = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
@@ -132,6 +133,7 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
   const activityRef = useRef<LiveActivityRef | null>(null);
   const startingRef = useRef<string | null>(null);
   const tripsRef = useRef(trips);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, so the AppState listener and timers read current trips without re-subscribing
   tripsRef.current = trips;
   const updateRef = useRef<(() => void) | null>(null);
 
@@ -189,7 +191,7 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       const doStart = (p: FlightTrackerProps) => {
         if (startingRef.current !== key) return;
         try {
-          const activity = FlightTracker.start(p, tripDayUrl(selected!.trip.id, flight.date), staleDate);
+          const activity = FlightTracker!.start(p, tripDayUrl(selected!.trip.id, flight.date), staleDate);
           activityRef.current = { eventId: key, activity };
         } catch {}
         startingRef.current = null;

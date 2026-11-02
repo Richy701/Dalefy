@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Platform, Text, Pressable, DynamicColorIOS } from "react-native";
+import type { PressableProps } from "react-native";
 import { Tabs } from "expo-router";
 import type { Icon } from "phosphor-react-native";
 import { House, Clock, Camera, User } from "@/components/ui/OnboardingIcons";
@@ -79,7 +80,7 @@ function IOSTabLayout() {
 }
 
 // Android: standard Tabs with solid Material-style bar
-function HapticTabButton(props: any) {
+function HapticTabButton(props: PressableProps) {
   return (
     <Pressable
       {...props}

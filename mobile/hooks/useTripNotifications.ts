@@ -273,5 +273,6 @@ export function useTripNotifications() {
 
       AsyncStorage.setItem(SEED_KEY, deviceToday);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once a launch behind the seeded ref, clearAll is a stable useCallback, and prefs.uid is never assigned anywhere so it cannot change
   }, [trips, notifications, addNotification]);
 }

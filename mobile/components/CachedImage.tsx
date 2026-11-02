@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Image as RNImage, View, type ImageStyle as RNImageStyle } from "react-native";
 import type { StyleProp } from "react-native";
+import type { ImageLoadEventData } from "expo-image";
 
-let ExpoImage: any = null;
+let ExpoImage: typeof import("expo-image").Image | null = null;
 try {
   ExpoImage = require("expo-image").Image;
 } catch {}
@@ -29,7 +30,7 @@ interface Props {
   blurhash?: string | null;
   contentPosition?: { top?: string; left?: string };
   blurRadius?: number;
-  onLoad?: (event: any) => void;
+  onLoad?: (event: ImageLoadEventData) => void;
   /** iOS: decode at the view's size instead of full resolution; use for small tiles of large photos */
   enforceEarlyResizing?: boolean;
   /** Reuse the native view across list cells without flashing the previous image */

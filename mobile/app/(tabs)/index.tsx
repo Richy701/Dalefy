@@ -679,6 +679,7 @@ export default function HomeScreen() {
                     style={({ pressed }) => [styles.card, styles.nextUp, { opacity: pressed ? 0.7 : 1 }]}
                   >
                     <View style={styles.nextMeta}>
+                      {/* eslint-disable-next-line react-hooks/static-components -- NextIcon is an existing icon from categoryIcon's module-level lookup or CalendarDots, not a component created in render */}
                       <NextIcon size={15} color={categoryTone(nextEvent.type, C).fg} weight="fill" />
                       {/* What and when; the trip countdown already sits in the hero above */}
                       <Text style={[styles.nextLabel, { color: categoryTone(nextEvent.type, C).fg }]}>

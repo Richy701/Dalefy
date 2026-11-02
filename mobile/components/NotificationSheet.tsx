@@ -7,6 +7,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Reanimated, { useAnimatedStyle, interpolate, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
+import type { NativeSyntheticEvent } from "react-native";
+import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
+import type { GlyphIcon } from "@/components/ui/CategoryDot";
 import ContextMenu from "@/components/ContextMenu";
 import {
   Bell, Trash, AirplaneLanding, AirplaneTakeoff,
@@ -94,7 +98,7 @@ function getNotifIcon(n: { type: string; message: string }) {
 }
 
 /** Circle colours: the itinerary's category tones, red for problems, teal for everything else */
-function getNotifTone(n: { type: string; message: string }, Icon: React.ComponentType<any>, C: ThemeColors) {
+function getNotifTone(n: { type: string; message: string }, Icon: GlyphIcon, C: ThemeColors) {
   if (Icon === Warning) return { fg: C.redText, bg: C.redDim };
   if (Icon === PlaneIcon || Icon === AirplaneLanding || Icon === AirplaneTakeoff) return categoryTone("flight", C);
   if (Icon === Bed) return categoryTone("hotel", C);
@@ -119,7 +123,7 @@ export function NotificationList({ onClose }: Props) {
     if (!n.read) markRead(n.id);
     if (n.tripId) {
       onClose();
-      setTimeout(() => router.push(notificationPath({ tripId: n.tripId!, eventId: n.eventId, date: n.date, infoId: n.infoId }) as any), 300);
+      setTimeout(() => router.push(notificationPath({ tripId: n.tripId!, eventId: n.eventId, date: n.date, infoId: n.infoId }) as Href), 300);
     }
   }, [markRead, onClose, router]);
 
@@ -218,7 +222,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
     { title: "Delete", systemIcon: "trash", destructive: true },
   ];
 
-  const handleContextAction = useCallback((e: any) => {
+  const handleContextAction = useCallback((e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>) => {
     const action = e.nativeEvent.name;
     if (action === "Mark read") onMarkRead();
     if (action === "View Trip") onPress();
@@ -261,6 +265,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
             {/* iOS notification shape: coloured circle, title with the time on the right, detail underneath */}
             <View style={styles.itemRow}>
               <View style={[styles.iconWrap, { backgroundColor: tone.bg }, n.read && { opacity: 0.6 }]}>
+                {/* eslint-disable-next-line react-hooks/static-components -- Icon is an imported icon returned by getNotifIcon, not a component created in render */}
                 <Icon size={18} color={tone.fg} weight="fill" />
               </View>
 

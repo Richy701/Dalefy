@@ -192,12 +192,14 @@ export default function SharedTripScreen() {
     if (!joining || !trip || autoJoined.current) return;
     autoJoined.current = true;
     if (alreadyInMyTrips) { openJoinedTrip(trip.id); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the join=1 hand-off continues once the trip has loaded, guarded by autoJoined so it cannot repeat
     handleAddToMyTrips();
   }, [joining, trip, handleAddToMyTrips, alreadyInMyTrips, openJoinedTrip]);
 
   useEffect(() => {
     if (!tripId) return;
     // A handed-over trip is already on screen: refresh it quietly, and never swap it for an error mid-join
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- shows the spinner before the fetch starts, and only when no handed-over trip is already on screen
     if (!handoff) setLoading(true);
     fetchTripById(tripId)
       .then((t) => {
@@ -864,7 +866,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center", paddingVertical: S.md, marginTop: S.xs,
     },
     linkSkipText: {
-      fontSize: T.sm, fontWeight: T.medium as any, color: C.textTertiary,
+      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
     },
 
     // Sticky bottom bar

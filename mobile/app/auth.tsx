@@ -88,12 +88,14 @@ export default function AuthScreen() {
   useEffect(() => {
     if (googleResponse?.type !== "success") return;
     const idToken = googleResponse.authentication?.idToken;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reports a failed Google response as it arrives, there is no way to derive this during render
     if (!idToken) { setBusyProvider(null); setError("Google sign-in didn't complete. Try again."); return; }
     auth.signInWithGoogle(idToken).then((err) => {
       setBusyProvider(null);
       if (err) { haptic.warning(); setError(err); }
       else finish();
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one sign-in per Google response: re-running when auth, finish or haptic change would redeem the same token again
   }, [googleResponse]);
 
   // ── Providers ──
@@ -107,9 +109,9 @@ export default function AuthScreen() {
     try {
       const res = await promptGoogle();
       if (res?.type !== "success") setBusyProvider(null);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setBusyProvider(null);
-      setError(e?.message ?? "Google sign-in failed.");
+      setError((e as { message?: string } | null)?.message ?? "Google sign-in failed.");
     }
   }, [promptGoogle, iosClientId, androidClientId]);
 
@@ -136,11 +138,12 @@ export default function AuthScreen() {
       setBusyProvider(null);
       if (err) { haptic.warning(); setError(err); }
       else finish();
-    } catch (e: any) {
+    } catch (e: unknown) {
       setBusyProvider(null);
-      if (e?.code === "ERR_REQUEST_CANCELED") return;
+      const failure = e as { code?: string; message?: string } | null;
+      if (failure?.code === "ERR_REQUEST_CANCELED") return;
       haptic.warning();
-      setError(e?.message ?? "Apple sign-in failed.");
+      setError(failure?.message ?? "Apple sign-in failed.");
     }
   }, [auth, haptic, finish]);
 
@@ -200,6 +203,7 @@ export default function AuthScreen() {
     const t = setTimeout(() => setResendIn(n => n - 1), 1000);
     return () => clearTimeout(t);
   }, [resendIn]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- starts the 30 second resend countdown when the step becomes "sent"; the timer effect above then ticks it down
   useEffect(() => { if (step === "sent") setResendIn(30); }, [step]);
 
   // Work email first: it's what organisers put on the trip, so it's what links people to their trips and names.

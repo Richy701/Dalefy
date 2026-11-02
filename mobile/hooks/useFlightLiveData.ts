@@ -24,6 +24,7 @@ export function useFlightLiveData(flightNum?: string, date?: string, poll = fals
 
   useEffect(() => {
     // Another flight's gate must not show while this one loads
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- another flight's gate must not show while this one loads
     setData(null);
     if (!flightNum || !date) return;
 

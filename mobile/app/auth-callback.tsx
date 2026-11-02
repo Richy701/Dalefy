@@ -31,6 +31,7 @@ export default function AuthCallbackScreen() {
       const t = setTimeout(() => setError("No link detected"), 2500);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- handled is the once-only guard at the top of this effect, so a magic link is redeemed a single time
     setHandled(true);
     setError("");
     auth.handleMagicLinkReturn(url).then((err) => {

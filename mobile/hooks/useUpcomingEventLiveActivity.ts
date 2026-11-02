@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
+import type { LiveActivity } from "expo-widgets";
 import type { useSurfaceTrips } from "./useSurfaceTrips";
 import { categoryTone, darkColors } from "@/constants/theme";
 import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
@@ -7,7 +8,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { UpcomingEventProps } from "@/widgets/UpcomingEvent";
 
-let UpcomingEvent: any = null;
+let UpcomingEvent: typeof import("@/widgets/UpcomingEvent").default | null = null;
 try {
   UpcomingEvent = require("@/widgets/UpcomingEvent").default;
 } catch {
@@ -104,9 +105,10 @@ function safe(fn: () => unknown) {
 export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfaceTrips>) {
   const { trips } = surface;
   const { prefs } = usePreferences();
-  const activityRef = useRef<{ eventId: string; activity: any } | null>(null);
+  const activityRef = useRef<{ eventId: string; activity: LiveActivity<UpcomingEventProps> } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tripsRef = useRef(trips);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, so the AppState listener and timers read current trips without re-subscribing
   tripsRef.current = trips;
   const updateRef = useRef<(() => void) | null>(null);
 
@@ -145,7 +147,7 @@ export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfa
           if (activityRef.current) safe(() => activityRef.current!.activity.end("immediate"));
           activityRef.current = null;
           try {
-            const activity = UpcomingEvent.start(props, tripDayUrl(trip.id, event.date), staleDate);
+            const activity = UpcomingEvent!.start(props, tripDayUrl(trip.id, event.date), staleDate);
             activityRef.current = { eventId: key, activity };
           } catch {}
         }

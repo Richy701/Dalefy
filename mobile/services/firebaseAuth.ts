@@ -93,8 +93,8 @@ async function signInOrLink(credential: ReturnType<typeof GoogleAuthProvider.cre
     try {
       const result = await linkWithCredential(currentUser, credential);
       return result.user;
-    } catch (err: any) {
-      if (LINK_CONFLICT_CODES.has(err?.code)) {
+    } catch (err: unknown) {
+      if (LINK_CONFLICT_CODES.has((err as { code?: string } | null)?.code ?? "")) {
         const result = await signInWithCredential(firebaseAuth(), credential);
         return result.user;
       }
@@ -180,8 +180,8 @@ export async function signInWithApple(
     const result = await signInWithCredential(firebaseAuth(), credential);
     const profile = await upsertProfile(result.user);
     return { user: profile, error: null };
-  } catch (err: any) {
-    const code = err?.code ?? "";
+  } catch (err: unknown) {
+    const code = (err as { code?: string } | null)?.code ?? "";
     if (code === "auth/account-exists-with-different-credential") {
       let email = "";
       try { email = JSON.parse(atob(idToken.split(".")[1])).email ?? ""; } catch {}
@@ -261,8 +261,9 @@ export async function upgradeWithEmail(
     try {
       const result = await linkWithCredential(currentUser, credential);
       fbUser = result.user;
-    } catch (linkErr: any) {
-      if (linkErr?.code === "auth/credential-already-in-use" || linkErr?.code === "auth/email-already-in-use") {
+    } catch (linkErr: unknown) {
+      const linkCode = (linkErr as { code?: string } | null)?.code;
+      if (linkCode === "auth/credential-already-in-use" || linkCode === "auth/email-already-in-use") {
         const result = await signInWithCredential(firebaseAuth(), credential);
         fbUser = result.user;
       } else {

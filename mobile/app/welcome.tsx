@@ -334,11 +334,12 @@ export default function WelcomeScreen() {
       throw new Error(matchedOrg
         ? "That PIN doesn't match a trip. Check it with your organiser."
         : "That code doesn't match a trip or a travel company. Check it with your organiser.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       haptic.warning();
       shake();
       if (matchedOrg) setCode("");
-      setCodeError(e?.message?.startsWith("That") ? e.message : "Couldn't reach the server. Check your connection and try again.");
+      const message = (e as { message?: string } | null)?.message;
+      setCodeError(message?.startsWith("That") ? message : "Couldn't reach the server. Check your connection and try again.");
     } finally {
       setCodeLoading(false);
     }

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
+import type { MapView } from "@rnmapbox/maps";
 import { useTheme } from "@/context/ThemeContext";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 
@@ -10,7 +11,7 @@ const styles = StyleSheet.create({
   },
 });
 
-let MapboxGL: any = null;
+let MapboxGL: typeof import("@rnmapbox/maps").default | null = null;
 try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch {}
@@ -117,7 +118,7 @@ export function FlightRouteMap({
     Number.isFinite(to[0]) && Number.isFinite(to[1]);
 
   const [ready, setReady] = useState(false);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapView>(null);
 
   const onStyleLoaded = useCallback(() => {
     setReady(true);
@@ -297,7 +298,7 @@ export function FlightRouteMap({
                   circleOpacity: 1,
                 }}
               />
-              {(fromCode || toCode) && (
+              {((fromCode || toCode) && (
                 <MapboxGL.SymbolLayer
                   id="route-endpoint-labels"
                   style={{
@@ -313,7 +314,7 @@ export function FlightRouteMap({
                     textLetterSpacing: 0.1,
                   }}
                 />
-              )}
+              )) as React.ReactElement}
             </MapboxGL.ShapeSource>
             {/* A plane at the middle of the arc, pointing along it */}
             {plane && (

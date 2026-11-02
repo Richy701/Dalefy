@@ -7,7 +7,7 @@ import { widgetProps, widgetTimelineDates } from "@/shared/widgetSchedule";
 import { useTheme } from "@/context/ThemeContext";
 
 
-let TripCountdown: any = null;
+let TripCountdown: typeof import("@/widgets/TripCountdown").default | null = null;
 try {
   TripCountdown = require("@/widgets/TripCountdown").default;
 } catch {
@@ -114,8 +114,8 @@ export function useWidgetSync(surface: ReturnType<typeof useSurfaceTrips>) {
           if (stale()) return;
         }
       }
-      TripCountdown.updateSnapshot(timeline[0].props);
-      TripCountdown.updateTimeline(timeline);
+      TripCountdown!.updateSnapshot(timeline[0].props);
+      TripCountdown!.updateTimeline(timeline);
     }
     // Trips settle in a few quick updates at launch; sync once they stop
     const schedule = () => {

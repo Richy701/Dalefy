@@ -3,6 +3,8 @@ import {
   ActivityIndicator, useWindowDimensions, Platform,
 } from "react-native";
 import type { ScrollViewInstance } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
+import type { Camera, MapView } from "@rnmapbox/maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
@@ -10,7 +12,7 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 const SHEET_GLASS = isLiquidGlassAvailable();
 
 /** Floating map controls: Liquid Glass like Apple Maps, a dark frosted fill where it isn't available */
-function MapGlass({ style, children }: { style: any; children: React.ReactNode }) {
+function MapGlass({ style, children }: { style: StyleProp<ViewStyle>; children: React.ReactNode }) {
   return SHEET_GLASS
     ? <GlassView glassEffectStyle="regular" style={[style, { overflow: "hidden" }]}>{children}</GlassView>
     : <View style={[style, { backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE }]}>{children}</View>;
@@ -63,7 +65,7 @@ function normaliseTitle(title: string, type: string, transferType?: string): str
   return tidyTitleSeparators(t);
 }
 
-let MapboxGL: any = null;
+let MapboxGL: typeof import("@rnmapbox/maps").default | null = null;
 try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch {}
@@ -109,8 +111,8 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
-  const mapViewRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
+  const mapViewRef = useRef<MapView>(null);
+  const cameraRef = useRef<Camera>(null);
   const now = useMinuteClock();
   const [mapLoading, setMapLoading] = useState(false);
   const [mapAttempt, setMapAttempt] = useState(0);
@@ -162,6 +164,7 @@ export default function TodayScreen() {
   const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the previous trip's map centre before geocoding the new destination
     setDestCenter(null);
     if (!displayTrip?.destination || !MapboxGL) return;
     let cancelled = false;
@@ -205,6 +208,7 @@ export default function TodayScreen() {
   const weatherKey = weatherCoord ? weatherCoord.map(n => n.toFixed(2)).join(",") : "";
   const [weather, setWeather] = useState<Weather | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- drops the last place's weather so it never shows while the new coordinate loads
     setWeather(null);
     if (!activeTrip?.id || !weatherKey || offline) return;
     let cancelled = false;
@@ -213,6 +217,7 @@ export default function TodayScreen() {
   }, [activeTrip?.id, weatherKey, todayISO, offline, refreshing]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- empties the pins when there is nothing to geocode, the async path below only runs otherwise
     if (!displayEvents.length || !destCenter) { setEventCoords({}); return; }
     let cancelled = false;
     const locMap = new Map<string, string[]>();
@@ -275,7 +280,7 @@ export default function TodayScreen() {
         };
       })
       .filter(Boolean);
-    return { type: "FeatureCollection" as const, features };
+    return { type: "FeatureCollection" as const, features: features as NonNullable<(typeof features)[number]>[] };
   }, [displayEvents, eventCoords, now, destTz, destCenter, isLiveDay]);
 
   // The stay they sleep at tonight: checked in, not yet checked out
@@ -294,7 +299,7 @@ export default function TodayScreen() {
   }, [displayEvents, displayTrip?.end]);
 
   const markerCoords = useMemo(() =>
-    markerFeatures.features.map((f: any) => f.geometry.coordinates as [number, number]),
+    markerFeatures.features.map((f) => f.geometry.coordinates as [number, number]),
     [markerFeatures]);
   // ── Camera: fit to markers or fall back to destination center ──
   const fitToMarkers = useCallback(() => {
@@ -354,12 +359,15 @@ export default function TodayScreen() {
         animationMode: "flyTo",
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- winH, mapH and insets.top are fixed here: app.json locks portrait and phones only, and markerCoords already refreshes this callback
   }, [homeCoord, markerCoords, fitToMarkers, isLiveDay]);
 
   const markerPositionKey = markerCoords.map(coord => coord.join(",")).join(";");
   const fitRef = useRef(fitToMarkers);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, so the fit effect below calls the newest camera logic without re-firing on its deps
   fitRef.current = fitToMarkers;
   const snapRef = useRef(snapBack);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, read only by the focus effect below, so a clock tick cannot re-centre the map
   snapRef.current = snapBack;
   useEffect(() => {
     if (mapReady && !focusedMapEventId) fitRef.current();
@@ -391,6 +399,7 @@ export default function TodayScreen() {
     if (!coord || !cameraRef.current) return;
     cameraRef.current.setCamera({ centerCoordinate: coord, zoomLevel: 16.5, pitch: 45, padding: { paddingTop: insets.top + 56, paddingBottom: winH - mapH, paddingLeft: 0, paddingRight: 0 }, animationDuration: 800, animationMode: "flyTo" });
     scheduleScrollRef.current?.scrollTo({ y: 0, animated: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the fly-to fires when the focused event changes; re-flying on a layout value would pull the camera away from a traveller exploring the map
   }, [mapReady, focusedMapEventId, eventCoords]);
 
   const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -409,6 +418,7 @@ export default function TodayScreen() {
   const landingStatus = (liveFlightData?.status || landingFlight?.status || "").toLowerCase();
   const landingDone = !!landingFlight && ((landedAt != null && now - landedAt > ARRIVAL_WINDOW_MS) || /cancel|divert/.test(landingStatus));
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lets go of a landed flight only once landingDone flips, and adding it to the set removes it from landingFlight, so this settles after one pass
     if (landingDone && landingFlight) setFinishedFlights(prev => new Set(prev).add(landingFlight.id));
   }, [landingDone, landingFlight]);
   const arrival = landingFlight && landedAt != null && now - landedAt <= ARRIVAL_WINDOW_MS
@@ -477,7 +487,7 @@ export default function TodayScreen() {
               show3dTrees: true,
               show3dLandmarks: true,
               showLandmarkIcons: true,
-            } as any}
+            }}
           />
           <MapboxGL.Camera
             ref={cameraRef}
@@ -490,7 +500,7 @@ export default function TodayScreen() {
           {isLiveDay && (
             <MapboxGL.UserLocation visible showsUserHeadingIndicator androidRenderMode="compass" />
           )}
-          {mapReady && !isLiveDay && markerFeatures.features.map((f: any) => {
+          {mapReady && !isLiveDay && markerFeatures.features.map((f) => {
             const id = f.properties.id as string;
             const PinIcon = categoryIcon(f.properties.type);
             const nights = stayNights[id];
@@ -518,7 +528,7 @@ export default function TodayScreen() {
             );
           })}
           {/* Today's stops show what they are, like the stay pins before the trip; past ones fade */}
-          {mapReady && isLiveDay && markerFeatures.features.map((f: any) => {
+          {mapReady && isLiveDay && markerFeatures.features.map((f) => {
             const id = f.properties.id as string;
             const PinIcon = categoryIcon(f.properties.type);
             return (
@@ -567,7 +577,7 @@ export default function TodayScreen() {
       </View>
 
       <Animated.ScrollView
-        ref={scheduleScrollRef as any}
+        ref={scheduleScrollRef}
         pointerEvents="box-none"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}

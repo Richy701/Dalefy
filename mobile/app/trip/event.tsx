@@ -33,6 +33,8 @@ import { LOCATION_COORDS, toLngLat, isSamePoint, distanceKm } from "@/shared/coo
 import { useMemo, useCallback, useState, useEffect } from "react";
 import Animated from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
+import type { Trip } from "@/shared/types";
+import type { Icon as PhosphorIcon } from "phosphor-react-native";
 import { openDocument } from "@/services/openDocument";
 import { StatusIndicator } from "@/components/StatusIndicator";
 import { EventLocationMap } from "@/components/EventLocationMap";
@@ -402,6 +404,7 @@ export default function EventDetailScreen() {
   const tripDest = trip?.destination;
   const [resolved, setResolved] = useState<{ ref: [number, number] | null; geo: [number, number] | null } | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing renders until this pass finishes, so the map never mounts at the previous event's position
     setResolved(null);
     let cancelled = false;
     (async () => {
@@ -430,7 +433,7 @@ export default function EventDetailScreen() {
   }
 
   if (ev.type === "flight") {
-    return <FlightDetailScreen ev={ev} trip={trip} C={C} isDark={isDark} isLeader={isLeader} insets={insets} router={router} safeBack={safeBack} />;
+    return <FlightDetailScreen ev={ev} trip={trip!} C={C} isDark={isDark} isLeader={isLeader} insets={insets} router={router} safeBack={safeBack} />;
   }
 
   // ── Non-flight unified detail ──
@@ -471,7 +474,7 @@ export default function EventDetailScreen() {
     }
   };
 
-  const detailRows: Array<{ icon: React.ComponentType<any>; label: string; value: string; onPress?: () => void }> = [];
+  const detailRows: Array<{ icon: PhosphorIcon; label: string; value: string; onPress?: () => void }> = [];
   // Transfers: where to meet and who to look for, first, as that's what travellers need on the day
   if (ev.type === "transfer" && ev.meetingPoint?.trim()) detailRows.push({ icon: MapPin, label: "Meet at", value: ev.meetingPoint.trim() });
   if (ev.type === "transfer" && (ev.contactName?.trim() || ev.contactPhone?.trim())) {
@@ -820,12 +823,12 @@ function FlightDetailScreen({
   ev, trip, C, isDark, isLeader, insets, router, safeBack,
 }: {
   ev: TravelEvent;
-  trip: any;
+  trip: Trip;
   C: ThemeColors;
   isDark: boolean;
   isLeader: boolean;
   insets: { bottom: number; top: number };
-  router: any;
+  router: ReturnType<typeof useRouter>;
   safeBack: () => void;
 }) {
   const { onScroll, stretchStyle } = useBannerStretch(HERO_H + insets.top);
@@ -905,6 +908,7 @@ function FlightDetailScreen({
     : statusLower.includes("delay") ? "Delayed"
     : (statusLower.includes("land") || statusLower.includes("arrived") || isPast) ? "Landed" : "On Time";
   // A live status is only meaningful close to departure; weeks out, "On Time" is noise
+  // eslint-disable-next-line react-hooks/purity -- recalculated every render, and it only gates showing a live status, whose arrival re-renders this screen anyway
   const departsMs = ev.date ? parseEventDateTime(ev.date, ev.time || "").getTime() - Date.now() : NaN;
   const showStatus = isPast || statusLabel === "Delayed" || statusLabel === "Cancelled"
     || (!!live?.status && !isNaN(departsMs) && departsMs < 48 * 3600000);
@@ -929,6 +933,7 @@ function FlightDetailScreen({
         return isNaN(ta) || isNaN(tb) ? 0 : ta - tb;
       });
     return day as TravelEvent[];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- ev.id is not read here, it only causes a harmless extra recompute when moving between flights
   }, [trip?.events, ev.id, ev.date]);
   const terminalName = (t: string) => {
     const v = t.replace(/^T(?=\w)/i, "").trim();
@@ -951,6 +956,7 @@ function FlightDetailScreen({
     ...((live?.baggageBelt || ev.baggageBelt) ? [{ label: "Baggage belt", value: (live?.baggageBelt || ev.baggageBelt) as string }] : []),
   ];
   // The journey: what happens before the flight that day, the flight itself, and what follows
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the list has trip?.id and the compiler wants all of trip, but only trip.id is read, inside the press handler
   const journey = useMemo(() => {
     type Step = { key: string; icon: React.ReactNode; title: string; sub?: string; note?: string; time?: string | null; dashed?: boolean; onPress?: () => void };
     const idx = neighbours.findIndex(e => e.id === ev.id);

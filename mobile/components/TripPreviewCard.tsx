@@ -24,6 +24,7 @@ export function TripPreviewCard({ trip, dates, eyebrow = "Trip found", glass = f
   const styles = useMemo(() => makeStyles(C, glass), [C, glass]);
   // The photo settles into place as the card rises
   const imgScale = useSharedValue(1.1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- imgScale is a useSharedValue and the settle animation runs once on mount
   useEffect(() => { imgScale.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) }); }, []);
   const imgStyle = useAnimatedStyle(() => ({ transform: [{ scale: imgScale.value }] }));
   const flag = destinationFlag(trip.destination);

@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { Pressable, Dimensions } from "react-native";
+import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Animated, {
   Easing, cancelAnimation, interpolateColor, useAnimatedStyle, useSharedValue,
   withDelay, withRepeat, withSequence, withSpring, withTiming,
 } from "react-native-reanimated";
+import type { AnimatableValue } from "react-native-reanimated";
 import { S, type ThemeColors } from "@/constants/theme";
 
 /**
@@ -14,11 +16,11 @@ export const PIN_LEN = 6;
 const PIN_GAP = S.xs;
 export const PIN_W = Math.min(54, Math.floor((Dimensions.get("window").width - S.lg * 2 - PIN_GAP * (PIN_LEN - 1)) / PIN_LEN));
 // Reanimated 4.5.1 never starts withDelay(0), so the first cell runs undelayed
-const after = (ms: number, anim: any) => (ms > 0 ? withDelay(ms, anim) : anim);
+const after = <V extends AnimatableValue>(ms: number, anim: V) => (ms > 0 ? withDelay(ms, anim) : anim);
 
 export function PinCell({ ch, index, active, resolving, lit, C, styles, onPress }: {
   ch: string; index: number; active: boolean; resolving: boolean; lit: boolean;
-  C: ThemeColors; styles: any; onPress: () => void;
+  C: ThemeColors; styles: { pinCell: StyleProp<ViewStyle>; pinCellText: StyleProp<TextStyle>; pinCaret: StyleProp<ViewStyle> }; onPress: () => void;
 }) {
   const pop = useSharedValue(ch ? 1 : 0);
   const caret = useSharedValue(0);
@@ -28,12 +30,14 @@ export function PinCell({ ch, index, active, resolving, lit, C, styles, onPress 
   // Each character springs into its cell as it's typed
   useEffect(() => {
     pop.value = ch ? withSequence(withTiming(0, { duration: 0 }), withSpring(1, { damping: 13, stiffness: 280, mass: 0.5 })) : 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pop is a useSharedValue, its reference never changes
   }, [ch]);
 
   // A soft breathing caret in the cell you're typing into
   useEffect(() => {
     if (active) caret.value = withRepeat(withTiming(1, { duration: 560, easing: Easing.inOut(Easing.ease) }), -1, true);
     else { cancelAnimation(caret); caret.value = 0; }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- caret is a useSharedValue, its reference never changes
   }, [active]);
 
   // While we look the PIN up, the cells ripple left to right
@@ -47,11 +51,13 @@ export function PinCell({ ch, index, active, resolving, lit, C, styles, onPress 
       cancelAnimation(lift);
       lift.value = withTiming(0, { duration: 160 });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- lift is a useSharedValue, and index is this cell's fixed position (callers key by it)
   }, [resolving]);
 
   // Trip found: the cells light up one after another
   useEffect(() => {
     glow.value = lit ? after(index * 45, withTiming(1, { duration: 220 })) : withTiming(0, { duration: 160 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- glow is a useSharedValue, and index is this cell's fixed position (callers key by it)
   }, [lit]);
 
   const restBorder = active ? C.teal : C.border;

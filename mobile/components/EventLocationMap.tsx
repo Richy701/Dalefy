@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { T } from "@/constants/theme";
 
-let MapboxGL: any = null;
+let MapboxGL: typeof import("@rnmapbox/maps").default | null = null;
 try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch {}
@@ -25,6 +25,7 @@ export function EventLocationMap({ coords, height = 140, accentColor, isDark, la
     features: [
       { type: "Feature" as const, geometry: { type: "Point" as const, coordinates: coords }, properties: {} },
     ],
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the two numbers on purpose: the caller computes a new coords array every render and the shape must only change when the point moves
   }), [coords[0], coords[1]]);
 
   if (!MapboxGL) return null;
@@ -56,7 +57,7 @@ export function EventLocationMap({ coords, height = 140, accentColor, isDark, la
             showPlaceLabels: true,
             showRoadLabels: false,
             show3dObjects: false,
-          } as any}
+          }}
         />
         <MapboxGL.Camera centerCoordinate={coords} zoomLevel={15} animationDuration={0} padding={label ? { paddingTop: 40, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 } : undefined} />
         {ready && (

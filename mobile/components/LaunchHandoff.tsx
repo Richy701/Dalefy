@@ -42,6 +42,7 @@ export function LaunchHandoff() {
       fade.value = withDelay(340, withTiming(0, { duration: 280, easing: Easing.out(Easing.quad) }, f => { if (f) runOnJS(finish)(); }));
     }).catch(finish);
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- plays once on mount: done is checked for its first value only and nudge, scale, fade are useSharedValues
   }, []);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: fade.value }));

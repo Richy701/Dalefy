@@ -1,4 +1,5 @@
 import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert, ActivityIndicator } from "react-native";
+import type { Icon as PhosphorIcon } from "phosphor-react-native";
 import { daysUntil } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
@@ -425,7 +426,7 @@ export default function ProfileScreen() {
 }
 
 /** Settings-app icon: a small coloured rounded square with a white glyph */
-function IconTile({ Icon, color }: { Icon: React.ComponentType<any>; color: string }) {
+function IconTile({ Icon, color }: { Icon: PhosphorIcon; color: string }) {
   return (
     <View style={{ width: 29, height: 29, borderRadius: 7, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
       <Icon size={18} color="#fff" weight="fill" />

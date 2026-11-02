@@ -201,7 +201,7 @@ export function statusBg(status: string, C: ThemeColors = darkColors) {
 }
 
 export function eventColor(type: string, C: ThemeColors = darkColors): string {
-  return (C as any)[type] ?? C.activity;
+  return (C as Record<string, string | undefined>)[type] ?? C.activity;
 }
 
 export type EventCategory = "flight" | "hotel" | "activity" | "dining" | "transfer";
@@ -212,7 +212,7 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 /** Glyph colour + soft fill for a category circle. Unknown types fall back to Activity. */
 export function categoryTone(type: string, C: ThemeColors): { fg: string; bg: string } {
   const key = (CATEGORIES as string[]).includes(type) ? (type as EventCategory) : "activity";
-  return { fg: (C as any)[key], bg: (C as any)[`${key}Soft`] };
+  return { fg: C[key], bg: C[`${key}Soft`] };
 }
 
 export type StatusTone = {

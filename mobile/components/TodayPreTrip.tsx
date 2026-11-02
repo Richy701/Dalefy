@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Platform } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
 import {
   WarningCircle, Clock, Calendar, Check, Images, FileText, MapPin, NavigationArrow, CaretRight,
@@ -81,7 +82,7 @@ export function SectionHeader({ title, action, onAction, C, first }: { title: st
   );
 }
 
-function Card({ children, style }: { children: React.ReactNode; C: ThemeColors; isDark: boolean; style?: any }) {
+function Card({ children, style }: { children: React.ReactNode; C: ThemeColors; isDark: boolean; style?: StyleProp<ViewStyle> }) {
   // Boxless: groups sit on the page, rows separated by hairlines
   return <View style={[s.card, style]}>{children}</View>;
 }
@@ -227,6 +228,7 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
   const weatherKey = weatherCoord ? weatherCoord.map(n => n.toFixed(2)).join(",") : "";
   const [forecast, setForecast] = useState<DayForecast | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- removes the previous stay's forecast before fetching the new one
     setForecast(null);
     if (!weatherKey || daysUntil > 5) return;
     let cancelled = false;

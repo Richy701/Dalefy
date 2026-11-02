@@ -291,7 +291,7 @@ export default function InfoScreen() {
       { title: "Share", systemIcon: "square.and.arrow.up" },
       { title: "Copy Text", systemIcon: "doc.on.doc" },
     ],
-    onPress: (e: any) => {
+    onPress: (e: { nativeEvent: { index: number } }) => {
       const text = `${item.title}\n\n${item.body ?? ""}`;
       if (e.nativeEvent.index === 0) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Share.share({ message: text }); }
       else if (e.nativeEvent.index === 1) {

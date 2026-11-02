@@ -6,6 +6,8 @@ import {
   Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
 } from "react-native";
 import type { HostInstance } from "react-native";
+import type { NativeSyntheticEvent, StyleProp, ViewStyle } from "react-native";
+import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
 import { Image as ExpoImage } from "expo-image";
 import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -178,7 +180,7 @@ function rowHeight(row: GalleryRow): number {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** EXIF "2026:11:09 14:02:11" -> { takenAt: "2026-11-09T14:02:11" }; omitted when missing (Firestore rejects undefined) */
-function exifTakenAt(exif: Record<string, any> | null | undefined): { takenAt?: string } {
+function exifTakenAt(exif: { DateTimeOriginal?: unknown; DateTime?: unknown; "{Exif}"?: { DateTimeOriginal?: unknown } } | null | undefined): { takenAt?: string } {
   const raw = exif?.DateTimeOriginal ?? exif?.["{Exif}"]?.DateTimeOriginal ?? exif?.DateTime;
   if (typeof raw !== "string") return {};
   const m = raw.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
@@ -300,7 +302,7 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
 // Viewer controls: real Liquid Glass where available, a dark frosted fill elsewhere
 const VIEWER_GLASS = isLiquidGlassAvailable();
 // A dark tint under the glass so the controls stay visible over bright and dark photos alike
-function ViewerGlass({ style, children }: { style: any; children: React.ReactNode }) {
+function ViewerGlass({ style, children }: { style: StyleProp<ViewStyle>; children: React.ReactNode }) {
   return VIEWER_GLASS
     ? <GlassView glassEffectStyle="regular" colorScheme="dark" tintColor="rgba(20,20,24,0.45)" isInteractive style={style}>{children}</GlassView>
     : <View style={[style, { backgroundColor: "rgba(40,40,46,0.72)" }]}>{children}</View>;
@@ -441,6 +443,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
 
   const hideHero = useCallback(() => {
     setTimeout(() => { heroOpacity.value = 0; }, 32);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- heroOpacity is a useSharedValue, its reference never changes
   }, []);
 
   const openStartedRef = useRef(false);
@@ -454,10 +457,12 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         runOnJS(hideHero)();
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- bgOpacity, progress and pagerOpacity are useSharedValues, their references never change
   }, [hideHero]);
 
   useEffect(() => {
     if (visible && initialIndex >= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the viewer page and chrome each time it opens on a new photo
       setActiveIndex(initialIndex);
       setChromeVisible(true);
       closingRef.current = false;
@@ -477,10 +482,12 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
       setTimeout(() => flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false }), 50);
       return () => clearTimeout(fallback);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- must run once per open: origin arrives in the same state batch as visible, the rest are useSharedValues and a stable startOpen, and re-running would replay the fly-in
   }, [visible, initialIndex]);
 
   useEffect(() => {
     chrome.value = withTiming(chromeVisible ? 1 : 0, { duration: 200 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- chrome is a useSharedValue, its reference never changes
   }, [chromeVisible]);
 
   const handleDismiss = useCallback(() => {
@@ -507,6 +514,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         () => runOnJS(handleDismiss)(),
       );
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the missing names are all useSharedValues, their references never change
   }, [origin, activeIndex, initialIndex, handleDismiss]);
 
   const swipeToDismiss = useMemo(() => Gesture.Pan()
@@ -519,6 +527,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         Math.abs(e.translationY), [0, 300], [1, 0.2], Extrapolation.CLAMP,
       );
     })
+    // eslint-disable-next-line react-hooks/refs -- animateClose touches closingRef, but this handler only runs when the gesture ends, never during render
     .onEnd((e) => {
       if (Math.abs(e.translationY) > 120 || Math.abs(e.velocityY) > 800) {
         runOnJS(animateClose)();
@@ -526,6 +535,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         dismissY.value = withSpring(0, { damping: 20, stiffness: 200 });
         bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissY and bgOpacity are useSharedValues, their references never change
     }), [animateClose]);
 
   const dismissStyle = useAnimatedStyle(() => ({
@@ -763,7 +773,7 @@ const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onD
         ...(onDelete ? [{ title: "Delete", systemIcon: "trash", destructive: true }] : []),
         ...(onReport ? [{ title: "Report", systemIcon: "flag", destructive: true }] : []),
       ]}
-      onPress={(e: any) => {
+      onPress={(e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>) => {
         if (e.nativeEvent.index === 0) open();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
         else if (e.nativeEvent.index === 2) (onDelete ?? onReport)?.({ ...item, tripId });
@@ -985,7 +995,7 @@ export default function MediaScreen() {
     for (const r of galleryRows) { out.push(y); y += rowHeight(r); }
     return out;
   }, [galleryRows]);
-  const getItemLayout = useCallback((_: any, index: number) => (
+  const getItemLayout = useCallback((_: unknown, index: number) => (
     { length: rowHeight(galleryRows[index]), offset: galleryHeaderHeight + (rowOffsets[index] ?? 0), index }
   ), [galleryRows, rowOffsets, galleryHeaderHeight]);
 
@@ -1219,7 +1229,7 @@ export default function MediaScreen() {
                 { title: "All trips", selected: resolvedTripFilter === "all" },
                 ...trips.map(t => ({ title: t.destination || t.name, selected: resolvedTripFilter === t.id })),
               ]}
-              onPress={(e: any) => {
+              onPress={(e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>) => {
                 const idx = e.nativeEvent.index as number;
                 Haptics.selectionAsync();
                 setTripFilter(idx === 0 ? "all" : trips[idx - 1]?.id ?? "all");
@@ -1251,7 +1261,7 @@ export default function MediaScreen() {
             <Text style={styles.progressPct}>{Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%</Text>
           </View>
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%` as any }]} />
+            <View style={[styles.progressFill, { width: `${Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%` }]} />
           </View>
         </View>
       )}
@@ -1292,6 +1302,7 @@ export default function MediaScreen() {
         </View>
       ) : null}
     </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mediaChips and router are no longer read in this header, they only cause a harmless extra recompute
   ), [C, mediaChips, tripMenuLabel, tripMenuImage, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, uploadProgress, router, handleUploadNew]);
 
   return (

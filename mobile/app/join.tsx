@@ -33,7 +33,7 @@ import type { Trip } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 
 
-let CameraView: any = null;
+let CameraView: typeof import("expo-camera").CameraView | null = null;
 try {
   const cam = require("expo-camera");
   CameraView = cam.CameraView;
@@ -44,6 +44,7 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
   const opacity = useSharedValue(0);
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- opacity is a useSharedValue and this fade runs once on mount
   }, []);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
@@ -117,7 +118,7 @@ const INVITE_LINK = /shared\/([A-Za-z0-9_-]+)/;
 
 // ── QR Scanner Pane ──────────────────────────────────────────────────────────
 function QRScanPane({ C, styles, onScanned }: {
-  C: ThemeColors; styles: any; onScanned: (data: string) => void;
+  C: ThemeColors; styles: ReturnType<typeof makeGreetingStyles>; onScanned: (data: string) => void;
 }) {
   const [permission, setPermission] = useState<{ granted: boolean; canAskAgain: boolean } | null>(null);
   const scannedRef = useRef(false);
@@ -127,7 +128,7 @@ function QRScanPane({ C, styles, onScanned }: {
     if (!CameraView) return;
     try {
       require("expo-camera").Camera.getCameraPermissionsAsync()
-        .then((r: any) => setPermission({ granted: r.granted, canAskAgain: r.canAskAgain }))
+        .then((r: import("expo-camera").PermissionResponse) => setPermission({ granted: r.granted, canAskAgain: r.canAskAgain }))
         .catch(() => setPermission({ granted: false, canAskAgain: true }));
     } catch {}
   }, []);
@@ -138,7 +139,10 @@ function QRScanPane({ C, styles, onScanned }: {
     try {
       const r = await require("expo-camera").Camera.requestCameraPermissionsAsync();
       setPermission({ granted: r.status === "granted", canAskAgain: r.canAskAgain });
-    } catch {}
+    } catch {
+      // The request itself failed, so asking again won't help: show the way to Settings instead of doing nothing
+      setPermission({ granted: false, canAskAgain: false });
+    }
   }, [permission]);
 
   const handleBarcode = useCallback(({ data }: { data: string }) => {
@@ -154,7 +158,7 @@ function QRScanPane({ C, styles, onScanned }: {
     <View style={styles.modeContent}>
       {/* The viewfinder is always there, so granting access doesn't move anything */}
       <View style={[styles.qrFrame, !granted && { backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" }]}>
-        {granted ? (
+        {granted && CameraView ? (
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
@@ -225,6 +229,7 @@ export default function JoinScreen() {
   };
 
   const handlePasteRef = useRef<() => void>(() => {});
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref: handlePaste always reads the current digits and handlers, it is only called from events
   handlePasteRef.current = async () => {
     try {
       const text = await Clipboard.getStringAsync();
@@ -279,10 +284,10 @@ export default function JoinScreen() {
         return;
       }
       showFound(trip, true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       triggerShake();
-      setCodeError(err?.message || "Couldn't reach the server. Try again.");
+      setCodeError((err as { message?: string } | null)?.message || "Couldn't reach the server. Try again.");
     } finally {
       setResolving(false);
     }

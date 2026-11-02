@@ -110,12 +110,14 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
       }
     }, hasCache ? 3000 : 1500);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a one-shot launch timer: hasCache is only meant to pick its length on cold start
   }, []);
 
   // Load local cache for instant display (fallback if eager read wasn't ready)
   useEffect(() => {
     mounted.current = true;
     if (_eagerReady && _eagerCache) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- copies the module-level eager cache into state on mount, in case the eager read finished after the first render
       setLocalCache(_eagerCache);
       return () => { mounted.current = false; };
     }
@@ -137,11 +139,13 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the query result into networkDown, which the offline timer and the 10s poll also write, so it cannot be derived
     if (isSuccess) { confirmedOnline.current = true; setNetworkDown(false); }
   }, [isSuccess]);
 
   useEffect(() => {
     if (isError) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the query error into networkDown, which the offline timer and the 10s poll also write, so it cannot be derived
       setNetworkDown(true);
       confirmedOnline.current = false;
     }

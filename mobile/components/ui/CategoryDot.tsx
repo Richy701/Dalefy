@@ -1,17 +1,22 @@
 import { View } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
+import type { IconWeight } from "phosphor-react-native";
 import { Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "@/components/ui/OnboardingIcons";
 import { useTheme } from "@/context/ThemeContext";
 import { categoryTone, type ThemeColors } from "@/constants/theme";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 
-const ICONS: Record<string, React.ComponentType<any>> = {
+/** What the category icons take: Phosphor's icons and PlaneIcon (an SF Symbol on iOS) both fit */
+export type GlyphIcon = React.ComponentType<{ size?: number; color?: string; weight?: IconWeight; style?: StyleProp<ViewStyle> }>;
+
+const ICONS: Record<string, GlyphIcon> = {
   flight: PlaneIcon, hotel: Bed, dining: ForkKnife, activity: MapPin, transfer: Van,
 };
-const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
+const TRANSFER_ICONS: Record<string, GlyphIcon> = {
   car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor,
 };
 
-export function categoryIcon(type: string, transferType?: string): React.ComponentType<any> {
+export function categoryIcon(type: string, transferType?: string): GlyphIcon {
   if (type === "transfer" && transferType && TRANSFER_ICONS[transferType]) return TRANSFER_ICONS[transferType];
   return ICONS[type] ?? MapPin;
 }
@@ -49,6 +54,7 @@ export function CategoryDot({ type, transferType, size = 28, base, palette }: {
           alignItems: "center", justifyContent: "center",
         }}
       >
+        {/* eslint-disable-next-line react-hooks/static-components -- Icon comes from categoryIcon's module-level lookup, not a component created in render */}
         <Icon size={Math.round(size * 0.5)} color={tone.fg} weight="fill" />
       </View>
     </View>

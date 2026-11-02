@@ -37,6 +37,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     translateY.value = withTiming(-60, { duration: 250, easing: Easing.in(Easing.cubic) });
     opacity.value = withTiming(0, { duration: 200 });
     scale.value = withTiming(0.8, { duration: 250 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- translateY, opacity and scale are useSharedValues, their references never change
   }, []);
 
   const toast = useCallback((msg: string, t: ToastType = "success") => {
@@ -54,6 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     timeoutRef.current = setTimeout(() => {
       hide();
     }, 2200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- translateY, opacity and scale are useSharedValues, their references never change
   }, [hide]);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -98,8 +100,8 @@ const styles = StyleSheet.create({
   toast: {
     position: "absolute",
     alignSelf: "center",
-    left: "auto" as any,
-    right: "auto" as any,
+    left: "auto",
+    right: "auto",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

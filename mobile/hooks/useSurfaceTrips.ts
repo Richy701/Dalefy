@@ -16,6 +16,7 @@ export function useSurfaceTrips() {
     if (!isFirebaseConfigured()) return;
     let cancelled = false;
     const stops: Array<() => void> = [];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the old account or trip list's links must not apply while the new member docs load
     setLinked({});
     void getDeviceId().then(deviceId => {
       if (cancelled) return;

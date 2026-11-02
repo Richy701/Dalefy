@@ -18,7 +18,7 @@ SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f5f6fa").catch(() 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Text follows the iOS text-size setting up to 1.3x; past that, fixed rows and headers clip
-for (const C of [Text, TextInput] as any[]) {
+for (const C of [Text, TextInput] as { defaultProps?: object }[]) {
   C.defaultProps = { ...(C.defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
 }
 AsyncStorage.getItem("daf-prefs").then((raw) => {
@@ -36,6 +36,7 @@ AsyncStorage.getItem("daf-prefs").then((raw) => {
 
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
+import type { Href } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { parseTripDate } from "@/shared/dates";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
@@ -48,8 +49,8 @@ import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
 import { touchLastSeen } from "@/services/firebaseTrips";
 import { notificationPath, notificationTarget } from "@/services/notificationTarget";
-let QuickActions: any = null;
-let useQuickActionRouting: any = () => {};
+let QuickActions: typeof import("expo-quick-actions") | null = null;
+let useQuickActionRouting: typeof import("expo-quick-actions/router").useQuickActionRouting = () => {};
 try {
   QuickActions = require("expo-quick-actions");
   useQuickActionRouting = require("expo-quick-actions/router").useQuickActionRouting;
@@ -185,7 +186,7 @@ function AppStack() {
       if (!tripId) return;
       const path = response.actionIdentifier === "view-trip" ? `/trip/${tripId}` : notificationPath({ tripId, ...notificationTarget(data) });
       if (ready) {
-        router.push(path as any);
+        router.push(path as Href);
       } else {
         pendingTripNav.current = path;
       }
@@ -197,7 +198,7 @@ function AppStack() {
     if (ready && pendingTripNav.current) {
       const path = pendingTripNav.current;
       pendingTripNav.current = null;
-      router.push(path as any);
+      router.push(path as Href);
     }
   }, [ready, router]);
 

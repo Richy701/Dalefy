@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useRef, useState, useCallback, useEffect, type ReactNode } from "react";
 import { View, Text, Image, Pressable, ScrollView, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import type { ScrollViewInstance } from "react-native";
+import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -82,7 +83,7 @@ function useArrive(order: number, from: "down" | "up" | "zoom" = "down") {
 }
 
 function Reveal({ order, from = "down", style, children }: {
-  shown?: boolean; order: number; from?: "down" | "up" | "zoom"; style?: any; children: ReactNode;
+  shown?: boolean; order: number; from?: "down" | "up" | "zoom"; style?: StyleProp<ViewStyle>; children: ReactNode;
 }) {
   const arrive = useArrive(order, from);
   return <Animated.View style={[style, arrive]}>{children}</Animated.View>;
@@ -370,7 +371,7 @@ function FitBox({ children }: { children: ReactNode }) {
 
 /** The preview drifts slower than the page and eases back a little as it leaves, so the swipe has depth */
 function Parallax({ index, progress, width, style, children }: {
-  index: number; progress: SharedValue<number>; width: number; style: any; children: ReactNode;
+  index: number; progress: SharedValue<number>; width: number; style: StyleProp<ViewStyle>; children: ReactNode;
 }) {
   const anim = useAnimatedStyle(() => {
     const d = progress.value - index;
@@ -447,7 +448,7 @@ function CopyBlock({ index, progress, width, title, body, styles }: {
   );
 }
 
-function Word({ order, style, children }: { order: number; style: any; children: ReactNode }) {
+function Word({ order, style, children }: { order: number; style: StyleProp<TextStyle>; children: ReactNode }) {
   const arrive = useArrive(order);
   return <Animated.Text style={[style, arrive]}>{children}</Animated.Text>;
 }
@@ -472,6 +473,7 @@ function useLoop(active: boolean, start: () => void, stop: () => void) {
     if (active) start();
     else stop();
     return stop;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- start and stop are new inline functions every render and only touch shared values and timers; depending on them would restart the loop each render
   }, [active]);
 }
 
@@ -494,6 +496,7 @@ function HomePreview({ trip, day, C, active }: {
 
   const [mode, setMode] = useState<HomeMode>(-1);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- puts the preview back on the photo when its page leaves the screen
     if (!active) { setMode(-1); return; }
     const order: HomeMode[] = [0, 1, 2, -1];
     let i = 0;

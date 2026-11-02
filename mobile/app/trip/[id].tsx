@@ -18,6 +18,8 @@ import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import { CaretLeft, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
+import type { NativeSyntheticEvent, ScrollViewInstance } from "react-native";
+import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, shadow, categoryTone, type ThemeColors } from "@/constants/theme";
@@ -61,7 +63,7 @@ const RAIL_GAP = 5;
 // Safe conditional import — @rnmapbox/maps throws at eval time when native module
 // is not linked (Expo Go). Guard so the screen renders without crashing.
 // Token is set once in app/_layout.tsx before any screen loads.
-let MapboxGL: any = null;
+let MapboxGL: typeof import("@rnmapbox/maps").default | null = null;
 try {
 
   MapboxGL = require("@rnmapbox/maps").default;
@@ -141,7 +143,7 @@ export default function TripScreen() {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
   });
-  const scrollRef = useRef<any>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   // Date strip pins under the title bar once the page scrolls past it
   const stripY = useSharedValue(0);
@@ -183,6 +185,7 @@ export default function TripScreen() {
   // Resolve trip destination to map coordinate (static lookup → Mapbox API fallback)
   const [destCoords, setDestCoords] = useState<[number, number] | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- removes the old map point when the trip has no destination to geocode
     if (!trip?.destination) { setDestCoords(null); return; }
     let cancelled = false;
     geocode(trip.destination).then(c => { if (!cancelled) setDestCoords(c); });
@@ -268,6 +271,7 @@ export default function TripScreen() {
 
   // Widget and Live Activity deep links carry ?date=; land on that day once it has been laid out
   const pendingDate = useRef<string | null>(typeof landDate === "string" && landDate ? landDate : null);
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the compiler wants setActiveDay in the list, but it is a useState setter, which React keeps stable
   const landOnPendingDate = useCallback(() => {
     const date = pendingDate.current;
     if (!date) return;
@@ -714,7 +718,7 @@ export default function TripScreen() {
               { title: "Open in Maps", systemIcon: "map" },
               { title: "Copy Address", systemIcon: "doc.on.doc" },
             ]}
-            onPress={(e: any) => {
+            onPress={(e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               if (e.nativeEvent.index === 0) openInMaps();
               else if (e.nativeEvent.index === 1) Clipboard.setStringAsync(trip.destination || trip.name).catch(() => {});
@@ -751,7 +755,7 @@ export default function TripScreen() {
                     showPlaceLabels: true,
                     showRoadLabels: false,
                     show3dObjects: false,
-                  } as any}
+                  }}
                 />
                 <MapboxGL.Camera
                   zoomLevel={3}
