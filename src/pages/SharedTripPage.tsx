@@ -6,6 +6,8 @@ import { tabsListVariants } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
+import { parseTimeInput } from "@/lib/timeInput";
+import { airlineLogoUrl } from "@/data/airlines";
 import { tzAbbr, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -98,32 +100,72 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{children}</h2>;
 }
 
+/** The airline's logo on a white plate so it reads in both themes; a plane when we have no logo for it. */
+function AirlineMark({ flightNum, className = "h-6 w-6", fallback }: { flightNum?: string; className?: string; fallback?: React.ReactNode }) {
+  const iata = flightNum?.trim().toUpperCase().match(/^([A-Z0-9]{2})/)?.[1] ?? "";
+  const [failed, setFailed] = useState(false);
+  if (fallback && (!iata || failed)) return fallback;
+  return (
+    <span className={`${className} shrink-0 rounded-full border border-border bg-white overflow-hidden flex items-center justify-center`}>
+      {iata && !failed
+        ? <img src={airlineLogoUrl(iata)} alt="" loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-contain" />
+        : <AirplaneTilt aria-hidden="true" className="h-3.5 w-3.5 text-neutral-700" weight="fill" />}
+    </span>
+  );
+}
+
+/** Only statuses a traveller needs to act on; "Expected" or "Scheduled" just mean nothing has changed. */
+function flightNotice(status?: string): { text: string; className: string } | null {
+  const group = (status ?? "").toLowerCase().replace(/\s+/g, "");
+  const problem = "font-medium text-red-600 dark:text-red-400";
+  if (group.startsWith("cancel")) return { text: "Cancelled", className: problem };
+  if (group === "diverted") return { text: "Diverted", className: problem };
+  if (group.startsWith("delay")) return { text: "Delayed", className: "font-medium text-amber-700 dark:text-amber-400" };
+  if (group === "boarding") return { text: "Boarding", className: "font-medium text-foreground" };
+  if (group === "departed" || group === "enroute") return { text: "In the air", className: "font-medium text-foreground" };
+  if (group === "arrived" || group === "landed") return { text: "Landed", className: "font-medium text-foreground" };
+  return null;
+}
+
+function FlightEnd({ code, time, tz, dayOffset, align }: { code: string; time?: string; tz: string; dayOffset?: string; align: "left" | "right" }) {
+  const known = !isPlaceholderTime(time);
+  return (
+    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
+      <p className={`font-semibold tracking-tight text-foreground ${isCode(code) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{code || "—"}</p>
+      <p className={`mt-1 text-base font-medium tabular-nums whitespace-nowrap ${known ? "text-foreground" : "text-muted-foreground"}`}>
+        {known ? parseTimeInput(time) || time : "TBC"}
+        {known && dayOffset && <span className="ml-1 text-xs font-normal text-muted-foreground">{dayOffset}</span>}
+      </p>
+      {known && tz && <p className="text-xs text-muted-foreground">{tz}</p>}
+    </div>
+  );
+}
+
 function FlightCard({ ev }: { ev: TravelEvent }) {
   const { from, to } = routeOf(ev);
   // Only label a zone the event itself resolves; the trip fallback would mislabel the outbound leg.
   const depTz = tzAbbr(eventTz(ev, undefined, "dep"), ev.date);
   const arrTz = tzAbbr(eventTz(ev, undefined, "arr"), ev.endDate || ev.date);
   const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title;
-  const arrivesNextDay = ev.endDate && ev.endDate !== ev.date;
+  const days = ev.endDate ? Math.round((parseTripDate(ev.endDate).getTime() - parseTripDate(ev.date).getTime()) / 86400000) : 0;
+  const dayOffset = days ? `${days > 0 ? "+" : ""}${days}` : undefined;
+  const notice = flightNotice(ev.status);
+  const departs = [ev.terminal && `Terminal ${ev.terminal.replace(/^T/i, "")}`, ev.gate && `Gate ${ev.gate}`].filter(Boolean).join(", ");
+  const arrives = [ev.arrTerminal && `Terminal ${ev.arrTerminal.replace(/^T/i, "")}`, ev.arrGate && `Gate ${ev.arrGate}`, ev.baggageBelt && `Belt ${ev.baggageBelt}`].filter(Boolean).join(", ");
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-3 text-xs sm:text-sm">
-        <p className="font-medium text-foreground truncate">{carrier}</p>
+      <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <AirlineMark flightNum={ev.flightNum} />
+          <p className="font-medium text-foreground truncate">{carrier}</p>
+        </div>
         <p className="text-muted-foreground shrink-0">{fmtShort(ev.date)}</p>
       </div>
 
-      <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="min-w-0">
-          <p className={`font-semibold tracking-tight text-foreground ${isCode(from) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{from || "—"}</p>
-          <p className="mt-1 text-sm text-foreground whitespace-nowrap">
-            {isPlaceholderTime(ev.time) ? "" : ev.time}
-            {depTz && !isPlaceholderTime(ev.time) && <span className="ml-1 text-xs text-muted-foreground">{depTz}</span>}
-          </p>
-          {ev.terminal && <p className="text-xs text-muted-foreground">Terminal {ev.terminal.replace(/^T/i, "")}</p>}
-        </div>
-
-        <div className="flex flex-col items-center gap-1 px-2 text-muted-foreground">
+      <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+        <FlightEnd code={from} time={ev.time} tz={depTz} align="left" />
+        <div className="flex flex-col items-center gap-1 px-2 pt-1.5 sm:pt-2 text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span className="h-px w-3 sm:w-6 bg-border" />
             <AirplaneTilt className="h-4 w-4 text-cat-flight" weight="fill" />
@@ -131,24 +173,17 @@ function FlightCard({ ev }: { ev: TravelEvent }) {
           </div>
           {ev.duration && <p className="text-[11px]">{ev.duration}</p>}
         </div>
-
-        <div className="min-w-0 text-right">
-          <p className={`font-semibold tracking-tight text-foreground ${isCode(to) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{to || "—"}</p>
-          <p className="mt-1 text-sm text-foreground whitespace-nowrap">
-            {isPlaceholderTime(ev.endTime) ? "" : ev.endTime}
-            {arrTz && !isPlaceholderTime(ev.endTime) && <span className="ml-1 text-xs text-muted-foreground">{arrTz}</span>}
-            {arrivesNextDay && <span className="ml-1 text-xs text-muted-foreground">+1</span>}
-          </p>
-          {ev.arrTerminal && <p className="text-xs text-muted-foreground">Terminal {ev.arrTerminal.replace(/^T/i, "")}</p>}
-        </div>
+        <FlightEnd code={to} time={ev.endTime} tz={arrTz} dayOffset={dayOffset} align="right" />
       </div>
 
-      {(ev.gate || ev.aircraft || ev.confNumber || ev.status) && (
+      {(notice || departs || arrives || ev.seatDetails || ev.aircraft || ev.confNumber) && (
         <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-          {ev.gate && <span>Gate {ev.gate}</span>}
+          {notice && <span className={notice.className}>{notice.text}</span>}
+          {departs && <span>Departs {departs}</span>}
+          {arrives && <span>Arrives {arrives}</span>}
+          {ev.seatDetails && <span>Seat {ev.seatDetails}</span>}
           {ev.aircraft && <span>{ev.aircraft}</span>}
           {ev.confNumber && <span>Booking ref <span className="font-mono text-foreground">{ev.confNumber}</span></span>}
-          {ev.status && <span>{ev.status}</span>}
         </div>
       )}
     </div>
@@ -173,12 +208,12 @@ function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string
       <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
         <div>
           <p className="text-xs text-muted-foreground">Check in</p>
-          <p className="mt-0.5 text-foreground">{fmtShort(ev.date)}{checkin ? ` · ${checkin}` : ""}</p>
+          <p className="mt-0.5 text-foreground">{fmtShort(ev.date)}{checkin ? `, ${checkin}` : ""}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Check out</p>
           <p className="mt-0.5 text-foreground">
-            {checkoutDate ? fmtShort(checkoutDate) : "—"}{ev.checkout ? ` · ${ev.checkout}` : ""}
+            {checkoutDate ? fmtShort(checkoutDate) : "—"}{ev.checkout ? `, ${ev.checkout}` : ""}
           </p>
         </div>
       </div>
@@ -199,28 +234,35 @@ function eventMeta(ev: TravelEvent): string {
     const route = from && to ? `${from} to ${to}` : ev.location;
     const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ");
     const titled = ev.flightNum && ev.title.includes(ev.flightNum);
-    return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join(" · ");
+    return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join(", ");
   }
   if (ev.type === "hotel") {
-    return [ev.location, ev.roomType].filter(Boolean).join(" · ");
+    return [ev.location, ev.roomType].filter(Boolean).join(", ");
   }
   const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${ev.endTime}` : "";
-  return [ev.location, ev.duration, until].filter(Boolean).join(" · ");
+  // A transfer's meeting point has its own line; don't say the same place twice.
+  const repeated = ev.type === "transfer" && ev.location?.trim().toLowerCase() === ev.meetingPoint?.trim().toLowerCase();
+  return [repeated ? "" : ev.location, ev.duration, until].filter(Boolean).join(", ");
 }
 
 function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
-  const time = isPlaceholderTime(ev.time) ? "" : ev.time;
+  const isFlight = ev.type === "flight";
+  const time = isPlaceholderTime(ev.time) ? (isFlight ? "TBC" : "") : isFlight ? parseTimeInput(ev.time) || ev.time : ev.time;
+  const marker = (size: "sm" | "md", className: string) => {
+    const dot = <CategoryDot type={ev.type} transferType={ev.transferType} size={size} className={className} />;
+    return isFlight ? <AirlineMark flightNum={ev.flightNum} className={`${size === "md" ? "h-9 w-9" : "h-7 w-7"} ${className}`} fallback={dot} /> : dot;
+  };
   return (
     <div className="sm:grid sm:grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <div className="hidden sm:flex flex-col items-center">
-        <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
+        {marker("md", "")}
         {!last && <span className="hidden sm:block w-px flex-1 bg-border my-1.5" />}
       </div>
       <div className={`min-w-0 break-words pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
         {time && <p className="mb-2 text-xs font-medium text-muted-foreground tabular-nums">{time}</p>}
         <div className="mb-2 flex items-start gap-2 sm:mb-0 sm:block">
-          <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" className="sm:hidden" />
+          {marker("sm", "sm:hidden")}
           <div className="min-w-0 flex-1 pt-1 sm:pt-0">
             <p className="text-sm font-medium text-foreground leading-snug">
               {ev.title}
@@ -468,7 +510,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Day by day */}
         {days.length > 0 && (
-          <section id="schedule" aria-labelledby="daily-schedule" className="min-w-0 scroll-mt-24 lg:mx-auto lg:max-w-4xl">
+          <section id="schedule" aria-labelledby="daily-schedule" className="min-w-0 scroll-mt-24">
             <h2 id="daily-schedule" className="mb-4 text-lg font-semibold tracking-tight text-foreground">Day by day</h2>
 
             {days.length > 1 && (
