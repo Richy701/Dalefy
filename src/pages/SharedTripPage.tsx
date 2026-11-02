@@ -503,7 +503,7 @@ export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; b
               };
               // Keep DOM and visual reading order aligned with the organiser's list.
               return (
-                <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 print:grid-cols-1">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 print:grid-cols-1">
                   {trip.info!.map(renderCard)}
                 </div>
               );
