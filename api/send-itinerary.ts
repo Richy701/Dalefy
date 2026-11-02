@@ -12,7 +12,7 @@ import { canEditTrip } from "./_tripPermissions.js";
 
 import { getDocument, decodeValue, encodeValue, updateDocument } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
 import { renderItineraryEmail } from "../src/lib/itineraryEmail.js";
 
@@ -40,7 +40,7 @@ function parseRecipients(value: unknown): Recipient[] | null {
   return out;
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method === "GET") return res.status(200).json({ enabled: emailEnabled() });
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (!emailEnabled()) return res.status(501).json({ error: "Email sending isn't set up yet. Add RESEND_FROM_EMAIL on a verified domain." });
@@ -51,7 +51,7 @@ export default async function handler(req: any, res: any) {
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   if (!rateLimit(req, res, { bucket: "send-itinerary", limit: 20, windowMs: 10 * 60_000 })) return;
 
-  const body = req.body ?? {};
+  const body = (req.body ?? {}) as Record<string, unknown>;
   const tripId = typeof body.tripId === "string" ? body.tripId.trim() : "";
   const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 200) : "";
   const message = typeof body.message === "string" ? body.message.trim().slice(0, 5000) : "";

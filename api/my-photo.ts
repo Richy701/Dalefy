@@ -1,6 +1,6 @@
-import { queryDocuments, getDocument, updateDocument, touchTripVersion, decodeValue, encodeValue, docId } from "./_firebaseAdmin.js";
+import { queryDocuments, getDocument, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 
 /**
  * POST /api/my-photo  { avatar }  (bearer token)
@@ -10,7 +10,7 @@ import { rateLimit } from "./_rateLimit.js";
  * caller's own upload (avatars/{uid}/ in this project's bucket), and only trips whose membership links this
  * account to a traveller are touched. The trip and its published copy both get it, so the app shows it.
  */
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader("Cache-Control", "private, no-store");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -18,7 +18,8 @@ export default async function handler(req: any, res: any) {
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   if (!rateLimit(req, res, { bucket: "my-photo", limit: 10, windowMs: 10 * 60_000 })) return;
 
-  const avatar = typeof req.body?.avatar === "string" ? req.body.avatar.trim() : "";
+  const body = req.body as { avatar?: unknown } | null | undefined;
+  const avatar = typeof body?.avatar === "string" ? body.avatar.trim() : "";
   const bucket = process.env.VITE_FIREBASE_STORAGE_BUCKET ?? "";
   const own = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/avatars%2F${encodeURIComponent(payload.sub)}%2F`;
   if (!bucket || !avatar.startsWith(own) || avatar.length > 1000) return res.status(400).json({ error: "Not your uploaded photo" });
@@ -46,7 +47,7 @@ export default async function handler(req: any, res: any) {
       const snapshot = decodeValue(trip.fields?.published_snapshot) as Record<string, unknown> | null;
       const snapTravelers = snapshot ? fill(snapshot.travelers) : null;
       if (!travelers && !snapTravelers) continue;
-      const fields: Record<string, unknown> = {};
+      const fields: Record<string, FirestoreValue> = {};
       const mask: string[] = [];
       if (travelers) { fields.travelers = encodeValue(travelers); mask.push("travelers"); }
       if (snapTravelers) { fields.published_snapshot = encodeValue({ travelers: snapTravelers }); mask.push("published_snapshot.travelers"); }

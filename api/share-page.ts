@@ -1,5 +1,5 @@
 import { getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiSendResponse } from "./_rateLimit.js";
 import { publishedTripView } from "./_tripView.js";
 
 /**
@@ -24,7 +24,7 @@ function fmt(date: string, withYear: boolean): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiSendResponse) {
   const id = typeof req.query?.tripId === "string" ? req.query.tripId : "";
   const valid = /^[\w-]{1,150}$/.test(id);
   const target = valid ? `/#/shared/${id}` : "/";

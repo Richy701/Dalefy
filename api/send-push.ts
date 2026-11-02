@@ -1,7 +1,7 @@
 import { canEditTrip } from "./_tripPermissions.js";
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken, impersonationOf, type Impersonation } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 
 /** True if the user owns the trip or belongs to the trip's organization. */
@@ -34,7 +34,18 @@ function peopleOf(memberDocs: FirestoreDoc[]): Person[] {
 
 type Audience = "all" | { people: string[] } | { eventId: string };
 
-export default async function handler(req: any, res: any) {
+interface PushRequest {
+  deviceId?: string;
+  body?: string;
+  target?: { eventId?: string; date?: string; infoId?: string };
+  urgent?: boolean;
+  dryRun?: boolean;
+  tripId?: string;
+  to?: Audience;
+  title?: string;
+}
+
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const auth = req.headers["authorization"] ?? "";
@@ -46,8 +57,8 @@ export default async function handler(req: any, res: any) {
   if (!rateLimit(req, res, { bucket: "send-push", limit: 30, windowMs: 60_000 })) return;
 
   // Older clients send { deviceId, title, body } for one person
-  const { deviceId, body, target, urgent, dryRun } = req.body ?? {};
-  let { tripId, to, title } = req.body ?? {};
+  const { deviceId, body, target, urgent, dryRun } = (req.body ?? {}) as PushRequest;
+  let { tripId, to, title } = (req.body ?? {}) as PushRequest;
   if (!to && typeof deviceId === "string") to = { people: [deviceId] };
   if (title === "Dalefy") title = "";
   if (!to || (!dryRun && (typeof body !== "string" || !body.trim()))) {
@@ -86,7 +97,7 @@ export default async function handler(req: any, res: any) {
       chosen = everyone.filter(p => keys.has(p.key) || p.deviceIds.some(id => keys.has(id)) || (p.uid && keys.has(p.uid)));
     } else {
       // Everyone the event is assigned to; an event assigned to no one is for the whole group
-      const events: { id?: string; assignedTo?: unknown }[] = decodeValue(trip?.fields?.events) ?? [];
+      const events = (decodeValue(trip?.fields?.events) ?? []) as { id?: string; assignedTo?: unknown }[];
       const ev = events.find(e => e?.id === audience.eventId);
       if (!ev) return res.status(404).json({ error: "Event not found" });
       const assigned = new Set<string>(Array.isArray(ev.assignedTo) ? ev.assignedTo : []);
@@ -128,7 +139,7 @@ export default async function handler(req: any, res: any) {
       title: finalTitle,
       // The trip in the iOS subtitle, unless it is already the title
       ...(finalTitle !== tripName && tripName ? { subtitle: tripName } : {}),
-      body: body.trim(),
+      body: body!.trim(),
       data: { tripId, category: "message", logId, ...tapTarget },
       categoryId: tapTarget.eventId ? "event" : "trip",
       // iOS stacks each trip's notifications together
@@ -153,7 +164,7 @@ export default async function handler(req: any, res: any) {
       tripName,
       category: "message",
       title: finalTitle,
-      body: body.trim(),
+      body: body!.trim(),
       recipients: chosen.flatMap(p => [p.key, p.uid, ...p.deviceIds]),
       sentBy: payload.sub!,
       tickets,
@@ -162,7 +173,7 @@ export default async function handler(req: any, res: any) {
     }, logId);
 
     res.json({ sent: delivered.size, total: chosen.length, results, logId });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[send-push] Error:", err);
     res.status(500).json({ error: "Internal error" });
   }

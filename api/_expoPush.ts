@@ -131,7 +131,7 @@ export async function checkPushReceipts(): Promise<{ checked: number; removed: n
   const due: { id: string; token: string }[] = [];
   for (const doc of await listCollection("push_tickets")) {
     const id = docId(doc);
-    const sentAt = Date.parse(decodeValue(doc.fields?.sent_at) ?? "");
+    const sentAt = Date.parse((decodeValue(doc.fields?.sent_at) ?? "") as string);
     const age = Number.isFinite(sentAt) ? now - sentAt : Infinity;
     if (age > RECEIPT_EXPIRES_MS) { await deleteDocument("push_tickets", id).catch(() => {}); continue; }
     if (age >= RECEIPT_READY_MS) due.push({ id, token: String(decodeValue(doc.fields?.token) ?? "") });

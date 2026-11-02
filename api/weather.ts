@@ -1,4 +1,4 @@
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { currentWeather, dayForecast, validateWeatherQuery } from "./_weatherCore.js";
 import { errorToHttp } from "./_httpError.js";
 
@@ -7,7 +7,7 @@ import { errorToHttp } from "./_httpError.js";
  * GET /api/weather?lat=&lng=&date=      that day's forecast (up to 5 days out)
  * Response: { weather } / { forecast }, null when unavailable.
  */
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!rateLimit(req, res, { bucket: "weather", limit: 120, windowMs: 60_000 })) return;
 
   const { lat = "", lng = "", date = "" } = req.query as Record<string, string>;

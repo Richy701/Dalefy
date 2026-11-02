@@ -8,7 +8,7 @@ import { airportTz } from "./_airportTz.js";
 import { HttpError } from "./_httpError.js";
 
 /** The subset of the AeroDataBox response this module reads. */
-interface AeroMovement {
+export interface AeroMovement {
   airport?: { iata?: string; name?: string; location?: { lat: number; lon: number } };
   scheduledTime?: { local?: string; utc?: string };
   actualTime?: { local?: string; utc?: string };
@@ -19,7 +19,7 @@ interface AeroMovement {
   gate?: string;
   baggageBelt?: string;
 }
-interface AeroFlight {
+export interface AeroFlight {
   number?: string;
   status?: string;
   isCargo?: boolean;

@@ -3,10 +3,11 @@ import { mobilePreviewPlugin, nativeWebResolution } from "./mobile-preview/vite-
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
-import { defineConfig, loadEnv } from "vite"
+import { defineConfig, loadEnv, type Connect, type ViteDevServer } from "vite"
+import type { ServerResponse } from "http"
 import { fileURLToPath } from "url"
 import Anthropic from "@anthropic-ai/sdk"
-import { runParse, runAssist, aiErrorToHttp } from "./api/_parseItineraryCore.ts"
+import { runParse, runAssist, aiErrorToHttp, type AssistInput, type ParseInput } from "./api/_parseItineraryCore.ts"
 import { searchFlights, lookupFlightNumber } from "./api/_flightsCore.ts"
 import { searchImages } from "./api/_imagesCore.ts"
 import { geocode, suggest, PROXIMITY_RE, WITHIN_RE, COUNTRY_RE } from "./api/_geocodeCore.ts"
@@ -95,11 +96,11 @@ export default defineConfig(({ mode }) => {
 function apiRoutesPlugin(env: Record<string, string>) {
   return {
     name: "api-routes",
-    configureServer(server: any) {
-      server.middlewares.use(async (req: any, res: any, next: any) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req: Connect.IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
         const url = new URL(req.url!, `http://${req.headers.host}`)
         const p = url.pathname
-        const send = (status: number, data: any) => {
+        const send = (status: number, data: unknown) => {
           res.statusCode = status
           res.setHeader("Content-Type", "application/json")
           res.end(JSON.stringify(data))
@@ -130,7 +131,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
             if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
             let body = ""
             await new Promise<void>((resolve) => { req.on("data", (c: Buffer) => { body += c.toString() }); req.on("end", resolve) })
-            let parsed: any
+            let parsed: AssistInput & ParseInput
             try { parsed = JSON.parse(body) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
             const client = new Anthropic({ apiKey })
             res.setHeader("Content-Type", "application/json")
@@ -141,7 +142,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
               try {
                 const result = await runAssist(client, { type: evType, title, location, date: evDate, time: evTime, destination })
                 res.end(JSON.stringify(result))
-              } catch (err: any) {
+              } catch (err) {
                 console.error("assist-event error:", err)
                 const mapped = aiErrorToHttp(err)
                 res.statusCode = mapped.status; res.end(JSON.stringify({ error: mapped.error }))
@@ -157,7 +158,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
               try {
                 const result = await runParse(client, { text, images, pdf }, partial => line({ type: "partial", partial }))
                 line({ type: "done", result })
-              } catch (err: any) {
+              } catch (err) {
                 console.error("parse-itinerary error:", err)
                 line({ type: "error", ...aiErrorToHttp(err) })
               }
@@ -167,7 +168,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
             try {
               const result = await runParse(client, { text, images, pdf })
               res.end(JSON.stringify(result))
-            } catch (err: any) {
+            } catch (err) {
               console.error("parse-itinerary error:", err)
               const mapped = aiErrorToHttp(err)
               res.statusCode = mapped.status; res.end(JSON.stringify({ error: mapped.error }))
@@ -281,9 +282,9 @@ function apiRoutesPlugin(env: Record<string, string>) {
           } else {
             return next()
           }
-        } catch (err: any) {
+        } catch (err) {
           if (!res.headersSent) {
-            res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: err.message }))
+            res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: (err as { message?: string }).message }))
           }
         }
       })

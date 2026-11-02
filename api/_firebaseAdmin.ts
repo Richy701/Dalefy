@@ -89,9 +89,19 @@ async function firestoreFetch(url: string, init: RequestInit = {}): Promise<Resp
 
 // ── Firestore REST operations ──────────────────────────────────────────────
 
+export type FirestoreValue =
+  | { stringValue: string }
+  | { integerValue: string }
+  | { doubleValue: number }
+  | { booleanValue: boolean }
+  | { nullValue: null }
+  | { timestampValue: string }
+  | { arrayValue: { values?: FirestoreValue[] } }
+  | { mapValue: { fields?: Record<string, FirestoreValue> } };
+
 export interface FirestoreDoc {
   name: string;
-  fields: Record<string, any>;
+  fields: Record<string, FirestoreValue>;
   updateTime?: string;
 }
 
@@ -194,7 +204,7 @@ export async function getDocument(collectionName: string, id: string): Promise<F
 export async function updateDocument(
   collectionName: string,
   docId: string,
-  fields: Record<string, any>,
+  fields: Record<string, FirestoreValue>,
   fieldPaths: string[],
   updateTime?: string,
 ): Promise<void> {
@@ -260,7 +270,7 @@ export async function touchTripVersion(tripId: string): Promise<void> {
 
 // ── Firestore value helpers ────────────────────────────────────────────────
 
-export function decodeValue(val: any): any {
+export function decodeValue(val: FirestoreValue | null | undefined): unknown {
   if (!val) return null;
   if ("stringValue" in val) return val.stringValue;
   if ("integerValue" in val) return Number(val.integerValue);
@@ -269,7 +279,7 @@ export function decodeValue(val: any): any {
   if ("nullValue" in val) return null;
   if ("arrayValue" in val) return (val.arrayValue.values ?? []).map(decodeValue);
   if ("mapValue" in val) {
-    const obj: Record<string, any> = {};
+    const obj: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(val.mapValue.fields ?? {})) {
       obj[k] = decodeValue(v);
     }
@@ -278,14 +288,14 @@ export function decodeValue(val: any): any {
   return null;
 }
 
-export function encodeValue(val: any): any {
+export function encodeValue(val: unknown): FirestoreValue {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === "string") return { stringValue: val };
   if (typeof val === "number") return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
   if (typeof val === "boolean") return { booleanValue: val };
   if (Array.isArray(val)) return { arrayValue: { values: val.map(encodeValue) } };
   if (typeof val === "object") {
-    const fields: Record<string, any> = {};
+    const fields: Record<string, FirestoreValue> = {};
     for (const [k, v] of Object.entries(val)) {
       fields[k] = encodeValue(v);
     }

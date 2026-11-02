@@ -1,9 +1,9 @@
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { geocode, suggest, PROXIMITY_RE, WITHIN_RE, COUNTRY_RE } from "./_geocodeCore.js";
 import { errorToHttp } from "./_httpError.js";
 import { incrementCounter } from "./_firebaseAdmin.js";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!rateLimit(req, res, { bucket: "geocode", limit: 120, windowMs: 60_000 })) return;
 
   const { q, proximity, mode, country, within } = req.query as Record<string, string>;

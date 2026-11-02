@@ -1,4 +1,6 @@
 /** Shared input validation helpers for API endpoints */
+import type { AeroFlight } from "./_flightsCore.js";
+import type { ApiResponse } from "./_rateLimit.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const IATA_RE = /^[A-Za-z]{3}$/;
@@ -30,7 +32,7 @@ export function validateFlightNum(val: string | undefined): string | null {
 }
 
 /** Require RAPIDAPI_KEY env var — returns the key or sends 500 */
-export function requireRapidApi(res: any): string | null {
+export function requireRapidApi(res: ApiResponse): string | null {
   const key = process.env.RAPIDAPI_KEY;
   if (!key) {
     res.status(500).json({ error: "Server configuration error" });
@@ -40,7 +42,7 @@ export function requireRapidApi(res: any): string | null {
 }
 
 /** Score an AeroDataBox flight entry by data completeness. Higher = more complete. */
-export function scoreAeroFlight(f: any): number {
+export function scoreAeroFlight(f: AeroFlight): number {
   let s = 0;
   const dep = f.departure ?? {};
   const arr = f.arrival ?? {};
@@ -59,14 +61,14 @@ export function scoreAeroFlight(f: any): number {
 }
 
 /** Pick the most complete flight from an AeroDataBox result array. */
-export function pickBestFlight(flights: any[]): any | null {
+export function pickBestFlight(flights: AeroFlight[]): AeroFlight | null {
   if (flights.length === 0) return null;
   if (flights.length === 1) return flights[0];
   return flights.reduce((best, f) => scoreAeroFlight(f) > scoreAeroFlight(best) ? f : best);
 }
 
 /** Require GOOGLE_API_KEY env var — returns the key or sends 500 */
-export function requireGoogleApi(res: any): string | null {
+export function requireGoogleApi(res: ApiResponse): string | null {
   const key = process.env.GOOGLE_API_KEY;
   if (!key) {
     res.status(500).json({ error: "Server configuration error" });

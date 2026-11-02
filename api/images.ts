@@ -1,8 +1,8 @@
 import { validateQuery } from "./_validate.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { searchImages } from "./_imagesCore.js";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!rateLimit(req, res, { bucket: "images", limit: 60, windowMs: 60_000 })) return;
 
   const { q, page = "1", per_page = "9", source = "" } = req.query as Record<string, string>;

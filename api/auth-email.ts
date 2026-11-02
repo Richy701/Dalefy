@@ -13,7 +13,7 @@
  */
 
 import { verifyFirebaseToken } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
 import { generateSignInLink, generateVerificationLink, generatePasswordResetLink, authAdminConfigured } from "./_firebaseAuthAdmin.js";
 import { magicLinkEmail, resetPasswordEmail, verifyEmail } from "../src/lib/email/templates.js";
@@ -21,13 +21,13 @@ import { magicLinkEmail, resetPasswordEmail, verifyEmail } from "../src/lib/emai
 const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.app").trim().replace(/\/$/, "");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (!emailEnabled() || !authAdminConfigured()) {
     return res.status(501).json({ error: "Email sign-in isn't available right now. Please try again later." });
   }
 
-  const body = req.body ?? {};
+  const body = (req.body ?? {}) as Record<string, unknown>;
   const kind = typeof body.kind === "string" ? body.kind : "";
 
   if (kind === "verify") {

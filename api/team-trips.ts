@@ -96,7 +96,7 @@ export default async function handler(req: Request, res: Response) {
     for (const trip of theirs) {
       const now = new Date();
       const entry = { id: `${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, at: now.toISOString(), by: callerName, summary: `Handed the trip over from ${fromName} to ${toName}` };
-      const history = Array.isArray(decodeValue(trip.fields?.history)) ? decodeValue(trip.fields.history) : [];
+      const history = (Array.isArray(decodeValue(trip.fields?.history)) ? decodeValue(trip.fields.history) : []) as unknown[];
       // The revision check keeps an edit made a moment ago from being overwritten
       await updateDocument("trips", docId(trip), {
         user_id: encodeValue(toUid),

@@ -1,12 +1,12 @@
 import { getDocument, decodeValue } from "./_firebaseAdmin.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 
 /**
  * Public preview of a team invite, for the accept page before the user signs in.
  * The invite token is an unguessable UUID, so holding it is the authorisation.
  * Returns only what the email already told the recipient, with the address masked.
  */
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
   if (!rateLimit(req, res, { bucket: "invite-preview", limit: 60, windowMs: 10 * 60_000 })) return;
 

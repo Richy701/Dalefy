@@ -12,6 +12,12 @@ export type Condition = "clear" | "partly" | "cloudy" | "fog" | "rain" | "snow" 
 export interface CurrentWeather { temp: number; condition: Condition; isDay: boolean; description: string }
 export interface DayForecast { temp: number; high: number; low: number; condition: Condition; description: string; rainChance: number }
 
+/** The subset of the OpenWeather responses this module reads. */
+interface OwCondition { icon?: string; description?: string }
+interface OwCurrent { main?: { temp?: number }; weather?: OwCondition[] }
+interface OwForecastEntry { dt: number; main: { temp: number; temp_max: number; temp_min: number }; weather?: OwCondition[]; pop?: number }
+interface OwForecast { city?: { timezone?: number }; list?: OwForecastEntry[] }
+
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** OpenWeather icon codes ("01d", "10n"): 01 clear, 02 few clouds, 03/04 clouds, 09/10 rain, 11 storm, 13 snow, 50 mist */
@@ -27,7 +33,7 @@ function condition(icon: string | undefined): Condition {
   }
 }
 
-async function owFetch(path: string, lat: number, lng: number, key: string): Promise<any> {
+async function owFetch<T>(path: string, lat: number, lng: number, key: string): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   let resp: Response;
@@ -39,11 +45,11 @@ async function owFetch(path: string, lat: number, lng: number, key: string): Pro
     clearTimeout(timeout);
   }
   if (!resp.ok) throw new HttpError(502, "Weather service error");
-  return resp.json();
+  return resp.json() as Promise<T>;
 }
 
 export async function currentWeather(lat: number, lng: number, key: string): Promise<CurrentWeather | null> {
-  const json = await owFetch("weather", lat, lng, key);
+  const json = await owFetch<OwCurrent>("weather", lat, lng, key);
   const w = json?.weather?.[0];
   if (typeof json?.main?.temp !== "number" || !w) return null;
   return {
@@ -56,20 +62,20 @@ export async function currentWeather(lat: number, lng: number, key: string): Pro
 
 /** One day's forecast (local date at the place, up to 5 days out); null when the date isn't covered */
 export async function dayForecast(lat: number, lng: number, date: string, key: string): Promise<DayForecast | null> {
-  const json = await owFetch("forecast", lat, lng, key);
+  const json = await owFetch<OwForecast>("forecast", lat, lng, key);
   const offset = Number(json?.city?.timezone ?? 0); // seconds from UTC
   const localDate = (dt: number) => new Date((dt + offset) * 1000).toISOString().slice(0, 10);
   const localHour = (dt: number) => new Date((dt + offset) * 1000).getUTCHours();
-  const entries = (json?.list ?? []).filter((e: any) => typeof e?.dt === "number" && localDate(e.dt) === date);
+  const entries = (json?.list ?? []).filter((e) => typeof e?.dt === "number" && localDate(e.dt) === date);
   if (!entries.length) return null;
-  const midday = [...entries].sort((a: any, b: any) => Math.abs(localHour(a.dt) - 12) - Math.abs(localHour(b.dt) - 12))[0];
+  const midday = [...entries].sort((a, b) => Math.abs(localHour(a.dt) - 12) - Math.abs(localHour(b.dt) - 12))[0];
   return {
     temp: Math.round(midday.main.temp),
-    high: Math.round(Math.max(...entries.map((e: any) => e.main.temp_max))),
-    low: Math.round(Math.min(...entries.map((e: any) => e.main.temp_min))),
+    high: Math.round(Math.max(...entries.map((e) => e.main.temp_max))),
+    low: Math.round(Math.min(...entries.map((e) => e.main.temp_min))),
     condition: condition(midday.weather?.[0]?.icon),
     description: midday.weather?.[0]?.description ?? "",
-    rainChance: Math.round(Math.max(...entries.map((e: any) => (e.pop ?? 0) * 100))),
+    rainChance: Math.round(Math.max(...entries.map((e) => (e.pop ?? 0) * 100))),
   };
 }
 

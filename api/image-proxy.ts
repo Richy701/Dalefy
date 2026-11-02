@@ -1,8 +1,8 @@
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiSendResponse } from "./_rateLimit.js";
 import { resolveTarget, fetchImage } from "./_imageProxyCore.js";
 import { HttpError } from "./_httpError.js";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiSendResponse) {
   if (!rateLimit(req, res, { bucket: "image-proxy", limit: 200, windowMs: 60_000 })) return;
 
   const { url, photo } = req.query as Record<string, string>;

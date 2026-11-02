@@ -15,10 +15,10 @@ import { canEditTrip } from "./_tripPermissions.js";
 
 import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { sendPush, logPush, newPushLogId } from "./_expoPush.js";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const auth = req.headers["authorization"] ?? "";
@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
 
   if (!rateLimit(req, res, { bucket: "notify-trip-update", limit: 30, windowMs: 60_000 })) return;
 
-  const { tripId, tripName, changes, excludeDeviceId } = req.body ?? {};
+  const { tripId, tripName, changes, excludeDeviceId } = (req.body ?? {}) as { tripId?: string; tripName?: string; changes?: string[]; excludeDeviceId?: string };
   if (!tripId || !tripName || !Array.isArray(changes) || !changes.length) {
     return res.status(400).json({ error: "tripId, tripName, and changes[] required" });
   }
@@ -51,7 +51,7 @@ export default async function handler(req: any, res: any) {
     for (const doc of allMembers) {
       const fields = doc.fields ?? {};
       const docTripId = decodeValue(fields.trip_id);
-      const deviceId = decodeValue(fields.device_id);
+      const deviceId = decodeValue(fields.device_id) as string | null;
       if (docTripId === tripId && deviceId && deviceId !== excludeDeviceId) {
         memberDeviceIds.add(deviceId);
       }
@@ -63,8 +63,8 @@ export default async function handler(req: any, res: any) {
 
     for (const doc of allTokens) {
       const fields = doc.fields ?? {};
-      const deviceId = decodeValue(fields.device_id);
-      const token = decodeValue(fields.token);
+      const deviceId = decodeValue(fields.device_id) as string | null;
+      const token = decodeValue(fields.token) as string | null;
       if (deviceId && memberDeviceIds.has(deviceId) && token) {
         tokens.push(token);
       }
@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
     }, logId);
 
     res.json({ sent: tokens.length, emailed, results });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[notify-trip-update] Error:", err);
     res.status(500).json({ error: "Internal error" });
   }

@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { verifyFirebaseToken } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
-import { runParse, runAssist, aiErrorToHttp } from "./_parseItineraryCore.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
+import { runParse, runAssist, aiErrorToHttp, type AssistInput, type ParseInput } from "./_parseItineraryCore.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -25,7 +25,7 @@ export default async function handler(req: any, res: any) {
   const url = new URL(req.url!, `http://${req.headers.host}`);
 
   if (url.searchParams.get("mode") === "assist") {
-    const { type, title, location, date, time, destination } = req.body ?? {};
+    const { type, title, location, date, time, destination } = (req.body ?? {}) as AssistInput;
     if (!title && !location) {
       return res.status(400).json({ error: "Provide at least a title or location" });
     }
@@ -39,7 +39,7 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  const { text, images, pdf } = req.body ?? {};
+  const { text, images, pdf } = (req.body ?? {}) as ParseInput;
   const hasText = text && typeof text === "string";
   const hasImages = Array.isArray(images) && images.length > 0;
   const hasPdf = pdf && typeof pdf === "string";

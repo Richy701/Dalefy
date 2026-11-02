@@ -1,6 +1,6 @@
 import { getDocument, queryDocuments, setDocument, deleteDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { record, membershipMatches } from "./_tripView.js";
 import { sendEmail } from "./_mailer.js";
 import { mediaReportedEmail } from "../src/lib/email/templates.js";
@@ -21,7 +21,7 @@ function decode(doc: FirestoreDoc | null): Record<string, unknown> {
  * The trip's staff keep a reported photo: every report on it is cleared. Staff are the trip's owner, or an
  * owner, admin or agent of the trip's organisation.
  */
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader("Cache-Control", "private, no-store");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 

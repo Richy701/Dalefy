@@ -1,9 +1,9 @@
 import { validateQuery, validateDate, requireGoogleApi } from "./_validate.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { searchPlaces } from "./_placesCore.js";
 import { errorToHttp } from "./_httpError.js";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!rateLimit(req, res, { bucket: "places", limit: 60, windowMs: 60_000 })) return;
 
   const { type, q, check_in, check_out } = req.query as Record<string, string>;

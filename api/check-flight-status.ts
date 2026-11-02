@@ -1,5 +1,7 @@
 import { queryDocumentsRange, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
+import type { AeroFlight } from "./_flightsCore.js";
+import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
@@ -12,7 +14,7 @@ import { sendPush, logPush, checkPushReceipts, newPushLogId } from "./_expoPush.
  * Runs every 15 minutes via Vercel Cron (see vercel.json); _flightSchedule.ts
  * decides which flights are due on each run.
  */
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   // Verify cron secret to prevent unauthorized calls
   if (!isCronRequest(req)) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -32,12 +34,12 @@ export default async function handler(req: any, res: any) {
     const since = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
     const tripDocs = await queryDocumentsRange("trips", "end_date", "GREATER_THAN_OR_EQUAL", since);
     const updates: FlightUpdate[] = [];
-    const tripsToUpdate: Map<string, { doc: FirestoreDoc; events: any[] }> = new Map();
+    const tripsToUpdate: Map<string, { doc: FirestoreDoc; events: StoredFlightEvent[] }> = new Map();
 
     for (const tripDoc of tripDocs) {
       const fields = tripDoc.fields ?? {};
-      const tripName = decodeValue(fields.name) ?? "Trip";
-      const rawEvents: any[] = decodeValue(fields.events) ?? [];
+      const tripName = (decodeValue(fields.name) ?? "Trip") as string;
+      const rawEvents = (decodeValue(fields.events) ?? []) as StoredFlightEvent[];
       let tripChanged = false;
 
       for (let i = 0; i < rawEvents.length; i++) {
@@ -55,7 +57,7 @@ export default async function handler(req: any, res: any) {
         // Save missing route details even when nothing changed: without the
         // departure zone, later runs would time their checks hours off
         for (const k of ["depTz", "arrTz", "depAirport", "arrAirport", "depCoords", "arrCoords"] as const) {
-          if (!ev[k] && result[k]) { rawEvents[i][k] = result[k]; tripChanged = true; }
+          if (!ev[k] && result[k]) { (rawEvents[i] as Record<string, unknown>)[k] = result[k]; tripChanged = true; }
         }
 
         // Revised times and the landing moment are saved quietly: the board shows how late a
@@ -154,9 +156,9 @@ export default async function handler(req: any, res: any) {
       tripsWritten: written.size,
       notified: sent.map(u => ({ flight: u.flightNum, changes: u.changes })),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("check-flight-status error:", err);
-    res.status(500).json({ error: err.message ?? "Internal error" });
+    res.status(500).json({ error: (err as { message?: string }).message ?? "Internal error" });
   }
 }
 
@@ -171,6 +173,34 @@ interface FlightUpdate {
   /** Set when the flight's status itself changed, e.g. "Delayed" */
   status?: string;
   changes: string[];
+}
+
+/** The fields of a stored trip event this job reads and writes; events carry others that pass through untouched. */
+interface StoredFlightEvent {
+  id?: string;
+  type?: string;
+  title?: string;
+  date?: string;
+  time?: string;
+  endTime?: string;
+  location?: string;
+  flightNum?: string;
+  status?: string;
+  terminal?: string;
+  arrTerminal?: string;
+  gate?: string;
+  arrGate?: string;
+  baggageBelt?: string;
+  aircraft?: string;
+  revisedTime?: string;
+  revisedEndTime?: string;
+  arrivedAt?: string;
+  depAirport?: string;
+  arrAirport?: string;
+  depTz?: string;
+  arrTz?: string;
+  depCoords?: [number, number];
+  arrCoords?: [number, number];
 }
 
 interface LiveFlightData {
@@ -216,14 +246,14 @@ async function lookupFlight(
     });
     clearTimeout(timeout);
     if (!resp.ok) return null;
-    const data = await resp.json();
+    const data: unknown = await resp.json();
 
-    const flights = (Array.isArray(data) ? data : [])
-      .filter((f: any) => f.codeshareStatus !== "IsCodeshared");
+    const flights = (Array.isArray(data) ? data as AeroFlight[] : [])
+      .filter((f) => f.codeshareStatus !== "IsCodeshared");
 
     if (flights.length === 0) return null;
 
-    const f = pickBestFlight(flights);
+    const f = pickBestFlight(flights)!;
     const dep = f.departure ?? {};
     const arr = f.arrival ?? {};
 
@@ -260,7 +290,7 @@ function formatTime(t: string): string {
 
 // ── Change detection ───────────────────────────────────────────────────────
 
-function detectChanges(stored: any, live: LiveFlightData): string[] {
+function detectChanges(stored: StoredFlightEvent, live: LiveFlightData): string[] {
   const changes: string[] = [];
 
   // Written as the lines a traveller reads in the notification, most useful first
@@ -311,16 +341,16 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
 
   const tokenByDevice = new Map<string, string>();
   for (const d of tokenDocs) {
-    const deviceId = decodeValue(d.fields?.device_id);
-    const token = decodeValue(d.fields?.token);
+    const deviceId = decodeValue(d.fields?.device_id) as string | null;
+    const token = decodeValue(d.fields?.token) as string | null;
     if (deviceId && token) tokenByDevice.set(deviceId, token);
   }
 
   const tokensByTrip = new Map<string, string[]>();
   const peopleByTrip = new Map<string, string[]>();
   for (const m of memberDocs) {
-    const tripId = decodeValue(m.fields?.trip_id);
-    const deviceId = decodeValue(m.fields?.device_id);
+    const tripId = decodeValue(m.fields?.trip_id) as string | null;
+    const deviceId = decodeValue(m.fields?.device_id) as string | null;
     if (tripId) peopleByTrip.set(tripId, [...(peopleByTrip.get(tripId) ?? []), String(deviceId ?? ""), String(decodeValue(m.fields?.uid) ?? "")]);
     const token = deviceId ? tokenByDevice.get(deviceId) : undefined;
     if (!tripId || !token) continue;

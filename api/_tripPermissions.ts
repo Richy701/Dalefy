@@ -1,4 +1,4 @@
-import { getDocument, decodeValue } from './_firebaseAdmin.js';
+import { getDocument, decodeValue, type FirestoreValue } from './_firebaseAdmin.js';
 import type { Impersonation } from './_verifyToken.js';
 
 /**
@@ -6,7 +6,7 @@ import type { Impersonation } from './_verifyToken.js';
  * its creator's alone, as in the Firestore rules. A "Sign in as" session reaches only the shared trips
  * of the team it was opened for.
  */
-export async function canEditTrip(uid: string, fields: Record<string, any>, imp: Impersonation | null = null): Promise<boolean> {
+export async function canEditTrip(uid: string, fields: Record<string, FirestoreValue>, imp: Impersonation | null = null): Promise<boolean> {
   const orgId = decodeValue(fields.organization_id);
   const isPrivate = decodeValue(fields.private) === true;
   if (imp && (orgId !== imp.org || isPrivate)) return false;

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { verifyFirebaseToken, impersonationOf } from "./_verifyToken.js";
-import { rateLimit } from "./_rateLimit.js";
+import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
 import { sendEmail } from "./_mailer.js";
 import { generateSignInLink } from "./_firebaseAuthAdmin.js";
 import { inviteEmail } from "../src/lib/email/templates.js";
@@ -81,7 +81,7 @@ async function runQuery(
 
 // ── Handler ─────────────────────────────────────────────────────────────────
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (!rateLimit(req, res, { bucket: "send-invite", limit: 30, windowMs: 10 * 60_000 })) return;
 
