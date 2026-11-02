@@ -20,10 +20,10 @@ import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
 import { daysUntil, tripFactLine, shortDay, destinationFlag } from "@/shared/tripSummary";
 import { useToast } from "@/context/ToastContext";
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   CalendarDots,
-  ShareNetwork, Bell, Plus,
+  Bell, Plus,
   WifiSlash,
   Info, Export, Camera, ChatsTeardrop,
 } from "phosphor-react-native";
@@ -70,7 +70,7 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 }
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
-  let t = cleanTitle(title, type, transferType);
+  const t = cleanTitle(title, type, transferType);
   return tidyTitleSeparators(t);
 }
 
@@ -90,7 +90,7 @@ function relativeTime(iso: string): string {
 
 
 // ── Trip Found Reveal ────────────────────────────────────────────────────────
-function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!nextTrip }: {
+function GreetingHero({ nextTrip, scrollY, overPhoto = !!nextTrip }: {
   nextTrip: Trip | undefined;
   isActive: boolean;
   onPress: (t: Trip) => void;
@@ -170,7 +170,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
   );
 }
 
-function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
+function makeGreetingStyles(C: ThemeColors, _isDark: boolean) {
   return StyleSheet.create({
     outer: {
       position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
@@ -518,7 +518,6 @@ export default function HomeScreen() {
       title: m ? m[2] : title,
       sub: [flightNo && !place.includes(flightNo) ? flightNo : "", place].filter(Boolean).join(", "),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextEvent]);
   const NextIcon = nextEvent ? categoryIcon(nextEvent.type, nextEvent.transferType) : CalendarDots;
 

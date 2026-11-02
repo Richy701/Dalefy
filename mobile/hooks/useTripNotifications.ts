@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useNotifications } from "@/context/NotificationContext";
-import type { Trip, TravelEvent, Notification } from "@/shared/types";
+import type { TravelEvent, Notification } from "@/shared/types";
 import { parseTripDate } from "@/shared/dates";
 import { getDepAirportTz, getDestinationTz, getUtcOffsetMins, todayInTz, tomorrowInTz } from "@/shared/timezones";
 

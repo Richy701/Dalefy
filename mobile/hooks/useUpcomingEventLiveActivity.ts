@@ -63,7 +63,7 @@ function cleanTitle(title: string, type?: string, transferType?: string): string
 /** Shorten title for Dynamic Island (~24 chars max), returned in CAPS. */
 function summarise(title: string): string {
   // Split on em/en dash or colon to get the core action
-  const core = title.split(/\s+[—–\-]\s+|\s*:\s*/)[0].trim();
+  const core = title.split(/\s+[—–-]\s+|\s*:\s*/)[0].trim();
   // Strip trailing venue/detail phrases for brevity
   const short = core
     .replace(/\s+at\s+.*$/i, "")

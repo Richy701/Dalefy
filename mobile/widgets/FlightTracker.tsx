@@ -39,7 +39,7 @@ export type FlightTrackerProps = {
 
 function FlightTrackerActivity(
   props: FlightTrackerProps,
-  environment: LiveActivityEnvironment
+  _environment: LiveActivityEnvironment
 ) {
   "widget";
 

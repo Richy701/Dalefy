@@ -71,8 +71,6 @@ export default function ProfileScreen() {
   const avatarColor = useMemo(() => colorFor(prefs.name || "?", themeC), [prefs.name, themeC]);
 
   // Next upcoming or active trip
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const heroTrip = useMemo(() => {
     const sorted = [...trips].sort((a, b) => a.start.localeCompare(b.start));
     const active = sorted.find(t => daysUntil(t.start) <= 0 && daysUntil(t.end) >= 0);

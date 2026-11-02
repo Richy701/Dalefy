@@ -16,11 +16,11 @@ import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  Clock, Hash,
-  Calendar, Users, Copy, CaretRight, CaretLeft,
-  AirplaneTakeoff, AirplaneLanding, Armchair, Door,
-  Ruler, MapPin, Phone,
+  Bed,
+  Hash,
+  Users, Copy, CaretRight, CaretLeft,
+  Armchair, Door,
+  MapPin, Phone,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
@@ -28,7 +28,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
-import { T, R, S, F, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
+import { T, R, S, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS, toLngLat, isSamePoint, distanceKm } from "@/shared/coordinates";
 import { useMemo, useCallback, useState, useEffect } from "react";
 import Animated from "react-native-reanimated";
@@ -286,20 +286,6 @@ function gcDistance(from: [number, number], to: [number, number]): number {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function gcBearing(from: [number, number], to: [number, number]): number {
-  const dLon = toRad(to[1] - from[1]);
-  const lat1 = toRad(from[0]);
-  const lat2 = toRad(to[0]);
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
-}
-
-function bearingLabel(deg: number): string {
-  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-  return dirs[Math.round(deg / 45) % 8];
-}
-
 function formatGap(ms: number): string {
   const hrs = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
@@ -314,17 +300,10 @@ function parseDuration(dur?: string): { h: number; m: number } | null {
   return null;
 }
 
-const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: PlaneIcon, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
-};
-
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity", dining: "Dining", transfer: "Transfer",
 };
 
-const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
-  car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass,
-};
 const TRANSFER_LABELS: Record<string, string> = {
   car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer",
 };
@@ -456,7 +435,6 @@ export default function EventDetailScreen() {
 
   // ── Non-flight unified detail ──
 
-  const Icon = ev.type === "transfer" ? (TRANSFER_ICONS[ev.transferType || "car"] || Car) : (TYPE_ICONS[ev.type] ?? Compass);
   const typeLabel = ev.type === "transfer" ? (TRANSFER_LABELS[ev.transferType || "car"] || "Transfer") : (TYPE_LABELS[ev.type] ?? "Event");
   const title = cleanEventTitle(ev.title, ev.type, ev.transferType);
   const isHotel = ev.type === "hotel";
@@ -878,10 +856,6 @@ function FlightDetailScreen({
     return Math.round(gcDistance(depCoords, arrCoords));
   }, [depCoords, arrCoords]);
 
-  const bearing = useMemo(() => {
-    if (!depCoords || !arrCoords) return null;
-    return gcBearing(depCoords, arrCoords);
-  }, [depCoords, arrCoords]);
 
   const depTime = ev.time ? formatTo24h(ev.time) : "";
   const arrTime = ev.endTime ? formatTo24h(ev.endTime) : "";

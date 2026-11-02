@@ -1,7 +1,6 @@
 // Bundled airline logos (128px, from Kiwi.com's public logo set), keyed by IATA code.
 // Bundled so a flight's logo never depends on a third-party URL; airlines not listed
 // show their two-letter code instead.
-/* eslint-disable @typescript-eslint/no-require-imports */
 const LOGOS: Record<string, number> = {
   "6E": require("@/assets/airlines/6E.png"),
   "A3": require("@/assets/airlines/A3.png"),

@@ -26,12 +26,11 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Animated, { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, S, shadow, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
+import { type ThemeColors, T, S, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
-import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
 import { getDestinationTz, IATA_TZ } from "@/shared/timezones";
 import { PreTripSheetContent, PostTripSheetContent, SectionHeader, StayCard, LinkRow, tripStays } from "@/components/TodayPreTrip";
@@ -60,7 +59,7 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 }
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
-  let t = cleanTitle(title, type, transferType);
+  const t = cleanTitle(title, type, transferType);
   return tidyTitleSeparators(t);
 }
 

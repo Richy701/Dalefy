@@ -65,7 +65,6 @@ import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
 // Deep links (widget, Live Activity, shared links) always land on top of the tabs, so the trip page keeps its back button
-// eslint-disable-next-line react-refresh/only-export-components
 export const unstable_settings = { anchor: "(tabs)" };
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
@@ -175,7 +174,6 @@ function AppStack() {
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data ?? {};
       const tripId = data.tripId as string | undefined;
-      const eventId = data.eventId as string | undefined;
       const location = data.location as string | undefined;
       // Opened from the lock screen, so it never reached the in-app list; the inbox sync fills in anything else
       syncInbox();

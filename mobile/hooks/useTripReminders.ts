@@ -71,13 +71,6 @@ function friendlyRoute(location: string): string {
 }
 
 /** Count nights between two date strings */
-function countNights(start: string, end: string): number | null {
-  const s = parseDate(start);
-  const e = parseDate(end);
-  if (!s || !e) return null;
-  return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 /** Find the next event after a given event in chronological order */
 function findNextEvent(events: TravelEvent[], afterEvent: TravelEvent, tripDestTz?: string): TravelEvent | null {
   const afterTime = parseEventDateTime(afterEvent, tripDestTz);

@@ -16,7 +16,7 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
-import { T, R, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constants/theme";
+import { T, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
@@ -132,7 +132,7 @@ export function NotificationList({ onClose }: Props) {
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
             </Text>
             <Pressable
-              onPress={() => { haptic.light(); unreadCount > 0 ? markAllRead() : clearAll(); }}
+              onPress={() => { haptic.light(); if (unreadCount > 0) markAllRead(); else clearAll(); }}
               style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
               accessibilityRole="button"
               accessibilityLabel={unreadCount > 0 ? "Mark all read" : "Clear all notifications"}

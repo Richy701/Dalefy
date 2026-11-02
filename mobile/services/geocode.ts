@@ -1,4 +1,4 @@
-import { LOCATION_COORDS, resolveCoords, AREA_PLACE_TYPES } from "@/shared/coordinates";
+import { resolveCoords, AREA_PLACE_TYPES } from "@/shared/coordinates";
 
 const TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN!;
 type Coord = [number, number]; // [lat, lng]

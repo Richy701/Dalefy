@@ -20,14 +20,12 @@ import Animated, {
   interpolate, Extrapolation,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { DragHandle } from "@/components/ui/DragHandle";
 import { MicroLabel } from "@/components/ui/MicroLabel";
-import { Pill } from "@/components/ui/Pill";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -814,7 +812,7 @@ const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onD
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MediaScreen() {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const { toast } = useToast();
   const { prefs } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);

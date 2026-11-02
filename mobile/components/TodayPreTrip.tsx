@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import {
-  WarningCircle, Clock, Calendar, Check, Images, FileText, CloudSun, MapPin, NavigationArrow, CaretRight,
+  WarningCircle, Clock, Calendar, Check, Images, FileText, MapPin, NavigationArrow, CaretRight,
 } from "phosphor-react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -12,7 +12,7 @@ import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { DaleEventCard } from "@/components/DaleEventCard";
-import { type ThemeColors, T, S, R, statusTone } from "@/constants/theme";
+import { type ThemeColors, T, S, statusTone } from "@/constants/theme";
 import { calendarDays, scheduledMinutes } from "@/shared/today";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
 import { sheetStyles } from "@/components/todaySheetStyles";
@@ -81,7 +81,7 @@ export function SectionHeader({ title, action, onAction, C, first }: { title: st
   );
 }
 
-function Card({ children, C, isDark, style }: { children: React.ReactNode; C: ThemeColors; isDark: boolean; style?: any }) {
+function Card({ children, style }: { children: React.ReactNode; C: ThemeColors; isDark: boolean; style?: any }) {
   // Boxless: groups sit on the page, rows separated by hairlines
   return <View style={[s.card, style]}>{children}</View>;
 }
@@ -209,7 +209,6 @@ export function PreTripSheetContent({ trip, todayISO, weatherCoord }: { trip: Tr
   const router = useRouter();
   const { isLeader } = useTripRole(trip.id);
   const daysUntil = Math.max(0, daysBetween(todayISO, trip.start));
-  const tripDays = daysBetween(trip.start, trip.end) + 1;
 
   const flight = useMemo(() => firstFlight(trip), [trip]);
 

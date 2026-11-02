@@ -34,11 +34,9 @@ import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 
 
 let CameraView: any = null;
-let useCameraPermissions: any = null;
 try {
   const cam = require("expo-camera");
   CameraView = cam.CameraView;
-  useCameraPermissions = cam.useCameraPermissions;
 } catch { /* native module not in this build */ }
 
 function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; onContinue: () => void }) {
