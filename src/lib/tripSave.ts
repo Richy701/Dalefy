@@ -40,7 +40,7 @@ export function tripPatch(before: Record<string, unknown>, desired: Record<strin
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(desired)) {
     if (same(before[key], value)) continue;
-    if (key === 'history') { patch.history = [...new Map([...(current.history as any[] || []), ...(value as any[] || [])].map(entry => [entry.id, entry])).values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 60); continue; }
+    if (key === 'history') { patch.history = [...new Map([...(current.history as Item[] || []), ...(value as Item[] || [])].map(entry => [entry.id, entry])).values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 60); continue; }
     // Derived summaries are recalculated from the committed traveller list.
     if (['attendees', 'pax_count', 'traveler_emails'].includes(key)) continue;
     if (same(before[key], current[key]) || same(value, current[key])) { patch[key] = value; continue; }
@@ -54,8 +54,11 @@ export function tripPatch(before: Record<string, unknown>, desired: Record<strin
   return patch;
 }
 
-export function syncLinkedOrganizer<T extends { organizer?: any; travelers?: any[]; published_snapshot?: any }>(data: T): T {
-  const sync = (organizer: any, travelers: any[]) => {
+type LinkedPerson = { id: string; name: string; email?: string; avatar?: string };
+type LinkedRoster = { organizer?: { travelerId?: string } | null; travelers?: LinkedPerson[] | null };
+
+export function syncLinkedOrganizer<T extends LinkedRoster & { published_snapshot?: LinkedRoster | null }>(data: T): T {
+  const sync = (organizer: LinkedRoster['organizer'], travelers: LinkedPerson[]) => {
     if (!organizer?.travelerId) return organizer;
     const person = travelers.find(person => person.id === organizer.travelerId);
     return person ? { ...organizer, name: person.name, email: person.email || '', avatar: person.avatar || '' } : null;

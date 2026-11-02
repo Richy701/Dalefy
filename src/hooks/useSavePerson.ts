@@ -9,7 +9,7 @@ import { storedImpersonation } from '@/services/impersonation';
 import { combinePersonDetails, changePersonOnTrip } from '@/lib/personChanges';
 import { deriveAttendeesString } from '@/lib/travelerSync';
 import { initialsFrom } from '@/lib/names';
-import type { User } from '@/types';
+import type { Trip, User } from '@/types';
 const clean = (value: unknown) => JSON.parse(JSON.stringify(value));
 
 export function useSavePerson() {
@@ -24,7 +24,7 @@ export function useSavePerson() {
       setDirectory([...directory.filter(p => p.id !== person.id && p.id !== duplicate?.id), person]);
       for (const trip of trips) {
         const changed = changePersonOnTrip({ ...trip, traveler_ids: trip.travelerIds, published_snapshot: trip.publishedSnapshot }, person, duplicate?.id);
-        updateTrip(trip.id, { travelers: changed.travelers, travelerIds: changed.traveler_ids, events: changed.events, organizer: changed.organizer, publishedSnapshot: changed.published_snapshot });
+        updateTrip(trip.id, { travelers: changed.travelers, travelerIds: changed.traveler_ids, events: changed.events, organizer: changed.organizer as Trip['organizer'], publishedSnapshot: changed.published_snapshot as Trip['publishedSnapshot'] });
       }
       return;
     }
@@ -63,7 +63,7 @@ export function useSavePerson() {
         const snapshot = current.get(trip.ref.path)!;
         if (!snapshot.exists()) throw new Error('A linked trip was removed. Refresh and try again.');
         const changed = changePersonOnTrip(snapshot.data()!, finalPerson, duplicate?.id);
-        const fields: Record<string, unknown> = { travelers: changed.travelers, traveler_ids: changed.traveler_ids, traveler_emails: [...new Set(changed.travelers.map((p: User) => (p.email || '').trim().toLowerCase()).filter(Boolean))], attendees: deriveAttendeesString(changed.travelers), pax_count: String(changed.travelers.length), organizer: changed.organizer || null };
+        const fields: Record<string, unknown> = { travelers: changed.travelers, traveler_ids: changed.traveler_ids, traveler_emails: [...new Set(changed.travelers.map(p => (p.email || '').trim().toLowerCase()).filter(Boolean))], attendees: deriveAttendeesString(changed.travelers), pax_count: String(changed.travelers.length), organizer: changed.organizer || null };
         if (duplicate) fields.events = changed.events;
         if (changed.published_snapshot) fields.published_snapshot = changed.published_snapshot;
         tx.update(trip.ref, clean(fields)); tx.set(doc(db, 'trip_versions', trip.id), { updated_at: serverTimestamp() });

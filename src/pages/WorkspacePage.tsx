@@ -808,8 +808,8 @@ export function WorkspacePage() {
         notes: data.notes || prev.notes,
       } : null);
       toast.success("AI filled in description and notes");
-    } catch (err: any) {
-      toast.error(err?.message || "AI assist unavailable");
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || "AI assist unavailable");
     } finally {
       setAiAssistLoading(false);
     }

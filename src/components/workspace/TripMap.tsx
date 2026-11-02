@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
+import type { GeoJSONSource } from "mapbox-gl";
 import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, SpinnerGap } from "@phosphor-icons/react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
@@ -228,7 +229,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
     function animatePlane(ts: number) {
       const map = mapRef.current?.getMap();
-      const source = map?.getSource("plane-pos") as { setData: (d: any) => void } | undefined;
+      const source = map?.getSource("plane-pos") as GeoJSONSource | undefined;
       if (source) {
         const elapsed = ts % TOTAL_DURATION;
         const arcIdx = Math.min(Math.floor(elapsed / ARC_ANIMATION_MS), arcs.length - 1);

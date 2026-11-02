@@ -307,7 +307,7 @@ export function DestinationsPage() {
       } as Parameters<typeof map.setFog>[0]);
       // Hide admin boundary lines in dark mode - they bleed through the banner
       if (isDark) {
-        map.getStyle().layers?.forEach((layer: any) => {
+        map.getStyle().layers?.forEach(layer => {
           if (layer.id.includes("boundary") || layer.id.includes("admin")) {
             map.setLayoutProperty(layer.id, "visibility", "none");
           }

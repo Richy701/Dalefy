@@ -1,9 +1,12 @@
+import type { ReactElement, ReactNode } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native-web';
 import { CaretLeft } from '@phosphor-icons/react';
 import { usePreview, useTheme } from './context';
 export { useRouter, useLocalSearchParams } from './context';
 export const Link = {};
-function Screen({ options }: any) {
+type BoxProps = { style?: unknown; children?: ReactNode };
+type GradientStops = { colors: string[]; locations?: number[] };
+function Screen({ options }: { options: { headerShown?: boolean; headerTransparent?: boolean; title?: string; headerTintColor?: string } }) {
   const { back, route } = usePreview(); const { C } = useTheme();
   if (options.headerShown === false) return null;
   const transparent = options.headerTransparent || !options.title;
@@ -15,17 +18,17 @@ function Screen({ options }: any) {
 export const Stack = { Screen };
 export const useSafeAreaInsets = () => ({ top:0, right:0, bottom:0, left:0 });
 export const SafeAreaView = View;
-export function LinearGradient({ colors, locations, start, end, style, children, ...props }: any) {
+export function LinearGradient({ colors, locations, start, end, style, children, ...props }: BoxProps & GradientStops & { start?: { x: number; y: number }; end?: { x: number; y: number }; [prop: string]: unknown }) {
   const x=(end?.x ?? 0)-(start?.x ?? 0); const y=(end?.y ?? 1)-(start?.y ?? 0);
   const angle=Math.atan2(x,-y)*180/Math.PI;
-  return <View {...props} style={[style,{backgroundImage:`linear-gradient(${angle}deg, ${colors.map((c:string,i:number)=>`${c} ${(locations?.[i] ?? i/(colors.length-1))*100}%`).join(',')})`}]}>{children}</View>;
+  return <View {...props} style={[style,{backgroundImage:`linear-gradient(${angle}deg, ${colors.map((c,i)=>`${c} ${(locations?.[i] ?? i/(colors.length-1))*100}%`).join(',')})`}]}>{children}</View>;
 }
-export default function MaskedView({maskElement,style,children}:any) {
+export default function MaskedView({maskElement,style,children}: BoxProps & { maskElement: ReactElement<GradientStops> }) {
   const {colors,locations}=maskElement.props;
-  const mask=`linear-gradient(to bottom, ${colors.map((c:string,i:number)=>`${c} ${(locations?.[i] ?? i/(colors.length-1))*100}%`).join(',')})`;
+  const mask=`linear-gradient(to bottom, ${colors.map((c,i)=>`${c} ${(locations?.[i] ?? i/(colors.length-1))*100}%`).join(',')})`;
   return <View style={[style,{maskImage:mask,WebkitMaskImage:mask}]}>{children}</View>;
 }
-export function BlurView({style,children,intensity}:any) { return <View style={[style,{backdropFilter:`blur(${(intensity || 50)/5}px)`}]}>{children}</View>; }
+export function BlurView({style,children,intensity}: BoxProps & { intensity?: number }) { return <View style={[style,{backdropFilter:`blur(${(intensity || 50)/5}px)`}]}>{children}</View>; }
 // Device-only side effects intentionally have no browser equivalent.
 export const selectionAsync = async () => {};
 export const impactAsync = async () => {};
@@ -36,6 +39,6 @@ export const setStringAsync = (text:string) => navigator.clipboard.writeText(tex
 export const openDocument = (url:string) => Linking.openURL(url);
 // expo-glass-effect: no Liquid Glass on the web, so callers take their plain fallback
 export const isLiquidGlassAvailable = () => false;
-export function GlassView({ style, children }: any) { return <View style={style}>{children}</View>; }
+export function GlassView({ style, children }: BoxProps) { return <View style={style}>{children}</View>; }
 // expo-symbols: SF Symbols only exist on Apple platforms
-export function SymbolView({ size = 18, style }: any) { return <View style={[{ width: size, height: size }, style]} />; }
+export function SymbolView({ size = 18, style }: { size?: number; style?: unknown }) { return <View style={[{ width: size, height: size }, style]} />; }

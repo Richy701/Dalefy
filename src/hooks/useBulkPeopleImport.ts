@@ -1,4 +1,4 @@
-import { changePersonOnTrip } from "@/lib/personChanges";
+import { changePersonOnTrip, type TripPeopleDoc } from "@/lib/personChanges";
 import { useQueryClient } from '@tanstack/react-query';
 import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
@@ -61,9 +61,9 @@ export function useBulkPeopleImport() {
           }
         }
         const updates = mergePeopleIntoTrip({ travelers: data.travelers || [], travelerIds: data.traveler_ids || [] }, savedPeople, affected[i].id === tripId);
-        let linked: Record<string, any> = { ...data, travelers: updates.travelers, traveler_ids: updates.travelerIds };
+        let linked: TripPeopleDoc = { ...data, travelers: updates.travelers, traveler_ids: updates.travelerIds };
         for (const person of savedPeople) linked = changePersonOnTrip(linked, person);
-        return { id: affected[i].id, ...updates, organizer: linked.organizer || undefined, publishedSnapshot: linked.published_snapshot, attendees: deriveAttendeesString(updates.travelers || []), paxCount: String(updates.travelers?.length || 0) };
+        return { id: affected[i].id, ...updates, organizer: linked.organizer || undefined, publishedSnapshot: linked.published_snapshot as Trip['publishedSnapshot'], attendees: deriveAttendeesString(updates.travelers || []), paxCount: String(updates.travelers?.length || 0) };
       });
       savedPeople.forEach((person, i) => transaction.set(directoryRefs[i], {
         organization_id: currentOrg?.id || null, user_id: user.id,

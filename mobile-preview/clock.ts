@@ -2,7 +2,7 @@
 let today: string | null = null;
 export function setPreviewDate(value: string | null) { today = value; }
 export class PreviewDate extends Date {
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     if (args.length) super(...args as [string]);
     else super(today ? `${today}T12:00:00` : Date.now());
   }

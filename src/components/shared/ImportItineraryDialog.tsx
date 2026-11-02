@@ -1073,6 +1073,22 @@ interface LivePartial {
   events: Array<{ type: string; date: string; time: string; title: string }>;
 }
 
+interface AiParsedEvent {
+  type: string;
+  date?: string;
+  time?: string;
+  endTime?: string;
+  title?: string;
+  location?: string;
+  description?: string;
+  notes?: string;
+  checkin?: string;
+  checkout?: string;
+  meetingPoint?: string;
+  contactName?: string;
+  contactPhone?: string;
+}
+
 async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string, links: DocLink[] = [], onPartial?: (partial: LivePartial) => void): Promise<ParsedTrip> {
   const images = extractedMedia
     .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
@@ -1128,8 +1144,8 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
   }
 
   // Map AI response to ParsedTrip shape
-  const travelers: string[] = (data.travelers ?? []).map((t: any) => t.name);
-  const events: ParsedEvent[] = (data.events ?? []).map((ev: any, i: number) => {
+  const travelers: string[] = (data.travelers ?? []).map((t: { name: string }) => t.name);
+  const events: ParsedEvent[] = (data.events ?? []).map((ev: AiParsedEvent, i: number) => {
     const isHotel = ev.type === "hotel";
     const checkin = ev.checkin ?? "";
     const checkout = ev.checkout ?? "";
@@ -1156,7 +1172,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     ? { name: data.organizer.name, company: data.organizer.company, email: data.organizer.email, phone: data.organizer.phone }
     : undefined;
 
-  const info: ParsedInfo[] = (data.info ?? []).map((i: any) => ({
+  const info: ParsedInfo[] = (data.info ?? []).map((i: Partial<ParsedInfo>) => ({
     title: toTitleCase(i.title ?? ""),
     body: i.body ?? "",
   }));
@@ -1414,8 +1430,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       }
       if (!text.trim() && media.length === 0 && !pdfDataUrl) throw new Error("No readable text found in this file.");
       await processText(text, media, pdfDataUrl, links);
-    } catch (e: any) {
-      setError(e.message ?? "Could not read this file.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read this file.");
       setStep("upload");
     }
   };
@@ -1949,8 +1965,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     setStep("extracting");
                     try {
                       await processText(text);
-                    } catch (e: any) {
-                      setError(e.message ?? "Could not parse this text.");
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not parse this text.");
                       setStep("upload");
                     }
                   }}

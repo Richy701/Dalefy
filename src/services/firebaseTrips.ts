@@ -373,7 +373,7 @@ export async function unlinkTraveler(tripId: string, travelerId: string): Promis
 /** A roster entry someone picked in the app, so removing them can take it off the trip too */
 export interface RosterLink { tripId: string; travelerId: string }
 
-const rosterLinks = (docs: { data(): Record<string, any> }[]): RosterLink[] =>
+const rosterLinks = (docs: { data(): Record<string, unknown> }[]): RosterLink[] =>
   docs.map(d => ({ tripId: d.data().trip_id, travelerId: d.data().linked_traveler_id }))
     .filter((l): l is RosterLink => typeof l.tripId === "string" && typeof l.travelerId === "string" && !!l.travelerId);
 
