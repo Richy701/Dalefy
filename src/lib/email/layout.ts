@@ -126,34 +126,33 @@ export function eyebrowLabel(text: string): string {
   return `<div style="font-family:${FONT_BODY};font-size:11px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:${PALETTE.muted};">${escapeHtml(text)}</div>`;
 }
 
-/** A row of label/value cells separated by hairlines above and below. */
-export function detailStrip(items: Array<{ label: string; value: string }>, layout: "rows" | "grid" = "rows"): { html: string; text: string } {
-  const values = items.filter(i => i.value);
-  if (layout === "grid") {
-    const rows: string[] = [];
-    for (let index = 0; index < values.length; index += 2) {
-      const pair = values.slice(index, index + 2);
-      rows.push(`<tr>${pair.map((item, column) => `<td width="50%" valign="top" style="padding:14px 16px;${index ? `border-top:1px solid ${PALETTE.border};` : ""}${column ? `border-left:1px solid ${PALETTE.border};` : ""}overflow-wrap:anywhere;word-wrap:break-word;">
-        <div style="font-family:${FONT_BODY};font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(item.label)}</div>
-        <div style="margin-top:4px;font-family:${FONT_BODY};font-size:15px;font-weight:600;line-height:1.4;color:${PALETTE.ink};">${escapeHtml(item.value)}</div>
-      </td>`).join("")}${pair.length === 1 ? '<td width="50%"></td>' : ""}</tr>`);
-    }
-    return {
-      html: values.length ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="table-layout:fixed;border:1px solid ${PALETTE.border};border-radius:8px;background:${PALETTE.card};overflow:hidden;">${rows.join("")}</table>` : "",
-      text: values.map(item => `${item.label}: ${item.value}`).join("\n"),
-    };
+/** Trip dates as a boarding-pass style line: depart, nights, return, then the place. */
+export function journeyStrip(input: { start: string; end: string; between?: string; place?: string | null }): string {
+  const label = (text: string, align: string) => `<div style="font-family:${FONT_BODY};font-size:11px;line-height:1.5;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:${PALETTE.muted};text-align:${align};">${escapeHtml(text)}</div>`;
+  const date = (text: string, align: string) => `<div class="journey-date" style="margin-top:4px;font-family:${FONT_BODY};font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-0.3px;color:${PALETTE.ink};text-align:${align};white-space:nowrap;">${escapeHtml(text)}</div>`;
+  const rule = `<div style="height:1px;line-height:1px;font-size:1px;background:${PALETTE.border};">&nbsp;</div>`;
+  const place = input.place?.trim();
+
+  let dates = "";
+  if (input.start && input.end) {
+    const between = input.between
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+          <td width="50%" valign="middle">${rule}</td>
+          <td valign="middle" style="padding:0 8px;font-family:${FONT_BODY};font-size:12px;line-height:1.5;font-weight:500;color:${PALETTE.muted};white-space:nowrap;">${escapeHtml(input.between)}</td>
+          <td width="50%" valign="middle">${rule}</td>
+        </tr></table>`
+      : rule;
+    dates = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+        <td valign="bottom">${label("Depart", "left")}${date(input.start, "left")}</td>
+        <td class="journey-between" width="100%" valign="bottom" style="padding:0 12px 3px;">${between}</td>
+        <td valign="bottom">${label("Return", "right")}${date(input.end, "right")}</td>
+      </tr></table>`;
+  } else if (input.start || input.end) {
+    dates = `${label(input.between || (input.start ? "Depart" : "Return"), "left")}${date(input.start || input.end, "left")}`;
   }
-  const cells = values.map(i => `
-      <tr>
-        <td width="32%" style="padding:12px 16px;border-bottom:1px solid ${PALETTE.border};vertical-align:top;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(i.label)}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid ${PALETTE.border};font-size:14px;line-height:1.5;color:${PALETTE.ink};font-weight:600;overflow-wrap:anywhere;">${escapeHtml(i.value)}</td>
-      </tr>`).join("");
-  const html = values.length ? `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PALETTE.raised};border-radius:8px;overflow:hidden;">
-      ${cells}
-    </table>` : "";
-  const text = items.filter(i => i.value).map(i => `${i.label}: ${i.value}`).join("\n");
-  return { html, text };
+
+  const placeHtml = place ? `<div style="${dates ? "margin-top:14px;" : ""}font-family:${FONT_BODY};font-size:15px;line-height:1.5;font-weight:500;color:${PALETTE.body};overflow-wrap:anywhere;">${escapeHtml(place)}</div>` : "";
+  return dates || placeHtml ? `<div style="padding:8px 0;">${dates}${placeHtml}</div>` : "";
 }
 
 /** A bulleted list on a raised card. */
@@ -178,14 +177,21 @@ export interface SignatureInput {
 }
 
 export function signature(s: SignatureInput): { html: string; text: string } {
+  const contact = s.phone || s.email ? `<td class="stack-col signature-contact" width="50%" valign="top" align="right" style="padding-left:16px;text-align:right;overflow-wrap:anywhere;">
+          ${s.phone ? `<div style="font-size:13px;line-height:1.5;margin-top:2px;"><a href="tel:${escapeHtml(s.phone.replace(/\s+/g, ""))}" style="color:${PALETTE.ink};text-decoration:none;">${escapeHtml(s.phone)}</a></div>` : ""}
+          ${s.email ? `<div style="font-size:13px;line-height:1.5;margin-top:2px;"><a href="mailto:${escapeHtml(s.email)}" style="color:${PALETTE.ink};text-decoration:underline;">${escapeHtml(s.email)}</a></div>` : ""}
+        </td>` : "";
   const html = `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid ${PALETTE.border};">
       <tr><td style="padding-top:20px;">
         ${eyebrowLabel(s.heading)}
-        <div style="margin-top:6px;font-size:16px;font-weight:600;color:${PALETTE.ink};">${escapeHtml(s.name)}</div>
-        ${s.line ? `<div style="font-size:13px;color:${PALETTE.muted};margin-top:2px;">${escapeHtml(s.line)}</div>` : ""}
-        ${s.phone ? `<div style="font-size:13px;margin-top:8px;"><a href="tel:${escapeHtml(s.phone.replace(/\s+/g, ""))}" style="color:${PALETTE.ink};text-decoration:none;">${escapeHtml(s.phone)}</a></div>` : ""}
-        ${s.email ? `<div style="font-size:13px;margin-top:2px;"><a href="mailto:${escapeHtml(s.email)}" style="color:${PALETTE.ink};text-decoration:underline;">${escapeHtml(s.email)}</a></div>` : ""}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:6px;"><tr>
+          <td class="stack-col" valign="top" ${contact ? 'width="50%"' : ""} style="overflow-wrap:anywhere;">
+            <div style="font-size:16px;font-weight:600;color:${PALETTE.ink};">${escapeHtml(s.name)}</div>
+            ${s.line ? `<div style="font-size:13px;color:${PALETTE.muted};margin-top:2px;">${escapeHtml(s.line)}</div>` : ""}
+          </td>
+          ${contact}
+        </tr></table>
       </td></tr>
     </table>`;
   const text = [s.heading, s.name, s.line, s.phone, s.email].filter(Boolean).join("\n");
@@ -216,18 +222,20 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
     ${editorial || defaultLogo || !logoUrl ? `<td style="font-family:${FONT_BODY};font-size:24px;font-weight:700;letter-spacing:-0.5px;line-height:1.3;color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(brandName)}</td>` : ""}
   </tr></table>`;
 
+  const footerLinks = `<a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a>`;
+
   const cta = input.cta ? `
       <tr><td class="content-pad" style="padding:28px 40px 0;">
         <!--[if mso]>
-        <v:roundrect href="${escapeHtml(input.cta.url)}" style="height:52px;v-text-anchor:middle;width:260px;" arcsize="15%" stroke="f" fillcolor="${accent}">
+        <v:roundrect href="${escapeHtml(input.cta.url)}" style="height:52px;v-text-anchor:middle;width:${editorial ? "518px" : "260px"};" arcsize="15%" stroke="f" fillcolor="${accent}">
           <w:anchorlock/>
           <center style="color:${accentFg};font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">${escapeHtml(input.cta.label)}</center>
         </v:roundrect>
         <![endif]-->
         <!--[if !mso]><!-->
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="border-radius:8px;background:${accent};mso-padding-alt:16px 28px;">
-            <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:16px 28px;font-family:${FONT_BODY};font-size:14px;font-weight:600;color:${accentFg};text-decoration:none;border:1px solid ${accent};border-radius:8px;">${escapeHtml(input.cta.label)}</a>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"${editorial ? ' width="100%"' : ""}><tr>
+          <td ${editorial ? 'align="center" ' : ""}style="border-radius:8px;background:${accent};mso-padding-alt:16px 28px;">
+            <a href="${escapeHtml(input.cta.url)}" style="display:${editorial ? "block;text-align:center" : "inline-block"};padding:16px 28px;font-family:${FONT_BODY};font-size:14px;font-weight:600;color:${accentFg};text-decoration:none;border:1px solid ${accent};border-radius:8px;">${escapeHtml(input.cta.label)}</a>
           </td>
         </tr></table>
         <!--<![endif]-->
@@ -264,6 +272,16 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
     .itinerary-title { font-size:34px !important; }
     .itinerary-image { height:auto !important; }
     .email-card { border-radius:12px !important; }
+    .journey-date { font-size:17px !important; }
+  }
+  @media only screen and (max-width:480px) {
+    .stack-col { display:block !important; width:100% !important; padding-left:0 !important; text-align:left !important; }
+    .signature-contact { padding-top:8px !important; }
+  }
+  @media only screen and (max-width:360px) {
+    .footer-col { display:block !important; width:100% !important; text-align:left !important; }
+    .journey-date { font-size:15px !important; }
+    .journey-between { padding-left:6px !important; padding-right:6px !important; }
   }
 </style>
 </head>
@@ -300,9 +318,12 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 
       <tr><td class="content-pad" style="padding:32px 40px 36px;">
         <div style="height:1px;background:${PALETTE.border};margin-bottom:22px;"></div>
-        ${editorial ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:18px;letter-spacing:-0.5px;font-weight:700;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></p>` : ""}
+        ${editorial ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:12px;"><tr>
+          <td class="footer-col" valign="middle" style="font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:18px;letter-spacing:-0.5px;font-weight:700;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></td>
+          <td class="footer-col" valign="middle" align="right" style="font-size:12px;line-height:1.5;color:${PALETTE.muted};text-align:right;white-space:nowrap;">${footerLinks}</td>
+        </tr></table>` : ""}
         <p style="margin:0;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText.replace("Sent by Dalefy using Dalefy.", "Sent by Dalefy."))}</p>
-        <p style="margin:6px 0 0;font-size:12px;line-height:1.5;color:${PALETTE.muted};"><a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a></p>
+        ${editorial ? "" : `<p style="margin:6px 0 0;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${footerLinks}</p>`}
       </td></tr>
 
     </table>

@@ -5,7 +5,7 @@
  */
 
 import {
-  renderEmailShell, paragraphs, detailStrip, signature, escapeHtml, PALETTE,
+  renderEmailShell, paragraphs, journeyStrip, signature, escapeHtml, PALETTE,
 } from "./email/layout.js";
 
 export { escapeHtml };
@@ -47,6 +47,7 @@ function dateRange(start: string, end: string): string {
   const s = parseDate(start);
   const e = parseDate(end);
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return "Dates to be confirmed";
+  if (s.toDateString() === e.toDateString()) return fmt(e, { day: "numeric", month: "long", year: "numeric" });
   const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
   const first = sameMonth ? fmt(s, { day: "numeric" }) : fmt(s, { day: "numeric", month: "long" });
   return `${first} - ${fmt(e, { day: "numeric", month: "long", year: "numeric" })}`;
@@ -69,12 +70,19 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
   const body = paragraphs(input.message);
 
 
-  const details = detailStrip([
-    { label: "Departure", value: fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "short" }) },
-    { label: "Return", value: fmt(parseDate(input.end), { weekday: "short", day: "numeric", month: "short" }) },
-    { label: "Destination", value: input.destination ?? "" },
-    { label: "Duration", value: datesConfirmed ? (nights === 0 ? "Day trip" : `${nights} night${nights === 1 ? "" : "s"}`) : "" },
-  ], "grid");
+  const departs = fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "short" });
+  const returns = fmt(parseDate(input.end), { weekday: "short", day: "numeric", month: "short" });
+  const duration = datesConfirmed ? (nights === 0 ? "Day trip" : `${nights} night${nights === 1 ? "" : "s"}`) : "";
+  const hasDates = Boolean(departs || returns);
+  const details = {
+    html: hasDates ? journeyStrip({ start: departs, end: datesConfirmed && nights === 0 ? "" : returns, between: duration, place: input.destination }) : "",
+    text: [
+      departs && `Departure: ${departs}`,
+      returns && `Return: ${returns}`,
+      input.destination && `Destination: ${input.destination}`,
+      duration && `Duration: ${duration}`,
+    ].filter(Boolean).join("\n"),
+  };
 
   const sig = org ? signature({
     heading: "Your travel organiser",
@@ -85,15 +93,16 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
   }) : null;
 
   const pin = input.shortCode ? {
-    html: `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${PALETTE.muted};">Or join in ${escapeHtml(input.platformName)} with PIN <strong style="color:${PALETTE.ink};letter-spacing:2px;">${escapeHtml(input.shortCode)}</strong></p>`,
+    html: `<p style="margin:14px 0 0;font-size:13px;line-height:1.6;color:${PALETTE.muted};">Or join in ${escapeHtml(input.platformName)} with PIN <strong style="color:${PALETTE.ink};letter-spacing:2px;">${escapeHtml(input.shortCode)}</strong></p>`,
     text: `Join in ${input.platformName} with PIN ${input.shortCode}`,
   } : null;
   const ctaNote = {
-    html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>${pin?.html ?? ""}`,
+    html: `${pin?.html ?? ""}<p style="margin:${pin ? "6px" : "14px"} 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>`,
     text: pin?.text ?? "",
   };
 
-  const subtitle = `${dateRange(input.start, input.end)}${input.destination ? ` · ${input.destination}` : ""}`;
+  // The journey strip already shows these on invites and reminders; other templates have no strip.
+  const subtitle = showDetails && hasDates ? undefined : `${dateRange(input.start, input.end)}${input.destination ? ` · ${input.destination}` : ""}`;
 
   const { html, text } = renderEmailShell({
     brand: {
@@ -111,7 +120,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     imageAfterTitle: true,
     bodyHtml: body.html,
     bodyText: `${body.text}${showDetails ? `\n\n${details.text}` : ""}`,
-    contextHtml: showDetails ? details.html : undefined,
+    contextHtml: showDetails && details.html ? details.html : undefined,
     cta: { label: variant === "update" ? "Review updated itinerary" : variant === "reminder" ? "Check your travel plans" : "View your itinerary", url: input.shareUrl },
     ctaNoteHtml: ctaNote.html,
     ctaNoteText: ctaNote.text,
