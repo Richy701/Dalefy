@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PaperPlaneTilt, Plus, PlusCircle, Trash, PencilSimple, UploadSimple } from "@phosphor-icons/react";
 import { timeAgo } from "@/lib/timeAgo";
@@ -32,8 +32,11 @@ function dayLabel(iso: string, now = new Date()) {
 
 const initials = (name: string) => name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-/** The latest changes across every trip, by day: who did what, repeats folded together */
-export function RecentActivity({ trips, limit = 10 }: { trips: Trip[]; limit?: number }) {
+/** Rows shown when the card isn't filling a column, on a phone or tablet */
+const STACKED_ROWS = 10;
+
+/** The latest changes across every trip, by day: who did what, a day's repeats folded together. On desktop it shows the whole rows that fit its height */
+export function RecentActivity({ trips, limit = 40 }: { trips: Trip[]; limit?: number }) {
   const navigate = useNavigate();
   const photoOf = useTeamPhoto();
   const days = useMemo(() => {
@@ -41,25 +44,47 @@ export function RecentActivity({ trips, limit = 10 }: { trips: Trip[]; limit?: n
     const sorted = trips
       .flatMap(t => (t.history ?? []).map(h => ({ ...h, tripId: t.id, tripName: t.name, image: images.get(t.id) })))
       .sort((a, b) => b.at.localeCompare(a.at));
-    // The same person doing the same thing to the same trip, back to back, is one row
+    // The same person doing the same thing to the same trip on the same day is one row, at its latest time
     const rows: Array<(typeof sorted)[number] & { times: number }> = [];
+    const folded = new Map<string, (typeof rows)[number]>();
     for (const e of sorted) {
-      const last = rows[rows.length - 1];
-      if (last && last.tripId === e.tripId && last.by === e.by && last.summary === e.summary) last.times += 1;
-      else rows.push({ ...e, times: 1 });
-      if (rows.length > limit) { rows.pop(); break; }
+      const key = JSON.stringify([dayLabel(e.at), e.tripId, e.by, e.summary]);
+      const seen = folded.get(key);
+      if (seen) { seen.times += 1; continue; }
+      if (rows.length === limit) break;
+      const row = { ...e, times: 1 };
+      folded.set(key, row);
+      rows.push(row);
     }
-    const groups: Array<{ label: string; rows: typeof rows }> = [];
-    for (const r of rows) {
+    const groups: Array<{ label: string; first: number; rows: typeof rows }> = [];
+    rows.forEach((r, i) => {
       const label = dayLabel(r.at);
       const g = groups[groups.length - 1];
-      if (g && g.label === label) g.rows.push(r); else groups.push({ label, rows: [r] });
-    }
+      if (g && g.label === label) g.rows.push(r); else groups.push({ label, first: i, rows: [r] });
+    });
     return groups;
   }, [trips, limit]);
 
+  // Rows past the bottom edge stay laid out but invisible, so measuring them can't change the answer
+  const listRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(STACKED_ROWS);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const measure = () => {
+      const bottom = list.getBoundingClientRect().bottom - parseFloat(getComputedStyle(list).paddingBottom);
+      const rows = [...list.querySelectorAll("li")];
+      const over = rows.findIndex(r => r.getBoundingClientRect().bottom > bottom);
+      setFit(over === -1 ? rows.length : over);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [days]);
+
   return (
-    <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <section className="flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="px-5 pt-5 pb-3">
         <h2 className="text-base font-semibold tracking-tight text-foreground leading-none">Recent activity</h2>
         <p className="text-xs text-muted-foreground mt-1">What you and your team changed on trips</p>
@@ -69,20 +94,20 @@ export function RecentActivity({ trips, limit = 10 }: { trips: Trip[]; limit?: n
           Changes you and your team make to trips show up here.
         </p>
       ) : (
-        <div className="px-5 pb-4 space-y-4">
+        <div ref={listRef} className="flex-1 min-h-0 overflow-hidden px-5 pb-4 space-y-4">
           {days.map(day => (
-            <div key={day.label}>
+            <div key={day.label} className={`${day.first >= STACKED_ROWS ? "max-lg:hidden" : ""} ${day.first >= fit ? "lg:invisible" : ""}`}>
               <div className="flex items-center gap-3 mb-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{day.label}</p>
                 <div className="h-px flex-1 bg-border" />
               </div>
               <ul>
-                {day.rows.map(e => {
+                {day.rows.map((e, i) => {
                   const { Icon, tone } = kindOf(e.summary);
                   const who = properName(e.by || "Someone");
                   const what = /^[A-Z][a-z]/.test(e.summary) ? e.summary.charAt(0).toLowerCase() + e.summary.slice(1) : e.summary;
                   return (
-                    <li key={`${e.tripId}-${e.id}`}>
+                    <li key={`${e.tripId}-${e.id}`} className={`${day.first + i >= STACKED_ROWS ? "max-lg:hidden" : ""} ${day.first + i >= fit ? "lg:invisible" : ""}`}>
                       <button
                         type="button"
                         onClick={() => navigate(`/trip/${e.tripId}`)}

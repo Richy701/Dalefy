@@ -693,8 +693,8 @@ export function DashboardPage() {
                 </div>
               )}
 
-              {/* ── Recent activity: grows to the right column's height, so both columns end level ── */}
-              <div className="flex-1 flex flex-col [&>section]:flex-1">
+              {/* ── Recent activity: takes the right column's height without adding to it, so both columns end level ── */}
+              <div className="relative flex-1 flex flex-col lg:min-h-80 [&>section]:flex-1 lg:[&>section]:absolute lg:[&>section]:inset-0">
                 <RecentActivity trips={trips} />
               </div>
 
