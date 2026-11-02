@@ -69,6 +69,7 @@ import { ActivitySearch } from "@/components/workspace/ActivitySearch";
 import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages } from "@/services/imageSearch";
+import { FlightTimeWarnings } from "@/components/workspace/FlightTimeWarnings";
 import { lookupFlight } from "@/services/serpapi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
@@ -1801,6 +1802,17 @@ export function WorkspacePage() {
                       </div>
                     );
                   })()}
+
+                  {!isViewer && !isDemo && (
+                    <FlightTimeWarnings
+                      events={trip.events}
+                      onUseLive={(ev, times) => {
+                        const latest = latestTripRef.current?.events.find(e => e.id === ev.id) ?? ev;
+                        updateEvent(trip.id, { ...latest, ...(times.time ? { time: times.time } : {}), ...(times.endTime ? { endTime: times.endTime } : {}) });
+                        toast.success(`${ev.flightNum} updated. Publish to show travellers.`);
+                      }}
+                    />
+                  )}
 
                   <div className="space-y-8">
                     {groupedEvents.length > 0 ? (
