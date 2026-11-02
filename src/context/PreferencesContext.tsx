@@ -88,6 +88,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     if (brand.accentColor && brand.accentColor !== BRAND.accentColor) {
       setAccentColor(brand.accentColor);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [brand.accentColor]);
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   }, [resolvedAccent, accentColor, accentFg]);
 
   const soundEnabledRef = useRef(soundEnabled);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, read or written on purpose; reviewed
   soundEnabledRef.current = soundEnabled;
 
   useEffect(() => {

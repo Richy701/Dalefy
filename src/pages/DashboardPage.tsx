@@ -99,7 +99,7 @@ function getFirstEventTime(trip: Trip): string {
 
 function useLiveCountdown(trip: Trip | undefined) {
   const target = trip ? getFirstEventTime(trip) : undefined;
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!target) return;
     // Minutes are the smallest unit shown, so a slow tick keeps it calm

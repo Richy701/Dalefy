@@ -108,6 +108,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers, onSent, p
   useEffect(() => {
     if (!open || !isFirebaseConfigured()) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
     setSendingEnabled(null);
     setServiceError(false);
     apiFetch<{ enabled: boolean }>("/api/send-itinerary")

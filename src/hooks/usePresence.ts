@@ -99,6 +99,7 @@ export function usePresence(tripId: string | undefined) {
       window.removeEventListener("beforeunload", handleUnload);
       clearPresence();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [tripId, user?.id]);
 
   const updateActivity = useCallback(

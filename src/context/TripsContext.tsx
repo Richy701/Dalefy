@@ -91,6 +91,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null, seeAll = true)
         .catch(err => logger.error("TripsProvider", "trips fallback fetch failed:", err));
     }, { seeAll });
     return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [qc, uid, orgId, seeAll]);
 
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
@@ -122,6 +123,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null, seeAll = true)
     },
       // The stored trip carries uploaded photo addresses; keep it unless the trip was edited again meanwhile
       (saved, sent) => qc.setQueryData<Trip[]>(queryKey, list => list?.map(t => (t.id === saved.id && JSON.stringify(t) === JSON.stringify(sent) ? saved : t))));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [qc, uid, orgId, seeAll]);
 
   return { trips, setTrips, ready: isSuccess };

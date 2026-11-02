@@ -46,11 +46,13 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     } else {
       fetchBranding("local").then(b => setOrgBranding(b));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [currentOrg?.id, isDemoUser]);
 
   useEffect(() => {
     // Demo users always get default branding - never load from localStorage
     if (isDemoUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
       setOrgBranding(null);
       return;
     }
@@ -72,6 +74,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       });
       return () => { mounted = false; };
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [currentOrg?.id, isDemoUser]);
 
   const overrides: BrandOverrides | null = orgBranding

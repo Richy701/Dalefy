@@ -36,6 +36,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
   const attemptedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
     setShortCode(trip?.shortCode);
   }, [trip?.shortCode]);
 

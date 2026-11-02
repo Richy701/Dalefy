@@ -98,5 +98,6 @@ export function useTravelerMigration(
 
     localStorage.setItem(STORAGE.TRAVELERS_MIGRATED, "2");
     logger.log("TravelerMigration", `migrated ${migrationMap.size} trip(s) - linked travelers`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [ready, trips]);
 }

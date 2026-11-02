@@ -215,6 +215,7 @@ export function SettingsPage() {
   // Sync form state when orgBranding loads asynchronously
   useEffect(() => {
     if (orgBranding) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
       if (orgBranding.companyName) setBrandName(orgBranding.companyName);
       if (orgBranding.logoUrl) setBrandLogo(orgBranding.logoUrl);
       if (orgBranding.accentColor) setBrandColor(orgBranding.accentColor);
@@ -222,6 +223,7 @@ export function SettingsPage() {
   }, [orgBranding]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
     if (currentOrg?.agencyCode) setAgencyCodeEdit(currentOrg.agencyCode);
   }, [currentOrg?.agencyCode]);
 

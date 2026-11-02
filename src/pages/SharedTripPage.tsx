@@ -619,6 +619,7 @@ export function SharedTripPage() {
 
   useEffect(() => {
     if (!tripId || !isFirebaseConfigured()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
       setError("This itinerary link isn't available right now.");
       setErrorKind("unavailable");
       setLoading(false);

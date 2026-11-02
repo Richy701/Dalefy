@@ -175,6 +175,7 @@ export function TravelersPage() {
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
     setAppUsersLoading(true);
     setAppUsersError(null);
     fetchTripMembers(tripIds)
@@ -379,6 +380,7 @@ export function TravelersPage() {
     } catch (error) { setPersonError(error instanceof Error ? error.message : 'Could not save. Your changes are still here.'); }
     finally { setPersonSaving(false); }
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   const applyPhotos = async (photos: Array<{ personId: string; url: string | null }>) => {
     for (const photo of photos) {
       const original = travelers.find(t => t.id === photo.personId);

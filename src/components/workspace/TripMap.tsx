@@ -191,7 +191,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       }
     })().catch(() => { if (!cancelled) setResolving(false); });
     return () => { cancelled = true; };
-  }, [trip.events]);
+  }, [trip.events, trip.destination, trip.start]);
 
   const allCoords = useMemo(() => points.map(p => p.coords), [points]);
 

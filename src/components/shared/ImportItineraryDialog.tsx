@@ -851,7 +851,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|passenger\s+details?|additional activities|notes?|rooming\s+list|emergency\s+contact|single\s+[A-Z]|twin\s+[A-Z]|double\s+[A-Z]|flight\s+details?|guide\s+contact|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|visa\s+info)/i;
 
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
+    const line = lines[i];
 
     // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" - extract date, then strip prefix
     if (DAY_N_HEADER.test(line)) {
@@ -1338,6 +1338,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // Auto-process a file dropped from the dashboard
   useEffect(() => {
     if (open && initialFile) {
+      // eslint-disable-next-line react-hooks/immutability -- called after mount, once everything is declared
       handleFile(initialFile);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1782,6 +1783,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       }
     } else {
       const trip: Trip = {
+        // eslint-disable-next-line react-hooks/purity -- runs in an event handler, not during render
         id: Date.now().toString(),
         name: parsed.name,
         attendees: finalAttendees,

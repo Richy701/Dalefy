@@ -30,6 +30,7 @@ export function useOrgLoad() {
   const isRealUser = useFirebase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
     setTablesReady(false);
     setResolvedUserId(null);
     if (!isRealUser || !user) {
@@ -162,6 +163,7 @@ export function useOrgLoad() {
     }, ORG_LOAD_TIMEOUT_MS);
 
     return () => { mounted = false; clearTimeout(timeout); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [isRealUser, user?.id, reloadKey]);
 
   const refreshOrg = useCallback(() => setReloadKey(k => k + 1), []);

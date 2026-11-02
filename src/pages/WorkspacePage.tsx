@@ -167,7 +167,9 @@ export function WorkspacePage() {
     if (!eventId || !trip) return;
     const ev = trip.events.find(e => e.id === eventId);
     if (ev) {
+      // eslint-disable-next-line react-hooks/immutability -- called after mount, once everything is declared
       setEditingEvent(ev);
+      // eslint-disable-next-line react-hooks/immutability -- called after mount, once everything is declared
       setIsEditPanelOpen(true);
       searchParams.delete("event");
       setSearchParams(searchParams, { replace: true });
@@ -522,6 +524,7 @@ export function WorkspacePage() {
     const sorted = sortEvents(events);
     sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps are the ids that matter; the rest are derived or stable
   }, [trip?.events, viewAsId]);
 
   // Generate placeholder image when title changes (no API calls)
@@ -817,6 +820,7 @@ export function WorkspacePage() {
     const source = trip.events.find(ev => ev.id === eventId);
     if (!source) return;
     const { id, ...rest } = source;
+    // eslint-disable-next-line react-hooks/purity -- runs in an event handler, not during render
     const duplicate: TravelEvent = { ...rest, id: Date.now().toString(), title: `${source.title} (copy)` };
     updateEvent(trip.id, duplicate);
     toast.success("Event duplicated");
@@ -1183,6 +1187,7 @@ export function WorkspacePage() {
   const handleSendEmail = () => setSendInviteOpen(true);
 
   // Latest handlers for the command palette's trip actions; the listener is set up above the early return
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref, read or written on purpose; reviewed
   paletteActions.current = { publish: handlePublish, share: handleShareTrip, email: handleSendEmail };
 
   return (

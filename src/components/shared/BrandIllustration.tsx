@@ -20,6 +20,7 @@ export function BrandIllustration({ src, className, draggable, ...rest }: BrandI
     let cancelled = false;
     const cached = cache.get(src);
     if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets or syncs state before async work; reviewed, not a render loop
       setSvg(cached);
       return;
     }

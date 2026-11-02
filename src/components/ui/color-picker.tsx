@@ -52,6 +52,13 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+const MonoSwatch = ({ radius }: { radius: string }) => (
+  <div className={cn("h-full w-full overflow-hidden relative", radius)}>
+    <div className="absolute inset-0 bg-white" style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
+    <div className="absolute inset-0 bg-black" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }} />
+  </div>
+);
+
 export function ColorPicker({
   value,
   onChange,
@@ -78,13 +85,6 @@ export function ColorPicker({
       ok: best >= 4.5,
     };
   }, [displayValue, isMono]);
-
-  const MonoSwatch = ({ radius }: { radius: string }) => (
-    <div className={cn("h-full w-full overflow-hidden relative", radius)}>
-      <div className="absolute inset-0 bg-white" style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
-      <div className="absolute inset-0 bg-black" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }} />
-    </div>
-  );
 
   return (
     <Popover>

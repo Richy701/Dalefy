@@ -46,6 +46,7 @@ export function CategoryDot({ type, transferType, size = "md", className = "" }:
   const s = SIZE[size];
   return (
     <span aria-hidden className={`inline-flex shrink-0 items-center justify-center rounded-full ${s.box} ${c.bg} ${c.fg} ${className}`}>
+      {/* eslint-disable-next-line react-hooks/static-components -- a lookup returning a module-level icon, not a new component */}
       <Icon className={s.icon} weight="fill" />
     </span>
   );

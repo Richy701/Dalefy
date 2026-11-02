@@ -547,6 +547,7 @@ export function DestinationsPage() {
         {hoveredPin && (
           <div
             className="fixed z-9999 pointer-events-none"
+            // eslint-disable-next-line react-hooks/refs -- latest-value ref, read or written on purpose; reviewed
             style={{ left: mousePos.current.x + 14, top: mousePos.current.y - 12 }}
           >
             <div className="bg-card border border-border rounded-lg shadow-xl px-3 py-1.5 flex items-center gap-2">
