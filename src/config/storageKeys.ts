@@ -3,6 +3,7 @@ export const STORAGE = {
   AUTH:              "daf-auth",
   TRIPS:             "daf-adventures-v4",
   THEME:             "daf-theme",
+  ITINERARY_THEME:   "daf-itinerary-theme",
   COMPACT:           "daf-compact",
   TOASTS:            "daf-toasts",
   SOUND:             "daf-sound",

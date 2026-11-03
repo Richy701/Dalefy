@@ -561,8 +561,13 @@ button:focus-visible,
   }
 }
 
+/* The phone itinerary's week strip and top bar stick to the page; a hidden overflow on body would stop them */
+@media (max-width: 639px) {
+  body:has([data-phone-itinerary]) { overflow-x: clip; }
+}
+
 /* Accent as text: the accent darkened in light mode so links and text buttons keep at least 4.5:1 on light
    surfaces, whatever accent the organisation picks (teal measures 5.0+ on every light surface); the plain
    accent in dark mode, where it is already bright on dark. */
 .text-link { color: color-mix(in srgb, rgb(var(--brand-rgb)) 55%, black); }
-.dark .text-link { color: rgb(var(--brand-rgb)); }
+.dark .text-link, .dim .text-link { color: rgb(var(--brand-rgb)); }

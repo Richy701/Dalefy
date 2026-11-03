@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { objectPosition } from "@/lib/imagePosition";
 import {
   CalendarDots, MapPin, Users, Compass,
   Clock, X, CurrencyDollar, User,
-  Tag, Paperclip,
+  Tag, Paperclip, Monitor, DeviceMobile, SpinnerGap,
 } from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -20,6 +20,7 @@ import { topicIcon, factRows } from "@/lib/infoTopics";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { CategoryDot } from "@/components/ui/category-dot";
 import { SharedTripView } from "@/pages/SharedTripPage";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -255,6 +256,30 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
   );
 }
 
+/** The traveller page in a frame at a real phone width, so its phone layout applies */
+function PhoneItineraryFrame({ trip, brand }: Pick<ComponentProps<typeof SharedTripView>, "trip" | "brand">) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [ready, setReady] = useState(false);
+  const send = useCallback(() => {
+    const theme = document.documentElement.classList.contains("light") ? "light" : "dim";
+    frameRef.current?.contentWindow?.postMessage({ type: "dalefy:itinerary-preview", payload: { trip, brand, theme } }, window.location.origin);
+  }, [trip, brand]);
+  useEffect(() => {
+    send();
+    const receive = (event: MessageEvent) => {
+      if (event.origin === window.location.origin && event.source === frameRef.current?.contentWindow && event.data?.type === "dalefy:itinerary-preview-ready") { setReady(true); send(); }
+    };
+    window.addEventListener("message", receive);
+    return () => window.removeEventListener("message", receive);
+  }, [send]);
+  return (
+    <div className="relative h-[min(844px,calc(100dvh-7.5rem))]">
+      {!ready && <div role="status" aria-label="Loading phone preview" className="absolute inset-0 z-10 flex items-center justify-center bg-background"><SpinnerGap className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+      <iframe ref={frameRef} src="/itinerary-preview.html" title="Itinerary on a phone" className="block h-full w-full border-0" />
+    </div>
+  );
+}
+
 /* ── Dialog wrapper ── */
 interface ItineraryPreviewDialogProps {
   open: boolean;
@@ -264,6 +289,7 @@ interface ItineraryPreviewDialogProps {
 
 export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPreviewDialogProps) {
   const { brand } = useBrand();
+  const [view, setView] = useState<"desktop" | "phone">("desktop");
 
   // What a traveller's link gets: the server never sends them these fields or leader-only notes (api/_tripView.ts)
   const travellerTrip = useMemo(() => ({
@@ -280,23 +306,11 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
     }),
   }), [trip]);
 
-  // The traveller page is always light, so the preview is too; the organiser's theme comes back on close
-  useEffect(() => {
-    if (!open) return;
-    const html = document.documentElement;
-    if (!html.classList.contains("dark")) return;
-    html.classList.remove("dark");
-    html.classList.add("light");
-    return () => {
-      html.classList.remove("light");
-      html.classList.add("dark");
-    };
-  }, [open]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-background border border-border rounded-xl p-0 gap-0 shadow-2xl"
+        initialFocus={false}
+        className={cn("w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-background border border-border rounded-xl p-0 gap-0 shadow-2xl", view === "phone" ? "max-w-[390px]" : "max-w-4xl")}
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -313,8 +327,19 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
             <X className="h-4 w-4" />
           </button>
         </div>
-        {/* min-w-0: the dialog is a grid, and the wide tab row would otherwise push it past the screen */}
-        <div className="min-w-0"><SharedTripView trip={travellerTrip} brand={brand} preview /></div>
+        {/* On a phone-sized window the preview already is the phone view */}
+        <div className="sticky top-0 z-10 hidden justify-center border-b border-border bg-background py-2 sm:flex">
+          <Tabs value={view} onValueChange={value => setView(value as "desktop" | "phone")}>
+            <TabsList aria-label="Preview size">
+              <TabsTrigger value="desktop"><Monitor aria-hidden="true" />Desktop</TabsTrigger>
+              <TabsTrigger value="phone"><DeviceMobile aria-hidden="true" />Phone</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        {view === "phone"
+          ? <PhoneItineraryFrame trip={travellerTrip} brand={brand} />
+          : /* min-w-0: the dialog is a grid, and the wide tab row would otherwise push it past the screen */
+            <div className="min-w-0"><SharedTripView trip={travellerTrip} brand={brand} preview /></div>}
       </DialogContent>
     </Dialog>
   );

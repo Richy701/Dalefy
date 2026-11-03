@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { DAY_MS, flightNotice, fmtLong, fmtShort, fmtSize, isPlaceholderTime } from "@/lib/itineraryFormat";
+import { PhoneTripView, type ThemeControl } from "@/components/shared/PhoneTripView";
+import { useItineraryTheme } from "@/hooks/useItineraryTheme";
 import { objectPosition } from "@/lib/imagePosition";
 import { useParams } from "react-router-dom";
-import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, Info, Bed, ListChecks } from "@phosphor-icons/react";
+import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, Info, Bed, ListChecks, Sun, Moon } from "@phosphor-icons/react";
 import { tabsListVariants } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
@@ -46,14 +49,6 @@ function rowToTrip(row: Record<string, unknown>): Trip {
 
 /* ---------- formatting helpers ---------- */
 
-const DAY_MS = 86400000;
-
-function fmtLong(date: string) {
-  return parseTripDate(date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-}
-function fmtShort(date: string) {
-  return parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
 function fmtRange(start: string, end: string) {
   const s = parseTripDate(start);
   const e = parseTripDate(end);
@@ -63,13 +58,6 @@ function fmtRange(start: string, end: string) {
     : s.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
   return `${sPart} - ${e.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`;
 }
-function fmtSize(bytes: number) {
-  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-function isPlaceholderTime(t?: string) {
-  return !t || /^tb[acd]$/i.test(t);
-}
-
 /** Departure and arrival from explicit airport fields, else "X to Y" in the location. */
 function routeOf(ev: TravelEvent): { from: string; to: string } {
   const parts = ev.location?.split(/\s+to\s+|→/i).map(s => s.trim());
@@ -98,19 +86,6 @@ function tripPhase(start: string, end: string): string {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{children}</h2>;
-}
-
-/** Only statuses a traveller needs to act on; "Expected" or "Scheduled" just mean nothing has changed. */
-function flightNotice(status?: string): { text: string; className: string } | null {
-  const group = (status ?? "").toLowerCase().replace(/\s+/g, "");
-  const problem = "font-medium text-red-600 dark:text-red-400";
-  if (group.startsWith("cancel")) return { text: "Cancelled", className: problem };
-  if (group === "diverted") return { text: "Diverted", className: problem };
-  if (group.startsWith("delay")) return { text: "Delayed", className: "font-medium text-amber-700 dark:text-amber-400" };
-  if (group === "boarding") return { text: "Boarding", className: "font-medium text-foreground" };
-  if (group === "departed" || group === "enroute") return { text: "In the air", className: "font-medium text-foreground" };
-  if (group === "arrived" || group === "landed") return { text: "Landed", className: "font-medium text-foreground" };
-  return null;
 }
 
 function FlightEnd({ code, time, tz, dayOffset, align }: { code: string; time?: string; tz: string; dayOffset?: string; align: "left" | "right" }) {
@@ -312,7 +287,7 @@ function HeroText({ trip, nights, travelers, onPhoto = false, titleId }: { trip:
 /* ---------- the document ---------- */
 
 /** `preview` is the organiser's look at the traveller view, inside the Workspace, where printing would print the app. */
-export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; brand: Brand; preview?: boolean }) {
+export function SharedTripView({ trip, brand, preview = false, themeControl }: { trip: Trip; brand: Brand; preview?: boolean; themeControl?: ThemeControl }) {
   const [activeSection, setActiveSection] = useState("schedule");
   const tabsTop = useRef<HTMLDivElement>(null);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
@@ -367,10 +342,28 @@ export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; b
   };
   const dayNumber = (date: string) => Math.round((parseTripDate(date).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS) + 1;
 
+  const accent = brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined;
+
   return (
+    <>
+    {/* A phone gets the app's layout; everything larger, and every printout, gets the document below */}
+    <div className="sm:hidden print:hidden" style={accent}>
+      <PhoneTripView
+        trip={trip}
+        brandName={brand.name}
+        brandLogo={brand.logoUrl}
+        platformName={brand.platformName}
+        events={visibleEvents}
+        viewAsId={viewAsId}
+        setViewAsId={setViewAsId}
+        preview={preview}
+        themeControl={themeControl}
+        onPrint={preview ? undefined : () => window.print()}
+      />
+    </div>
     <div
-      className="min-h-dvh w-full bg-background text-foreground print:bg-white"
-      style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
+      className="hidden min-h-dvh w-full bg-background text-foreground sm:block print:block print:bg-white"
+      style={accent}
     >
       <div className="w-full px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
         {/* Masthead */}
@@ -379,15 +372,22 @@ export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; b
             {brand.logoUrl && <img src={brand.logoUrl} alt="" className="h-9 w-auto max-w-[140px] shrink-0 object-contain" />}
             <p className="text-base font-semibold tracking-tight text-foreground truncate">{brand.name}</p>
           </div>
-          {!preview && <Button variant="outline"
-            type="button"
-            onClick={() => window.print()}
-            className="print:hidden min-h-11 gap-2 px-3 sm:px-4 shrink-0"
-          >
-            <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Print or save PDF</span>
-            <span className="sm:hidden">Print</span>
-          </Button>}
+          <div className="flex shrink-0 items-center gap-2 print:hidden">
+            {themeControl && (
+              <Button variant="outline" size="icon" type="button" className="size-11" aria-label={themeControl.theme === "light" ? "Switch to dark mode" : "Switch to light mode"} onClick={themeControl.toggle}>
+                {themeControl.theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </Button>
+            )}
+            {!preview && <Button variant="outline"
+              type="button"
+              onClick={() => window.print()}
+              className="min-h-11 gap-2 px-3 sm:px-4 shrink-0"
+            >
+              <Printer className="h-4 w-4" />
+              <span className="hidden sm:inline">Print or save PDF</span>
+              <span className="sm:hidden">Print</span>
+            </Button>}
+          </div>
         </header>
 
         {/* Hero: the trip's photo with its name over it, like the trip screen in the app */}
@@ -619,6 +619,7 @@ export function SharedTripView({ trip, brand, preview = false }: { trip: Trip; b
         </footer>
       </div>
     </div>
+    </>
   );
 }
 
@@ -634,19 +635,7 @@ export function SharedTripPage() {
   const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
   const brand = resolvedBrand(orgBranding ? { companyName: orgBranding.companyName, logoUrl: orgBranding.logoUrl, accentColor: orgBranding.accentColor } : null);
 
-  // The document is always light. Restore the viewer's theme when leaving.
-  useEffect(() => {
-    const html = document.documentElement;
-    const wasDark = html.classList.contains("dark");
-    html.classList.remove("dark");
-    html.classList.add("light");
-    return () => {
-      if (wasDark) {
-        html.classList.remove("light");
-        html.classList.add("dark");
-      }
-    };
-  }, []);
+  const themeControl = useItineraryTheme();
 
   useEffect(() => {
     if (!tripId || !isFirebaseConfigured()) {
@@ -734,5 +723,5 @@ export function SharedTripPage() {
     );
   }
 
-  return <SharedTripView trip={trip} brand={brand} />;
+  return <SharedTripView trip={trip} brand={brand} themeControl={themeControl} />;
 }
