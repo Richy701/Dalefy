@@ -189,7 +189,12 @@ export default function WelcomeScreen() {
     if (lookedUp.current || isEdit || !auth.isAuthenticated) return;
     lookedUp.current = true;
     setLookingUp(true);
-    fetchMyTrips().then(({ trips }) => {
+    fetchMyTrips().then(({ trips, coordinatingCount }) => {
+      // Overseeing from home with nothing to join: straight in, no PIN, and they don't become a traveller
+      if (!trips.length && coordinatingCount > 0) {
+        finishOnboarding(prefs.name?.trim() || providerName || auth.user?.name || "", auth.user?.avatar || "", null);
+        return;
+      }
       setMine(Object.fromEntries(trips.map(t => [t.trip.id, { id: t.travelerId, name: t.travelerName }])));
       const now = new Date();
       const next = trips.find(t => parseTripDate(t.trip.end) >= now) ?? trips[0];
@@ -198,6 +203,8 @@ export default function WelcomeScreen() {
         setMatchedTrip(next.trip);
       }
     }).finally(() => setLookingUp(false));
+    // Runs once (lookedUp), so the name and profile it reads are the ones at arrival
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, auth.isAuthenticated, setPref, refreshBranding]);
 
   // Who this person is on a trip, if the organiser listed their email on it

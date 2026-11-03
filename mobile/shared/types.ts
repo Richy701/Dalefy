@@ -165,6 +165,8 @@ export interface PublishedSnapshot {
 
 export interface Trip {
   id: string;
+  /** Set by the server when the signed-in person oversees this trip from home. */
+  coordinator?: boolean;
   name: string;
   attendees: string;
   organizationId?: string;

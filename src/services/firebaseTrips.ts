@@ -714,6 +714,8 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     archived_at: trip.archivedAt ?? null,
     private: !!trip.private,
     coordinators: trip.coordinators ?? null,
+    // Flat so the server can find someone's trips (api/my-trips), like traveler_emails
+    coordinator_ids: (trip.coordinators ?? []).map(c => c.userId),
     history: trip.history ?? null,
     tasks: trip.tasks ?? null,
   });

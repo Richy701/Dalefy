@@ -36,6 +36,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { TripQuickTiles } from "@/components/TripQuickTiles";
+import { OverseeingCard } from "@/components/OverseeingCard";
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -102,7 +103,7 @@ export default function TripScreen() {
   const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeDark, themeC]);
   const isDark = photoPage || themeDark;
   const { brand } = useBrand();
-  const { isLeader } = useTripRole(id);
+  const { isLeader, isCoordinator } = useTripRole(id);
   const linkedTravelerId = useLinkedTravelerId(id);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
@@ -592,6 +593,8 @@ export default function TripScreen() {
             : trip.organizer}
           onAsk={() => router.push({ pathname: "/trip/ask", params: { tripId: trip.id } })}
         />
+
+        {isCoordinator ? <OverseeingCard trip={trip} C={C} /> : null}
 
         {/* ── Per-traveller filter ── */}
         {hasFilter && (

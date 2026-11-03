@@ -3,6 +3,7 @@ import {
   query, where, onSnapshot, limit,
   type Unsubscribe,
 } from "firebase/firestore";
+import { setCoordinating, markCoordinating } from "@/services/coordinating";
 import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Trip, Notification } from "@/shared/types";
@@ -64,9 +65,13 @@ export async function fetchTrips(): Promise<Trip[]> {
     collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId),
   )))).docs;
   const ids = [...new Set([...members.docs, ...legacyMembers].map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
-  const trips = await Promise.all(ids.map(fetchTripById));
+  const [trips, coordinating] = await Promise.all([Promise.all(ids.map(fetchTripById)), fetchCoordinatingTrips()]);
   if (uid !== firebaseAuth().currentUser?.uid) throw new Error("Account changed");
-  return trips.filter((t): t is Trip => t !== null).sort((a, b) => b.start.localeCompare(a.start));
+  setCoordinating(coordinating.map(t => t.id));
+  const joined = trips.filter((t): t is Trip => t !== null);
+  // Someone can be both: the coordinator's copy has the fuller view
+  const merged = [...coordinating, ...joined.filter(t => !coordinating.some(c => c.id === t.id))];
+  return merged.sort((a, b) => b.start.localeCompare(a.start));
 }
 
 /** Full reload as a safety net; edits arrive through the trip_versions listeners */
@@ -207,6 +212,7 @@ export async function fetchTripById(id: string): Promise<Trip | null> {
     return snap.exists() ? legacyDocToTrip(snap.id, snap.data()) : null;
   }
   const { trip } = await tripRequest(`?id=${encodeURIComponent(id)}`);
+  markCoordinating(id, trip?.coordinator === true);
   return trip ? docToTrip(id, trip) : null;
 }
 
@@ -230,28 +236,60 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
 
 export interface MyTrip { trip: Trip; travelerId: string | null; travelerName: string | null }
 
+/** Who's in the app on a trip this person coordinates, from the server. Names and leader phones only. */
+export interface TripOversight {
+  total: number;
+  inApp: number;
+  notInApp: string[];
+  leaders: { name: string; phone: string | null }[];
+}
+
+export async function fetchTripOversight(tripId: string): Promise<TripOversight | null> {
+  const data = await tripRequest(`?id=${encodeURIComponent(tripId)}&oversight=1`);
+  return (data as { oversight?: TripOversight }).oversight ?? null;
+}
+
 /**
- * The published trips the organiser listed this person's email on, and who they are on each. The server
- * matches the verified sign-in email; the app never sees anyone else's email. Empty for guests.
+ * Trips this person oversees from home. A failure throws, like the membership lookup, so a bad connection
+ * keeps the saved list rather than dropping these trips from it. Guests have none.
  */
-export async function fetchMyTrips(): Promise<{ name: string | null; photo: string | null; trips: MyTrip[] }> {
-  await waitForAuth();
+async function fetchCoordinatingTrips(): Promise<Trip[]> {
   const user = firebaseAuth().currentUser;
-  if (!user || user.isAnonymous) return { name: null, photo: null, trips: [] };
+  if (!user || user.isAnonymous) return [];
   const token = await user.getIdToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(`${API_BASE}/api/my-trips`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
-    if (!response.ok) return { name: null, photo: null, trips: [] };
-    const data = await response.json() as { name?: string | null; photo?: string | null; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> };
+    if (!response.ok) throw new Error("Unable to load coordinated trips");
+    const data = await response.json() as { coordinating?: Array<Record<string, unknown>> };
+    return (data.coordinating ?? []).map(t => docToTrip(String(t.id), t));
+  } finally { clearTimeout(timer); }
+}
+
+/**
+ * The published trips the organiser listed this person's email on, and who they are on each. The server
+ * matches the verified sign-in email; the app never sees anyone else's email. Empty for guests.
+ */
+export async function fetchMyTrips(): Promise<{ name: string | null; photo: string | null; trips: MyTrip[]; coordinatingCount: number }> {
+  await waitForAuth();
+  const user = firebaseAuth().currentUser;
+  if (!user || user.isAnonymous) return { name: null, photo: null, trips: [], coordinatingCount: 0 };
+  const token = await user.getIdToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${API_BASE}/api/my-trips`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+    if (!response.ok) return { name: null, photo: null, trips: [], coordinatingCount: 0 };
+    const data = await response.json() as { coordinating?: unknown[]; name?: string | null; photo?: string | null; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null; travelerName: string | null }> };
     return {
+      coordinatingCount: data.coordinating?.length ?? 0,
       name: data.name ?? null,
       photo: typeof data.photo === "string" && /^https:\/\//.test(data.photo) ? data.photo : null,
       trips: (data.trips ?? []).map(t => ({ trip: docToTrip(String(t.trip.id), t.trip), travelerId: t.travelerId, travelerName: t.travelerName })),
     };
   } catch {
-    return { name: null, photo: null, trips: [] };
+    return { name: null, photo: null, trips: [], coordinatingCount: 0 };
   } finally { clearTimeout(timer); }
 }
 
@@ -504,6 +542,7 @@ export async function patchTravelerEmail(tripId: string, _travelerId: string, em
 function docToTrip(id: string, data: Record<string, unknown>): Trip {
   return {
     id,
+    ...(data.coordinator === true ? { coordinator: true } : {}),
     name: data.name as string,
     attendees: (data.attendees as string) ?? "",
     destination: (data.destination as string) ?? undefined,

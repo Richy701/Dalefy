@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subscribeToMemberRole, type TripMemberRole } from "@/services/firebaseTrips";
+import { isCoordinating, subscribeCoordinating } from "@/services/coordinating";
 
 const ROLE_KEY = "daf-trip-roles";
 let rolesCache: Record<string, TripMemberRole> | null = null;
@@ -18,7 +19,8 @@ function rememberRole(tripId: string, role: TripMemberRole) {
  * Starts from the last role seen on this device so leader-only content
  * does not flicker on launch or vanish offline; live updates replace it.
  */
-export function useTripRole(tripId: string | undefined): { role: TripMemberRole; isLeader: boolean } {
+export function useTripRole(tripId: string | undefined): { role: TripMemberRole; isLeader: boolean; isCoordinator: boolean } {
+  const isCoordinator = useSyncExternalStore(subscribeCoordinating, () => isCoordinating(tripId));
   const [role, setRole] = useState<TripMemberRole>(() => (tripId && rolesCache?.[tripId]) || "traveler");
 
   useEffect(() => {
@@ -37,5 +39,6 @@ export function useTripRole(tripId: string | undefined): { role: TripMemberRole;
     return () => { cancelled = true; unsub(); };
   }, [tripId]);
 
-  return { role, isLeader: role === "leader" };
+  // A coordinator oversees from home and sees what a leader sees; the server decides, this only follows it
+  return { role, isLeader: role === "leader" || isCoordinator, isCoordinator };
 }

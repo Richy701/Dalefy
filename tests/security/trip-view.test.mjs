@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = readFileSync(new URL('../../api/_tripView.ts', import.meta.url), 'utf8');
 const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { publishedTripView, membershipMatches, mergeTravelerMedia } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+const { publishedTripView, membershipMatches, mergeTravelerMedia, listedAsCoordinator, oversightView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 const trip = {
   status: 'Published', user_id: 'owner', budget: 'SECRET_BUDGET', short_code: 'SECRET_CODE',
   events: [{ title: 'SECRET_DRAFT' }],
@@ -77,13 +77,16 @@ const dbModule = moduleUrl(`
   export const decodeValue = v => v;
   export const encodeValue = v => v;
 `);
-const authModule = moduleUrl(`export const verifyFirebaseToken = async token => token === 'traveler-token' ? { sub: 'traveler' } : null;`);
+const authModule = moduleUrl(`export const verifyFirebaseToken = async token => token === 'traveler-token' ? { sub: 'traveler' } : token === 'coordinator-token' ? { sub: 'emma' } : null;`);
 const limiterModule = moduleUrl(`export const rateLimit = () => true;`);
 const handlerSource = readFileSync(new URL('../../api/trip.ts', import.meta.url), 'utf8');
 const handlerJs = ts.transpileModule(handlerSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
   .replace('./_firebaseAdmin.js', dbModule).replace('./_verifyToken.js', authModule)
   .replace('./_rateLimit.js', limiterModule).replace('./_tripView.js', moduleUrl(output));
-const { default: handler } = await import(moduleUrl(handlerJs));
+const accessSource = readFileSync(new URL('../../api/_coordinatorAccess.ts', import.meta.url), 'utf8');
+const accessJs = ts.transpileModule(accessSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
+  .replace('./_firebaseAdmin.js', dbModule).replace('./_tripView.js', moduleUrl(output));
+const { default: handler } = await import(moduleUrl(handlerJs.replace('./_coordinatorAccess.js', moduleUrl(accessJs))));
 
 function setupHttp(member = { uid: 'traveler', trip_id: 'trip', role: 'traveler' }) {
   const writes = [];
@@ -153,4 +156,87 @@ test('missing or nameless organiser is null, never a truthy empty card', () => {
   }
   const result = publishedTripView('trip', { ...trip, published_snapshot: { ...trip.published_snapshot, organizer: { name: 'Alex', secret: 'private' } } });
   assert.deepEqual(result.organizer, { name: 'Alex' });
+});
+
+test('coordinators: listed on a shared trip only, and never published to travellers', () => {
+  const listed = { ...trip, coordinators: [{ userId: 'emma', name: 'Emma' }] };
+  assert.equal(listedAsCoordinator(listed, 'emma'), true);
+  assert.equal(listedAsCoordinator(listed, 'tony'), false);
+  assert.equal(listedAsCoordinator({ ...listed, private: true }, 'emma'), false);
+  assert.equal(listedAsCoordinator({ ...trip }, 'emma'), false);
+  for (const view of [publishedTripView('trip', { ...listed, coordinator_ids: ['emma'] }), publishedTripView('trip', { ...listed, coordinator_ids: ['emma'] }, true, true)]) {
+    assert.equal(JSON.stringify(view).includes('emma'), false);
+    assert.equal(JSON.stringify(view).includes('coordinator'), false);
+  }
+});
+
+test('oversight: who is in the app and leader phones, never emails', () => {
+  const data = {
+    published_snapshot: { travelers: [{ id: 'a', name: 'Ann' }, { id: 'b', name: 'Ben' }, { id: 'c', name: 'Cal' }] },
+    travelers: [{ id: 'a', name: 'Ann', email: 'ann@secret.example', phone: '+44 1' }, { id: 'b', name: 'Ben', email: 'ben@secret.example' }, { id: 'c', name: 'Cal' }],
+  };
+  const members = [
+    { linked_traveler_id: 'a', role: 'leader', email: 'ann@secret.example', name: 'Ann' },
+    { linked_traveler_id: 'b', role: 'traveler', name: 'Ben', uid: 'secret-uid', device_id: 'secret-device' },
+  ];
+  const result = oversightView(data, members);
+  assert.deepEqual(result, { total: 3, inApp: 2, notInApp: ['Cal'], leaders: [{ name: 'Ann', phone: '+44 1' }] });
+  assert.equal(JSON.stringify(result).includes('secret'), false);
+});
+
+function setupCoordinator({ onTeam = true, tripOverrides = {} } = {}) {
+  const fields = { ...trip, organization_id: 'org', coordinators: [{ userId: 'emma', name: 'Emma' }], ...tripOverrides };
+  const setup = setupHttp({});
+  const previous = globalThis.__tripHttpTest;
+  globalThis.__tripHttpTest = {
+    ...previous,
+    get: async (collection, id) => {
+      if (collection === 'trips') return { name: 'projects/test/documents/trips/trip', fields, updateTime: 'revision-1' };
+      if (collection === 'org_members') return onTeam && id === 'emma_org' ? { fields: { user_id: 'emma', organization_id: 'org', role: 'agent' } } : null;
+      return null;
+    },
+    query: async () => [],
+  };
+  return setup;
+}
+const asCoordinator = { authorization: 'Bearer coordinator-token' };
+
+test('a coordinator on the team sees leader details without joining', async () => {
+  const { response } = setupCoordinator();
+  await handler({ method: 'GET', headers: asCoordinator, query: { id: 'trip' } }, response);
+  assert.equal(response.code, 200);
+  assert.equal(response.data.trip.coordinator, true);
+  assert.equal(response.data.trip.events[0].notes, 'SECRET_NOTES');
+});
+
+test('coordinator access ends when they leave the team, even if still ticked', async () => {
+  const { response } = setupCoordinator({ onTeam: false });
+  await handler({ method: 'GET', headers: asCoordinator, query: { id: 'trip' } }, response);
+  assert.equal(response.data.trip.coordinator, undefined);
+  assert.equal(JSON.stringify(response.data).includes('SECRET'), false);
+});
+
+test('private trips and people not ticked get no coordinator access', async () => {
+  for (const tripOverrides of [{ private: true }, { coordinators: [{ userId: 'tony', name: 'Tony' }] }, { coordinators: [] }, { organization_id: null }]) {
+    const { response } = setupCoordinator({ tripOverrides });
+    await handler({ method: 'GET', headers: asCoordinator, query: { id: 'trip' } }, response);
+    assert.equal(response.data.trip.coordinator, undefined);
+    assert.equal(JSON.stringify(response.data).includes('SECRET'), false);
+  }
+});
+
+test('only a coordinator can read oversight', async () => {
+  for (const [headers, code] of [[{}, 403], [{ authorization: 'Bearer traveler-token' }, 403], [asCoordinator, 200]]) {
+    const { response } = setupCoordinator();
+    await handler({ method: 'GET', headers, query: { id: 'trip', oversight: '1' } }, response);
+    assert.equal(response.code, code);
+    if (code === 403) assert.equal(response.data.oversight, undefined);
+  }
+});
+
+test('a coordinator who has not joined cannot change the gallery', async () => {
+  const { response, writes } = setupCoordinator();
+  await handler({ method: 'POST', headers: asCoordinator, query: {}, body: { tripId: 'trip', add: [], remove: [] } }, response);
+  assert.equal(response.code, 403);
+  assert.deepEqual(writes, []);
 });

@@ -13,6 +13,7 @@ import { getDocument, listCollection, queryArrayContains, queryDocuments, setDoc
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, publishedTripView } from "./_tripView.js";
+import { hasCoordinatorAccess } from "./_coordinatorAccess.js";
 
 interface Request {
   method?: string;
@@ -30,6 +31,18 @@ const BACKFILL_FLAG = ["app_config", "traveler_emails_backfill"] as const;
 
 function decode(doc: FirestoreDoc | null): Record<string, unknown> {
   return doc ? Object.fromEntries(Object.entries(doc.fields ?? {}).map(([k, v]) => [k, decodeValue(v)])) : {};
+}
+
+/** Trips this person oversees from home, with what a leader sees. Their own field: older apps would offer to join these as a traveller. */
+async function coordinatingTrips(uid: string): Promise<Record<string, unknown>[]> {
+  const docs = await queryArrayContains("trips", "coordinator_ids", uid, 50);
+  const views = await Promise.all(docs.map(async doc => {
+    const data = decode(doc);
+    if (!await hasCoordinatorAccess(data, uid)) return null;
+    const view = publishedTripView(docId(doc), data, true, true);
+    return view ? { ...view, coordinator: true } : null;
+  }));
+  return views.filter((v): v is NonNullable<typeof v> => v !== null);
 }
 
 const norm = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
@@ -71,7 +84,14 @@ export default async function handler(req: Request, res: Response) {
   if (!payload?.sub) return res.status(401).json({ error: "Unauthorized" });
   const email = norm(payload.email);
   // Only an email the sign-in proved belongs to them (email link, Google, Apple)
-  if (!email || payload.email_verified !== true) return res.json({ name: null, photo: null, trips: [] });
+  if (!email || payload.email_verified !== true) {
+    try {
+      return res.json({ name: null, photo: null, trips: [], coordinating: await coordinatingTrips(payload.sub) });
+    } catch (error) {
+      console.error("[my-trips] coordinator lookup failed", error);
+      return res.status(503).json({ error: "Couldn't look up your trips right now" });
+    }
+  }
 
   try {
     // Shared by concurrent requests; best effort, the lookup still answers from what is already filled in
@@ -110,7 +130,7 @@ export default async function handler(req: Request, res: Response) {
       const entry = entries.map(d => record(decode(d).traveler)).find(t => isPhoto(t.avatar));
       if (entry) photo = entry.avatar as string;
     }
-    return res.json({ name: trips.find(t => t.travelerName)?.travelerName ?? null, photo, trips });
+    return res.json({ name: trips.find(t => t.travelerName)?.travelerName ?? null, photo, trips, coordinating: await coordinatingTrips(payload.sub) });
   } catch (error) {
     console.error("[my-trips] lookup failed", error);
     return res.status(503).json({ error: "Couldn't look up your trips right now" });

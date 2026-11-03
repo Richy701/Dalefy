@@ -21,6 +21,8 @@ export function useTheme() {
 }
 export function useTripRole(_tripId?: string) { const { role } = usePreview(); return { role: role || 'traveler', isLeader: role === 'leader' }; }
 export const useLinkedTravelerId = (_tripId?: string) => null;
+// The preview has no signed-in person to be a coordinator, and this card reads the live server
+export const OverseeingCard = () => null;
 export const useLocalSearchParams = <T extends Record<string, string | undefined>>() => usePreview().route.params as T;
 export function useRouter() {
   const { navigate, back, route } = usePreview();

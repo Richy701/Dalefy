@@ -1,7 +1,8 @@
 import { getDocument, queryDocuments, updateDocument, touchTripVersion, decodeValue, encodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
-import { record, publishedTripView, membershipMatches, mergeTravelerMedia } from "./_tripView.js";
+import { record, publishedTripView, membershipMatches, mergeTravelerMedia, oversightView } from "./_tripView.js";
+import { hasCoordinatorAccess } from "./_coordinatorAccess.js";
 
 interface Request {
   method?: string;
@@ -40,7 +41,9 @@ export default async function handler(req: Request, res: Response) {
     const trip = decode(found);
     const member = payload?.sub ? decode(await getDocument("trip_members", `${payload.sub}_${tripId}`)) : {};
     const joined = !!payload?.sub && membershipMatches(member, payload.sub, tripId);
-    const view = publishedTripView(tripId, trip, joined && member.role === "leader", joined);
+    // A coordinator oversees from home: they see what a leader sees without joining as a traveller
+    const coordinating = !!payload?.sub && await hasCoordinatorAccess(trip, payload.sub);
+    const view = publishedTripView(tripId, trip, coordinating || (joined && member.role === "leader"), coordinating || joined);
     if (!view) return res.status(404).json({ error: "Itinerary unavailable" });
     // "Which one is you?" greys out names already taken. Only the traveller IDs leave the server, never who
     // took them, so the app doesn't need to read anyone else's membership.
@@ -50,7 +53,12 @@ export default async function handler(req: Request, res: Response) {
       const claimed = [...new Set(members.map(m => decode(m).linked_traveler_id).filter((v): v is string => typeof v === "string" && !!v))];
       return res.json({ claimed });
     }
-    if (req.method === "GET") return res.json({ trip: view });
+    if (req.method === "GET" && req.query.oversight === "1") {
+      if (!coordinating) return res.status(403).json({ error: "Only this trip's coordinators can see this" });
+      const members = await queryDocuments("trip_members", "trip_id", tripId, 2000);
+      return res.json({ oversight: oversightView(trip, members.map(decode)) });
+    }
+    if (req.method === "GET") return res.json({ trip: coordinating ? { ...view, coordinator: true } : view });
     if (!payload?.sub || !joined) return res.status(403).json({ error: "Join this trip before changing its gallery" });
     const bucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;
     if (!bucket) return res.status(503).json({ error: "Storage not configured" });

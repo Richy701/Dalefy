@@ -90,6 +90,34 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
   };
 }
 
+/** Listed as this trip's coordinator. Private trips have none. The caller must also check they're still on the team. */
+export function listedAsCoordinator(trip: Data, uid: string): boolean {
+  return trip.private !== true && list(trip.coordinators).some(c => record(c).userId === uid);
+}
+
+/** A coordinator's picture of who is reachable. Names and leaders' phones only; never emails, seats or who else's device. */
+export function oversightView(trip: Data, members: Data[]) {
+  const travelers = list(record(trip.published_snapshot).travelers).map(record);
+  const working = list(trip.travelers).map(record);
+  const inApp = new Set(members.map(m => m.linked_traveler_id).filter(id => typeof id === "string" && id));
+  const nameOf = (t: Data) => (typeof t.name === "string" ? t.name.trim() : "");
+  const leaders = new Map<string, { name: string; phone: string | null }>();
+  for (const m of members) {
+    if (m.role !== "leader") continue;
+    const entry = working.find(t => t.id === m.linked_traveler_id);
+    const name = nameOf(entry ?? m);
+    if (!name) continue;
+    const phone = entry && typeof entry.phone === "string" && entry.phone.trim() ? entry.phone.trim() : null;
+    if (!leaders.has(name) || phone) leaders.set(name, { name, phone });
+  }
+  return {
+    total: travelers.length,
+    inApp: travelers.filter(t => inApp.has(t.id)).length,
+    notInApp: travelers.filter(t => !inApp.has(t.id)).map(nameOf).filter(Boolean),
+    leaders: [...leaders.values()],
+  };
+}
+
 export function storageMediaOwner(url: unknown, tripId: string, bucket: string): string | null {
   if (typeof url !== "string") return null;
   try {
