@@ -402,12 +402,12 @@ export default function TripScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: collapsed && !isDark ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <CaretLeft size={20} color="#fff" weight="bold" />
+              <CaretLeft size={20} color={collapsed ? C.textPrimary : "#fff"} weight="bold" />
             </Pressable>
           ),
         } : {}),

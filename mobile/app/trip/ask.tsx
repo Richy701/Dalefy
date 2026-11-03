@@ -109,6 +109,7 @@ export default function AskScreen() {
   const viewH = useRef(0);
 
   // The composer sits on the home indicator inset, and right on the keyboard while it is up.
+  // Android's inset is the navigation bar itself, so the box needs its own gap above it.
   // The page follows the keyboard itself: Android's edge-to-edge window no longer resizes for it.
   const keyboard = useAnimatedKeyboard();
   const keyboardPad = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
@@ -306,7 +307,7 @@ export default function AskScreen() {
             ))}
           </ScrollView>
         ) : null}
-        <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Math.max(insets.bottom, S.sm) }, !consented && { display: "none" }]}>
+        <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Platform.OS === "android" ? insets.bottom + S.md : Math.max(insets.bottom, S.sm) }, !consented && { display: "none" }]}>
           {/* One rounded glass field with the send button inside it */}
           <View style={styles.field}>
             {GLASS

@@ -2,7 +2,6 @@ import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
   ActivityIndicator, useWindowDimensions, Platform,
 } from "react-native";
-import type { ScrollViewInstance } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import type { Camera, MapView } from "@rnmapbox/maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,6 +9,10 @@ import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 
 const SHEET_GLASS = isLiquidGlassAvailable();
+// iOS scrolls the page natively; only Android needs the sheet to drive it (see useAndroidSheetDrag)
+function SheetDrag({ gesture, children }: { gesture: ReturnType<typeof useAndroidSheetDrag>["gesture"]; children: ReactElement }) {
+  return Platform.OS === "android" ? <GestureDetector gesture={gesture}>{children}</GestureDetector> : children;
+}
 
 /** Floating map controls: Liquid Glass like Apple Maps, a dark frosted fill where it isn't available */
 function MapGlass({ style, children }: { style: StyleProp<ViewStyle>; children: React.ReactNode }) {
@@ -23,9 +26,11 @@ import { fetchCurrentWeather, type Weather } from "@/services/weather";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type ReactElement } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
-import Animated, { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import Animated, { useAnimatedRef, useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import { GestureDetector } from "react-native-gesture-handler";
+import { useAndroidSheetDrag } from "@/hooks/useAndroidSheetDrag";
 import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, S, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
@@ -182,8 +187,9 @@ export default function TodayScreen() {
   const [eventCoords, setEventCoords] = useState<Record<string, [number, number]>>({});
   const eventRowYs = useRef<Record<string, number>>({});
   const listY = useRef(0);
-  const scheduleScrollRef = useRef<ScrollViewInstance>(null);
+  const scheduleScrollRef = useAnimatedRef<Animated.ScrollView>();
   const { onScroll, barStyle, scrollY } = useCollapsingHeader();
+  const sheetDrag = useAndroidSheetDrag(scheduleScrollRef, scrollY, onRefresh);
   // Map controls fade and lift away as the sheet rises over them, like Maps
   const mapControlsStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 90], [1, 0], Extrapolation.CLAMP),
@@ -388,7 +394,7 @@ export default function TodayScreen() {
     if (y != null && scheduleScrollRef.current) {
       scheduleScrollRef.current.scrollTo({ y: Math.max(0, contentY.current + listY.current + y - insets.top - 64), animated: true });
     }
-  }, [isLiveDay, displayTrip?.id, router, insets.top]);
+  }, [isLiveDay, displayTrip?.id, router, insets.top, scheduleScrollRef]);
 
   const flyToEvent = useCallback((evId: string) => {
     setFocusedMapEventId(evId);
@@ -583,11 +589,14 @@ export default function TodayScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        onLayout={e => { sheetDrag.viewH.value = e.nativeEvent.layout.height; }}
+        onContentSizeChange={(_, h) => { sheetDrag.contentH.value = h; }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
       <View pointerEvents="none" style={{ height: mapH - 28 }} />
 
       {/* The plan rides up over the map like a Maps sheet */}
+      <SheetDrag gesture={sheetDrag.gesture}>
       <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={styles.sheet}>
         {/* The same Liquid Glass as the system sheets (Join, Notifications); a blur where it isn't available */}
         {SHEET_GLASS
@@ -771,6 +780,7 @@ export default function TodayScreen() {
         )}
         </View>
       </View>
+      </SheetDrag>
       </Animated.ScrollView>
       <CompactHeader title="Today" barStyle={barStyle} />
     </View>

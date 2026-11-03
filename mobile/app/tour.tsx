@@ -339,6 +339,8 @@ export default function TourScreen() {
  */
 const PHONE_INSET = 30;
 const IN_PHONE = PHONE_INSET + S.sm;
+// Android phones get their own look: tighter corners and a round camera hole in place of the island
+const PHONE_CORNER = Platform.OS === "android" ? 32 : 46;
 
 /** A phone with no edges, just a lighter screen that fades away towards the words */
 function PhoneFrame() {
@@ -1189,8 +1191,10 @@ const pv = StyleSheet.create({
     height: 52, borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, paddingLeft: S.md, paddingRight: 9,
   },
   daleSend: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  phone: { position: "absolute", top: 0, bottom: 0, left: PHONE_INSET, right: PHONE_INSET, borderTopLeftRadius: 46, borderTopRightRadius: 46, overflow: "hidden", alignItems: "center" },
-  island: { marginTop: 12, width: 96, height: 28, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)" },
+  phone: { position: "absolute", top: 0, bottom: 0, left: PHONE_INSET, right: PHONE_INSET, borderTopLeftRadius: PHONE_CORNER, borderTopRightRadius: PHONE_CORNER, overflow: "hidden", alignItems: "center" },
+  island: Platform.OS === "android"
+    ? { marginTop: 19, width: 14, height: 14, borderRadius: 7, backgroundColor: "rgba(0,0,0,0.55)" }
+    : { marginTop: 12, width: 96, height: 28, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)" },
   photoCard: { alignSelf: "stretch", aspectRatio: 1.15, borderRadius: R.xl },
   photoClip: { flex: 1, borderRadius: R.xl, overflow: "hidden", justifyContent: "flex-end" },
   // The card that breaks out of the phone: solid, lifted off it with a shadow that shows on dark

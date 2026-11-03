@@ -3,6 +3,7 @@ import { heroPosition } from "@/shared/imagePosition";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
+import { AndroidTopBar, ANDROID_BAR_H } from "@/components/ui/AndroidTopBar";
 import {
   View, Text, Pressable, Linking,
   StyleSheet, Platform, Image,
@@ -550,12 +551,12 @@ export default function EventDetailScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <CaretLeft size={20} color="#fff" weight="bold" />
+              <CaretLeft size={20} color={showPhoto ? "#fff" : C.textPrimary} weight="bold" />
             </Pressable>
           ),
         } : {}),
@@ -811,6 +812,7 @@ export default function EventDetailScreen() {
           </Animated.View>
         )}
       </Animated.ScrollView>
+      <AndroidTopBar scrollY={scrollY} from={showPhoto ? (photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) - ANDROID_BAR_H - 24 : 0} color={C.bg} borderColor={C.border} />
 
 
       </View>
@@ -832,7 +834,7 @@ function FlightDetailScreen({
   router: ReturnType<typeof useRouter>;
   safeBack: () => void;
 }) {
-  const { onScroll, stretchStyle } = useBannerStretch(HERO_H + insets.top);
+  const { onScroll, stretchStyle, scrollY } = useBannerStretch(HERO_H + insets.top);
   const { data: live } = useFlightLiveData(ev.flightNum, ev.date);
 
   const locMatch = (ev.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
@@ -1241,6 +1243,7 @@ function FlightDetailScreen({
             )}
           </View>
         </Animated.ScrollView>
+        <AndroidTopBar scrollY={scrollY} from={HERO_H - PASS_OVERLAP - ANDROID_BAR_H - 24} color={C.bg} borderColor={C.border} />
 
       </View>
     </View>
