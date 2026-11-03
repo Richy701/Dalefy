@@ -13,6 +13,9 @@
  * extension and any " - suffix") against the full name first, then a bare first name when exactly one
  * person has it. Anything ambiguous or unmatched is listed and skipped.
  *
+ * --trip="Barbados" limits the run to the travellers on the one trip whose name contains that text, instead of
+ * typing them into --only. It stops if no trip or several trips match, and lists anyone on the trip left without a photo.
+ *
  * --by-email matches each file to the person whose work email starts with it (the broker name: "ElliotA.png" is
  * elliota@..., "Ash.png" is ash.murray@... when no one else's email starts with ash). Files are named that way,
  * so it beats name matching. Pair it with --replace to correct photos an earlier name match got wrong.
@@ -66,6 +69,8 @@ const pairs = (flag('pair') ?? '').split(';').map(v => v.split('=').map(x => x.t
 // Just these people, by full name, when the rest of a match list is still under review
 const only = (flag('only') ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
 if (clear && !only.length) throw new Error('--clear needs --only="Name, Name" so it never clears everyone');
+const tripFilter = flag('trip') ?? null;
+if (tripFilter && (clear || only.length)) throw new Error('--trip cannot be combined with --clear or --only');
 
 const require = createRequire(new URL('../functions/package.json', import.meta.url));
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
@@ -116,6 +121,16 @@ for (const trip of trips) {
     if (!entry.email && t.email) entry.email = t.email.trim();
     tripPeople.set(key, entry);
   }
+}
+// --trip fills the same list --only uses, so it must never come out empty: an empty list means everyone
+const tripNames = [];
+if (tripFilter) {
+  const matched = trips.filter(t => typeof t.data.name === 'string' && norm(t.data.name).includes(norm(tripFilter)) && (!orgFilter || t.data.organization_id === orgFilter));
+  if (matched.length !== 1) throw new Error(`--trip="${tripFilter}" matched ${matched.length} trips${matched.length ? `: ${matched.map(t => t.data.name).join(', ')}` : ''}. It must match exactly one.`);
+  for (const t of matched[0].data.travelers ?? []) if (typeof t?.name === 'string' && t.name.trim()) tripNames.push(norm(t.name));
+  if (!tripNames.length) throw new Error(`${matched[0].data.name} has no travellers`);
+  only.push(...tripNames);
+  console.log(`Limited to ${matched[0].data.name}: ${tripNames.length} travellers`);
 }
 const idsFor = (person) => [...new Set([person.id, ...(tripPeople.get(norm(person.name))?.ids ?? [])])];
 // The directory doc id and the uploader on record follow the existing entries of the same organisation
@@ -250,6 +265,7 @@ if (resync) for (const person of people) {
 }
 
 console.log(`\n${plan.length} to ${resync ? 'resync' : 'attach'}:`);
+const tripNoPhoto = tripNames.filter(n => !plan.some(p => norm(p.person.name) === n) && !people.some(p => norm(p.name) === n && p.avatar));
 for (const p of plan) console.log(`  ${p.label}  ->  ${p.person.name}${p.person.email ? ` <${p.person.email}>` : ''}${p.person.create ? '  (new in the directory, from their trips)' : ''}${p.person.avatar && !resync ? '  (replaces their current photo)' : ''}`);
 // Photos an earlier first-name match may have got wrong: nobody's file answers to their email
 if (byEmail) {
@@ -263,6 +279,7 @@ const show = (title, list) => { if (list.length) { console.log(`\n${title} (${li
 show('Ambiguous, pick by renaming the file to the full name', skipped.ambiguous);
 show('No one by that name', skipped.unmatched);
 show('Already have a photo, pass --replace to overwrite', skipped.hasPhoto);
+show('On this trip with no photo matched', tripNoPhoto);
 show('Second file for the same person', skipped.duplicate);
 
 if (!apply) { console.log(`\nDry run. Add --apply to ${resync ? 'write these photos back onto the trips' : 'upload and attach'}.`); process.exit(0); }

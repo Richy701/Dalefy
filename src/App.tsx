@@ -163,7 +163,7 @@ function AppToaster() {
   return (
     <Toaster
       position="bottom-right"
-      theme={theme}
+      theme={theme === "light" ? "light" : "dark"}
       toastOptions={{
         style: {
           background: "hsl(var(--card))",

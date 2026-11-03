@@ -66,3 +66,12 @@ test('plain fields still refuse a clash, and untouched fields pass through', () 
   assert.throws(() => tripPatch({ name: 'A' }, { name: 'B' }, { name: 'C' }), /This trip's name was changed/);
   assert.deepEqual(tripPatch({ name: 'A', budget: '1' }, { name: 'A', budget: '2' }, { name: 'Z', budget: '1' }), { budget: '2' });
 });
+
+test('adding a coordinator to a trip saved before coordinators existed is not a clash', () => {
+  const coordinator = { userId: 'u1', name: 'Sam' };
+  const before = { name: 'A', coordinators: null, coordinator_ids: [] };
+  const mine = { name: 'A', coordinators: [coordinator], coordinator_ids: ['u1'] };
+  const patch = tripPatch(before, mine, { name: 'A' });
+  assert.deepEqual(patch.coordinators, [coordinator]);
+  assert.equal('coordinator_ids' in patch, false);
+});

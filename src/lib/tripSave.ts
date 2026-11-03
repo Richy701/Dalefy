@@ -41,8 +41,8 @@ export function tripPatch(before: Record<string, unknown>, desired: Record<strin
   for (const [key, value] of Object.entries(desired)) {
     if (same(before[key], value)) continue;
     if (key === 'history') { patch.history = [...new Map([...(current.history as Item[] || []), ...(value as Item[] || [])].map(entry => [entry.id, entry])).values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 60); continue; }
-    // Derived summaries are recalculated from the committed traveller list.
-    if (['attendees', 'pax_count', 'traveler_emails'].includes(key)) continue;
+    // Derived summaries are recalculated from the committed traveller and coordinator lists.
+    if (['attendees', 'pax_count', 'traveler_emails', 'coordinator_ids'].includes(key)) continue;
     if (same(before[key], current[key]) || same(value, current[key])) { patch[key] = value; continue; }
     const lists = [before[key] ?? [], value ?? [], current[key] ?? []];
     if (key in ITEM_LISTS && lists.every(isItemList)) {

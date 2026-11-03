@@ -210,6 +210,7 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip, opt
       merged.pax_count = String(travelers.length);
       merged.traveler_emails = [...new Set(travelers.map(person => (person.email || '').trim().toLowerCase()).filter(Boolean))];
     }
+    if ('coordinators' in patch) merged.coordinator_ids = ((merged.coordinators || []) as Array<{ userId: string }>).map(c => c.userId);
     tx.set(tripRef, merged, { merge: true });
     tx.set(doc(firebaseDb(), 'trip_versions', trip.id), { updated_at: serverTimestamp() });
     return docToTrip(trip.id, merged);
