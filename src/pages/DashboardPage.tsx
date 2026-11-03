@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
-import { formatTimeInput } from "@/lib/timeInput";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { objectPosition } from "@/lib/imagePosition";
 import { useNavigate } from "react-router-dom";
@@ -56,6 +55,7 @@ import { NextTripSide } from "@/components/dashboard/NextTripSide";
 import { TripCard } from "@/components/dashboard/TripCard";
 import { publishedChanges } from "@/lib/tripChanges";
 import { NeedsAttention, type AttentionItem } from "@/components/dashboard/NeedsAttention";
+import { NextUp } from "@/components/dashboard/NextUp";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 
@@ -116,18 +116,6 @@ function useLiveCountdown(trip: Trip | undefined) {
     total: diff,
   };
 }
-function getRelativeDay(dateStr: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + "T00:00:00");
-  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  if (diff < 7) return target.toLocaleDateString("en-US", { weekday: "long" });
-  return target.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-
 /** Own component so the 1-second countdown tick re-renders only this block, not the whole dashboard. */
 function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
   const countdown = useLiveCountdown(trip);
@@ -299,24 +287,6 @@ export function DashboardPage() {
       .slice(0, 3);
   }, [spotlightTrip]);
 
-  const nextEvents = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() + 14);
-    const upcoming: Array<{ event: (typeof trips)[0]["events"][0]; tripName: string; tripId: string }> = [];
-    trips.forEach(trip => {
-      trip.events.forEach(ev => {
-        if (!ev.date) return;
-        const d = new Date(ev.date + "T00:00:00");
-        if (d >= today && d <= cutoff) upcoming.push({ event: ev, tripName: trip.name, tripId: trip.id });
-      });
-    });
-    return upcoming
-      .sort((a, b) => (a.event.date + (a.event.time || "")).localeCompare(b.event.date + (b.event.time || "")))
-      .slice(0, 4);
-  }, [trips]);
-
   const [complianceOverrides] = useComplianceRecords();
   const [customTravelers] = useDirectoryTravelers();
 
@@ -346,7 +316,7 @@ export function DashboardPage() {
         });
         if (flagged > 0) {
           items.push({ key: `${trip.id}-docs`, tripId: trip.id, tripName: trip.name, icon: Warning, urgent: true, to: "/travelers", action: "Review",
-            message: `${flagged} traveller${flagged === 1 ? "" : "s"} with documents outstanding, departs in ${days} days` });
+            message: `${flagged} traveller${flagged === 1 ? "" : "s"} with documents outstanding` });
         }
       }
 
@@ -647,51 +617,7 @@ export function DashboardPage() {
             {/* ══ LEFT COLUMN ══ */}
             <div className="flex flex-col gap-8 min-w-0">
               {/* ── Next Up - cross-trip agenda ── */}
-              {nextEvents.length > 0 && (
-                <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden">
-                  <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <div>
-                      <p className="text-lg font-semibold tracking-tight text-foreground leading-none">Next up</p>
-                      <p className="text-xs text-muted-foreground mt-1">Across all your trips</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-secondary border-t border-border">
-                    {nextEvents.map(({ event: ev, tripName, tripId }) => {
-                      // "QR10 — London to Doha": the flight number moves up beside the date so the route can read in full
-                      const FLIGHT_NO = /^[A-Z0-9]{2}\s?\d{1,4}$/;
-                      const parts = ev.type === "flight" ? ev.title.split(/\s+[—–-]\s+/) : [];
-                      const codeIdx = parts.length === 2 ? parts.findIndex(p => FLIGHT_NO.test(p.trim())) : -1;
-                      const code = codeIdx >= 0 ? parts[codeIdx].trim() : ev.type === "flight" ? ev.flightNum : undefined;
-                      const title = codeIdx >= 0 ? parts[1 - codeIdx].trim() : ev.title;
-                      const time = ev.time ? formatTimeInput(ev.time) : "";
-                      return (
-                        <button
-                          key={ev.id}
-                          type="button"
-                          onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
-                          data-compact-cell
-                          className="bg-card px-4 py-4 text-left flex flex-col justify-start hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
-                        >
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
-                            <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}{time && <span className="tabular-nums">, {time}</span>}</span>
-                            {code && <span className="ml-auto text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">{code}</span>}
-                          </div>
-                          <p className="text-sm font-medium text-foreground leading-snug line-clamp-2 group-hover:text-brand transition-colors">
-                            {title}
-                          </p>
-                          {ev.location && !(ev.type === "flight" && / to /i.test(title)) && (
-                            <p className="text-[11px] font-medium text-muted-foreground mt-1 flex items-center gap-1 min-w-0">
-                              <MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{ev.location}</span>
-                            </p>
-                          )}
-                          <p className="text-[11px] font-medium text-muted-foreground truncate mt-auto pt-2.5">{tripName}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <NextUp trips={trips} />
 
               {/* ── Recent activity: takes the right column's height without adding to it, so both columns end level ── */}
               <div className="relative flex-1 flex flex-col lg:min-h-80 [&>section]:flex-1 lg:[&>section]:absolute lg:[&>section]:inset-0">

@@ -21,8 +21,6 @@ export interface AttentionItem {
   urgent?: boolean;
   /** Not urgent yet, but the trip is close: shown in amber above the rest */
   soon?: boolean;
-  /** Shown under the message, e.g. when the trip leaves */
-  detail?: string;
 }
 
 const DAY = 86_400_000;
@@ -70,28 +68,25 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
       const daysOut = Math.ceil((start.getTime() - today.getTime()) / DAY);
       const live = daysOut <= 0;
       const open = `/trip/${t.id}`;
-      const when = live ? "on now" : daysOut === 1 ? "departs tomorrow" : `departs in ${daysOut} days`;
 
       if (t.status === "Draft" && daysOut >= 0 && daysOut <= 14) {
         out.push({ key: `${t.id}-draft`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, urgent: daysOut <= 7, to: `${open}?do=publish`, action: "Publish",
-          message: `Still a draft, departs ${daysOut === 0 ? "today" : daysOut === 1 ? "tomorrow" : `in ${daysOut} days`}` });
+          message: "Still a draft" });
       }
       if (t.status !== "Draft" && t.publishedSnapshot) {
         const changes = publishedChanges(t.publishedSnapshot, { events: t.events, start: t.start, end: t.end, info: t.info });
         if (changes.length) out.push({ key: `${t.id}-changes`, tripId: t.id, tripName: t.name, icon: PaperPlaneTilt, to: `${open}?do=publish`, action: "Publish",
-          message: changes.length === 1 ? `Not published yet: ${changes[0].toLowerCase()}` : `${plural(changes.length, "change")} travellers can't see yet` });
+          message: changes.length === 1 ? `Not published yet: ${changes[0].toLowerCase()}` : `${plural(changes.length, "unpublished change")}` });
       }
       const notInvited = (t.travelers ?? []).filter(tv => !tv.invitedAt);
       if (t.status !== "Draft" && notInvited.length) {
         const noEmail = notInvited.filter(tv => !tv.email).length;
         const canEmail = notInvited.length - noEmail;
-        // Without an email address there's nobody to invite, so the job is adding addresses
-        out.push({ key: `${t.id}-invite`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=${canEmail ? "email" : "add-emails"}`, soon: daysOut <= 14,
-          detail: when,
-          action: canEmail ? "Email them" : "Add emails",
-          message: canEmail
-            ? `${plural(canEmail, "traveller")} not emailed the itinerary${noEmail ? `, ${noEmail} with no email` : ""}`
-            : `${plural(noEmail, "traveller")} with no email address` });
+        // Two different jobs, so two rows: emailing those we can reach, and finding addresses for those we can't
+        if (canEmail) out.push({ key: `${t.id}-invite`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=email`, soon: daysOut <= 14, action: "Email them",
+          message: `${plural(canEmail, "traveller")} not emailed` });
+        if (noEmail) out.push({ key: `${t.id}-no-email`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=add-emails`, soon: daysOut <= 14, action: "Add emails",
+          message: `${plural(noEmail, "traveller")} with no email` });
       }
       const dueTasks = (t.tasks ?? []).filter(task => !task.completed && task.dueDate && parseTripDate(task.dueDate).getTime() - today.getTime() <= 7 * DAY);
       if (dueTasks.length) {
@@ -131,6 +126,24 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? items : items.slice(0, 6);
 
+  // One block per trip: trips with something urgent first, then the soonest to leave
+  const groups = useMemo(() => {
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+    const startOf = (id: string) => { const t = trips.find(trip => trip.id === id); return t ? parseTripDate(t.start).getTime() : Infinity; };
+    const when = (id: string) => {
+      const t = trips.find(trip => trip.id === id);
+      if (!t) return "";
+      if (parseTripDate(t.end) < today) return "Ended";
+      const days = Math.ceil((parseTripDate(t.start).getTime() - today.getTime()) / DAY);
+      return days <= 0 ? "On now" : days === 1 ? "Departs tomorrow" : `Departs in ${days} days`;
+    };
+    const byTrip = new Map<string, AttentionItem[]>();
+    for (const item of shown) byTrip.set(item.tripId, [...(byTrip.get(item.tripId) ?? []), item]);
+    return [...byTrip.entries()]
+      .map(([tripId, rows]) => ({ tripId, tripName: rows[0].tripName, when: when(tripId), rows, urgent: rows.some(r => r.urgent) }))
+      .sort((a, b) => Number(b.urgent) - Number(a.urgent) || startOf(a.tripId) - startOf(b.tripId));
+  }, [shown, trips, now]);
+
   return (
     <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 px-5 pt-5 pb-4">
@@ -144,7 +157,7 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
             {items.length ? `${plural(items.length, "thing")} ${items.length === 1 ? "needs" : "need"} you` : "Needs attention"}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {items.length ? "Most urgent first. Each one opens where you sort it." : "Drafts, invites, tasks, flights and photo reports"}
+            {items.length ? "Most urgent trips first, then the soonest to leave." : "Drafts, invites, tasks, flights and photo reports"}
           </p>
         </div>
       </div>
@@ -155,38 +168,41 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
         </div>
       ) : (
         <>
-          <ul className="grid gap-px bg-border border-t border-border md:grid-cols-2">
-            {shown.map(item => {
-              const Icon = item.icon;
-              return (
-                <li key={item.key} className="bg-card">
-                  <button
-                    type="button"
-                    onClick={() => navigate(item.to)}
-                    className="group w-full h-full flex items-center gap-3 px-5 py-4 text-left hover:bg-secondary/50 transition-colors"
-                  >
-                    <span className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
-                      item.urgent ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                        : item.soon ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        : "bg-secondary text-muted-foreground"}`}>
-                      <Icon className="h-4 w-4" weight={item.urgent || item.soon ? "bold" : "regular"} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-foreground truncate">{item.message}</span>
-                      <span className="block text-xs text-muted-foreground truncate">{[item.tripName, item.detail].filter(Boolean).join(", ")}</span>
-                    </span>
-                    <span className={`inline-flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
-                      item.urgent ? "bg-primary text-primary-foreground group-hover:opacity-90"
-                        : "border border-border bg-card text-foreground group-hover:bg-secondary"}`}>
-                      {item.action}<CaretRight className="h-3 w-3" />
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-            {/* Keep the grid even when the last row has one item */}
-            {shown.length % 2 === 1 && <li className="hidden md:block bg-card" aria-hidden="true" />}
-          </ul>
+          <div className="divide-y divide-border border-t border-border">
+            {groups.map(group => (
+              <section key={group.tripId} aria-label={group.tripName} className="px-5 py-3.5">
+                <div className="flex items-baseline justify-between gap-3 pb-1">
+                  <h3 className="text-sm font-semibold text-foreground truncate">{group.tripName}</h3>
+                  {group.when && <p className="text-xs text-muted-foreground shrink-0">{group.when}</p>}
+                </div>
+                <ul>
+                  {group.rows.map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.key}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(item.to)}
+                          className="group -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-secondary/50 transition-colors"
+                        >
+                          <Icon aria-hidden="true" weight={item.urgent || item.soon ? "bold" : "regular"} className={`h-4 w-4 shrink-0 ${
+                            item.urgent ? "text-red-600 dark:text-red-400"
+                              : item.soon ? "text-amber-700 dark:text-amber-400"
+                              : "text-muted-foreground"}`} />
+                          <span className="min-w-0 flex-1 text-sm text-foreground">{item.message}</span>
+                          <span className={`inline-flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                            item.urgent ? "bg-primary text-primary-foreground group-hover:opacity-90"
+                              : "border border-border bg-card text-foreground group-hover:bg-secondary"}`}>
+                            {item.action}<CaretRight className="h-3 w-3" />
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
           {items.length > 6 && (
             <button type="button" onClick={() => setShowAll(s => !s)} className="w-full border-t border-border px-5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
               {showAll ? "Show fewer" : `Show all ${items.length}`}

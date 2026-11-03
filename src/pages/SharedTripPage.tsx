@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
 import { clockTime, stayTime } from "@/lib/timeInput";
-import { airlineLogoUrl } from "@/data/airlines";
+import { AirlineMark } from "@/components/shared/AirlineMark";
 import { tzAbbr, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -98,20 +98,6 @@ function tripPhase(start: string, end: string): string {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{children}</h2>;
-}
-
-/** The airline's logo on a white plate so it reads in both themes; a plane when we have no logo for it. */
-function AirlineMark({ flightNum, className = "h-6 w-6", fallback }: { flightNum?: string; className?: string; fallback?: React.ReactNode }) {
-  const iata = flightNum?.trim().toUpperCase().match(/^([A-Z0-9]{2})/)?.[1] ?? "";
-  const [failed, setFailed] = useState(false);
-  if (fallback && (!iata || failed)) return fallback;
-  return (
-    <span className={`${className} shrink-0 rounded-full border border-border bg-white overflow-hidden flex items-center justify-center`}>
-      {iata && !failed
-        ? <img src={airlineLogoUrl(iata)} alt="" loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-contain" />
-        : <AirplaneTilt aria-hidden="true" className="h-3.5 w-3.5 text-neutral-700" weight="fill" />}
-    </span>
-  );
 }
 
 /** Only statuses a traveller needs to act on; "Expected" or "Scheduled" just mean nothing has changed. */
