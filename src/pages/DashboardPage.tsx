@@ -182,8 +182,9 @@ export function DashboardPage() {
   const trips = useMemo(() => liveTrips(allTrips), [allTrips]);
   const archivedTrips = useMemo(() => allTrips.filter(t => !!t.archivedAt), [allTrips]);
   const [showArchived, setShowArchived] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
   useTheme();
-  useAuth();
+  const { user } = useAuth();
   const { addNotification } = useNotifications();
   usePreferences();
   const { canDeleteTrip, isOrgMember, isViewer, canInviteMembers } = usePermissions();
@@ -240,12 +241,14 @@ export function DashboardPage() {
     const q = searchQuery.toLowerCase();
     return [...(showArchived ? archivedTrips : trips)]
       .sort((a, b) => a.start.localeCompare(b.start))
+      .filter(t => !onlyMine || t.coordinators?.some(c => c.userId === user?.id))
       .filter(t =>
         t.name.toLowerCase().includes(q) ||
         t.attendees.toLowerCase().includes(q) ||
         (t.destination?.toLowerCase().includes(q) ?? false)
       );
-  }, [trips, archivedTrips, showArchived, searchQuery]);
+  }, [trips, archivedTrips, showArchived, searchQuery, onlyMine, user?.id]);
+  const coordinatingAny = trips.some(t => t.coordinators?.some(c => c.userId === user?.id));
 
   // The grid shows current and upcoming trips; past ones sit in a folded row underneath
   const todayStart = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -1043,6 +1046,16 @@ export function DashboardPage() {
                 <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-md tabular-nums">{filteredTrips.length}</span>
               </div>
               <div className="flex items-center gap-2">
+                {(coordinatingAny || onlyMine) && (
+                  <button
+                    type="button"
+                    aria-pressed={onlyMine}
+                    onClick={() => setOnlyMine(v => !v)}
+                    className={`h-9 px-3 rounded-xl border shadow-sm flex items-center gap-1.5 text-xs font-medium transition-colors ${onlyMine ? "bg-primary text-primary-foreground border-transparent" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    My trips
+                  </button>
+                )}
                 {(archivedTrips.length > 0 || showArchived) && (
                   <button
                     type="button"
@@ -1171,7 +1184,10 @@ export function DashboardPage() {
                         <p className={`text-xs ${whenText === "On now" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>{whenText}</p>
                       </div>
                       <p className="hidden md:block text-sm text-foreground tabular-nums">{travellerCount(trip)}</p>
-                      <p className={`hidden md:block text-sm truncate ${copy.tone}`}>{copy.text}</p>
+                      <div className="hidden md:block min-w-0">
+                        <p className={`text-sm truncate ${copy.tone}`}>{copy.text}</p>
+                        {trip.coordinators && trip.coordinators.length > 0 && <p className="text-xs text-muted-foreground truncate">{trip.coordinators.map(c => c.name).join(", ")}</p>}
+                      </div>
                       <div onClick={e => e.stopPropagation()} className="flex justify-end md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center justify-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand/40" aria-label={`Actions for ${trip.name}`}>

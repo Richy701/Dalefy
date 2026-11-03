@@ -1,4 +1,4 @@
-import { queryDocumentsRange, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { getDocument, queryDocumentsRange, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
 import type { AeroFlight } from "./_flightsCore.js";
 import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
@@ -6,6 +6,8 @@ import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
 import { sendPush, logPush, checkPushReceipts, newPushLogId } from "./_expoPush.js";
+import { sendEmail } from "./_mailer.js";
+import { flightProblemEmail } from "../src/lib/email/templates.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on upcoming flights,
@@ -141,6 +143,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (sent.length > 0) {
       await sendFlightNotifications(sent);
     }
+    // A failed alert email must never stop the job that keeps flights current
+    await emailCoordinators(sent, tripDocs).catch(err => {
+      console.warn("check-flight-status: coordinator emails failed:", err instanceof Error ? err.message : err);
+    });
 
     // Receipts of earlier pushes: drops tokens of phones that uninstalled the app
     const receipts = await checkPushReceipts().catch((err) => {
@@ -325,6 +331,37 @@ function detectChanges(stored: StoredFlightEvent, live: LiveFlightData): string[
 }
 
 // ── Push notifications ─────────────────────────────────────────────────────
+
+/** Tells a trip's coordinators when one of its flights goes wrong. Travellers hear separately, by push. */
+async function emailCoordinators(updates: FlightUpdate[], tripDocs: FirestoreDoc[]) {
+  const PROBLEMS: Record<string, string> = { delayed: "delayed", cancelled: "cancelled", diverted: "diverted" };
+  const appUrl = (process.env.VITE_APP_URL ?? "https://dalefy.app").replace(/\/$/, "");
+  for (const update of updates) {
+    const problem = PROBLEMS[statusGroup(update.status)];
+    if (!problem) continue;
+    const fields = tripDocs.find(doc => docId(doc) === update.tripId)?.fields ?? {};
+    // Only the creator can open a private trip, so an alert would point nobody anywhere
+    if (decodeValue(fields.private) === true) continue;
+    const coordinators = decodeValue(fields.coordinators);
+    if (!Array.isArray(coordinators) || coordinators.length === 0) continue;
+    const message = flightProblemEmail({
+      tripName: update.tripName,
+      flight: update.flightNum,
+      problem,
+      details: update.changes.filter(change => !change.startsWith("Status: ")),
+      manageUrl: `${appUrl}/#/trip/${update.tripId}?event=${update.eventId}`,
+    });
+    for (const coordinator of coordinators) {
+      const uid = (coordinator as { userId?: unknown }).userId;
+      if (typeof uid !== "string" || !uid) continue;
+      const profileDoc = await getDocument("profiles", uid).catch(() => null);
+      const email = profileDoc?.fields ? decodeValue(profileDoc.fields.email) : null;
+      if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+      const sent = await sendEmail({ to: email, ...message });
+      if (!sent.ok) console.warn("check-flight-status: coordinator email failed:", "error" in sent ? sent.error : "");
+    }
+  }
+}
 
 async function sendFlightNotifications(updates: FlightUpdate[]) {
   // Resolve push tokens per trip: trip_members maps trip_id → device_id,

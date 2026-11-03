@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ChatCircleText, Megaphone, CaretLeft, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
+  Headset, ChatCircleText, Megaphone, CaretLeft, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { objectPosition } from "@/lib/imagePosition";
 import { FocalPointPicker } from "@/components/shared/FocalPointPicker";
-import type { TravelEvent, Trip, TripOrganizer, User as UserType } from "@/types";
+import type { TravelEvent, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
@@ -70,6 +70,7 @@ import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages } from "@/services/imageSearch";
 import { FlightTimeWarnings } from "@/components/workspace/FlightTimeWarnings";
+import { TripCoordinatorsPicker, useTeamMembers } from "@/components/workspace/TripCoordinatorsPicker";
 import { lookupFlight } from "@/services/serpapi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
@@ -440,7 +441,9 @@ export function WorkspacePage() {
   }, [job, searchParams, setSearchParams]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editCoordinators, setEditCoordinators] = useState<TripCoordinator[]>([]);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
+  const { members: teamMembers, failed: teamFailed } = useTeamMembers(trip?.organizationId, editOrgOpen);
   const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
@@ -971,19 +974,23 @@ export function WorkspacePage() {
     }
   };
 
+  const canPickCoordinators = !!trip?.organizationId && !trip?.private;
   const handleOpenEditOrg = () => {
     if (demoGate()) return;
     editBaseline.current = trip;
     setEditOrgData({ ...(trip.organizer ?? {}) });
+    setEditCoordinators(trip.coordinators ?? []);
     setEditOrgOpen(true);
   };
   const handleSaveOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
     const org = editOrgData.name?.trim() ? editOrgData as Trip["organizer"] : undefined;
-    if (!await commitChanges({ organizer: org }, editBaseline.current)) return;
+    // Left alone unless the team loaded, so a failed lookup can't clear the list; a private trip can't have any
+    const coordinators = canPickCoordinators && teamMembers ? { coordinators: editCoordinators } : {};
+    if (!await commitChanges({ organizer: org, ...coordinators }, editBaseline.current)) return;
     setEditOrgOpen(false);
-    toast.success(org ? "Organizer updated" : "Organizer removed");
+    toast.success("Saved");
   };
 
   const handleOpenEditInfo = () => {
@@ -1336,6 +1343,7 @@ export function WorkspacePage() {
                     {canSetPrivate && (
                       <DropdownMenuItem onClick={togglePrivate} className={item}>{trip.private ? <UsersThree className="h-4 w-4" /> : <LockSimple className="h-4 w-4" />} {trip.private ? "Share with team" : "Make private"}</DropdownMenuItem>
                     )}
+                    {!isViewer && <DropdownMenuItem onClick={handleOpenEditOrg} className={item}><UsersThree className="h-4 w-4" /> Who's responsible</DropdownMenuItem>}
                     <DropdownMenuItem onClick={toggleArchived} className={item}>{trip.archivedAt ? <ArrowCounterClockwise className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {trip.archivedAt ? "Unarchive trip" : "Archive trip"}</DropdownMenuItem>
                     {(!isOrgMember || canDeleteTrip) && (
                       <>
@@ -1531,7 +1539,7 @@ export function WorkspacePage() {
                 )}
                 <h3 className="text-3xl lg:text-4xl font-bold tracking-tight leading-tight text-white mb-2">{trip.name}</h3>
                 <p className="text-base font-medium text-white/90">{tripFactLine(trip)}{trip.attendees ? ` · ${trip.attendees}` : ""}</p>
-                <p className="text-sm text-white/70 mt-0.5">{shortDay(trip.start)} → {shortDay(trip.end)}</p>
+                <p className="text-sm text-white/70 mt-0.5">{shortDay(trip.start)} → {shortDay(trip.end)}{trip.coordinators?.length ? `, coordinator: ${trip.coordinators.map(c => c.name).join(", ")}` : ""}</p>
               </div>
             </section>
 
@@ -1975,12 +1983,20 @@ export function WorkspacePage() {
                         {tripTravelers.map(t => {
                           const eventCount = trip.events.filter(e => e.assignedTo?.includes(t.id)).length;
                           const isEditing = editingEmailId === t.id;
+                          // Their app account if they've joined, otherwise the name saved with the coordinator
+                          const appUid = memberByTraveler.get(t.id)?.uid;
+                          const isCoordinator = trip.coordinators?.some(c => c.userId === appUid || c.name.trim().toLowerCase() === t.name.trim().toLowerCase());
                           return (
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border group hover:border-brand/30 transition-colors">
                               <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-10 w-10" fallbackClassName="bg-brand/10 text-brand text-xs font-black" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
+                                  {isCoordinator && (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-foreground shrink-0">
+                                      <Headset aria-hidden="true" className="h-3 w-3" weight="bold" /> Coordinator
+                                    </span>
+                                  )}
                                   {memberByTraveler.has(t.id) ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
                                       <DeviceMobile className="h-3 w-3" weight="bold" /> In the app{memberByTraveler.get(t.id)?.last_seen_at ? `, opened ${timeAgo(memberByTraveler.get(t.id)!.last_seen_at)}` : ""}
@@ -3505,21 +3521,43 @@ export function WorkspacePage() {
 
       {/* ── Organizer mini-dialog ── */}
       <Dialog open={editOrgOpen} onOpenChange={setEditOrgOpen}>
-        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto bg-card rounded-xl border border-border shadow-2xl p-0">
-          <form onSubmit={handleSaveOrg}>
+        <DialogContent className={`${trip.organizationId ? "max-w-4xl" : "max-w-md"} max-h-[90dvh] overflow-y-auto bg-card rounded-xl border border-border shadow-2xl p-0`}>
+          {/* min-w-0: the dialog is a grid, and a long name in the dropdown would otherwise push it past the screen */}
+          <form onSubmit={handleSaveOrg} className="min-w-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
                   <Users className="h-4 w-4 text-brand" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Organizer</DialogTitle>
-                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Trip contact person visible to travelers</p>
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Who's responsible</DialogTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Who oversees this trip, and who travellers contact</p>
                 </div>
               </div>
             </DialogHeader>
-            <div className="p-6 space-y-3">
-              <OrganizerPersonSelect people={tripTravelers} value={editOrgData} onChange={setEditOrgData} />
+            <div className={`p-6 ${trip.organizationId ? "grid gap-6 md:grid-cols-2 md:gap-8" : ""}`}>
+              {trip.organizationId && (
+                <section className="min-w-0 space-y-2 border-b border-border pb-6 md:border-b-0 md:border-r md:pb-0 md:pr-8">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-foreground">Trip coordinators</h4>
+                    <span className="shrink-0 text-xs text-muted-foreground">Not shown to travellers</span>
+                  </div>
+                  {canPickCoordinators ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">Overseeing from home. They get an email if a flight is delayed, cancelled or diverted, or a photo is reported.</p>
+                      <TripCoordinatorsPicker members={teamMembers} failed={teamFailed} value={editCoordinators} onChange={setEditCoordinators} />
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">This trip is private, so only you can see it. Share it with your team to add coordinators.</p>
+                  )}
+                </section>
+              )}
+              <section className="min-w-0 space-y-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h4 className="text-sm font-semibold text-foreground">Traveller contact</h4>
+                <span className="shrink-0 text-xs text-muted-foreground">Shown to travellers</span>
+              </div>
+              <OrganizerPersonSelect people={tripTravelers} team={teamMembers ?? []} value={editOrgData} onChange={setEditOrgData} />
               {([
                 { key: "name" as const, label: "Full Name", placeholder: "e.g., Jane Smith" },
                 { key: "role" as const, label: "Role", placeholder: "e.g., Travel Consultant" },
@@ -3538,6 +3576,7 @@ export function WorkspacePage() {
                   />
                 </div>
               ))}
+              </section>
             </div>
             <DialogFooter className="px-6 py-4 border-t border-border flex items-center justify-between">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>

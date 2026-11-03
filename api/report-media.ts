@@ -75,6 +75,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     ? (await queryDocuments("org_members", "organization_id", orgId, 100)).map(decode)
         .filter(m => m.role === "owner" || m.role === "admin").map(m => m.user_id)
     : [trip.user_id];
+  // The trip's coordinators too, unless it's private: they can't open it to act on the alert
+  if (trip.private !== true && Array.isArray(trip.coordinators)) {
+    for (const c of trip.coordinators) uids.push((c as { userId?: unknown }).userId);
+  }
   const emails = new Set<string>();
   for (const uid of uids) {
     if (typeof uid !== "string" || !uid) continue;

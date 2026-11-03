@@ -251,6 +251,8 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
         const busy = actionLoading === member.userId;
         const canManageRow = isAdmin && !isSelf && !isTargetOwner;
         const canLeave = isSelf && !isTargetOwner && !impersonation;
+        // A label, not a permission, so admins can set it on anyone, themselves and the owner included
+        const canLabelCoordinator = isAdmin && !impersonation;
         const outranked = !!orgRole && ROLE_RANK[member.role] < ROLE_RANK[orgRole];
         const canSignInAs = canManageRow && !impersonation && outranked;
         const held = holding(member.userId);
@@ -288,7 +290,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                 </p>
               </div>
 
-              {canManageRow || canLeave ? (
+              {canManageRow || canLeave || canLabelCoordinator ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!!actionLoading}
@@ -315,7 +317,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                           </DropdownMenuItem>
                         );
                       })}
-                    {canManageRow && (
+                    {canLabelCoordinator && (
                       <DropdownMenuItem
                         onClick={() => toggleCoordinator(member)}
                         className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"

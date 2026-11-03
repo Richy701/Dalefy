@@ -189,6 +189,31 @@ export function tripUpdatedEmail(input: {
   return { subject: `Updated itinerary: ${input.tripName}`, html, text };
 }
 
+// ── Flight problem, for a trip's coordinators ───────────────────────────────
+
+export function flightProblemEmail(input: {
+  tripName: string;
+  flight: string;
+  problem: string;
+  details: string[];
+  manageUrl: string;
+}): RenderedEmail {
+  const brand = DALEFY_BRAND;
+  const intro = `${input.flight} on ${input.tripName} is ${input.problem}. You're getting this as the trip's coordinator.`;
+  const list = listCard(input.details);
+  const { html, text } = renderEmailShell({
+    brand,
+    preheader: `${input.flight} is ${input.problem}`,
+    eyebrow: "Flight alert",
+    title: input.tripName,
+    bodyHtml: paragraph(escapeHtml(intro)) + (input.details.length ? list.html : ""),
+    bodyText: `${intro}${input.details.length ? `\n\n${list.text}` : ""}`,
+    cta: { label: "Open the trip", url: input.manageUrl },
+    footerText: `Sent by ${brand.platformName}.`,
+  });
+  return { subject: `${input.flight} ${input.problem}: ${input.tripName}`, html, text };
+}
+
 // ── Photo reported ──────────────────────────────────────────────────────────
 
 export function mediaReportedEmail(input: {

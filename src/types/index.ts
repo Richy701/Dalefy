@@ -97,6 +97,12 @@ export interface TripOrganizer {
   avatar?: string;
 }
 
+/** A team member overseeing a trip from home. The name is kept for display; alerts read the email from their profile. */
+export interface TripCoordinator {
+  userId: string;
+  name: string;
+}
+
 export interface TripInfo {
   id: string;
   title: string;
@@ -201,6 +207,8 @@ export interface Trip {
   archivedAt?: string;
   /** Only the person who created it can see it */
   private?: boolean;
+  /** Who oversees this trip from home. Never published to travellers. */
+  coordinators?: TripCoordinator[];
   /** Account that created the trip (read-only, from the stored user_id) */
   ownerId?: string;
 }
