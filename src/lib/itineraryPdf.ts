@@ -39,8 +39,8 @@ export interface PdfFonts {
   semibold: string;
 }
 
-/** The cover photo runs edge to edge across the first page. */
-export const COVER_RATIO = 1.3;
+/** The photo runs edge to edge across the top of the first page, with the flights following underneath. */
+export const COVER_RATIO = 2.6;
 
 /** Phosphor AirplaneTilt (fill weight), rotated to point right, rasterised for jsPDF. */
 const PLANE_PNG =
@@ -256,8 +256,7 @@ class Doc {
   }
   footers() {
     const total = this.pdf.getNumberOfPages();
-    // The cover stands alone
-    for (let p = 2; p <= total; p++) {
+    for (let p = 1; p <= total; p++) {
       this.pdf.setPage(p);
       this.rule(PAGE_H - 14);
       this.text(`Prepared by ${this.brand.name}`, MARGIN, PAGE_H - 9, { size: 7.5, color: MUTED });
@@ -274,6 +273,8 @@ class Doc {
 }
 
 /* ---------- sections ---------- */
+
+const hasOrganiser = (trip: Trip) => !!trip.organizer?.name?.trim();
 
 function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl?: string | null) {
   // Masthead: the logo when there is one, otherwise the organiser's name
@@ -302,7 +303,7 @@ function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl
     d.y = photoY + photoH + 10;
   } else {
     d.rule(photoY, MARGIN, PAGE_W - MARGIN, visible ? accent : LINE);
-    d.y = 70;
+    d.y = 26;
   }
 
   // Title
@@ -514,8 +515,6 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
     if (!days.has(ev.date)) days.set(ev.date, []);
     days.get(ev.date)!.push(ev);
   }
-  // The schedule starts its own page
-  if (d.y > TOP) d.newPage();
   d.sectionTitle("Day by day");
 
   const timeX = MARGIN;
@@ -525,18 +524,17 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
   const rowH = (ev: TravelEvent) => {
     const meta = eventMeta(ev);
     const contact = transferContact(ev);
-    return d.paragraphHeight(ev.title, 10, textW - 22, 4.4)
-      + (meta ? d.paragraphHeight(meta, 9, textW, 4.1) : 0)
-      + (contact ? d.paragraphHeight(contact, 9, textW, 4.1) : 0)
-      + (ev.description ? d.paragraphHeight(ev.description, 9, textW, 4.1) + 1 : 0)
+    return d.paragraphHeight(ev.title, 9, textW - 22, 3.9)
+      + (meta ? d.paragraphHeight(meta, 8, textW, 3.6) : 0)
+      + (contact ? d.paragraphHeight(contact, 8, textW, 3.6) : 0)
+      + (ev.description ? d.paragraphHeight(ev.description, 8, textW, 3.6) + 1 : 0)
       + 4;
   };
 
   for (const [date, evs] of [...days.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const dayNo = Math.round((parseDate(date).getTime() - parseDate(tripStart).getTime()) / DAY_MS) + 1;
-    // Keep a whole day together when it fits on one page, otherwise its header with at least the first row
-    const dayH = 17 + evs.reduce((sum, ev) => sum + rowH(ev) + 2, 0);
-    d.ensure(dayH <= BOTTOM - TOP ? dayH : 36);
+    // Days run on across pages to save paper; a day's header always keeps at least its first row
+    d.ensure(36);
     d.y += 2;
     if (dayNo >= 1) d.text(`Day ${dayNo}`, MARGIN, d.y + 4, { size: 9, color: MUTED });
     d.text(fmtLong(date), textX, d.y + 4, { size: 11, weight: "bold" });
@@ -549,7 +547,13 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
       const contact = transferContact(ev);
       const isFlight = ev.type === "flight";
       const h = rowH(ev);
+      const pageBefore = d.page;
       d.ensure(h + 2);
+      // A day that runs onto a new page says which day it still is
+      if (d.page !== pageBefore) {
+        d.text(`${fmtLong(date)}, continued`, textX, d.y + 3, { size: 9, color: MUTED });
+        d.y += 8;
+      }
 
       // connector to the next row, drawn first so the marker sits on top of it
       if (i < evs.length - 1) d.vline(dotX, d.y + 4.5, d.y + h + 1.5);
@@ -560,12 +564,12 @@ function dayByDay(d: Doc, sorted: TravelEvent[], tripStart: string) {
 
       let y = d.y + 3.4;
       const label = ev.type === "hotel" ? "Check in" : ev.type === "activity" ? "" : CATEGORY_LABEL[ev.type];
-      const used = d.paragraph(ev.title, textX, y, textW - 22, { size: 10, weight: "bold", leading: 4.4 });
+      const used = d.paragraph(ev.title, textX, y, textW - 22, { size: 9, weight: "bold", leading: 3.9 });
       if (label) d.text(label, PAGE_W - MARGIN, y, { size: 8, color: MUTED, align: "right" });
       y += used;
-      if (meta) y += d.paragraph(meta, textX, y, textW, { size: 9, color: MUTED, leading: 4.1 });
-      if (contact) y += d.paragraph(contact, textX, y, textW, { size: 9, leading: 4.1 });
-      if (ev.description) y += 1 + d.paragraph(ev.description, textX, y, textW, { size: 9, leading: 4.1 });
+      if (meta) y += d.paragraph(meta, textX, y, textW, { size: 8, color: MUTED, leading: 3.6 });
+      if (contact) y += d.paragraph(contact, textX, y, textW, { size: 8, leading: 3.6 });
+      if (ev.description) y += 1 + d.paragraph(ev.description, textX, y, textW, { size: 8, leading: 3.6 });
       d.y += h + 2;
     });
     d.y += 5;
@@ -632,7 +636,8 @@ export async function buildItineraryPdf(opts: ItineraryPdfOptions): Promise<JsPd
   const sorted = sortEvents(opts.trip.events);
 
   cover(d, pdf, opts.trip, opts.brand, opts.coverDataUrl);
-  d.newPage();
+  // Below the organiser, or the overview strip when there isn't one
+  d.y += hasOrganiser(opts.trip) ? 20 : 2;
   routeMap(d, pdf, opts.mapDataUrl);
   flights(d, sorted.filter(e => e.type === "flight"), includeRefs);
   stays(d, sorted.filter(e => e.type === "hotel"), opts.trip.end, includeRefs);
