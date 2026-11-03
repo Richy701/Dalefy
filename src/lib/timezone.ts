@@ -1,3 +1,4 @@
+import { parseTimeInput } from "./timeInput";
 const DEST_TZ: Record<string, string> = {
   seoul: "Asia/Seoul", korea: "Asia/Seoul",
   tokyo: "Asia/Tokyo", japan: "Asia/Tokyo",
@@ -83,4 +84,41 @@ export function tzAbbr(iana: string | undefined, date: string): string {
   } catch {
     return "";
   }
+}
+
+function tzOffsetMinutes(iana: string, date: string): number | null {
+  try {
+    const name = new Intl.DateTimeFormat("en-US", { timeZone: iana, timeZoneName: "longOffset" })
+      .formatToParts(new Date(`${date.slice(0, 10)}T12:00:00Z`)).find(part => part.type === "timeZoneName")?.value;
+    if (name === "GMT") return 0;
+    const m = name?.match(/^GMT([+-])(\d{2}):(\d{2})$/);
+    return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * How many days after departure a flight lands, for the "+1" beside its arrival. A saved arrival date always wins.
+ * Without one, landing at an earlier clock time usually means the next day, but a westbound flight can do that on
+ * the same day, so its zones and duration decide when they are known.
+ */
+export function flightDayOffset(ev: { type: string; date: string; endDate?: string; time?: string; endTime?: string; duration?: string; location?: string; depAirport?: string; arrAirport?: string; depTz?: string; arrTz?: string }): number {
+  if (ev.endDate) {
+    const days = Math.round((Date.parse(`${ev.endDate.slice(0, 10)}T12:00:00Z`) - Date.parse(`${ev.date.slice(0, 10)}T12:00:00Z`)) / 86400000);
+    return Number.isFinite(days) ? days : 0;
+  }
+  const dep = parseTimeInput(ev.time);
+  const arr = parseTimeInput(ev.endTime);
+  if (!dep || !arr) return 0;
+  const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  if (toMinutes(arr) >= toMinutes(dep)) return 0;
+  const length = ev.duration?.match(/^\s*(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?\s*$/);
+  const lengthMinutes = length && (length[1] || length[2]) ? Number(length[1] ?? 0) * 60 + Number(length[2] ?? 0) : null;
+  const depZone = eventTz(ev, undefined, "dep");
+  const arrZone = eventTz(ev, undefined, "arr");
+  const depOffset = depZone ? tzOffsetMinutes(depZone, ev.date) : null;
+  const arrOffset = arrZone ? tzOffsetMinutes(arrZone, ev.date) : null;
+  if (lengthMinutes === null || depOffset === null || arrOffset === null) return 1;
+  return Math.floor((toMinutes(dep) + lengthMinutes + arrOffset - depOffset) / 1440);
 }

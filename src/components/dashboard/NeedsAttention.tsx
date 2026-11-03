@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { objectPosition } from "@/lib/imagePosition";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import {
   AirplaneTilt, CalendarCheck, CaretRight, CheckCircle, EnvelopeSimple, Flag, ListChecks, PaperPlaneTilt, Warning,
@@ -140,7 +141,7 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
     const byTrip = new Map<string, AttentionItem[]>();
     for (const item of shown) byTrip.set(item.tripId, [...(byTrip.get(item.tripId) ?? []), item]);
     return [...byTrip.entries()]
-      .map(([tripId, rows]) => ({ tripId, tripName: rows[0].tripName, when: when(tripId), rows, urgent: rows.some(r => r.urgent) }))
+      .map(([tripId, rows]) => ({ tripId, tripName: rows[0].tripName, trip: trips.find(t => t.id === tripId), when: when(tripId), rows, urgent: rows.some(r => r.urgent) }))
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || startOf(a.tripId) - startOf(b.tripId));
   }, [shown, trips, now]);
 
@@ -171,9 +172,14 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
           <div className="divide-y divide-border border-t border-border">
             {groups.map(group => (
               <section key={group.tripId} aria-label={group.tripName} className="px-5 py-3.5">
-                <div className="flex items-baseline justify-between gap-3 pb-1">
-                  <h3 className="text-sm font-semibold text-foreground truncate">{group.tripName}</h3>
-                  {group.when && <p className="text-xs text-muted-foreground shrink-0">{group.when}</p>}
+                <div className="flex items-center gap-3 pb-1.5">
+                  <span className="h-9 w-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                    {group.trip?.image && <img src={group.trip.image} alt="" loading="lazy" style={{ objectPosition: objectPosition(group.trip.imagePosition) }} className="h-full w-full object-cover" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground truncate">{group.tripName}</h3>
+                    {group.when && <p className="text-xs text-muted-foreground">{group.when}</p>}
+                  </div>
                 </div>
                 <ul>
                   {group.rows.map(item => {

@@ -1129,8 +1129,8 @@ export function DashboardPage() {
                 )}
                 {filteredTrips.length > 0 && (
                   <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                    <div className="hidden md:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_5rem_minmax(0,1.3fr)_2.5rem] items-center gap-4 px-4 py-2.5 border-b border-border text-xs text-muted-foreground">
-                      <span>Trip</span><span>Dates</span><span className="text-right">Travellers</span><span>Travellers' copy</span><span />
+                    <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_9rem_6rem_12rem_2.5rem] items-center gap-4 px-4 py-2.5 border-b border-border text-xs text-muted-foreground">
+                      <span>Trip</span><span>Dates</span><span>Travellers</span><span>Status</span><span />
                     </div>
                     <ul className="divide-y divide-border">
                 {filteredTrips.map(trip => {
@@ -1149,7 +1149,7 @@ export function DashboardPage() {
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group grid grid-cols-[minmax(0,1fr)_2.5rem] md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_5rem_minmax(0,1.3fr)_2.5rem] items-center gap-4 px-4 py-2.5 cursor-pointer hover:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:bg-secondary"
+                      className="group grid grid-cols-[minmax(0,1fr)_2.5rem] md:grid-cols-[minmax(0,1fr)_9rem_6rem_12rem_2.5rem] items-center gap-4 px-4 py-2.5 cursor-pointer hover:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:bg-secondary"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative h-10 w-14 shrink-0 rounded-lg overflow-hidden bg-secondary">
@@ -1170,7 +1170,7 @@ export function DashboardPage() {
                         <p className="text-sm text-foreground tabular-nums">{tDateStr}</p>
                         <p className={`text-xs ${whenText === "On now" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>{whenText}</p>
                       </div>
-                      <p className="hidden md:block text-sm text-foreground tabular-nums text-right">{travellerCount(trip)}</p>
+                      <p className="hidden md:block text-sm text-foreground tabular-nums">{travellerCount(trip)}</p>
                       <p className={`hidden md:block text-sm truncate ${copy.tone}`}>{copy.text}</p>
                       <div onClick={e => e.stopPropagation()} className="flex justify-end md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <DropdownMenu>

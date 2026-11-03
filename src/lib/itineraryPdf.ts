@@ -9,7 +9,7 @@ import type { jsPDF as JsPdfType } from "jspdf";
 import type { Trip, TravelEvent } from "@/types";
 import { sortEvents } from "@/lib/sortEvents";
 import { clockTime, stayTime } from "@/lib/timeInput";
-import { tzAbbr, eventTz } from "@/lib/timezone";
+import { tzAbbr, eventTz, flightDayOffset } from "@/lib/timezone";
 
 export interface PdfBrand {
   name: string;
@@ -387,7 +387,7 @@ function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
     const detailLines = details ? d.wrap(details, 8, right - x - (notice ? 24 : 0)) : [];
     const footLines = Math.max(detailLines.length, notice ? 1 : 0);
 
-    const days = ev.endDate ? Math.round((parseDate(ev.endDate).getTime() - parseDate(ev.date).getTime()) / DAY_MS) : 0;
+    const days = flightDayOffset(ev);
     const dayOffset = days ? ` ${days > 0 ? "+" : ""}${days}` : "";
     const known = (t?: string) => !isPlaceholderTime(t);
     const depTz = tzAbbr(eventTz(ev, undefined, "dep"), ev.date);

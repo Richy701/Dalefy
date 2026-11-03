@@ -8,7 +8,7 @@ import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
 import { clockTime, stayTime } from "@/lib/timeInput";
 import { AirlineMark } from "@/components/shared/AirlineMark";
-import { tzAbbr, eventTz } from "@/lib/timezone";
+import { tzAbbr, eventTz, flightDayOffset } from "@/lib/timezone";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { Trip, TravelEvent } from "@/types";
@@ -133,7 +133,7 @@ function FlightCard({ ev }: { ev: TravelEvent }) {
   const depTz = tzAbbr(eventTz(ev, undefined, "dep"), ev.date);
   const arrTz = tzAbbr(eventTz(ev, undefined, "arr"), ev.endDate || ev.date);
   const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title;
-  const days = ev.endDate ? Math.round((parseTripDate(ev.endDate).getTime() - parseTripDate(ev.date).getTime()) / 86400000) : 0;
+  const days = flightDayOffset(ev);
   const dayOffset = days ? `${days > 0 ? "+" : ""}${days}` : undefined;
   const notice = flightNotice(ev.status);
   const departs = [ev.terminal && `Terminal ${ev.terminal.replace(/^T/i, "")}`, ev.gate && `Gate ${ev.gate}`].filter(Boolean).join(", ");

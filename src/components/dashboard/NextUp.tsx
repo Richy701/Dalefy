@@ -4,8 +4,10 @@ import { MapPin } from "@phosphor-icons/react";
 import { AirlineMark } from "@/components/shared/AirlineMark";
 import { CategoryDot } from "@/components/ui/category-dot";
 import { parseTripDate } from "@/lib/dates";
+import { objectPosition } from "@/lib/imagePosition";
 import { sortEvents } from "@/lib/sortEvents";
 import { clockTime } from "@/lib/timeInput";
+import { flightDayOffset } from "@/lib/timezone";
 import type { Trip, TravelEvent } from "@/types";
 
 const WINDOW_DAYS = 14;
@@ -30,7 +32,7 @@ function dayLabel(date: string, today: Date): string {
 
 function detailLine(ev: TravelEvent): { text: string; place: boolean } | null {
   if (ev.type === "flight") {
-    const days = ev.endDate && ev.endDate !== ev.date ? Math.round((parseTripDate(ev.endDate).getTime() - parseTripDate(ev.date).getTime()) / DAY_MS) : 0;
+    const days = flightDayOffset(ev);
     const arrives = isPlaceholder(ev.endTime) ? "" : `Arrives ${clockTime(ev.endTime)}${days ? ` ${days > 0 ? "+" : ""}${days}` : ""}`;
     const text = [ev.flightNum, arrives].filter(Boolean).join(", ");
     return text ? { text, place: false } : null;
@@ -77,7 +79,12 @@ export function NextUp({ trips }: { trips: Trip[] }) {
       <div className="divide-y divide-border border-t border-border">
         {groups.map(({ trip, days }) => (
           <section key={trip.id} aria-label={trip.name} className="px-5 py-3.5">
-            <h3 className="text-sm font-semibold text-foreground truncate">{trip.name}</h3>
+            <div className="flex items-center gap-3">
+              <span className="h-9 w-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                {trip.image && <img src={trip.image} alt="" loading="lazy" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="h-full w-full object-cover" />}
+              </span>
+              <h3 className="min-w-0 flex-1 text-sm font-semibold text-foreground truncate">{trip.name}</h3>
+            </div>
             {[...days.entries()].map(([date, events]) => (
               <div key={date} className="mt-2.5">
                 <p className="text-xs font-medium text-muted-foreground">{dayLabel(date, today)}</p>
