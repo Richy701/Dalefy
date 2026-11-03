@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { clockTime, stayTime } from "@/lib/timeInput";
 import { PaperPlaneTilt, SpinnerGap, Check, Warning, BellSlash } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ function quickMessages(trip: Trip): { label: string; title: string; body: string
       return { label: `Flight ${ev.flightNum || ev.title}`, title: `Flight ${ev.flightNum || ""} on ${dayLabel(ev.date)}`.replace("  ", " "), body: `Your flight${route} departs ${at}.${by}`, eventId: ev.id };
     }
     if (ev.type === "transfer") return { label: ev.title, title: "Your transfer", body: `${ev.title} leaves ${at} on ${dayLabel(ev.date)}. Please be in the lobby 10 minutes early.`, eventId: ev.id };
-    if (ev.type === "hotel") return { label: `Check in, ${ev.title}`, title: ev.title, body: `Check-in at ${ev.title} is from ${ev.checkin || ev.time || "the afternoon"} on ${dayLabel(ev.date)}.`, eventId: ev.id };
+    if (ev.type === "hotel") return { label: `Check in, ${ev.title}`, title: ev.title, body: `Check-in at ${ev.title} is from ${stayTime(ev.checkin) || (ev.time && !/^tb[acd]$/i.test(ev.time) ? clockTime(ev.time) : "") || "the afternoon"} on ${dayLabel(ev.date)}.`, eventId: ev.id };
     return { label: ev.title, title: ev.title, body: `${ev.title} starts ${at} on ${dayLabel(ev.date)}${ev.location ? `, at ${ev.location}` : ""}.`, eventId: ev.id };
   });
   return [

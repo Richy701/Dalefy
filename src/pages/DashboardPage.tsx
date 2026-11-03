@@ -9,7 +9,7 @@ import {
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText, LockSimple } from "@phosphor-icons/react";
+  Clock, Hash, Tag, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText, LockSimple } from "@phosphor-icons/react";
 import { liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
 import { CURRENCIES } from "@/config/currencies";
@@ -50,7 +50,7 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
-import { tripTimingLine, tripDatesLine, shortDay } from "@/lib/tripSummary";
+import { tripTimingLine, tripDatesLine, stayLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
 import { NextTripSide } from "@/components/dashboard/NextTripSide";
 import { TripCard } from "@/components/dashboard/TripCard";
@@ -974,9 +974,7 @@ export function DashboardPage() {
                           )}
                           {(ev.checkin || ev.checkout) && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
-                              {ev.checkin || "-"}
-                              <ArrowRight className="h-2.5 w-2.5" weight="bold" />
-                              {ev.checkout || "-"}
+                              {stayLine(ev.checkin, ev.checkout)}
                             </span>
                           )}
                         </div>

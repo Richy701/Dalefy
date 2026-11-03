@@ -1,4 +1,5 @@
 import { parseTripDate } from "./dates";
+import { clockTime } from "./timeInput";
 
 export function daysUntil(dateStr: string, from?: string): number {
   const target = parseTripDate(dateStr);
@@ -31,6 +32,23 @@ export function tripTimingLine(trip: { start: string; end: string }, from?: stri
 
 export function shortDay(dateStr: string): string {
   return parseTripDate(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
+
+/** A hotel's check-in or check-out field holds a date or a time: "7 Nov" or "15:00". */
+export function stayValue(value: string | undefined): string {
+  if (!value) return "";
+  return ISO_DATE.test(value) ? shortDay(value) : clockTime(value);
+}
+
+/** Check-in and check-out together: "7 to 8 Nov, 1 night", or "15:00 to 11:00" when they are times. */
+export function stayLine(checkin: string | undefined, checkout: string | undefined): string {
+  if (checkin && checkout && ISO_DATE.test(checkin) && ISO_DATE.test(checkout)) {
+    const line = tripDatesLine({ start: checkin, end: checkout });
+    if (line) return line;
+  }
+  return [stayValue(checkin), stayValue(checkout)].filter(Boolean).join(" to ");
 }
 
 /** "6 to 12 Nov, 6 nights", "28 Nov to 2 Dec, 4 nights", or "6 Nov, day trip". */
