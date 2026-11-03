@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash, Lock, Buildings, Users, SpinnerGap,
+  Sun, Moon, CircleHalf, Download, Trash, Lock, Buildings, Users, SpinnerGap,
   DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera, ClockCounterClockwise,
 } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
@@ -19,7 +19,7 @@ import { updateBranding, uploadLogo } from "@/services/firebaseBranding";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ColorPicker } from "@/components/ui/color-picker";
+import { ColorPicker, nameFor as accentNameFor } from "@/components/ui/color-picker";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BRAND } from "@/config/brand";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -28,7 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { useOrg } from "@/context/OrgContext";
 import { useBrand } from "@/context/BrandContext";
-import { usePreferences, ACCENT_PRESETS } from "@/context/PreferencesContext";
+import { usePreferences, ACCENT_PRESETS, MONO_ACCENT } from "@/context/PreferencesContext";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { TeamManagement } from "@/components/shared/TeamManagement";
@@ -127,7 +127,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
 ];
 
 export function SettingsPage() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user, updateProfile, logout, impersonation } = useAuth();
   const staffPhoto = useStaffPhoto();
   // No account photo yet: the one on the Travellers page, until they upload their own
@@ -742,28 +742,59 @@ export function SettingsPage() {
           >
             <Row
               label="Theme"
-              value={theme === "dark" ? "Dark - default operator view" : "Light - high-contrast daytime"}
+              value={theme === "light" ? "Light - high-contrast daytime" : theme === "dim" ? "Dim - lifted dark, easier on the eyes" : "Dark - near-black, maximum contrast"}
               action={
-                <button
-                  onClick={toggleTheme}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-9 w-9 rounded-xl bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-border text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
+                <div role="group" aria-label="Theme" className="flex items-center p-0.5 rounded-xl bg-secondary border border-border">
+                  {([
+                    { id: "light" as const, Icon: Sun, label: "Light" },
+                    { id: "dim" as const, Icon: CircleHalf, label: "Dim" },
+                    { id: "dark" as const, Icon: Moon, label: "Dark" },
+                  ]).map(({ id, Icon, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={theme === id}
+                      aria-label={label}
+                      onClick={() => setTheme(id)}
+                      className={`h-8 w-9 rounded-lg flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${theme === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  ))}
+                </div>
               }
             />
             <Row
               label="Compact Mode"
-              value="Tighter spacing on dashboard and lists"
+              value="Fits more on screen on the Dashboard and Workspace"
               action={<ToggleSwitch checked={compactMode} onChange={setCompactMode} />}
             />
-            <Row
-              label="Accent Color"
-              value="Applied to active states, CTAs, and branding"
-              action={
-                <ColorPicker value={accentColor} onChange={setAccentColor} presets={[...ACCENT_PRESETS]} />
-              }
-            />
+            <div className="flex flex-col gap-3 px-5 py-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-foreground">Accent color</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
+                    {accentColor === MONO_ACCENT ? "Monochrome" : accentNameFor(accentColor)} <span className="opacity-60">· buttons, chips, active tabs</span>
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <ColorPicker value={accentColor} onChange={setAccentColor} presets={[...ACCENT_PRESETS]} />
+                </div>
+              </div>
+              {/* Live preview — a button, chip and progress bar all read from --brand-rgb,
+                  so they update the instant a new accent is picked. */}
+              <div className="flex items-center gap-3 pl-0">
+                <span className="inline-flex items-center h-7 px-3 rounded-lg bg-brand text-primary-foreground text-[11px] font-semibold">
+                  Save
+                </span>
+                <span className="inline-flex items-center h-6 px-2 rounded-md bg-brand/15 text-brand text-[10px] font-semibold uppercase tracking-wide">
+                  Active
+                </span>
+                <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden" aria-hidden="true">
+                  <div className="h-full w-3/5 bg-brand rounded-full" />
+                </div>
+              </div>
+            </div>
           </Section>
 
           {/* ── Notifications ── */}

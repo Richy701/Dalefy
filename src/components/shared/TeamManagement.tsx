@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope, UserSwitch, EnvelopeSimple, LockKey, Suitcase } from "@phosphor-icons/react";
+import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope, UserSwitch, EnvelopeSimple, LockKey, Suitcase, Headset } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrg } from "@/context/OrgContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
-import { getOrgMembersWithProfiles, updateMemberRole, removeMember, transferOwnership } from "@/services/orgMembers";
+import { getOrgMembersWithProfiles, updateMemberRole, removeMember, transferOwnership, setMemberCoordinator } from "@/services/orgMembers";
 import { fetchPendingInvites } from "@/services/invites";
 import { fetchTripHolders, handOverTrips, emailTeammate, logTeamActivity, type TripHolder } from "@/services/teamAdmin";
 import { useStaffPhoto } from "@/hooks/useStaffPhoto";
@@ -32,6 +32,7 @@ interface Member {
   email: string;
   initials: string;
   avatar?: string;
+  isCoordinator: boolean;
 }
 
 type PendingAction =
@@ -124,6 +125,16 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   const departed = holders.filter(h => !h.member && h.trips > 0);
   const actor = user ? { uid: user.id, name: impersonation ? `${impersonation.byName} as ${user.name}` : user.name } : null;
 
+  const toggleCoordinator = async (member: Member) => {
+    if (!currentOrg || !actor) return;
+    const next = !member.isCoordinator;
+    await run(member.userId, async () => {
+      await setMemberCoordinator(member.userId, currentOrg.id, next);
+      setMembers(prev => prev.map(m => m.userId === member.userId ? { ...m, isCoordinator: next } : m));
+      logTeamActivity(currentOrg.id, actor, "team", next ? `Marked ${member.name} as Trip Coordinator` : `Removed Trip Coordinator from ${member.name}`);
+    }, next ? `${member.name} is now a Trip Coordinator` : `${member.name} is no longer a Trip Coordinator`, "Failed to update coordinator");
+  };
+
   const ask = (action: PendingAction) => {
     const fromUid = action.kind === "remove" || action.kind === "handover" ? action.userId : "";
     const choices = fromUid ? receivers(fromUid) : [];
@@ -136,7 +147,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
     if (!pending || !currentOrg || !user || !actor) return;
     const gone = departed.find(h => h.uid === pending.userId);
     const member = members.find(m => m.userId === pending.userId)
-      ?? (gone && { userId: gone.uid, role: "viewer" as OrgRole, joinedAt: "", name: gone.name, email: gone.email, initials: gone.name.slice(0, 2).toUpperCase() });
+      ?? (gone && { userId: gone.uid, role: "viewer" as OrgRole, joinedAt: "", name: gone.name, email: gone.email, initials: gone.name.slice(0, 2).toUpperCase(), isCoordinator: false });
     if (!member) { setPending(null); return; }
     const receiver = members.find(m => m.userId === handTo);
     const held = holding(member.userId);
@@ -257,10 +268,21 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
               </Avatar>
 
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-foreground truncate">
-                  {member.name}
-                  {isSelf && <span className="ml-1.5 font-semibold text-muted-foreground">(you)</span>}
-                </p>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {member.name}
+                    {isSelf && <span className="ml-1.5 font-semibold text-muted-foreground">(you)</span>}
+                  </p>
+                  {member.isCoordinator && (
+                    <span
+                      title="Trip Coordinator"
+                      className="shrink-0 inline-flex items-center gap-1 h-4 px-1.5 rounded-md bg-brand/10 text-brand text-[9px] font-semibold uppercase tracking-wide"
+                    >
+                      <Headset className="h-2.5 w-2.5" weight="bold" />
+                      Coordinator
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground truncate">
                   {member.email}{member.joinedAt ? ` · ${joinedLabel(member.joinedAt)}` : ""}
                 </p>
@@ -293,6 +315,15 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                           </DropdownMenuItem>
                         );
                       })}
+                    {canManageRow && (
+                      <DropdownMenuItem
+                        onClick={() => toggleCoordinator(member)}
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
+                      >
+                        <Headset className="h-3.5 w-3.5 text-brand" />
+                        {member.isCoordinator ? "Remove Trip Coordinator" : "Mark as Trip Coordinator"}
+                      </DropdownMenuItem>
+                    )}
                     {canManageRow && <DropdownMenuSeparator className="bg-secondary" />}
                     {canSignInAs && (
                       <DropdownMenuItem
@@ -387,7 +418,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
       {isAdmin && departed.map(h => {
         const rowPending = pending?.userId === h.uid ? pending : null;
         const busy = actionLoading === h.uid;
-        const person: Member = { userId: h.uid, role: "viewer", joinedAt: "", name: h.name, email: h.email, initials: h.name.slice(0, 2).toUpperCase() };
+        const person: Member = { userId: h.uid, role: "viewer", joinedAt: "", name: h.name, email: h.email, initials: h.name.slice(0, 2).toUpperCase(), isCoordinator: false };
         return (
           <div key={h.uid} className="bg-card border border-dashed border-border rounded-xl overflow-hidden">
             <div className="flex items-center gap-3 p-3">

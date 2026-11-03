@@ -5,14 +5,18 @@ import { STORAGE } from "@/config/storageKeys";
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({ theme: "dark", toggleTheme: () => {} });
+const ThemeContext = createContext<ThemeContextType>({ theme: "dim", toggleTheme: () => {}, setTheme: () => {} });
+
+const THEMES: Theme[] = ["light", "dim", "dark"];
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem(STORAGE.THEME);
-    return (saved === "light" || saved === "dark") ? saved : "dark";
+    if (saved === "light" || saved === "dim" || saved === "dark") return saved;
+    return "dim";
   });
 
   // All DOM work lives here rather than inside the setState updater. React
@@ -22,9 +26,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const html = document.documentElement;
     html.classList.add("theme-switching");
-    html.classList.remove("light", "dark");
+    html.classList.remove("light", "dim", "dark");
     html.classList.add(theme);
-    html.style.colorScheme = theme;
+    html.style.colorScheme = theme === "light" ? "light" : "dark";
     localStorage.setItem(STORAGE.THEME, theme);
 
     let inner = 0;
@@ -38,10 +42,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => (prev === "light" ? "dark" : "light"));
+  const toggleTheme = () => setTheme(prev => {
+    const i = THEMES.indexOf(prev);
+    return THEMES[(i + 1) % THEMES.length];
+  });
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

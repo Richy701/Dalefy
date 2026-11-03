@@ -95,13 +95,14 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     document.documentElement.dataset.compact = compactMode ? "true" : "false";
   }, [compactMode]);
 
+  const isDarkMode = theme !== "light";
   const resolvedAccent = accentColor === MONO_ACCENT
-    ? (theme === "dark" ? "#ffffff" : "#000000")
+    ? (isDarkMode ? "#ffffff" : "#000000")
     : (accentColor.startsWith("#") ? accentColor : BRAND.accentColor);
 
   // Foreground that stays legible on the accent: pick whichever of black/white has the higher contrast.
   const accentFg = accentColor === MONO_ACCENT
-    ? (theme === "dark" ? "#000000" : "#ffffff")
+    ? (isDarkMode ? "#000000" : "#ffffff")
     : readableOn(resolvedAccent);
 
   useEffect(() => {

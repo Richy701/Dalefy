@@ -32,7 +32,22 @@ const PRESET_NAMES: Record<string, string> = {
 
 const DEFAULT_PRESETS = Object.keys(PRESET_NAMES);
 
-const nameFor = (hex: string) => PRESET_NAMES[hex.toLowerCase()] ?? hex.toUpperCase();
+export const nameFor = (hex: string) => PRESET_NAMES[hex.toLowerCase()] ?? hex.toUpperCase();
+
+/** Presets grouped by hue family so the popover reads as a palette rather than
+ *  a random grid. Order matches a rough rainbow walk starting at neutral. */
+const PRESET_GROUPS: Array<{ label: string; hexes: string[] }> = [
+  { label: "Neutral", hexes: [MONO_ACCENT] },
+  { label: "Teal", hexes: ["#0bd2b5", "#14b8a6"] },
+  { label: "Blue", hexes: ["#0ea5e9", "#3b82f6"] },
+  { label: "Purple", hexes: ["#6366f1", "#8b5cf6", "#a855f7"] },
+  { label: "Pink", hexes: ["#ec4899", "#f43f5e"] },
+  { label: "Warm", hexes: ["#f97316", "#eab308"] },
+  { label: "Green", hexes: ["#22c55e"] },
+];
+
+/** Dalefy teal — the brand default surfaced by the reset link. */
+const DEFAULT_ACCENT = "#0bd2b5";
 
 /** WCAG relative luminance and contrast, so we can say whether the accent is
  *  actually legible rather than leaving the user to find out on a live screen. */
@@ -68,7 +83,7 @@ export function ColorPicker({
   const { theme } = useTheme();
   const isMono = value === MONO_ACCENT;
   const displayValue = useMemo(() => {
-    if (isMono) return theme === "dark" ? "#ffffff" : "#000000";
+    if (isMono) return theme !== "light" ? "#ffffff" : "#000000";
     return value || "#ffffff";
   }, [value, isMono, theme]);
 
@@ -108,41 +123,46 @@ export function ColorPicker({
 
       <PopoverContent align="end" className="w-[248px] p-3 bg-card border-border">
         <div className="flex flex-col gap-3">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Presets
-            </p>
-            <div className="grid grid-cols-5 gap-1">
-              {presets.map((preset) => {
-                const isMonoPreset = preset === MONO_ACCENT;
-                const isActive = isMonoPreset ? isMono : displayValue.toLowerCase() === preset.toLowerCase();
-                return (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => onChange(preset)}
-                    aria-label={nameFor(preset)}
-                    aria-pressed={isActive}
-                    title={nameFor(preset)}
-                    // 40px hit area around a 24px swatch keeps the target reachable
-                    className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
-                  >
-                    <span
-                      className={cn(
-                        "h-6 w-6 rounded-md overflow-hidden border transition-transform",
-                        // a neutral ring stays visible even when the accent itself is mono
-                        isActive
-                          ? "border-foreground ring-2 ring-foreground/30 scale-105"
-                          : "border-border",
-                      )}
-                      style={isMonoPreset ? undefined : { backgroundColor: preset }}
-                    >
-                      {isMonoPreset && <MonoSwatch radius="rounded-[4px]" />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-col gap-2">
+            {PRESET_GROUPS
+              .map(group => ({ ...group, hexes: group.hexes.filter(h => presets.includes(h)) }))
+              .filter(group => group.hexes.length > 0)
+              .map(group => (
+                <div key={group.label} className="flex items-center gap-2">
+                  <p className="w-14 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {group.hexes.map(preset => {
+                      const isMonoPreset = preset === MONO_ACCENT;
+                      const isActive = isMonoPreset ? isMono : displayValue.toLowerCase() === preset.toLowerCase();
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => onChange(preset)}
+                          aria-label={nameFor(preset)}
+                          aria-pressed={isActive}
+                          title={nameFor(preset)}
+                          className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+                        >
+                          <span
+                            className={cn(
+                              "h-5 w-5 rounded-md overflow-hidden border transition-transform",
+                              isActive
+                                ? "border-foreground ring-2 ring-foreground/30 scale-110"
+                                : "border-border",
+                            )}
+                            style={isMonoPreset ? undefined : { backgroundColor: preset }}
+                          >
+                            {isMonoPreset && <MonoSwatch radius="rounded-[3px]" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
           </div>
 
           {!isMono && (
@@ -178,6 +198,16 @@ export function ColorPicker({
                 </p>
               )}
             </div>
+          )}
+
+          {displayValue.toLowerCase() !== DEFAULT_ACCENT && presets.includes(DEFAULT_ACCENT) && (
+            <button
+              type="button"
+              onClick={() => onChange(DEFAULT_ACCENT)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 rounded"
+            >
+              Reset to Dalefy teal
+            </button>
           )}
         </div>
       </PopoverContent>

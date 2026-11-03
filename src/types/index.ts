@@ -1,6 +1,6 @@
 export type View = "dashboard" | "workspace";
 export type DisplayMode = "grid" | "list";
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dim" | "dark";
 
 export interface EventDocument {
   id: string;

@@ -7,7 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import {
-  SquaresFour, Users, Globe, ChartBar, Sun, Moon,
+  SquaresFour, Users, Globe, ChartBar, Sun, Moon, CircleHalf,
   AirplaneTilt, MapPin, MagnifyingGlass, ArrowRight, Command as CmdIcon, Gear,
   UserPlus, UsersThree, Images, PaperPlaneTilt, ShareNetwork, EnvelopeSimple,
 } from "@phosphor-icons/react";
@@ -158,14 +158,14 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
               </Command.Item>
             )}
             <Command.Item
-              value="toggle theme dark light mode"
+              value="toggle theme light dim dark mode"
               onSelect={() => run(toggleTheme)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-foreground font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-secondary"
             >
               <div className="h-8 w-8 rounded-lg bg-secondary text-muted-foreground flex items-center justify-center shrink-0">
-                {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                {theme === "light" ? <Sun className="h-3.5 w-3.5" /> : theme === "dim" ? <CircleHalf className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               </div>
-              Toggle {theme === "dark" ? "Light" : "Dark"} Mode
+              Switch to {theme === "light" ? "Dim" : theme === "dim" ? "Dark" : "Light"} Mode
             </Command.Item>
             {canInviteMembers && onInvite && (
               <Command.Item

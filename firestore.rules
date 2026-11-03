@@ -145,6 +145,12 @@ service cloud.firestore {
         && (resource.data.role != "owner" || isOrgOwner(resource.data.organization_id))
         && (resource.data.user_id != request.auth.uid || isOrgOwner(resource.data.organization_id));
 
+      // Admins can flip the Trip Coordinator label on any member (including themselves).
+      allow update: if request.auth != null
+        && isOrgAdmin(resource.data.organization_id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["is_coordinator"])
+        && request.resource.data.is_coordinator is bool;
+
       // Users can leave (unless they are the owner); admins can remove non-owners
       allow delete: if request.auth != null
         && resource.data.role != "owner"

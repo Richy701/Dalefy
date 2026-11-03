@@ -11,6 +11,15 @@ export async function updateMemberRole(
   await updateDoc(doc(firebaseDb(), "org_members", memberId), { role: newRole });
 }
 
+export async function setMemberCoordinator(
+  userId: string,
+  orgId: string,
+  isCoordinator: boolean,
+): Promise<void> {
+  const memberId = `${userId}_${orgId}`;
+  await updateDoc(doc(firebaseDb(), "org_members", memberId), { is_coordinator: isCoordinator });
+}
+
 export async function removeMember(userId: string, orgId: string): Promise<void> {
   const memberId = `${userId}_${orgId}`;
   await deleteDoc(doc(firebaseDb(), "org_members", memberId));
@@ -53,6 +62,7 @@ export async function getOrgMembersWithProfiles(orgId: string): Promise<Array<{
   email: string;
   initials: string;
   avatar: string;
+  isCoordinator: boolean;
 }>> {
   const snap = await getDocs(
     query(collection(firebaseDb(), "org_members"), where("organization_id", "==", orgId)),
@@ -70,6 +80,7 @@ export async function getOrgMembersWithProfiles(orgId: string): Promise<Array<{
         email: profile?.email || "",
         initials: profile?.initials || data.user_id.slice(0, 2).toUpperCase(),
         avatar: profile?.avatar || "",
+        isCoordinator: data.is_coordinator === true,
       };
     }),
   );

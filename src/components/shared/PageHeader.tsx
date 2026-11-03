@@ -1,4 +1,4 @@
-import { Sun, Moon } from "@phosphor-icons/react";
+import { Sun, Moon, CircleHalf } from "@phosphor-icons/react";
 import { useTheme } from "@/context/ThemeContext";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
@@ -14,7 +14,8 @@ interface PageHeaderProps {
 
 export function PageHeader({ left, cta }: PageHeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const isDark = theme === "dark";
+  const Icon = theme === "light" ? Sun : theme === "dim" ? CircleHalf : Moon;
+  const nextLabel = theme === "light" ? "Dim" : theme === "dim" ? "Dark" : "Light";
 
   return (
     <header className="h-16 shrink-0 px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-40 bg-slate-50/80 dark:bg-background/80 backdrop-blur-md">
@@ -28,11 +29,11 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
-          aria-label="Toggle theme"
+          aria-label={`Switch to ${nextLabel} theme`}
           onClick={toggleTheme}
           className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:text-brand hover:bg-secondary transition-colors flex items-center justify-center"
         >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <Icon className="h-4 w-4" />
         </button>
         <NotificationPanel />
         {cta}

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Sun, Moon, MagnifyingGlass, EnvelopeSimple, CaretDown, Briefcase, Suitcase, Lifebuoy } from "@phosphor-icons/react";
+import { Sun, Moon, CircleHalf, MagnifyingGlass, EnvelopeSimple, CaretDown, Briefcase, Suitcase, Lifebuoy } from "@phosphor-icons/react";
 import { useTheme } from "@/context/ThemeContext";
 import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,9 @@ function TopBar({ active }: { active: PageId }) {
             );
           })}
         </nav>
-        <button type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+        <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "light" ? "Dim" : theme === "dim" ? "Dark" : "Light"} theme`}
           className="hidden sm:flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          {theme === "light" ? <Sun className="size-4" /> : theme === "dim" ? <CircleHalf className="size-4" /> : <Moon className="size-4" />}
         </button>
       </div>
     </header>

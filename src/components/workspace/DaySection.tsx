@@ -22,7 +22,7 @@ export function DaySection({ date, dayNumber, count, children, onAddEvent }: {
 
   return (
     <section>
-      <div className="flex items-center gap-3 pb-3 pl-0 sm:pl-8">
+      <div data-compact-day-head className="flex items-center gap-3 pb-3 pl-0 sm:pl-8">
         {dayNumber !== undefined && (
           <span className="shrink-0 rounded-lg bg-secondary px-2.5 py-1 text-sm font-semibold text-foreground tabular-nums">Day {dayNumber}</span>
         )}

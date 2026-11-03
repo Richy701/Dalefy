@@ -149,6 +149,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
   return (
     <div className="bg-card @container">
       <div
+        data-compact-row
         onClick={onClick}
         {...cardA11y(event.title, onClick)}
         className="group flex items-center gap-3 px-4 py-3 min-h-[60px] cursor-pointer hover:bg-secondary/60 focus-visible:outline-none focus-visible:bg-secondary/60 transition-colors"
@@ -192,7 +193,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
 
       {/* Legs keep the row's right gutter (menu + gap + padding), so their times sit under the time column */}
       {isFlight && (event.depAirport || event.arrAirport) && (
-        <div className="pl-[64px] pr-[60px] pb-3 -mt-1 space-y-1">
+        <div data-compact-legs className="pl-[64px] pr-[60px] pb-3 -mt-1 space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <AirplaneTakeoff className={`h-3.5 w-3.5 shrink-0 ${cat.fg}`} />
             <span className="truncate flex-1">{[event.depAirport, event.terminal ? `Terminal ${event.terminal.replace(/^T/i, "")}` : null, depTz || null].filter(Boolean).join(" · ")}</span>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -56,21 +57,63 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const LOADING_MESSAGES = [
+  "Signing you in",
+  "Fetching your trips",
+  "Almost there",
+];
+
 function AuthLoadingScreen() {
+  const [messageIdx, setMessageIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setMessageIdx(i => (i + 1) % LOADING_MESSAGES.length), 2200);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-      <div className="flex items-center gap-3">
-        <Logo className="h-10 w-10 text-brand" />
-        <span className="text-2xl font-bold tracking-tight text-foreground">
-          {BRAND.name}
-        </span>
+    // 180ms delay on the fade-in: on cached-auth loads the screen never flashes.
+    <div
+      className="relative min-h-screen bg-background flex flex-col items-center justify-center overflow-hidden"
+      style={{ animation: "fadeIn 400ms ease-out 180ms both" }}
+    >
+      {/* Soft brand glow — gives the screen a focal point instead of flat black. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 42%, rgb(var(--brand-rgb) / 0.07), transparent 55%)",
+        }}
+      />
+
+      <div className="relative flex flex-col items-center gap-5">
+        <div className="flex items-center gap-3 motion-safe:animate-breathe will-change-transform">
+          <Logo className="h-10 w-10 text-brand" />
+          <span className="text-2xl font-bold tracking-tight text-foreground">
+            {BRAND.name}
+          </span>
+        </div>
+
+        <div className="relative h-5 w-56" aria-live="polite">
+          {LOADING_MESSAGES.map((m, i) => (
+            <p
+              key={m}
+              className={`absolute inset-0 text-center text-sm text-muted-foreground transition-opacity duration-500 ${i === messageIdx ? "opacity-100" : "opacity-0"}`}
+            >
+              {m}
+            </p>
+          ))}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:0ms]" />
-        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:150ms]" />
-        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:300ms]" />
+
+      {/* Indeterminate progress line at the very bottom edge. */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden bg-border/40"
+      >
+        <div className="h-full w-1/4 bg-brand rounded-full motion-safe:animate-progressSlide" />
       </div>
-      <p className="text-sm text-muted-foreground">Loading your workspace</p>
     </div>
   );
 }

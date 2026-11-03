@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ["class"],
+  // Dim counts as dark for Tailwind's dark: variant so the hundreds of
+  // dark:bg-* / dark:text-* utilities across the app apply in both modes.
+  darkMode: ["variant", [".dark &", ".dim &", "&:is(.dark, .dim)"]],
   content: [
     "./index.html",
     "./src/**/*.{ts,tsx,js,jsx}",
@@ -155,9 +157,19 @@ export default {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        breathe: {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.95" },
+          "50%": { transform: "scale(1.035)", opacity: "1" },
+        },
+        progressSlide: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(400%)" },
+        },
       },
       animation: {
         fadeIn: "fadeIn 0.4s ease-out",
+        breathe: "breathe 2.8s ease-in-out infinite",
+        progressSlide: "progressSlide 1.6s ease-in-out infinite",
       },
       borderRadius: {
         lg: "var(--radius)",

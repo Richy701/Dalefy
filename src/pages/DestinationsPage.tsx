@@ -74,7 +74,7 @@ export function DestinationsPage() {
     if (dest.tripIds.length > 1) { setExpandedDest(prev => (prev === dest.name ? null : dest.name)); return; }
     if (dest.tripIds[0]) navigate(`/trip/${dest.tripIds[0]}`);
   };
-  const isDark = theme === "dark";
+  const isDark = theme !== "light";
 
   const [geoCountry, setGeoCountry] = useState<Record<string, string>>({});
 
