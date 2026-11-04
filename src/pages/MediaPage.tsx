@@ -879,8 +879,9 @@ export function MediaPage() {
         title={pendingDelete && pendingDelete.items.length > 1 ? `Delete ${pendingDelete.items.length} files?` : "Delete this file?"}
         description={pendingDelete && pendingDelete.items.length > 1
           ? "They'll be removed from their trips and from storage. This can't be undone."
-          : `"${pendingDelete?.items[0]?.name ?? ""}" will be removed from the trip and from storage. This can't be undone.`}
+          : "It's removed from the trip and from storage. This can't be undone."}
         confirmLabel="Delete"
+        subject={pendingDelete?.items.length === 1 ? { title: pendingDelete.items[0].name, subtitle: pendingDelete.items[0].tripName, image: pendingDelete.items[0].type === "image" ? pendingDelete.items[0].thumbUrl ?? pendingDelete.items[0].url : undefined } : undefined}
         destructive
         onConfirm={async () => {
           if (!pendingDelete) return;

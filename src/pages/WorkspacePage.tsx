@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Headset, ChatCircleText, Megaphone, CaretLeft, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
+  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,8 @@ import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { TravelerRefsFields } from "@/components/workspace/TravelerRefsFields";
-import { cleanTravelerRefs, hasBookingRef, refForTraveller } from "@/lib/bookingRefs";
+import { BookingRefsDialog, type BookingRefChanges } from "@/components/workspace/BookingRefsDialog";
+import { bookableEvents, cleanTravelerRefs, hasBookingRef, refForTraveller } from "@/lib/bookingRefs";
 import { tripTravelerOf } from "@/lib/travelerSync";
 import { timeAgo } from "@/lib/timeAgo";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
@@ -442,6 +443,8 @@ export function WorkspacePage() {
     setSearchParams(searchParams, { replace: true });
   }, [job, searchParams, setSearchParams]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+  const [bookingRefsOpen, setBookingRefsOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editCoordinators, setEditCoordinators] = useState<TripCoordinator[]>([]);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
@@ -756,6 +759,25 @@ export function WorkspacePage() {
     toast.success(isNew ? "Event added" : "Event saved");
   };
 
+  const openBookingRefs = () => {
+    if (isViewer || demoGate()) return;
+    editBaseline.current = trip;
+    setBookingRefsOpen(true);
+  };
+
+  const saveBookingRefs = async (changes: BookingRefChanges) => {
+    const baseline = editBaseline.current || trip;
+    const events = baseline.events.map(ev => {
+      if (!(ev.id in changes)) return ev;
+      const { travelerRefs: _old, ...rest } = ev;
+      const refs = changes[ev.id];
+      return refs ? { ...rest, travelerRefs: refs } : rest;
+    });
+    if (!await commitChanges({ events }, baseline)) return false;
+    toast.success(trip.status === "Published" ? "References saved. Publish to send them to travellers" : "References saved");
+    return true;
+  };
+
   const isEventDirty = () => {
     if (!editingEvent) return false;
     if (editingOriginalRef.current === null) {
@@ -778,6 +800,19 @@ export function WorkspacePage() {
     setEditingEvent(null);
     setEventErrors({});
     editingOriginalRef.current = null;
+  };
+
+  // From inside an event: the list saves the whole trip, so this event's own edits have to be saved first
+  const openBookingRefsFromEvent = () => {
+    if (!editingEvent) return;
+    const current = { ...editingEvent };
+    if (current.travelerRefs && !Object.keys(current.travelerRefs).length) delete current.travelerRefs;
+    if (editingOriginalRef.current === null || JSON.stringify(current) !== editingOriginalRef.current) {
+      toast.error("Save this event first, then open everyone's references");
+      return;
+    }
+    discardEventChanges();
+    openBookingRefs();
   };
 
   const handleAiAssist = async () => {
@@ -1890,7 +1925,7 @@ export function WorkspacePage() {
                 <div className="w-full space-y-8">
                   {/* Trip Travelers */}
                   <div>
-                    <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
                       <div className="min-w-0">
                         <h3 className="text-lg font-semibold tracking-tight text-foreground">Trip travellers</h3>
                         {(() => {
@@ -1918,6 +1953,7 @@ export function WorkspacePage() {
                           </p>
                         )}
                       </div>
+                      <div className="flex flex-wrap sm:justify-end gap-2 shrink-0">
                       {tripTravelers.length > 2 && !bulkEmailMode && (
                         <Button
                           type="button"
@@ -1934,6 +1970,15 @@ export function WorkspacePage() {
                           <Envelope /> Edit emails
                         </Button>
                       )}
+                        {!isViewer && tripTravelers.length > 0 && bookableEvents(trip.events).length > 0 && (
+                          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={openBookingRefs}>
+                            <Ticket /> Booking references
+                          </Button>
+                        )}
+                        <Button type="button" size="sm" className="shrink-0" onClick={() => setAddPeopleOpen(true)}>
+                          <UserPlus /> Add traveller
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Bulk email editor */}
@@ -2155,33 +2200,32 @@ export function WorkspacePage() {
                     </div>
                   )}
 
-                  {/* Add Travelers */}
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-muted-foreground">Add travellers</h3>
-                      <button
-                        type="button"
-                        onClick={() => setBulkAddOpen(true)}
-                        className="h-7 px-2.5 rounded-lg border border-border bg-secondary text-xs font-medium text-foreground hover:border-brand/40 flex items-center gap-1.5"
-                      >
-                        <UserPlus className="h-3.5 w-3.5" /> Add many
-                      </button>
-                    </div>
-                    <div className="relative mb-3">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        value={peopleSearch}
-                        onChange={e => setPeopleSearch(e.target.value)}
-                        placeholder="Search travelers..."
-                        className="w-full pl-9"
-                      />
+                  {/* Add Travelers: opened from the section header, so it's in reach however long the list gets */}
+                  <Dialog open={addPeopleOpen} onOpenChange={open => { setAddPeopleOpen(open); if (!open) setPeopleSearch(""); }}>
+                    <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-base font-semibold tracking-tight text-foreground">Add travellers</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="relative flex-1 min-w-0">
+                        <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          value={peopleSearch}
+                          onChange={e => setPeopleSearch(e.target.value)}
+                          placeholder="Search travelers..."
+                          className="w-full pl-9"
+                        />
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => { setAddPeopleOpen(false); setPeopleSearch(""); setBulkAddOpen(true); }}>
+                        <UserPlus /> Add many
+                      </Button>
                     </div>
                     {(() => {
                       const filtered = availableTravelers.filter(t =>
                         !peopleSearch || t.name.toLowerCase().includes(peopleSearch.toLowerCase()) || t.email.toLowerCase().includes(peopleSearch.toLowerCase())
                       );
                       return filtered.length > 0 ? (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 max-h-64 overflow-y-auto">
                           {filtered.map(t => (
                             <button
                               key={t.id}
@@ -2239,7 +2283,8 @@ export function WorkspacePage() {
                         </button>
                       </form>
                     </div>
-                  </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             )}
@@ -2355,11 +2400,20 @@ export function WorkspacePage() {
         destructive
         onConfirm={async () => { await confirmClearInfo?.(); setConfirmClearInfo(null); }}
       />
+      {bookingRefsOpen && (
+        <BookingRefsDialog
+          events={trip.events}
+          travellers={tripTravelers}
+          saving={savingChanges}
+          onClose={() => setBookingRefsOpen(false)}
+          onSave={saveBookingRefs}
+        />
+      )}
       <ConfirmDialog
         open={discardPromptOpen}
         onOpenChange={setDiscardPromptOpen}
         title="Discard changes?"
-        description="You have unsaved changes on this event. Close without saving?"
+        description="Your unsaved changes to this event will be lost."
         confirmLabel="Discard"
         destructive
         onConfirm={discardEventChanges}
@@ -2402,7 +2456,7 @@ export function WorkspacePage() {
                   {([
                     { id: "flight", label: "Flight", icon: AirplaneTilt },
                     { id: "hotel", label: "Hotel", icon: Bed },
-                    { id: "activity", label: "Activity", icon: Compass },
+                    { id: "activity", label: "Activity", icon: MapPin },
                     { id: "dining", label: "Dining", icon: ForkKnife },
                     { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
@@ -2659,6 +2713,7 @@ export function WorkspacePage() {
                       event={editingEvent}
                       travellers={tripTravelers}
                       onChange={refs => setEditingEvent(prev => prev ? { ...prev, travelerRefs: refs } : null)}
+                      onOpenAll={openBookingRefsFromEvent}
                     />
                   )}
 
@@ -3177,6 +3232,7 @@ export function WorkspacePage() {
           : `Travellers can open ${trip.name} and get a notification that it's published.`}
         confirmLabel="Publish"
         onConfirm={handlePublish}
+        subject={{ title: trip.name, subtitle: trip.destination, image: trip.image }}
       />
 
       <SendInviteModal
@@ -3807,7 +3863,8 @@ export function WorkspacePage() {
       <ConfirmDialog
         open={!!removeTarget}
         onOpenChange={open => { if (!open) setRemoveTarget(null); }}
-        title={`Remove ${removeTarget?.name ?? "traveller"}?`}
+        title="Remove from this trip?"
+        subject={(() => { const t = tripTravelers.find(x => x.id === removeTarget?.id); return t ? { title: t.name, subtitle: t.email, person: { avatar: t.avatar, initials: t.initials } } : undefined; })()}
         description={`${removeTarget?.name ?? "They"} already use the app for this trip. Removing them unlinks their account: they stay on the trip but will see everyone's plan instead of their own.`}
         confirmLabel="Remove"
         destructive
@@ -3817,7 +3874,8 @@ export function WorkspacePage() {
       <ConfirmDialog
         open={!!removeMemberTarget}
         onOpenChange={(open) => { if (!open) setRemoveMemberTarget(null); }}
-        title="Remove from trip"
+        title="Remove from trip?"
+        subject={removeMemberTarget ? { title: removeMemberTarget.name, person: { initials: removeMemberTarget.name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase() } } : undefined}
         description={`${removeMemberTarget?.name ?? "They"} leave this trip in the app. Their account and their other trips are untouched; they can join again with the PIN.`}
         confirmLabel="Remove"
         destructive
@@ -3838,9 +3896,10 @@ export function WorkspacePage() {
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        title="Delete Trip"
-        description={`Are you sure you want to delete "${trip.name}"? This cannot be undone.`}
-        confirmLabel="Delete Trip"
+        title="Delete this trip?"
+        description="It's permanently removed, along with all its events. This can't be undone."
+        confirmLabel="Delete trip"
+        subject={{ title: trip.name, subtitle: trip.destination, image: trip.image }}
         onConfirm={handleDeleteTrip}
         destructive
       />

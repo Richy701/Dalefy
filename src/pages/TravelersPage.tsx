@@ -37,7 +37,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ConfirmDialog, type ConfirmSubject } from "@/components/shared/ConfirmDialog";
 import type { ComplianceDoc, Trip, TravelerProfile, User as UserType } from "@/types";
 
 type QuickFilter = "all" | "app" | "not-app" | "docs";
@@ -55,6 +55,11 @@ const personKey = (m: TripMember) => m.uid || m.device_id;
 const initialsOf = (name: string) => name.trim().split(/\s+/).map(w => w[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
 
 /** Everything known about one person, whichever way they reached us: a trip's list, the directory, or the app */
+/** A person in a confirm box: their face, with what the action is about underneath */
+const personSubject = (p: { name: string; email: string; initials: string; avatar?: string | null }, subtitle?: string): ConfirmSubject => ({
+  title: p.name, subtitle: subtitle ?? p.email, person: { avatar: p.avatar, initials: p.initials },
+});
+
 interface Person {
   id: string;
   name: string;
@@ -161,7 +166,7 @@ export function TravelersPage() {
   const [appUsersReload, setAppUsersReload] = useState(0);
   const [pushLogFor, setPushLogFor] = useState<{ personId: string; entries: PushLogEntry[] } | null>(null);
   const [pushLogReload, setPushLogReload] = useState(0);
-  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string; confirmLabel?: string; destructive?: boolean } | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string; confirmLabel?: string; subject?: ConfirmSubject; destructive?: boolean } | null>(null);
   // Someone who joined in the app under the wrong name (the app once adopted a listed traveller's name)
   const [renameTarget, setRenameTarget] = useState<Person | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -425,7 +430,8 @@ export function TravelersPage() {
    */
   const unlinkApp = useCallback((p: Person) => {
     setPendingConfirm({
-      title: "Unlink app account",
+      title: "Unlink app account?",
+      subject: personSubject(p),
       description: `${p.name} in your directory and the app account linked to it become separate people. The app account keeps all its trips and appears under the name on its phone.`,
       confirmLabel: "Unlink",
       destructive: false,
@@ -446,7 +452,8 @@ export function TravelersPage() {
   const removeFromTrip = useCallback((p: Person, tripId: string) => {
     const trip = trips.find(t => t.id === tripId);
     setPendingConfirm({
-      title: "Remove from trip",
+      title: "Remove from trip?",
+      subject: personSubject(p, trip?.name),
       description: `Take ${p.name} off ${trip?.name ?? "this trip"}? They come off its traveller list and events, and the trip leaves their app.`,
       action: async () => {
         if (trip && !p.appOnly) {
@@ -469,7 +476,8 @@ export function TravelersPage() {
   const deletePeople = useCallback((ps: Person[]) => {
     if (!ps.length) return;
     setPendingConfirm({
-      title: ps.length === 1 ? `Delete ${ps[0].name}` : `Delete ${ps.length} people`,
+      title: ps.length === 1 ? `Delete ${ps[0].name}?` : `Delete ${ps.length} people?`,
+      subject: ps.length === 1 ? personSubject(ps[0]) : undefined,
       description: `They come off every trip's traveller list and events, out of your directory, and their app access ends. This can't be undone.`,
       action: async () => {
         const ids = new Set(ps.filter(p => !p.appOnly).map(p => p.id));
@@ -1254,6 +1262,7 @@ export function TravelersPage() {
         confirmLabel={pendingConfirm?.confirmLabel ?? "Remove"}
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
         destructive={pendingConfirm?.destructive ?? true}
+        subject={pendingConfirm?.subject}
       />
       <AddPhotosDialog
         open={photosOpen}

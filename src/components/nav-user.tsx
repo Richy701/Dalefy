@@ -75,11 +75,11 @@ export function NavUser() {
       <ConfirmDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title="Sign Out"
-        description={`Are you sure you want to sign out of ${BRAND.name}?`}
-        confirmLabel="Sign Out"
+        title={`Sign out of ${BRAND.name}?`}
+        description="You can sign back in any time."
+        confirmLabel="Sign out"
         onConfirm={handleSignOut}
-        destructive
+        subject={user ? { title: user.name, subtitle: user.email, person: { avatar: photo, initials } } : undefined}
       />
     </>
   );

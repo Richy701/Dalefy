@@ -339,8 +339,9 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         open={!!pendingDelete}
         onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
         title="Delete this file?"
-        description={`"${pendingDelete?.name ?? ""}" will be removed from the trip and from storage. This can't be undone.`}
+        description="It's removed from the trip and from storage. This can't be undone."
         confirmLabel="Delete"
+        subject={pendingDelete ? { title: pendingDelete.name, image: pendingDelete.type === "image" ? pendingDelete.thumbUrl ?? pendingDelete.url : undefined } : undefined}
         destructive
         onConfirm={confirmDelete}
       />

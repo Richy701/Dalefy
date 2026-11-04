@@ -57,9 +57,9 @@ export function NextTripSide({ trip }: { trip: Trip }) {
         {travellers.length > 0 && row("Invited", <span className={`tabular-nums ${invited < travellers.length ? "text-amber-700 dark:text-amber-400" : ""}`}>{invited} of {travellers.length}</span>)}
         {travellers.length > 0 && row("In the app", inAppError ? <span className="text-xs text-amber-700 dark:text-amber-400">{APP_MEMBERS_ERROR}</span> : <span className="tabular-nums">{inApp === null ? "..." : `${inApp} of ${travellers.length}`}</span>)}
         {first && row("First up", (
-          <span className="inline-flex items-center gap-1.5 max-w-[11rem]">
-            <Icon className={`h-3.5 w-3.5 shrink-0 ${EVENT_TEXT_COLORS[type]}`} />
-            <span className="truncate">{first.title}</span>
+          <span className="block max-w-[11rem] ml-auto">
+            <Icon className={`inline h-3.5 w-3.5 mr-1.5 align-[-2px] ${EVENT_TEXT_COLORS[type]}`} />
+            {first.title}
           </span>
         ), `${parseTripDate(first.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}${first.time && first.time !== "TBD" ? `, ${first.time}` : ""}`)}
         {row("Travellers' copy", <span className={copy.warn ? "text-amber-700 dark:text-amber-400" : ""}>{copy.text}</span>)}

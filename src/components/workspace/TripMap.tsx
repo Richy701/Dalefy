@@ -2,7 +2,7 @@ import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
 import type { GeoJSONSource } from "mapbox-gl";
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, SpinnerGap } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, ForkKnife, Car, MapPin, SpinnerGap } from "@phosphor-icons/react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
@@ -15,7 +15,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 const TYPE_ICONS = {
   flight:   AirplaneTilt,
   hotel:    Bed,
-  activity: Compass,
+  activity: MapPin,
   dining:   ForkKnife,
   transfer: Car,
 } as const;

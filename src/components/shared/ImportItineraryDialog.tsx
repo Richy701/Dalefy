@@ -15,10 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useNotifications } from "@/context/NotificationContext";
@@ -1495,7 +1492,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
   };
 
-  // The replace path is confirmed by AlertDialog before this runs.
+  // The replace path is confirmed by ConfirmDialog before this runs.
+  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const handleImport = async () => {
     if (!parsed) return;
     setImportError(null);
@@ -2485,32 +2483,26 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                 <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-10 px-4 font-medium text-muted-foreground">Cancel</Button>
                 {hasExisting && importMode === "replace" ? (
-                  <AlertDialog>
-                    <AlertDialogTrigger
+                  <>
+                    <button
+                      type="button"
                       disabled={includedEvents.length === 0}
+                      onClick={() => setReplaceConfirmOpen(true)}
                       className="inline-flex items-center justify-center gap-2 rounded-xl h-10 px-6 font-semibold bg-red-500 text-white hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Replace with {plural(includedEvents.length, "event")}
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Replace everything on this trip?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Every event, traveller and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. Trip info cards stay, and any the document also has get its latest text. You can undo this once, straight afterwards, but not later.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep existing trip</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleImport}
-                          className="bg-red-500 text-white hover:bg-red-500/90"
-                        >
-                          Replace everything
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    </button>
+                    <ConfirmDialog
+                      open={replaceConfirmOpen}
+                      onOpenChange={setReplaceConfirmOpen}
+                      title="Replace everything on this trip?"
+                      description={`Every event, traveller and document currently on the trip is removed and replaced with the ${plural(includedEvents.length, "selected event")}. Trip info cards stay, and any the document also has get its latest text. You can undo this once, straight afterwards, but not later.`}
+                      confirmLabel="Replace everything"
+                      destructive
+                      onConfirm={handleImport}
+                    />
+                  </>
                 ) : (
                   <Button
                     onClick={handleImport}

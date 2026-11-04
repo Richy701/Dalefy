@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car, Wallet, Warning } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, MapPin, ForkKnife, Car, Wallet, Warning } from "@phosphor-icons/react";
 import { Progress } from "@/components/ui/progress";
 import { summariseCosts, formatMoney } from "@/lib/tripCosts";
 import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 
 const TYPE_LABEL: Record<TravelEvent["type"], string> = { flight: "Flights", hotel: "Stays", activity: "Activities", dining: "Dining", transfer: "Transfers" };
-const TYPE_ICON: Record<TravelEvent["type"], typeof AirplaneTilt> = { flight: AirplaneTilt, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car };
+const TYPE_ICON: Record<TravelEvent["type"], typeof AirplaneTilt> = { flight: AirplaneTilt, hotel: Bed, activity: MapPin, dining: ForkKnife, transfer: Car };
 
 const shortDate = (iso: string) => {
   const d = new Date(iso + "T00:00:00");

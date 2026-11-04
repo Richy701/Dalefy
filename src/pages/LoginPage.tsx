@@ -44,7 +44,7 @@ function Field({ label, htmlFor, children, trailing }: { label: string; htmlFor:
 }
 
 const inputClass =
-  "h-11 rounded-xl bg-card border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
+  "h-11 rounded-xl bg-card border-border text-sm text-foreground shadow-none placeholder:text-muted-foreground/60 hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-foreground/10 focus-visible:border-foreground/30 transition-colors";
 
 const primaryBtn =
   "w-full h-11 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium gap-2 disabled:opacity-40";
@@ -178,7 +178,18 @@ export function LoginPage() {
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col">
+    <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
+      {/* The people Dalefy is for. A short banner on phones, half the page from laptops up. */}
+      <aside className="relative overflow-hidden rounded-xl m-3 mb-0 h-36 sm:h-48 lg:mb-3 lg:h-[calc(100dvh-1.5rem)] lg:sticky lg:top-3">
+        <img src="/pages/login.jpg" alt="" fetchPriority="high" className="absolute inset-0 h-full w-full object-cover object-[50%_72%] lg:object-[50%_68%]" />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-3/5 bg-linear-to-t from-black/95 from-25% via-black/75 via-50% to-transparent hidden lg:block" />
+        <div className="absolute inset-x-0 bottom-0 p-10 hidden lg:block">
+          <p className="text-4xl font-semibold tracking-tight text-white max-w-md text-balance">{BRAND.tagline}</p>
+          <p className="mt-3 text-sm text-white/90 max-w-sm">Itineraries, travellers and updates for every trip, in one place.</p>
+        </div>
+      </aside>
+
+      <div className="min-w-0 flex flex-col lg:min-h-dvh">
       <header className="px-6 py-5 sm:px-8">
         <div className="flex items-center gap-2.5">
           <Logo className="h-5 w-5 text-foreground" />
@@ -227,13 +238,13 @@ export function LoginPage() {
                 {googleLoading ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
               </Button>
 
-              <div className="flex items-center gap-3 my-6">
+              <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground">or</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
 
-              <form onSubmit={usePassword ? handleSignIn : handleSendLink} className="space-y-4">
+              <form onSubmit={usePassword ? handleSignIn : handleSendLink} className="space-y-3.5">
                 <Field label="Email" htmlFor="login-email">
                   <Input
                     id="login-email"
@@ -301,7 +312,7 @@ export function LoginPage() {
                     else setUsePassword(true);
                   }}
                   disabled={busy}
-                  className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-1 disabled:opacity-40"
+                  className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-2 disabled:opacity-40"
                 >
                   {!usePassword
                     ? "I have a password"
@@ -309,7 +320,7 @@ export function LoginPage() {
                 </button>
               </form>
 
-              <p className="text-center text-xs text-muted-foreground mt-8">
+              <p className="text-center text-xs text-muted-foreground mt-6 pt-5 border-t border-border">
                 Access is by invitation. Ask your team admin if you need one.
               </p>
             </>
@@ -450,6 +461,7 @@ export function LoginPage() {
         <a href="/privacy.html" className="hover:text-foreground">Privacy</a>
         <a href="/terms.html" className="hover:text-foreground">Terms</a>
       </footer>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, MapPin, ForkKnife, Car } from "@phosphor-icons/react";
 
 export type EventType = "flight" | "hotel" | "activity" | "dining" | "transfer";
 
@@ -6,7 +6,7 @@ export type EventType = "flight" | "hotel" | "activity" | "dining" | "transfer";
 export const EVENT_ICONS = {
   flight:   AirplaneTilt,
   hotel:    Bed,
-  activity: Compass,
+  activity: MapPin,
   dining:   ForkKnife,
   transfer: Car,
 } as const;

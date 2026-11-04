@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MagnifyingGlass, MapPin, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, AirplaneTilt, Bed, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
 import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useTrips } from "@/context/TripsContext";
@@ -620,7 +620,7 @@ export function DestinationsPage() {
                       <span className="flex items-center gap-3">
                         {dest.types.flights > 0 && <span className="inline-flex items-center gap-1"><AirplaneTilt className="h-3.5 w-3.5" /> {dest.types.flights}</span>}
                         {dest.types.hotels > 0 && <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {dest.types.hotels}</span>}
-                        {dest.types.activities > 0 && <span className="inline-flex items-center gap-1"><Compass className="h-3.5 w-3.5" /> {dest.types.activities}</span>}
+                        {dest.types.activities > 0 && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {dest.types.activities}</span>}
                         {dest.types.dining > 0 && <span className="inline-flex items-center gap-1"><ForkKnife className="h-3.5 w-3.5" /> {dest.types.dining}</span>}
                       </span>
                       <span className="shrink-0">{dest.tripCount} {dest.tripCount === 1 ? "trip" : "trips"}</span>

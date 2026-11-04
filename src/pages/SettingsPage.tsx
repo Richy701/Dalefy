@@ -964,7 +964,7 @@ export function SettingsPage() {
       <ConfirmDialog
         open={resetOpen}
         onOpenChange={setResetOpen}
-        title="Reset Trip Data"
+        title="Reset trip data?"
         description="This will permanently clear all trips, compliance overrides, and custom travellers from this device. Your account and theme preference will be kept. This cannot be undone."
         confirmLabel="Reset"
         onConfirm={resetData}

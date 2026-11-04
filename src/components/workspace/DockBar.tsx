@@ -1,4 +1,4 @@
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, MapPin, ForkKnife, Car } from "@phosphor-icons/react";
 import type { TravelEvent } from "@/types";
 
 function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
@@ -19,7 +19,7 @@ export function DockBar({ onAddEvent }: { onAddEvent: (type: TravelEvent["type"]
       <div className="bg-card border border-border p-1.5 sm:p-2 rounded-xl flex items-center gap-0.5 sm:gap-1 ring-1 ring-slate-900/5 dark:ring-white/5 shadow-xl overflow-x-auto">
         <DockButton icon={<AirplaneTilt className="h-4 w-4" />} label="Flight" onClick={() => onAddEvent("flight")} />
         <DockButton icon={<Bed className="h-4 w-4" />} label="Hotel" onClick={() => onAddEvent("hotel")} />
-        <DockButton icon={<Compass className="h-4 w-4" />} label="Activity" onClick={() => onAddEvent("activity")} />
+        <DockButton icon={<MapPin className="h-4 w-4" />} label="Activity" onClick={() => onAddEvent("activity")} />
         <DockButton icon={<ForkKnife className="h-4 w-4" />} label="Dining" onClick={() => onAddEvent("dining")} />
         <DockButton icon={<Car className="h-4 w-4" />} label="Transfer" onClick={() => onAddEvent("transfer")} />
       </div>

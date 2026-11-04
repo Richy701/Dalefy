@@ -1491,9 +1491,10 @@ export function DashboardPage() {
       <ConfirmDialog
         open={!!deletingTripId}
         onOpenChange={(open) => { if (!open) setDeletingTripId(null); }}
-        title="Delete Trip"
-        description="This will permanently remove the trip and all its events. This cannot be undone."
-        confirmLabel="Delete"
+        title="Delete this trip?"
+        description="It's permanently removed, along with all its events. This can't be undone."
+        confirmLabel="Delete trip"
+        subject={(() => { const t = allTrips.find(x => x.id === deletingTripId); return t ? { title: t.name, subtitle: t.destination, image: t.image } : undefined; })()}
         onConfirm={() => { if (deletingTripId) handleDeleteTrip(deletingTripId); }}
         destructive
       />
