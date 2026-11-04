@@ -74,7 +74,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     const result: Data = strings(v, [
       "id", "type", "date", "time", "endTime", "endDate", "title", "description", "location",
       "image", "roomType", "airline", "flightNum", "terminal", "arrTerminal", "gate", "arrGate",
-      "baggageBelt", "duration", "status", "depAirport", "arrAirport", "depTz", "arrTz",
+      "baggageBelt", "checkInDesk", "duration", "status", "depAirport", "arrAirport", "depTz", "arrTz",
       "checkin", "checkout", "transferType", "aircraft", "meetingPoint", "contactName", "contactPhone",
       ...(leader ? ["supplier", "price", "confNumber", "notes", "seatDetails"] : []),
     ]);

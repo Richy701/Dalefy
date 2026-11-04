@@ -39,6 +39,7 @@ export const ImpactFeedbackStyle = { Light:'light', Medium:'medium', Heavy:'heav
 export const NotificationFeedbackType = { Success:'success', Error:'error' };
 export const setStringAsync = (text:string) => navigator.clipboard.writeText(text);
 export const openDocument = (url:string) => Linking.openURL(url);
+export const authHeaders = async (): Promise<Record<string, string>> => ({});
 // expo-glass-effect: no Liquid Glass on the web, so callers take their plain fallback
 export const isLiquidGlassAvailable = () => false;
 export function GlassView({ style, children }: BoxProps) { return <View style={style}>{children}</View>; }

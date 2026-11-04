@@ -1,13 +1,14 @@
-import { getDocument, queryDocumentsRange, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { getDocument, queryDocumentsRange, queryDocumentsIn, updateDocument, setDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
 import type { AeroFlight } from "./_flightsCore.js";
 import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
-import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
+import { isDue, isFarOut, scheduleDifference, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
+import { readAllowance, allowanceLevel, shouldWarn, isAllowanceRefusal, type Allowance } from "./_flightAllowance.js";
 import { sendPush, logPush, checkPushReceipts, newPushLogId } from "./_expoPush.js";
 import { sendEmail } from "./_mailer.js";
-import { flightProblemEmail } from "../src/lib/email/templates.js";
+import { flightProblemEmail, flightScheduleEmail, flightAllowanceEmail } from "../src/lib/email/templates.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on upcoming flights,
@@ -36,6 +37,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const since = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
     const tripDocs = await queryDocumentsRange("trips", "end_date", "GREATER_THAN_OR_EQUAL", since);
     const updates: FlightUpdate[] = [];
+    const scheduleAlerts: ScheduleAlert[] = [];
+    // One lookup per flight per run, however many events or trips share it
+    const usage: LookupUsage = { allowance: null, refused: false };
+    const lookups = new Map<string, Promise<LiveFlightData | null>>();
+    const lookup = (flightNum: string, date: string) => {
+      const key = `${flightNum.replace(/\s+/g, "").toUpperCase()}:${date}`;
+      let pending = lookups.get(key);
+      if (!pending) {
+        flightsChecked++;
+        pending = lookupFlight(flightNum, date, rapidApiKey, usage);
+        lookups.set(key, pending);
+      }
+      return pending;
+    };
     const tripsToUpdate: Map<string, { doc: FirestoreDoc; events: StoredFlightEvent[] }> = new Map();
 
     for (const tripDoc of tripDocs) {
@@ -52,14 +67,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const eventDate = (ev.date as string).slice(0, 10);
 
         // Query AeroDataBox
-        flightsChecked++;
-        const result = await lookupFlight(ev.flightNum, eventDate, rapidApiKey);
+        const result = await lookup(ev.flightNum, eventDate);
         if (!result) continue;
 
         // Save missing route details even when nothing changed: without the
         // departure zone, later runs would time their checks hours off
         for (const k of ["depTz", "arrTz", "depAirport", "arrAirport", "depCoords", "arrCoords"] as const) {
           if (!ev[k] && result[k]) { (rawEvents[i] as Record<string, unknown>)[k] = result[k]; tripChanged = true; }
+        }
+
+        // Days away, the feed can be wrong and plans can still change: an organiser hears about it and decides
+        if (isFarOut(ev, now)) {
+          const difference = scheduleDifference(ev, result);
+          if (difference) {
+            rawEvents[i].scheduleNotified = difference.key;
+            tripChanged = true;
+            scheduleAlerts.push({ tripId: docId(tripDoc), tripName, flightNum: ev.flightNum, eventId: ev.id ?? "", details: difference.lines });
+          }
+          continue;
         }
 
         // Revised times and the landing moment are saved quietly: the board shows how late a
@@ -72,6 +97,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           // An estimate the feed has withdrawn goes too, so the flight stops reading as late
           else if (live === null && ev[k]) { rawEvents[i][k] = ""; tripChanged = true; }
         }
+        // Useful to have, not worth a notification
+        if (result.checkInDesk && result.checkInDesk !== ev.checkInDesk) { rawEvents[i].checkInDesk = result.checkInDesk; tripChanged = true; }
         if (statusGroup(result.status) === "arrived" && !ev.arrivedAt) { rawEvents[i].arrivedAt = now.toISOString(); tripChanged = true; }
 
         // Detect changes
@@ -148,6 +175,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       console.warn("check-flight-status: coordinator emails failed:", err instanceof Error ? err.message : err);
     });
 
+    await emailScheduleChanges(scheduleAlerts.filter(a => written.has(a.tripId)), tripDocs).catch(err => {
+      console.warn("check-flight-status: schedule emails failed:", err instanceof Error ? err.message : err);
+    });
+    await reportAllowance(usage, now).catch(err => {
+      console.warn("check-flight-status: allowance report failed:", err instanceof Error ? err.message : err);
+    });
+
     // Receipts of earlier pushes: drops tokens of phones that uninstalled the app
     const receipts = await checkPushReceipts().catch((err) => {
       console.warn("push receipts:", err instanceof Error ? err.message : err);
@@ -159,6 +193,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       receipts,
       tripsScanned: tripDocs.length,
       flightsChecked,
+      allowance: usage.allowance,
+      allowanceRefused: usage.refused,
       tripsWritten: written.size,
       notified: sent.map(u => ({ flight: u.flightNum, changes: u.changes })),
     });
@@ -169,6 +205,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+interface ScheduleAlert {
+  tripId: string;
+  tripName: string;
+  flightNum: string;
+  eventId: string;
+  details: string[];
+}
+
+/** What this run's lookups said about the allowance */
+interface LookupUsage {
+  allowance: Allowance | null;
+  refused: boolean;
+}
 
 interface FlightUpdate {
   tripId: string;
@@ -187,15 +237,19 @@ interface StoredFlightEvent {
   type?: string;
   title?: string;
   date?: string;
+  endDate?: string;
   time?: string;
   endTime?: string;
   location?: string;
   flightNum?: string;
+  /** The schedule difference an organiser was last emailed about, so it's sent once */
+  scheduleNotified?: string;
   status?: string;
   terminal?: string;
   arrTerminal?: string;
   gate?: string;
   arrGate?: string;
+  checkInDesk?: string;
   baggageBelt?: string;
   aircraft?: string;
   revisedTime?: string;
@@ -215,6 +269,7 @@ interface LiveFlightData {
   arrTerminal: string;
   gate: string;
   arrGate: string;
+  checkInDesk: string;
   baggageBelt: string;
   departTime: string;
   arriveTime: string;
@@ -236,6 +291,7 @@ async function lookupFlight(
   flightNum: string,
   date: string,
   apiKey: string,
+  usage: LookupUsage,
 ): Promise<LiveFlightData | null> {
   const clean = flightNum.replace(/\s+/g, "");
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${clean}/${date}`;
@@ -251,6 +307,8 @@ async function lookupFlight(
       signal: controller.signal,
     });
     clearTimeout(timeout);
+    usage.allowance = readAllowance(resp.headers) ?? usage.allowance;
+    if (isAllowanceRefusal(resp.status)) usage.refused = true;
     if (!resp.ok) return null;
     const data: unknown = await resp.json();
 
@@ -271,6 +329,7 @@ async function lookupFlight(
       arrTerminal: arr.terminal ?? "",
       gate: dep.gate ?? "",
       arrGate: arr.gate ?? "",
+      checkInDesk: dep.checkInDesk ?? "",
       baggageBelt: arr.baggageBelt ?? "",
       departTime: formatTime(dep.scheduledTime?.local ?? dep.actualTime?.local ?? ""),
       arriveTime: formatTime(arr.scheduledTime?.local ?? arr.actualTime?.local ?? ""),
@@ -331,6 +390,63 @@ function detectChanges(stored: StoredFlightEvent, live: LiveFlightData): string[
 }
 
 // ── Push notifications ─────────────────────────────────────────────────────
+
+/** Logs what's left on every run, and warns once per level per billing period. Set FLIGHT_ALERTS_EMAIL to get the warning by email. */
+async function reportAllowance(usage: LookupUsage, now: Date) {
+  const { allowance, refused } = usage;
+  if (!allowance && !refused) return;
+  const resetsAt = allowance?.resetsInSeconds ? new Date(now.getTime() + allowance.resetsInSeconds * 1000) : null;
+  console.log(`check-flight-status: allowance ${allowance ? `${allowance.remaining} of ${allowance.limit} units left` : "unknown"}${refused ? ", lookups refused" : ""}`);
+  const level = allowanceLevel(allowance, refused);
+  if (!level) return;
+  console.error(`check-flight-status: flight lookups ${level}`);
+  const period = resetsAt ? resetsAt.toISOString().slice(0, 10) : "unknown";
+  const stored = await getDocument("usage", "flight-allowance").catch(() => null);
+  const warned = { level: decodeValue(stored?.fields?.level), period: decodeValue(stored?.fields?.period) };
+  if (!shouldWarn(level, warned, period)) return;
+  const to = process.env.FLIGHT_ALERTS_EMAIL;
+  if (to) {
+    const sent = await sendEmail({ to, ...flightAllowanceEmail({
+      level,
+      remaining: allowance?.remaining ?? null,
+      limit: allowance?.limit ?? null,
+      resetsOn: resetsAt ? resetsAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }) : null,
+      url: "https://rapidapi.com/developer/billing/subscriptions-and-usage",
+    }) });
+    // Not recorded as warned, so the next run tries again
+    if (!sent.ok) { console.warn("check-flight-status: allowance email failed:", "error" in sent ? sent.error : ""); return; }
+  }
+  await setDocument("usage", "flight-allowance", { level: encodeValue(level), period: encodeValue(period) });
+}
+
+/** A profile's email, if it has a usable one */
+async function profileEmail(uid: unknown): Promise<string | null> {
+  if (typeof uid !== "string" || !uid) return null;
+  const profile = await getDocument("profiles", uid).catch(() => null);
+  const email = profile?.fields ? decodeValue(profile.fields.email) : null;
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+/** Tells a trip's creator and coordinators a flight days away no longer matches. A private trip is its creator's alone. */
+async function emailScheduleChanges(alerts: ScheduleAlert[], tripDocs: FirestoreDoc[]) {
+  const appUrl = (process.env.VITE_APP_URL ?? "https://dalefy.app").replace(/\/$/, "");
+  for (const alert of alerts) {
+    const fields = tripDocs.find(doc => docId(doc) === alert.tripId)?.fields ?? {};
+    const coordinators = decodeValue(fields.private) === true ? [] : decodeValue(fields.coordinators);
+    const uids = [decodeValue(fields.user_id), ...(Array.isArray(coordinators) ? coordinators.map(c => (c as { userId?: unknown }).userId) : [])];
+    const emails = new Set((await Promise.all(uids.map(profileEmail))).filter((e): e is string => !!e));
+    const message = flightScheduleEmail({
+      tripName: alert.tripName,
+      flight: alert.flightNum,
+      details: alert.details,
+      manageUrl: `${appUrl}/#/trip/${alert.tripId}?event=${alert.eventId}`,
+    });
+    for (const to of emails) {
+      const sent = await sendEmail({ to, ...message });
+      if (!sent.ok) console.warn("check-flight-status: schedule email failed:", "error" in sent ? sent.error : "");
+    }
+  }
+}
 
 /** Tells a trip's coordinators when one of its flights goes wrong. Travellers hear separately, by push. */
 async function emailCoordinators(updates: FlightUpdate[], tripDocs: FirestoreDoc[]) {

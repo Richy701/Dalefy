@@ -40,6 +40,8 @@ export interface TravelEvent {
   terminal?: string;
   arrTerminal?: string;
   gate?: string;
+  /** Departure check-in desk or row, from the airline when it publishes one */
+  checkInDesk?: string;
   arrGate?: string;
   baggageBelt?: string;
   seatDetails?: string;

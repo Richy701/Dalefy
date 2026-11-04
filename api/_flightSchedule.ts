@@ -1,7 +1,7 @@
 /**
  * Decides which flights the status cron looks up on a given run, and which
  * status changes are worth a push. The cron runs every 15 minutes, so a flight
- * is checked often only around departure, when gates and delays change.
+ * is checked often only around departure and landing, when things change.
  */
 import { airportTz } from "./_airportTz.js";
 
@@ -65,15 +65,61 @@ export const NOTIFY_GROUPS = new Set(["delayed", "cancelled", "diverted", "board
 const H = 60;
 
 /**
+ * Expected landing as a UTC timestamp, from the latest estimate or the schedule. Without a stored arrival date
+ * it takes the first such time after departure. Null when there's no arrival time or zone to work from.
+ */
+export function arrivalMs(ev: { date?: string; endDate?: string; endTime?: string; revisedEndTime?: string; arrTz?: string; arrAirport?: string }, depMs: number | null): number | null {
+  const mins = timeToMins(ev.revisedEndTime || ev.endTime);
+  const date = String(ev.endDate || ev.date || "").slice(0, 10);
+  const tz = ev.arrTz || (ev.arrAirport ? airportTz(ev.arrAirport) : null);
+  if (mins === null || !tz || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const [y, mo, d] = date.split("-").map(Number);
+  const wall = Date.UTC(y, mo - 1, d, Math.floor(mins / 60), mins % 60);
+  const offset = tzOffsetMs(tz, wall);
+  if (offset === null) return null;
+  let arrival = wall - offset;
+  if (!ev.endDate && depMs !== null) while (arrival < depMs) arrival += 864e5;
+  return arrival;
+}
+
+/** More than a day out: travellers aren't told and nothing is overwritten, an organiser decides */
+export function isFarOut(ev: { date?: string; time?: string; depTz?: string; depAirport?: string }, now: Date): boolean {
+  const dep = departureMs(ev);
+  return dep !== null && dep - now.getTime() > 24 * 60 * 60_000;
+}
+
+/**
+ * What differs between a saved flight and the feed, for the organiser's alert. A number can cover several legs,
+ * so a different route counts as no answer. Null when there's nothing new, including a difference already sent.
+ */
+export function scheduleDifference(
+  saved: { time?: string; endTime?: string; depAirport?: string; arrAirport?: string; scheduleNotified?: string },
+  live: { status?: string; departTime?: string; arriveTime?: string; depAirport?: string; arrAirport?: string },
+): { key: string; lines: string[] } | null {
+  const differs = (a?: string, b?: string) => !!a && !!b && a.toUpperCase() !== b.toUpperCase();
+  if (differs(saved.depAirport, live.depAirport) || differs(saved.arrAirport, live.arrAirport)) return null;
+  const moved = (a?: string, b?: string) => { const x = timeToMins(a), y = timeToMins(b); return x !== null && y !== null && x !== y; };
+  const lines: string[] = [];
+  if (statusGroup(live.status) === "cancelled") lines.push("The flight now shows as cancelled");
+  if (moved(saved.time, live.departTime)) lines.push(`Departure: saved as ${saved.time}, now ${live.departTime}`);
+  if (moved(saved.endTime, live.arriveTime)) lines.push(`Arrival: saved as ${saved.endTime}, now ${live.arriveTime}`);
+  if (!lines.length) return null;
+  const key = lines.join("|");
+  return key === saved.scheduleNotified ? null : { key, lines };
+}
+
+/**
  * Whether this run should look the flight up.
- * - 24h to 3h before departure: every 3 hours
+ * - 7 days to 24h before departure: once a day, at 06:00 UTC
+ * - 24h to 3h before departure: hourly
  * - 3h before to 1h after departure: every run (15 min)
  * - after that, hourly until it lands (up to 20h)
- * - once landed, two more runs while no baggage belt is posted
+ * - from an hour before expected landing to half an hour after: every run
+ * - once landed, up to 75 minutes more while no baggage belt is posted
  * Flights without a usable date/time keep the old once-a-day check at 06:00 UTC.
  */
 export function isDue(
-  ev: { date?: string; time?: string; depTz?: string; depAirport?: string; status?: string; arrivedAt?: string; baggageBelt?: string },
+  ev: { date?: string; endDate?: string; time?: string; endTime?: string; revisedEndTime?: string; depTz?: string; depAirport?: string; arrTz?: string; arrAirport?: string; status?: string; arrivedAt?: string; baggageBelt?: string },
   now: Date,
 ): boolean {
   const group = statusGroup(ev.status);
@@ -81,7 +127,7 @@ export function isDue(
   if (group === "arrived") {
     // Belts are often posted after landing; arrivedAt is when a run first saw it land
     const since = now.getTime() - Date.parse(ev.arrivedAt ?? "");
-    return !ev.baggageBelt && since >= 0 && since <= 35 * 60_000;
+    return !ev.baggageBelt && since >= 0 && since <= 75 * 60_000;
   }
 
   // Run slot: minutes since midnight UTC, so "every N minutes" means slot % N < 15
@@ -97,9 +143,15 @@ export function isDue(
   }
 
   const minsToDep = (dep - now.getTime()) / 60_000;
-  if (minsToDep > 24 * H) return false;
-  if (minsToDep > 3 * H) return slot % (3 * H) < 15;
+  if (minsToDep > 7 * 24 * H) return false;
+  if (minsToDep > 24 * H) return slot >= 6 * H && slot < 6 * H + 15;
+  if (minsToDep > 3 * H) return slot % H < 15;
   if (minsToDep >= -1 * H) return true;
-  if (minsToDep >= -20 * H) return slot % H < 15;
+  if (minsToDep >= -20 * H) {
+    const arrival = arrivalMs(ev, dep);
+    const minsToLanding = arrival === null ? null : (arrival - now.getTime()) / 60_000;
+    if (minsToLanding !== null && minsToLanding <= H && minsToLanding >= -30) return true;
+    return slot % H < 15;
+  }
   return false;
 }

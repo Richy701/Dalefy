@@ -17,6 +17,7 @@ export interface AeroMovement {
   runwayTime?: { local?: string; utc?: string };
   terminal?: string;
   gate?: string;
+  checkInDesk?: string;
   baggageBelt?: string;
 }
 export interface AeroFlight {
@@ -165,6 +166,7 @@ export async function lookupFlightNumber(number: string, date: string, key: stri
         arrTerminal: arr.terminal ?? "",
         gate: dep.gate ?? "",
         arrGate: arr.gate ?? "",
+        checkInDesk: dep.checkInDesk ?? "",
         baggageBelt: arr.baggageBelt ?? "",
         aircraft: f.aircraft?.model ?? "",
         depTz: airportTz(dep.airport?.iata ?? "") ?? "",

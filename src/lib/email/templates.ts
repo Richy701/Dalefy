@@ -214,6 +214,59 @@ export function flightProblemEmail(input: {
   return { subject: `${input.flight} ${input.problem}: ${input.tripName}`, html, text };
 }
 
+/** A flight days away no longer matches what's saved. Travellers aren't told: the organiser checks and decides. */
+export function flightScheduleEmail(input: {
+  tripName: string;
+  flight: string;
+  details: string[];
+  manageUrl: string;
+}): RenderedEmail {
+  const brand = DALEFY_BRAND;
+  const intro = `${input.flight} on ${input.tripName} no longer matches the live flight schedule. Travellers haven't been told. Check it with the airline, then update the trip if it's right.`;
+  const list = listCard(input.details);
+  const { html, text } = renderEmailShell({
+    brand,
+    preheader: `${input.flight} may have changed`,
+    eyebrow: "Flight schedule",
+    title: input.tripName,
+    bodyHtml: paragraph(escapeHtml(intro)) + list.html,
+    bodyText: `${intro}\n\n${list.text}`,
+    cta: { label: "Open the trip", url: input.manageUrl },
+    footerText: `Sent by ${brand.platformName}.`,
+  });
+  return { subject: `${input.flight} may have changed: ${input.tripName}`, html, text };
+}
+
+/** Flight lookups are running out; when they do, flight alerts stop without any other sign. */
+export function flightAllowanceEmail(input: {
+  level: "low" | "very-low" | "exhausted";
+  remaining: number | null;
+  limit: number | null;
+  resetsOn: string | null;
+  url: string;
+}): RenderedEmail {
+  const brand = DALEFY_BRAND;
+  const headline = input.level === "exhausted" ? "Flight lookups have run out" : "Flight lookups are running low";
+  const intro = input.level === "exhausted"
+    ? "Flight alerts and live flight details have stopped until the allowance resets or the plan is upgraded."
+    : "When the allowance runs out, flight alerts and live flight details stop.";
+  const list = listCard([
+    input.remaining !== null && input.limit !== null ? `Left: ${input.remaining} of ${input.limit} units` : "",
+    input.resetsOn ? `Resets: ${input.resetsOn}` : "",
+  ].filter(Boolean));
+  const { html, text } = renderEmailShell({
+    brand,
+    preheader: headline,
+    eyebrow: "Flight data",
+    title: headline,
+    bodyHtml: paragraph(escapeHtml(intro)) + list.html,
+    bodyText: `${intro}\n\n${list.text}`,
+    cta: { label: "Open RapidAPI", url: input.url },
+    footerText: `Sent by ${brand.platformName}.`,
+  });
+  return { subject: headline, html, text };
+}
+
 // ── Photo reported ──────────────────────────────────────────────────────────
 
 export function mediaReportedEmail(input: {

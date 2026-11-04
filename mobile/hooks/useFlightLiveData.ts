@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { authHeaders } from "@/services/authHeaders";
 
 const API_BASE = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/api`;
 
@@ -6,6 +7,7 @@ interface FlightLiveData {
   gate: string;
   arrGate: string;
   baggageBelt: string;
+  checkInDesk: string;
   aircraft: string;
   terminal: string;
   arrTerminal: string;
@@ -34,7 +36,8 @@ export function useFlightLiveData(flightNum?: string, date?: string, poll = fals
 
     const doFetch = () => {
       setLoading(true);
-      fetch(`${API_BASE}/flight-number?number=${clean}&date=${dateStr}`)
+      authHeaders()
+        .then(headers => fetch(`${API_BASE}/flight-number?number=${clean}&date=${dateStr}`, { headers }))
         .then(r => r.ok ? r.json() : null)
         .then(json => {
           if (cancelled || !json?.flights?.length) return;
@@ -43,6 +46,7 @@ export function useFlightLiveData(flightNum?: string, date?: string, poll = fals
             gate: f.gate || "",
             arrGate: f.arrGate || "",
             baggageBelt: f.baggageBelt || "",
+            checkInDesk: f.checkInDesk || "",
             aircraft: f.aircraft || "",
             terminal: f.terminal || "",
             arrTerminal: f.arrTerminal || "",

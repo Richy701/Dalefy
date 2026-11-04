@@ -1,10 +1,12 @@
 import { validateIata, validateDate, requireRapidApi } from "./_validate.js";
-import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
+import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
+import { allowFlightLookup, sharedLookup, lookupCacheControl } from "./_flightAccess.js";
 import { searchFlights } from "./_flightsCore.js";
 import { errorToHttp } from "./_httpError.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  if (!rateLimit(req, res, { bucket: "flights", limit: 40, windowMs: 60_000 })) return;
+  const access = await allowFlightLookup(req, res, "flights");
+  if (!access) return;
 
   const { from, to, date } = req.query as Record<string, string>;
 
@@ -15,8 +17,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!key) return;
 
   try {
-    const payload = await searchFlights(from, to, date, key);
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120");
+    const payload = await sharedLookup(`route:${from}:${to}:${date}`, () => searchFlights(from, to, date, key));
+    res.setHeader("Cache-Control", lookupCacheControl(access.signedIn));
     res.json(payload);
   } catch (e) {
     const { status, error } = errorToHttp(e, "Failed to fetch from AeroDataBox");

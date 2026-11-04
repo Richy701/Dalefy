@@ -954,6 +954,8 @@ function FlightDetailScreen({
     { label: "Gate", value: live?.gate || ev.gate || null },
     { label: "Seat", value: ev.seatDetails || null },
     { label: boardingEst ? "Boarding, est." : "Boarding", value: boardingEst },
+    // Only until it leaves; after that there's nothing to find
+    ...((live?.checkInDesk || ev.checkInDesk) && !(departsMs < 0) ? [{ label: "Check-in desk", value: (live?.checkInDesk || ev.checkInDesk) as string }] : []),
     ...((live?.arrTerminal || ev.arrTerminal) ? [{ label: "Arrival terminal", value: terminalName(live?.arrTerminal || ev.arrTerminal || "") }] : []),
     ...(ev.checkin ? [{ label: "Check-in", value: ev.checkin }] : []),
     ...((live?.baggageBelt || ev.baggageBelt) ? [{ label: "Baggage belt", value: (live?.baggageBelt || ev.baggageBelt) as string }] : []),

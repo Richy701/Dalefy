@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getIdToken } from "@/lib/api";
 
 export interface FlightResult {
   airline: string;
@@ -45,7 +45,7 @@ export async function searchFlights(
   adults = 1
 ): Promise<FlightResult[]> {
   const params = new URLSearchParams({ from, to, date, adults: String(adults) });
-  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flights?${params}`);
+  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flights?${params}`, { auth: await getIdToken() });
   return data.flights ?? [];
 }
 
@@ -54,7 +54,7 @@ export async function lookupFlight(
   date: string
 ): Promise<FlightResult[]> {
   const params = new URLSearchParams({ number: flightNum.replace(/\s+/g, ""), date });
-  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flight-number?${params}`);
+  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flight-number?${params}`, { auth: await getIdToken() });
   return data.flights ?? [];
 }
 

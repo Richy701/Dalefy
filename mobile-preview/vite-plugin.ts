@@ -24,7 +24,7 @@ export function mobilePreviewPlugin(root:string):Plugin {
       if(adapters[id])return this.resolve(adapters[id],importer,{skipSelf:true});
       if(id.startsWith('/mobile/')) {
         if (/^\/mobile\/(context\/(Trips|Theme|Brand)Context|hooks\/(useTripRole|useLinkedTravelerId)|components\/OverseeingCard)$/.test(id))return context;
-        if(id==='/mobile/services/openDocument')return platform;
+        if(id==='/mobile/services/openDocument'||id==='/mobile/services/authHeaders')return platform;
         return this.resolve(path.join(root,id.slice(1)),importer,{skipSelf:true});
       }
 

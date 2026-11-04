@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:security:unit": "tsc -p tsconfig.security.json && node --test tests/security/trip-view.test.mjs",
+    "test:security:unit": "tsc -p tsconfig.security.json && node --test tests/security/trip-view.test.mjs tests/security/flight-schedule.test.mjs",
     "test:security": "firebase emulators:exec --config firebase.test.json --project demo-dalefy-security --only firestore,storage \"node --test tests/security/*.test.mjs\""
   },
   "dependencies": {

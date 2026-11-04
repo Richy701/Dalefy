@@ -4,6 +4,7 @@ import type { LiveActivity } from "expo-widgets";
 import type { useSurfaceTrips } from "./useSurfaceTrips";
 import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
+import { authHeaders } from "@/services/authHeaders";
 import type { TravelEvent } from "@/shared/types";
 import type { FlightTrackerProps } from "@/widgets/FlightTracker";
 import { airlineAccent } from "@/shared/airlines";
@@ -40,7 +41,7 @@ async function fetchAirportCodes(flightNum: string, date: string): Promise<{ fro
     const clean = flightNum.replace(/\s+/g, "");
     const url = `${API_BASE}/api/flight-number?number=${clean}&date=${date}`;
     console.log("[FlightLiveActivity] Fetching airports:", url);
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: await authHeaders() });
     if (!resp.ok) { console.warn("[FlightLiveActivity] API error:", resp.status); return null; }
     const data = await resp.json();
     const f = data.flights?.[0];
