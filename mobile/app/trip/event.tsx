@@ -598,7 +598,7 @@ export default function EventDetailScreen() {
             </View>
           )}
           {/* The title leads; when it happens sits under it as one line */}
-          <Text style={[styles.heroTitle, { color: C.textPrimary }]} numberOfLines={3}>{isHotel ? stayName : title}</Text>
+          <Text style={[styles.heroTitle, { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
           {!isHotel && (
             <Text style={[styles.whenLine, { color: C.textSecondary }]}>
               {[
