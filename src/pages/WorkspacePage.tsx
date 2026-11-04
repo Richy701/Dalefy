@@ -84,6 +84,8 @@ import { shrinkImage } from "@/lib/shrinkImage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { BulkAddPeopleDialog } from "@/components/shared/BulkAddPeopleDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
+import { TravelerRefsFields } from "@/components/workspace/TravelerRefsFields";
+import { cleanTravelerRefs, hasBookingRef, refForTraveller } from "@/lib/bookingRefs";
 import { tripTravelerOf } from "@/lib/travelerSync";
 import { timeAgo } from "@/lib/timeAgo";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
@@ -741,6 +743,8 @@ export function WorkspacePage() {
       time: editingEvent.time ? formatTimeInput(editingEvent.time) : editingEvent.time,
       endTime: editingEvent.endTime ? formatTimeInput(editingEvent.endTime) : editingEvent.endTime,
     };
+    const refs = cleanTravelerRefs(editingEvent, tripTravelers);
+    if (refs) normalised.travelerRefs = refs; else delete normalised.travelerRefs;
     const isNew = !trip.events.some(ev => ev.id === normalised.id);
     const baseline = editBaseline.current || trip;
     const events = baseline.events.some(ev => ev.id === normalised.id) ? baseline.events.map(ev => ev.id === normalised.id ? normalised : ev) : [...baseline.events, normalised];
@@ -2319,7 +2323,7 @@ export function WorkspacePage() {
               />
               <MobilePreview
                 trip={trip}
-                events={groupedEvents.flatMap(([, evs]) => evs)}
+                events={groupedEvents.flatMap(([, evs]) => evs).map(ev => (viewAsId ? { ...ev, confNumber: refForTraveller(ev, viewAsId) } : ev))}
                 activeEventId={isEditPanelOpen && editingEvent ? editingEvent.id : null}
                 viewAsName={viewAsTraveler?.name ?? null}
                 onClose={() => setShowMobilePreview(false)}
@@ -2627,8 +2631,8 @@ export function WorkspacePage() {
                     <span className="text-sm font-semibold text-foreground">Details</span>
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">
-                        {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length || "Optional"}
-                        {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length ? " set" : ""}
+                        {[editingEvent?.supplier, editingEvent && hasBookingRef(editingEvent), editingEvent?.price].filter(Boolean).length || "Optional"}
+                        {[editingEvent?.supplier, editingEvent && hasBookingRef(editingEvent), editingEvent?.price].filter(Boolean).length ? " set" : ""}
                       </span>
                       <CaretDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
                     </span>
@@ -2645,10 +2649,18 @@ export function WorkspacePage() {
                       </datalist>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-muted-foreground">Confirmation number</Label>
-                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Label className="text-xs font-medium text-muted-foreground">Booking reference</Label>
+                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC123" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
+
+                  {editingEvent && (
+                    <TravelerRefsFields
+                      event={editingEvent}
+                      travellers={tripTravelers}
+                      onChange={refs => setEditingEvent(prev => prev ? { ...prev, travelerRefs: refs } : null)}
+                    />
+                  )}
 
                   {/* Price */}
                   <div className="space-y-1.5">

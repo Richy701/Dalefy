@@ -40,6 +40,43 @@ test('leader access includes published leader content, never draft fields', () =
   assert.equal(result.events[0].notes, 'SECRET_NOTES');
   assert.equal(JSON.stringify(result).includes('SECRET_DRAFT'), false);
 });
+const refsTrip = { status: 'Published', published_snapshot: {
+  name: 'Refs', publishedAt: '2026-09-11T00:00:00Z',
+  travelers: [{ id: 'a', name: 'Amy' }, { id: 'b', name: 'Ben' }, { id: 'c', name: 'Cal' }],
+  events: [
+    { id: 'group', title: 'Group flight', confNumber: 'SHARED1' },
+    { id: 'split', title: 'Split flight', confNumber: 'SHARED2', travelerRefs: { a: 'AMYREF', b: ' BENREF ', c: '  ' } },
+    { id: 'private', title: 'Amy only', assignedTo: ['a'], confNumber: 'AMYSHARED', travelerRefs: { a: 'AMYONLY', b: 'NOTONEVENT' } },
+    { id: 'none', title: 'No reference' },
+  ],
+} };
+const refsFor = (...args) => Object.fromEntries(publishedTripView('trip', refsTrip, ...args).events.map(e => [e.id, e.confNumber]));
+test('a linked traveller gets only their own booking reference, on events they are on', () => {
+  assert.deepEqual(refsFor(false, true, 'a'), { group: 'SHARED1', split: 'AMYREF', private: 'AMYONLY', none: undefined });
+  assert.deepEqual(refsFor(false, true, 'b'), { group: 'SHARED1', split: 'BENREF', private: undefined, none: undefined });
+  // A blank individual reference falls back to the shared one
+  assert.deepEqual(refsFor(false, true, 'c'), { group: 'SHARED1', split: 'SHARED2', private: undefined, none: undefined });
+  for (const id of ['a', 'b', 'c']) {
+    const json = JSON.stringify(publishedTripView('trip', refsTrip, false, true, id));
+    assert.equal(json.includes('travelerRefs'), false);
+    if (id !== 'a') assert.equal(/AMY/.test(json), false);
+    if (id !== 'b') assert.equal(/BENREF|NOTONEVENT/.test(json), false);
+  }
+});
+test('no booking reference without a join and a link to someone on the published list', () => {
+  const none = { group: undefined, split: undefined, private: undefined, none: undefined };
+  assert.deepEqual(refsFor(), none);
+  assert.deepEqual(refsFor(false, false, 'a'), none);
+  assert.deepEqual(refsFor(false, true, null), none);
+  assert.deepEqual(refsFor(false, true, 'someone-removed'), none);
+  assert.deepEqual(refsFor(false, true, { id: 'a' }), none);
+});
+test('leaders get the shared reference and everyone else\'s, without blanks', () => {
+  const events = publishedTripView('trip', refsTrip, true, true, 'a').events;
+  const split = events.find(e => e.id === 'split');
+  assert.equal(split.confNumber, 'SHARED2');
+  assert.deepEqual(split.travelerRefs, { a: 'AMYREF', b: 'BENREF' });
+});
 test('membership requires both the matching authenticated UID and target trip', () => {
   assert.equal(membershipMatches({ uid: 'other', trip_id: 'trip' }, 'me', 'trip'), false);
   assert.equal(membershipMatches({ uid: 'me', trip_id: 'other' }, 'me', 'trip'), false);

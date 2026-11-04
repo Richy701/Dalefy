@@ -46,7 +46,7 @@ export default async function handler(req: Request, res: Response) {
     ]);
     const member = decode(memberDoc);
     if (!found || !membershipMatches(member, payload.sub, tripId)) return res.status(403).json({ error: "Join this trip to ask about it" });
-    const view = publishedTripView(tripId, decode(found), member.role === "leader", true);
+    const view = publishedTripView(tripId, decode(found), member.role === "leader", true, member.linked_traveler_id);
     if (!view) return res.status(404).json({ error: "Itinerary unavailable" });
 
     // A hard daily cap per person bounds the bill, whatever the client does

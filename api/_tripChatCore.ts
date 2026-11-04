@@ -134,6 +134,7 @@ export function tripContext(view: Data, travelerId: string | null): { text: stri
       e.type === "transfer" && (str(e.contactName) || str(e.contactPhone)) ? `driver or guide ${[str(e.contactName), str(e.contactPhone)].filter(Boolean).join(", ")}` : "",
       str(e.seatDetails) && `seats ${str(e.seatDetails)}`,
       str(e.confNumber) && `confirmation ${str(e.confNumber)}`,
+      Object.entries((e.travelerRefs ?? {}) as Data).map(([id, ref]) => `${str(travelers.find(t => t.id === id)?.name) || "A traveller"} confirmation ${str(ref)}`).join(", "),
       str(e.description) && clip(str(e.description).replace(/\s+/g, " "), 600),
       str(e.notes) && `notes: ${clip(str(e.notes).replace(/\s+/g, " "), 300)}`,
     ].filter(Boolean);

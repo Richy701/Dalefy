@@ -34,8 +34,30 @@ function focalPoint(v: unknown): { x: number; y: number } | null {
   return ok(p.x) && ok(p.y) ? { x: p.x, y: p.y } : null;
 }
 
-/** Explicit allowlists keep new internal fields private by default. */
-export function publishedTripView(tripId: string, trip: Data, leader = false, member = false): Data | null {
+/** Individual booking references by traveller id, keeping only real text. */
+function travelerRefs(value: unknown): Record<string, string> {
+  return Object.fromEntries(Object.entries(record(value))
+    .filter((e): e is [string, string] => typeof e[1] === "string" && !!e[1].trim())
+    .map(([id, ref]) => [id, ref.trim()]));
+}
+
+/**
+ * A booking reference plus a surname can change a booking, so a traveller only ever gets their own: they must have
+ * joined, be linked to someone on the published list, and be on the event. Others' references never leave the server.
+ */
+function ownBookingRef(event: Data, travelerId: string | null): string | null {
+  if (!travelerId) return null;
+  const assigned = list(event.assignedTo);
+  if (assigned.length && !assigned.includes(travelerId)) return null;
+  const shared = typeof event.confNumber === "string" ? event.confNumber.trim() : "";
+  return travelerRefs(event.travelerRefs)[travelerId] || shared || null;
+}
+
+/**
+ * Explicit allowlists keep new internal fields private by default.
+ * linkedTravelerId is who a joined member picked; only a member's own value may be passed.
+ */
+export function publishedTripView(tripId: string, trip: Data, leader = false, member = false, linkedTravelerId: unknown = null): Data | null {
   if (!["Published", "published"].includes(String(trip.status))) return null;
   const snap = record(trip.published_snapshot);
   // Legacy trips need republishing. Never fall back to working fields.
@@ -45,6 +67,8 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     leaderOnly: record(v).leaderOnly === true,
     documents: documents(record(v).documents),
   }));
+  const listedId = member && typeof linkedTravelerId === "string"
+    && list(snap.travelers).some(t => record(t).id === linkedTravelerId) ? linkedTravelerId : null;
   const events = snap.events.map(v => {
     const data = record(v);
     const result: Data = strings(v, [
@@ -54,6 +78,13 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
       "checkin", "checkout", "transferType", "aircraft", "meetingPoint", "contactName", "contactPhone",
       ...(leader ? ["supplier", "price", "confNumber", "notes", "seatDetails"] : []),
     ]);
+    if (leader) {
+      const refs = travelerRefs(data.travelerRefs);
+      if (Object.keys(refs).length) result.travelerRefs = refs;
+    } else {
+      const ref = ownBookingRef(data, listedId);
+      if (ref) result.confNumber = ref;
+    }
     for (const key of ["locationCoords", "depCoords", "arrCoords"]) {
       if (Array.isArray(data[key]) && data[key].length === 2 && data[key].every(n => typeof n === "number" && Number.isFinite(n))) result[key] = data[key];
     }

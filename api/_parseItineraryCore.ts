@@ -36,7 +36,8 @@ Field semantics for the structured result (if a field does not apply, use an emp
       "title": "Short event title (under 100 chars)",
       "location": "Venue name or route",
       "description": "Public info for travelers: menu items, what to bring, meeting points, place descriptions, dress code, activity details, travel times/distances",
-      "notes": "Internal agent notes: confirmation numbers, supplier contacts, booking references, pricing notes, surcharge warnings, operational details",
+      "confNumber": "The one booking or confirmation reference for this event, if the whole group shares it. Travellers see it on their phones. Otherwise empty",
+      "notes": "Internal agent notes: individual passengers' references, supplier contacts, pricing notes, surcharge warnings, operational details",
       "checkin": "YYYY-MM-DD (hotels only - check-in date)",
       "checkout": "YYYY-MM-DD (hotels only - check-out date)"
     }
@@ -74,10 +75,12 @@ There are TWO text fields per event. Do NOT just copy raw text from the document
 - Transfers: friendly context. e.g. "Private transfer from Incheon Airport to Seoul city centre. Journey takes approximately 1 hour (58 km)."
 - Overnight: e.g. "Overnight stay in Seoul at the Novotel Ambassador Dongdaemun."
 
+"confNumber" = the airline, hotel or supplier reference for this event, exactly as written ("SLIB103680"), when one reference covers everyone on it. Travellers see it, so when references differ by passenger leave it empty and list them in notes with each name. Never guess or use a reference from another event.
+
 "notes" = INTERNAL, agent-only. Keep concise and operational:
 - Reservation confirmations: "Confirmed 19:00"
 - Supplier contacts: "Contact: 010-5497-4968"
-- Booking refs: "Ref: SLIB103680"
+- Booking refs that differ by passenger, with each name: "Refs: A. Smith QR7X2P, B. Jones ZK91LM"
 - Surcharge/policy notes: "Early check-in surcharge applies"
 - Driver/guide notes: "No guide service — driver only"
 - Luggage notes: "Baggage may be stored at hotel for late departures"
@@ -141,6 +144,7 @@ const EventSchema = z.object({
   title: z.string(),
   location: z.string(),
   description: z.string(),
+  confNumber: z.string(),
   notes: z.string(),
   checkin: z.string(),
   checkout: z.string(),

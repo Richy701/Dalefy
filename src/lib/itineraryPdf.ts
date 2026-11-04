@@ -7,6 +7,7 @@
  */
 import type { jsPDF as JsPdfType } from "jspdf";
 import type { Trip, TravelEvent } from "@/types";
+import { namedRefs } from "@/lib/bookingRefs";
 import { sortEvents } from "@/lib/sortEvents";
 import { clockTime, stayTime } from "@/lib/timeInput";
 import { tzAbbr, eventTz, flightDayOffset } from "@/lib/timezone";
@@ -362,7 +363,7 @@ function routeMap(d: Doc, pdf: JsPdfType, mapDataUrl?: string | null) {
   } catch { /* skip map */ }
 }
 
-function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
+function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean, travellers?: Trip["travelers"]) {
   if (evs.length === 0) return;
   d.sectionTitle("Your flights", 40);
   const x = MARGIN + 5;
@@ -384,6 +385,7 @@ function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
       ev.aircraft,
       includeRefs && ev.seatDetails && `Seat ${ev.seatDetails}`,
       includeRefs && ev.confNumber && `Booking ref ${ev.confNumber}`,
+      ...(includeRefs ? namedRefs(ev, travellers).map(ref => `Booking ref ${ref}`) : []),
     ].filter(Boolean).join(", ");
     const detailLines = details ? d.wrap(details, 8, right - x - (notice ? 24 : 0)) : [];
     const footLines = Math.max(detailLines.length, notice ? 1 : 0);
@@ -449,7 +451,7 @@ function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
   d.y += 4;
 }
 
-function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean) {
+function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean, travellers?: Trip["travelers"]) {
   if (evs.length === 0) return;
   d.sectionTitle("Where you're staying", 40);
   evs.forEach((ev, i) => {
@@ -460,8 +462,10 @@ function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean
     const meta = [
       n > 0 ? `${n} night${n === 1 ? "" : "s"}` : "",
       includeRefs && ev.confNumber ? `Booking ref ${ev.confNumber}` : "",
+      ...(includeRefs ? namedRefs(ev, travellers).map(ref => `Booking ref ${ref}`) : []),
     ].filter(Boolean).join(", ");
-    const h = 31 + (meta ? 6.5 : 0);
+    const metaLines = meta ? d.wrap(meta, 8, CONTENT_W - 10) : [];
+    const h = 31 + (metaLines.length ? 6.5 + (metaLines.length - 1) * 3.5 : 0);
     d.ensure(h);
 
     d.panel(MARGIN, d.y, CONTENT_W, h);
@@ -478,7 +482,7 @@ function stays(d: Doc, evs: TravelEvent[], tripEnd: string, includeRefs: boolean
     const half = MARGIN + CONTENT_W / 2;
     d.text("Check out", half, rowY + 3, { size: 8, color: MUTED });
     d.text(`${fmtShort(checkout)}${checkoutTime ? `, ${checkoutTime}` : ""}`, half, rowY + 7, { size: 9.5, weight: "bold" });
-    if (meta) d.text(meta, x, rowY + 12, { size: 8, color: MUTED });
+    metaLines.forEach((line, n) => d.text(line, x, rowY + 12 + n * 3.5, { size: 8, color: MUTED }));
     d.y += h + 4;
   });
   d.y += 4;
@@ -639,8 +643,8 @@ export async function buildItineraryPdf(opts: ItineraryPdfOptions): Promise<JsPd
   // Below the organiser, or the overview strip when there isn't one
   d.y += hasOrganiser(opts.trip) ? 20 : 2;
   routeMap(d, pdf, opts.mapDataUrl);
-  flights(d, sorted.filter(e => e.type === "flight"), includeRefs);
-  stays(d, sorted.filter(e => e.type === "hotel"), opts.trip.end, includeRefs);
+  flights(d, sorted.filter(e => e.type === "flight"), includeRefs, opts.trip.travelers);
+  stays(d, sorted.filter(e => e.type === "hotel"), opts.trip.end, includeRefs, opts.trip.travelers);
   dayByDay(d, sorted, opts.trip.start);
   goodToKnow(d, opts.trip);
   documents(d, opts.trip);

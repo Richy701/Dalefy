@@ -30,6 +30,8 @@ export interface TravelEvent {
   supplier?: string;
   price?: string;
   confNumber?: string;
+  /** Individual booking references by traveller id; anyone without one uses confNumber */
+  travelerRefs?: Record<string, string>;
   image?: string;
   imagePosition?: ImageFocalPoint;
   roomType?: string;

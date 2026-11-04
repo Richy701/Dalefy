@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
+import { travellerRefRows } from "@/shared/eventDisplay";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -469,11 +470,9 @@ export default function EventDetailScreen() {
     ? (ev.isOvernight ? "Overnight" : [knownTime(ev.time) ? `Check in ${ev.time}` : null, knownTime(ev.endTime) ? `check out ${ev.endTime}` : null].filter(Boolean).join(", ") || null)
     : knownTime(ev.time) ? `${ev.time}${knownTime(ev.endTime) ? ` – ${ev.endTime}` : ""}` : null;
 
-  const copyConf = () => {
-    if (ev.confNumber) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Clipboard.setStringAsync(ev.confNumber);
-    }
+  const copyRef = (ref: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Clipboard.setStringAsync(ref);
   };
 
   const detailRows: Array<{ icon: PhosphorIcon; label: string; value: string; onPress?: () => void }> = [];
@@ -494,7 +493,9 @@ export default function EventDetailScreen() {
   if (ev.gate) detailRows.push({ icon: Door, label: "Gate", value: ev.gate });
   if (ev.price) detailRows.push({ icon: Hash, label: "Price", value: ev.price });
   if (isLeader && ev.supplier) detailRows.push({ icon: Users, label: "Supplier", value: ev.supplier });
-  if (isLeader && ev.confNumber) detailRows.push({ icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: copyConf });
+  // The server sends a traveller only their own reference; leaders also get everyone's, by name
+  if (ev.confNumber) detailRows.push({ icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
+  if (isLeader) for (const { name, ref } of travellerRefRows(ev, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
 
   // Neighbouring events on the same day
   const dayEvents = trip.events
@@ -917,11 +918,9 @@ function FlightDetailScreen({
   const showStatus = isPast || statusLabel === "Delayed" || statusLabel === "Cancelled"
     || (!!live?.status && !isNaN(departsMs) && departsMs < 48 * 3600000);
 
-  const copyConf = () => {
-    if (ev.confNumber) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Clipboard.setStringAsync(ev.confNumber);
-    }
+  const copyRef = (ref: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Clipboard.setStringAsync(ref);
   };
 
   const fs = useMemo(() => makeFlightStyles(C), [C]);
@@ -1175,13 +1174,16 @@ function FlightDetailScreen({
                 ))}
               </View>
 
-              {isLeader && ev.confNumber ? (
-                <Pressable onPress={copyConf} accessibilityRole="button" accessibilityLabel="Copy booking reference" style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
-                  <Text style={[fs.stubLabel, { color: P.textTertiary, flex: 1 }]}>Booking reference</Text>
-                  <Text style={[fs.stubValue, { color: P.textPrimary }]}>{ev.confNumber}</Text>
+              {[
+                ...(ev.confNumber ? [{ name: "Booking reference", ref: ev.confNumber }] : []),
+                ...(isLeader ? travellerRefRows(ev, trip?.travelers) : []),
+              ].map(({ name, ref }) => (
+                <Pressable key={`${name}-${ref}`} onPress={() => copyRef(ref)} accessibilityRole="button" accessibilityLabel={`Copy booking reference for ${name}`} style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
+                  <Text style={[fs.stubLabel, { color: P.textTertiary, flex: 1 }]} numberOfLines={1}>{name}</Text>
+                  <Text style={[fs.stubValue, { color: P.textPrimary }]}>{ref}</Text>
                   <Copy size={14} color={P.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
                 </Pressable>
-              ) : null}
+              ))}
               </View>
             </Animated.View>
 

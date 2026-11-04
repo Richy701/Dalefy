@@ -31,6 +31,12 @@ function timeLine(title: string, prev: { date: string; time?: string }, next: { 
 const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable)
   : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map(k => [k, stable((v as Record<string, unknown>)[k])])) : v;
 
+/** The event's references, so a new one counts as something to publish */
+const bookingRefs = (ev: PublishedSnapshot["events"][number]) => JSON.stringify(stable({
+  shared: ev.confNumber?.trim() || "",
+  own: Object.fromEntries(Object.entries(ev.travelerRefs ?? {}).filter(([, ref]) => ref.trim()).map(([id, ref]) => [id, ref.trim()])),
+}));
+
 /**
  * What travellers will notice between two published versions, one line each, for the push sent on
  * publish. Flight statuses are left out: the flight status job already sends those as they happen.
@@ -54,6 +60,7 @@ export function publishedChanges(old: Published, next: Published): string[] {
     else if (ev.type !== "flight" && (prev.location ?? "").trim() !== (ev.location ?? "").trim()) {
       changes.push(ev.location?.trim() ? `${ev.title} now at ${ev.location.trim()}` : `${ev.title} location to be confirmed`);
     }
+    if (bookingRefs(prev) !== bookingRefs(ev)) changes.push(`${ev.title} booking reference updated`);
   }
 
   if (old.start !== next.start || old.end !== next.end) changes.push(`Trip now ${shownDate(next.start)} to ${shownDate(next.end)}`);

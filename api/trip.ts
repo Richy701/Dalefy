@@ -43,7 +43,7 @@ export default async function handler(req: Request, res: Response) {
     const joined = !!payload?.sub && membershipMatches(member, payload.sub, tripId);
     // A coordinator oversees from home: they see what a leader sees without joining as a traveller
     const coordinating = !!payload?.sub && await hasCoordinatorAccess(trip, payload.sub);
-    const view = publishedTripView(tripId, trip, coordinating || (joined && member.role === "leader"), coordinating || joined);
+    const view = publishedTripView(tripId, trip, coordinating || (joined && member.role === "leader"), coordinating || joined, joined ? member.linked_traveler_id : null);
     if (!view) return res.status(404).json({ error: "Itinerary unavailable" });
     // "Which one is you?" greys out names already taken. Only the traveller IDs leave the server, never who
     // took them, so the app doesn't need to read anyone else's membership.

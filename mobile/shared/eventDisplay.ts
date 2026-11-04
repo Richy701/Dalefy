@@ -42,3 +42,8 @@ export function rowSub(ev: TravelEvent): string {
   }
   return loc;
 }
+
+/** Everyone's individual booking references, for leaders; a traveller's own arrives as confNumber */
+export function travellerRefRows(ev: Pick<TravelEvent, "travelerRefs">, travelers: { id: string; name: string }[] = []): { name: string; ref: string }[] {
+  return Object.entries(ev.travelerRefs ?? {}).map(([id, ref]) => ({ name: travelers.find(t => t.id === id)?.name ?? "Traveller", ref }));
+}

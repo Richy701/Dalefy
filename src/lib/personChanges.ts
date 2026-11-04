@@ -28,8 +28,15 @@ export function changePersonOnTrip(data: TripPeopleDoc, person: User, duplicateI
     let added = false;
     return people.flatMap(p => !ids.has(p.id) ? [p] : added ? [] : (added = true, [next]));
   };
-  const events = (items: TravelEvent[] = []) => items.map(event => duplicateId && event.assignedTo?.includes(duplicateId)
-    ? { ...event, assignedTo: [...new Set(event.assignedTo.map(id => id === duplicateId ? person.id : id))] } : event);
+  const events = (items: TravelEvent[] = []) => items.map(event => {
+    if (!duplicateId) return event;
+    const next = event.assignedTo?.includes(duplicateId)
+      ? { ...event, assignedTo: [...new Set(event.assignedTo.map(id => id === duplicateId ? person.id : id))] } : event;
+    const ref = next.travelerRefs?.[duplicateId];
+    if (ref === undefined) return next;
+    const rest = Object.entries(next.travelerRefs!).filter(([id]) => id !== duplicateId);
+    return { ...next, travelerRefs: { [person.id]: ref, ...Object.fromEntries(rest) } };
+  });
   const organizer = (value?: TripOrganizer | null) => value?.travelerId === duplicateId && duplicateId ? { ...value!, travelerId: person.id } : value;
   const next = { ...data, travelers: patchPeople(data.travelers), traveler_ids: [...new Set((data.traveler_ids || []).map(id => id === duplicateId ? person.id : id))], events: events(data.events), organizer: organizer(data.organizer) };
   if (data.published_snapshot) next.published_snapshot = { ...data.published_snapshot, travelers: patchPeople(data.published_snapshot.travelers), events: events(data.published_snapshot.events), organizer: organizer(data.published_snapshot.organizer) };

@@ -566,6 +566,7 @@ interface ParsedEvent {
   title: string;
   location: string;
   description?: string;
+  confNumber?: string;
   notes?: string;
   endTime?: string;
   checkin?: string;
@@ -1081,6 +1082,7 @@ interface AiParsedEvent {
   title?: string;
   location?: string;
   description?: string;
+  confNumber?: string;
   notes?: string;
   checkin?: string;
   checkout?: string;
@@ -1161,6 +1163,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
       location: ev.location ?? "",
       description: ev.description ?? "",
       notes: ev.notes ?? "",
+      ...(typeof ev.confNumber === "string" && ev.confNumber.trim() ? { confNumber: ev.confNumber.trim() } : {}),
       ...(isHotel ? { checkin, checkout, isOvernight: hasMultiDay } : {}),
       // Who meets them and where, for transfers, when the document says
       ...(ev.type === "transfer" ? Object.fromEntries((["meetingPoint", "contactName", "contactPhone"] as const)
@@ -1719,7 +1722,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             if (!realTime(x.time) && realTime(copy.time)) fill.time = copy.time;
             if (!realTime(x.endTime) && realTime(copy.endTime)) fill.endTime = copy.endTime;
             if (!x.location?.trim() && copy.location?.trim()) fill.location = copy.location;
-            for (const k of ["meetingPoint", "contactName", "contactPhone"] as const) if (!x[k]?.trim() && copy[k]?.trim()) fill[k] = copy[k];
+            for (const k of ["confNumber", "meetingPoint", "contactName", "contactPhone"] as const) if (!x[k]?.trim() && copy[k]?.trim()) fill[k] = copy[k];
             return Object.keys(fill).length ? { ...x, ...fill } : x;
           }),
           ...newEvents,

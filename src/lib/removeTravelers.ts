@@ -7,23 +7,30 @@ import type { Trip } from "@/types";
  */
 export function withoutTravelers(trip: Trip, ids: Set<string>): { updates: Partial<Trip>; events: Trip["events"] } {
   const keep = (id: string) => !ids.has(id);
+  const hasRef = (e: Trip["events"][number]) => Object.keys(e.travelerRefs ?? {}).some(id => ids.has(id));
+  const without = (e: Trip["events"][number]): Trip["events"][number] => {
+    const next = { ...e };
+    if (e.assignedTo?.some(id => ids.has(id))) next.assignedTo = e.assignedTo.filter(keep);
+    if (hasRef(e)) next.travelerRefs = Object.fromEntries(Object.entries(e.travelerRefs!).filter(([id]) => keep(id)));
+    return next;
+  };
   const updates: Partial<Trip> = {
     travelers: (trip.travelers ?? []).filter(t => keep(t.id)),
     travelerIds: (trip.travelerIds ?? []).filter(keep),
   };
   const snap = trip.publishedSnapshot;
-  if (snap && ((snap.travelers ?? []).some(t => ids.has(t.id)) || snap.events.some(e => e.assignedTo?.some(id => ids.has(id))))) {
+  if (snap && ((snap.travelers ?? []).some(t => ids.has(t.id)) || snap.events.some(e => e.assignedTo?.some(id => ids.has(id)) || hasRef(e)))) {
     const remaining = (snap.travelers ?? []).filter(t => keep(t.id));
     updates.publishedSnapshot = {
       ...snap,
       travelers: remaining,
       // The app falls back to this count when the list is empty, so it must shrink with the list
       paxCount: String(remaining.length),
-      events: snap.events.map(e => (e.assignedTo?.some(id => ids.has(id)) ? { ...e, assignedTo: e.assignedTo.filter(keep) } : e)),
+      events: snap.events.map(without),
     };
   }
   const events = trip.events
-    .filter(e => e.assignedTo?.some(id => ids.has(id)))
-    .map(e => ({ ...e, assignedTo: e.assignedTo!.filter(keep) }));
+    .filter(e => e.assignedTo?.some(id => ids.has(id)) || hasRef(e))
+    .map(without);
   return { updates, events };
 }

@@ -1,3 +1,4 @@
+import { hasBookingRef } from "@/lib/bookingRefs";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AirplaneTilt, CaretRight, Info, ListChecks, Check } from "@phosphor-icons/react";
@@ -96,7 +97,7 @@ export function TripsReport({ trips }: { trips: Trip[] }) {
     const tracked = required.some(r => r.length > 0);
     const owing = required.filter(r => r.some(d => d.status !== "Signed")).length;
     const bookings = t.events.filter(e => e.type === "flight" || e.type === "hotel");
-    const withRef = bookings.filter(e => e.confNumber?.trim()).length;
+    const withRef = bookings.filter(hasBookingRef).length;
     const openTasks = (t.tasks ?? []).filter(k => !k.completed).length;
 
     const checks: Check[] = [
