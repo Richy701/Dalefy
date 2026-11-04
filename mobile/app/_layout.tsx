@@ -180,7 +180,8 @@ function AppStack() {
       syncInbox();
       // "Directions" goes straight to Maps; everything else opens the event, or the trip
       if (response.actionIdentifier === "directions" && location) {
-        Linking.openURL(`maps://?q=${encodeURIComponent(location)}`).catch(() => {});
+        const q = encodeURIComponent(location);
+        Linking.openURL(Platform.OS === "ios" ? `maps://?q=${q}` : `geo:0,0?q=${q}`).catch(() => {});
         return;
       }
       if (!tripId) return;

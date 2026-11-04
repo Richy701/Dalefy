@@ -110,6 +110,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       ...await queryDocumentsIn("push_tokens", "user_id", chosen.map(p => p.uid).filter(Boolean)),
     ];
     const tokensOf = new Map<string, string[]>();
+    const androidTokens = new Set(tokenDocs.filter(d => decodeValue(d.fields?.platform) === "android").map(d => String(decodeValue(d.fields?.token) ?? "")));
     for (const p of chosen) {
       const ids = new Set([...p.deviceIds, p.uid].filter(Boolean));
       const tokens = tokenDocs
@@ -136,8 +137,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const finalTitle = (title as string)?.trim() || tripName || "Message from your organiser";
     const messages = reachable.flatMap(p => (tokensOf.get(p.key) ?? []).map(to => ({
       to,
-      title: finalTitle,
-      // The trip in the iOS subtitle, unless it is already the title
+      // The trip in the iOS subtitle, unless it is already the title; Android has no subtitle, so it leads the title
+      title: androidTokens.has(to) && tripName && finalTitle !== tripName ? `${tripName}: ${finalTitle}` : finalTitle,
       ...(finalTitle !== tripName && tripName ? { subtitle: tripName } : {}),
       body: body!.trim(),
       data: { tripId, category: "message", logId, ...tapTarget },

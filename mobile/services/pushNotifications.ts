@@ -80,7 +80,9 @@ export async function registerForPushNotifications(
 
     await saveTokenToFirestore(token);
     return token;
-  } catch {
+  } catch (err) {
+    // Otherwise a phone that can't get notifications just looks like someone who turned them off
+    console.warn("[push] Couldn't register for notifications:", err instanceof Error ? err.message : err);
     return null;
   }
 }

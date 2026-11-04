@@ -53,7 +53,8 @@ async function removeToken(token: string, reason: string): Promise<void> {
 export async function sendPush(messages: PushMessage[]): Promise<Ticket[]> {
   const tickets: Ticket[] = [];
   for (let i = 0; i < messages.length; i += 100) {
-    const chunk = messages.slice(i, i + 100);
+    // Android: the app's channel, and high priority so a sleeping phone shows it now. iOS ignores the channel and already treats these as high.
+    const chunk = messages.slice(i, i + 100).map(msg => ({ channelId: "default", priority: "high", ...msg }));
     let data: Ticket[] = [];
     try {
       const resp = await fetch(SEND_URL, { method: "POST", headers: headers(), body: JSON.stringify(chunk) });

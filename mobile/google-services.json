@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1004320415738",
+    "project_id": "dalefy-d87c9",
+    "storage_bucket": "dalefy-d87c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004320415738:android:d5f95e7acdcaf020748e43",
+        "android_client_info": {
+          "package_name": "com.dafadventures.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1004320415738-4aic29qtbg1i7qme8b06g4ggaahl3e93.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaPnmAkPg5Scjxava60GdhGiDPc_QW4qI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1004320415738-4aic29qtbg1i7qme8b06g4ggaahl3e93.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1004320415738-4bfuhvvekcaaaiqi5jm2ll7a9fekq2g5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dafadventures.app",
+                "app_store_id": "6765462755"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

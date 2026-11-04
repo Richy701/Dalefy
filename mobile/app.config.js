@@ -16,6 +16,8 @@ module.exports = ({ config }) => ({
       },
     ],
     "expo-status-bar",
+    // Android draws the status bar icon from the image's shape alone, so it's white on transparent
+    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#0bd2b5", defaultChannel: "default" }],
     "expo-router",
     "expo-font",
     "expo-image",
