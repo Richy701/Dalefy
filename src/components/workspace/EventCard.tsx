@@ -148,12 +148,13 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
   // The row sizes itself to its own width, not the window's, so it still fits when the phone preview narrows the column
   return (
     <div className="bg-card @container">
+      {/* Hover and click cover the whole card, flight legs included */}
       <div
-        data-compact-row
         onClick={onClick}
         {...cardA11y(event.title, onClick)}
-        className="group flex items-center gap-3 px-4 py-3 min-h-[60px] cursor-pointer hover:bg-secondary/60 focus-visible:outline-none focus-visible:bg-secondary/60 transition-colors"
+        className="group cursor-pointer hover:bg-secondary/60 focus-visible:outline-none focus-visible:bg-secondary/60 transition-colors"
       >
+      <div data-compact-row className="flex items-center gap-3 px-4 py-3 min-h-[60px]">
         <CategoryDot type={event.type} transferType={event.transferType} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
@@ -206,6 +207,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 });
