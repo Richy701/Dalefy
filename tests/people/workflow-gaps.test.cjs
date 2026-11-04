@@ -28,7 +28,7 @@ for(const endpoint of ['send-push','notify-trip-update','send-itinerary'])test(`
  const admin={decodeValue:v=>v,getDocument:async collection=>collection==='trips'?{fields:{user_id:'viewer',organization_id:'org'}}:{fields:{role:'viewer'}}};
  const permission=load('api/_tripPermissions.ts',{'./_firebaseAdmin.js':admin});
  const fail=()=>{throw Error('must not send');};
- const handler=load(`api/${endpoint}.ts`,{'./_tripPermissions.js':permission,'./_firebaseAdmin.js':admin,'./_verifyToken.js':{verifyFirebaseToken:async()=>({sub:'viewer'})},'./_rateLimit.js':{rateLimit:()=>true},'./_mailer.js':{emailEnabled:()=>true,sendEmail:fail},'./_expoPush.js':{sendPush:fail},'../src/lib/itineraryEmail.js':{renderItineraryEmail:fail}}).default;
+ const handler=load(`api/${endpoint}.ts`,{'./_tripPermissions.js':permission,'./_firebaseAdmin.js':admin,'./_verifyToken.js':{verifyFirebaseToken:async()=>({sub:'viewer'}),impersonationOf:()=>null},'./_rateLimit.js':{rateLimit:()=>true},'./_mailer.js':{emailEnabled:()=>true,sendEmail:fail},'./_expoPush.js':{sendPush:fail},'../src/lib/itineraryEmail.js':{renderItineraryEmail:fail}}).default;
  let status=200;const res={status(n){status=n;return this;},json(){return this;}};
  await handler({method:'POST',headers:{authorization:'Bearer mock'},body:{tripId:'trip',tripName:'Trip',changes:['changed'],to:'all',body:'Message',subject:'Trip',recipients:[{email:'test@example.com'}]}},res);
  assert.equal(status,403);
