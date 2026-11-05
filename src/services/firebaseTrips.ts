@@ -211,7 +211,8 @@ async function persistTrip(trip: Trip, orgId?: string | null, before?: Trip, opt
       merged.traveler_emails = [...new Set(travelers.map(person => (person.email || '').trim().toLowerCase()).filter(Boolean))];
     }
     if ('coordinators' in patch) merged.coordinator_ids = ((merged.coordinators || []) as Array<{ userId: string }>).map(c => c.userId);
-    tx.set(tripRef, merged, { merge: true });
+    // A whole-document write: merging keeps fields a nested value dropped, such as a replaced organiser's travelerId
+    tx.set(tripRef, merged);
     tx.set(doc(firebaseDb(), 'trip_versions', trip.id), { updated_at: serverTimestamp() });
     return docToTrip(trip.id, merged);
   });
