@@ -45,10 +45,12 @@ function travelerRefs(value: unknown): Record<string, string> {
  * A booking reference plus a surname can change a booking, so a traveller only ever gets their own: they must have
  * joined, be linked to someone on the published list, and be on the event. Others' references never leave the server.
  */
-function ownBookingRef(event: Data, travelerId: string | null): string | null {
-  if (!travelerId) return null;
+function onEvent(event: Data, travelerId: string): boolean {
   const assigned = list(event.assignedTo);
-  if (assigned.length && !assigned.includes(travelerId)) return null;
+  return !assigned.length || assigned.includes(travelerId);
+}
+function ownBookingRef(event: Data, travelerId: string | null): string | null {
+  if (!travelerId || !onEvent(event, travelerId)) return null;
   const shared = typeof event.confNumber === "string" ? event.confNumber.trim() : "";
   return travelerRefs(event.travelerRefs)[travelerId] || shared || null;
 }
@@ -84,6 +86,17 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     } else {
       const ref = ownBookingRef(data, listedId);
       if (ref) result.confNumber = ref;
+    }
+    // Same rule as references: everyone's for a leader, otherwise only their own
+    if (leader) {
+      const seats = travelerRefs(data.travelerSeats), tickets = travelerRefs(data.travelerTickets);
+      if (Object.keys(seats).length) result.travelerSeats = seats;
+      if (Object.keys(tickets).length) result.travelerTickets = tickets;
+    }
+    if (listedId && onEvent(data, listedId)) {
+      const seat = travelerRefs(data.travelerSeats)[listedId], ticket = travelerRefs(data.travelerTickets)[listedId];
+      if (seat) result.seatDetails = seat;
+      if (ticket) result.ticketNumber = ticket;
     }
     for (const key of ["locationCoords", "depCoords", "arrCoords"]) {
       if (Array.isArray(data[key]) && data[key].length === 2 && data[key].every(n => typeof n === "number" && Number.isFinite(n))) result[key] = data[key];

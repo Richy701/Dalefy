@@ -47,3 +47,17 @@ export function rowSub(ev: TravelEvent): string {
 export function travellerRefRows(ev: Pick<TravelEvent, "travelerRefs">, travelers: { id: string; name: string }[] = []): { name: string; ref: string }[] {
   return Object.entries(ev.travelerRefs ?? {}).map(([id, ref]) => ({ name: travelers.find(t => t.id === id)?.name ?? "Traveller", ref }));
 }
+
+/** One row per person for leaders: the reference to copy, or failing that the ticket or seat, and the rest beneath the name */
+export function travellerBookingRows(ev: Pick<TravelEvent, "travelerRefs" | "travelerSeats" | "travelerTickets">, travelers: { id: string; name: string }[] = []): { name: string; ref: string; detail: string }[] {
+  const ids = [...new Set([...Object.keys(ev.travelerRefs ?? {}), ...Object.keys(ev.travelerSeats ?? {}), ...Object.keys(ev.travelerTickets ?? {})])];
+  return ids.map(id => {
+    const ref = ev.travelerRefs?.[id] ?? "", ticket = ev.travelerTickets?.[id] ?? "", seat = ev.travelerSeats?.[id] ?? "";
+    const shown = ref || ticket || seat;
+    return {
+      name: travelers.find(t => t.id === id)?.name ?? "Traveller",
+      ref: shown,
+      detail: [seat && seat !== shown ? `Seat ${seat}` : "", ticket && ticket !== shown ? `Ticket ${ticket}` : ""].filter(Boolean).join(", "),
+    };
+  });
+}

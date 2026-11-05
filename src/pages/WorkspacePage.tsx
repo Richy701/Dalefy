@@ -801,12 +801,15 @@ export function WorkspacePage() {
     const baseline = editBaseline.current || trip;
     const events = baseline.events.map(ev => {
       if (!(ev.id in changes)) return ev;
-      const { travelerRefs: _old, ...rest } = ev;
-      const refs = changes[ev.id];
-      return refs ? { ...rest, travelerRefs: refs } : rest;
+      const next = { ...ev };
+      for (const field of ["travelerRefs", "travelerSeats", "travelerTickets"] as const) {
+        const value = changes[ev.id][field];
+        if (value) next[field] = value; else delete next[field];
+      }
+      return next;
     });
     if (!await commitChanges({ events }, baseline)) return false;
-    toast.success(trip.status === "Published" ? "References saved. Publish to send them to travellers" : "References saved");
+    toast.success(trip.status === "Published" ? "Saved. Publish to send them to travellers" : "Saved");
     return true;
   };
 

@@ -7,11 +7,14 @@ import type { Trip } from "@/types";
  */
 export function withoutTravelers(trip: Trip, ids: Set<string>): { updates: Partial<Trip>; events: Trip["events"] } {
   const keep = (id: string) => !ids.has(id);
-  const hasRef = (e: Trip["events"][number]) => Object.keys(e.travelerRefs ?? {}).some(id => ids.has(id));
+  const PER_PERSON = ["travelerRefs", "travelerSeats", "travelerTickets"] as const;
+  const hasRef = (e: Trip["events"][number]) => PER_PERSON.some(field => Object.keys(e[field] ?? {}).some(id => ids.has(id)));
   const without = (e: Trip["events"][number]): Trip["events"][number] => {
     const next = { ...e };
     if (e.assignedTo?.some(id => ids.has(id))) next.assignedTo = e.assignedTo.filter(keep);
-    if (hasRef(e)) next.travelerRefs = Object.fromEntries(Object.entries(e.travelerRefs!).filter(([id]) => keep(id)));
+    for (const field of PER_PERSON) {
+      if (Object.keys(e[field] ?? {}).some(id => ids.has(id))) next[field] = Object.fromEntries(Object.entries(e[field]!).filter(([id]) => keep(id)));
+    }
     return next;
   };
   const updates: Partial<Trip> = {

@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
-import { runParse, runAssist, aiErrorToHttp, type AssistInput, type ParseInput } from "./_parseItineraryCore.js";
+import { runParse, runAssist, runReadBookings, aiErrorToHttp, type AssistInput, type ParseInput } from "./_parseItineraryCore.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -34,6 +34,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return res.status(200).json(result);
     } catch (err) {
       console.error("assist-event error:", err);
+      const { status, error } = aiErrorToHttp(err);
+      return res.status(status).json({ error });
+    }
+  }
+
+  if (url.searchParams.get("mode") === "bookings") {
+    try {
+      return res.status(200).json(await runReadBookings(client, { images: (req.body as ParseInput | undefined)?.images }));
+    } catch (err) {
+      console.error("read-bookings error:", err);
       const { status, error } = aiErrorToHttp(err);
       return res.status(status).json({ error });
     }

@@ -295,3 +295,31 @@ test('a ticked leader who has joined counts in the coordinator overview', () => 
   const data = { published_snapshot: { travelers: [{ id: 'emma', name: 'Emma' }] }, travelers: [{ id: 'emma', name: 'Emma', phone: '+44 1', tripLeader: true }] };
   assert.deepEqual(oversightView(data, [{ linked_traveler_id: 'emma', role: 'traveler' }]).leaders, [{ name: 'Emma', phone: '+44 1' }]);
 });
+
+const seatsTrip = { status: 'Published', published_snapshot: {
+  name: 'Seats', publishedAt: '2026-09-11T00:00:00Z',
+  travelers: [{ id: 'a', name: 'Amy' }, { id: 'b', name: 'Ben' }],
+  events: [
+    { id: 'f', title: 'Flight', seatDetails: 'SECRET_GROUP_SEATS', travelerSeats: { a: '14E', b: 'SECRET_SEAT' }, travelerTickets: { a: '157111', b: 'SECRET_TICKET' } },
+    { id: 'ben', title: 'Ben only', assignedTo: ['b'], travelerSeats: { a: 'SECRET_NOT_ON_IT' }, travelerTickets: { a: 'SECRET_NOT_ON_IT' } },
+  ],
+} };
+test('a traveller gets only their own seat and ticket', () => {
+  const view = publishedTripView('t', seatsTrip, false, true, 'a');
+  assert.equal(view.events[0].seatDetails, '14E');
+  assert.equal(view.events[0].ticketNumber, '157111');
+  assert.equal(JSON.stringify(view).includes('SECRET'), false);
+  assert.equal('travelerSeats' in view.events[0], false);
+  assert.equal('travelerTickets' in view.events[0], false);
+});
+test('nobody unlinked or public gets a seat or ticket', () => {
+  for (const view of [publishedTripView('t', seatsTrip), publishedTripView('t', seatsTrip, false, true, null), publishedTripView('t', seatsTrip, false, true, 'stranger')]) {
+    assert.equal(/SECRET|14E|157111/.test(JSON.stringify(view)), false);
+  }
+});
+test('a leader gets everyone, under their names', () => {
+  const view = publishedTripView('t', seatsTrip, true, true, 'a');
+  assert.deepEqual(view.events[0].travelerSeats, { a: '14E', b: 'SECRET_SEAT' });
+  assert.deepEqual(view.events[0].travelerTickets, { a: '157111', b: 'SECRET_TICKET' });
+  assert.equal(view.events[0].seatDetails, '14E');
+});

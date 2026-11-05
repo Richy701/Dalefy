@@ -59,9 +59,21 @@ export function connectingLegs<T extends Leg>(flights: T[], eventId: string): T[
   return flights.slice(first, last + 1).filter(f => f.id !== eventId);
 }
 
-const nameKey = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
+/** Case, accents, hyphens and spacing don't make a different person: "José Pérez-Ruiz" is "Jose Perez Ruiz" */
+const nameKey = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[\s-]+/g, " ");
 /** "QR 022", "qr-22" and "QR22" are the same flight */
 const flightKey = (flight: string) => flight.toUpperCase().replace(/[\s-]/g, "").replace(/^([A-Z0-9]{2}[A-Z]?)0+(?=\d)/, "$1");
+
+/** Imported flights often carry the number only in the title: "QR847 — Phuket to Doha" */
+export function flightNumberOf(event: { type?: TravelEvent["type"]; title?: string; flightNum?: string }): string {
+  if (event.flightNum?.trim()) return event.flightNum.trim();
+  if (event.type !== "flight") return "";
+  return event.title?.match(/\b(?:[A-Z][A-Z0-9]|[0-9][A-Z])[A-Z]?[\s-]?\d{1,4}\b/)?.[0] ?? "";
+}
+const sameFlight = (event: Parameters<typeof flightNumberOf>[0], flight: string) => {
+  const number = flightNumberOf(event);
+  return !!number && flightKey(number) === flightKey(flight);
+};
 
 export type RefPasteProblem = "person" | "event" | "not-on-event" | "ambiguous" | "format";
 
@@ -76,7 +88,7 @@ export interface RefPasteResult {
  */
 export function parseRefsPaste(
   text: string,
-  events: Pick<TravelEvent, "id" | "title" | "flightNum" | "assignedTo">[],
+  events: (Pick<TravelEvent, "id" | "title" | "flightNum" | "assignedTo"> & { type?: TravelEvent["type"] })[],
   travellers: Pick<User, "id" | "name">[],
 ): RefPasteResult {
   const result: RefPasteResult = { filled: [], skipped: [] };
@@ -88,7 +100,7 @@ export function parseRefsPaste(
     const people = travellers.filter(t => nameKey(t.name) === nameKey(name));
     if (people.length === 0) { result.skipped.push({ line, problem: "person" }); return; }
     if (people.length > 1) { result.skipped.push({ line, problem: "ambiguous" }); return; }
-    const named = events.filter(e => (e.flightNum && flightKey(e.flightNum) === flightKey(target)) || nameKey(e.title) === nameKey(target));
+    const named = events.filter(e => sameFlight(e, target) || nameKey(e.title) === nameKey(target));
     if (named.length === 0) { result.skipped.push({ line, problem: "event" }); return; }
     const theirs = named.filter(e => !e.assignedTo?.length || e.assignedTo.includes(people[0].id));
     if (theirs.length === 0) { result.skipped.push({ line, problem: "not-on-event" }); return; }
@@ -96,4 +108,62 @@ export function parseRefsPaste(
     result.filled.push({ eventId: theirs[0].id, travellerId: people[0].id, ref });
   });
   return result;
+}
+
+/** One passenger on one flight, from a picture or a pasted booking table */
+export interface BookingRow { passenger: string; flight: string; bookingRef: string; ticketNumber: string; seat: string }
+export interface BookingFill { eventId: string; travellerId: string; ref: string; ticket: string; seat: string }
+export interface BookingMatch { filled: BookingFill[]; skipped: { row: BookingRow; problem: RefPasteProblem }[] }
+
+/**
+ * Exact matches only, for the same reason as parseRefsPaste: someone else's seat or ticket is worse than a gap.
+ * `chosen` is the organiser saying which traveller a name in the table is.
+ */
+export function matchBookingRows(
+  rows: BookingRow[],
+  events: (Pick<TravelEvent, "id" | "title" | "flightNum" | "assignedTo"> & { type?: TravelEvent["type"] })[],
+  travellers: Pick<User, "id" | "name">[],
+  chosen: Record<string, string> = {},
+): BookingMatch {
+  const result: BookingMatch = { filled: [], skipped: [] };
+  for (const row of rows) {
+    const clean = { ref: row.bookingRef.trim(), ticket: row.ticketNumber.trim(), seat: row.seat.trim() };
+    if (!clean.ref && !clean.ticket && !clean.seat) continue;
+    const skip = (problem: RefPasteProblem) => result.skipped.push({ row, problem });
+    const people = chosen[row.passenger] ? travellers.filter(t => t.id === chosen[row.passenger]) : travellers.filter(t => nameKey(t.name) === nameKey(row.passenger));
+    if (people.length === 0) { skip("person"); continue; }
+    if (people.length > 1) { skip("ambiguous"); continue; }
+    const named = events.filter(e => sameFlight(e, row.flight) || nameKey(e.title) === nameKey(row.flight));
+    if (named.length === 0) { skip("event"); continue; }
+    const theirs = named.filter(e => !e.assignedTo?.length || e.assignedTo.includes(people[0].id));
+    if (theirs.length === 0) { skip("not-on-event"); continue; }
+    if (theirs.length > 1) { skip("ambiguous"); continue; }
+    result.filled.push({ eventId: theirs[0].id, travellerId: people[0].id, ...clean });
+  }
+  return result;
+}
+
+const FLIGHT_CELL = /^[A-Z0-9]{2}[A-Z]?[\s-]*\d{1,4}$/i;
+
+/**
+ * A booking table copied from Excel: a name column, optional reference and ticket columns, and one seat column per
+ * flight with the flight number in its heading. Null when the text isn't laid out like that.
+ */
+export function parseBookingTable(text: string): BookingRow[] | null {
+  const lines = text.split(/\r?\n/).map(line => line.split("\t").map(cell => cell.trim()));
+  const top = lines.findIndex(cells => cells.length >= 3 && cells.some(cell => /passenger|traveller|traveler|\bname\b/i.test(cell)));
+  if (top < 0) return null;
+  const headings = lines.slice(top, top + 3);
+  const column = (pattern: RegExp) => {
+    for (const cells of headings) { const at = cells.findIndex(cell => pattern.test(cell)); if (at >= 0) return at; }
+    return -1;
+  };
+  const name = column(/passenger|traveller|traveler|\bname\b/i), ref = column(/\b(ref|reference|pnr)\b/i), ticket = column(/ticket/i);
+  const flights: { at: number; flight: string }[] = [];
+  // Heading rows have nothing in the name column below the first; a row with a name is already a passenger
+  for (const cells of headings.filter((cells, i) => i === 0 || !cells[name])) cells.forEach((cell, at) => { if (FLIGHT_CELL.test(cell) && !flights.some(f => f.at === at)) flights.push({ at, flight: cell }); });
+  if (!flights.length) return null;
+  return lines.slice(top + 1).filter(cells => cells[name]).flatMap(cells => flights.map(({ at, flight }) => ({
+    passenger: cells[name], flight, bookingRef: cells[ref] ?? "", ticketNumber: cells[ticket] ?? "", seat: cells[at] ?? "",
+  })));
 }

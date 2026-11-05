@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
-import { travellerRefRows } from "@/shared/eventDisplay";
+import { travellerRefRows, travellerBookingRows } from "@/shared/eventDisplay";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -1177,11 +1177,15 @@ function FlightDetailScreen({
               </View>
 
               {[
-                ...(ev.confNumber ? [{ name: "Booking reference", ref: ev.confNumber }] : []),
-                ...(isLeader ? travellerRefRows(ev, trip?.travelers) : []),
-              ].map(({ name, ref }) => (
-                <Pressable key={`${name}-${ref}`} onPress={() => copyRef(ref)} accessibilityRole="button" accessibilityLabel={`Copy booking reference for ${name}`} style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
-                  <Text style={[fs.stubLabel, { color: P.textTertiary, flex: 1 }]} numberOfLines={1}>{name}</Text>
+                ...(ev.confNumber ? [{ name: "Booking reference", ref: ev.confNumber, detail: "" }] : []),
+                ...(ev.ticketNumber ? [{ name: "Ticket number", ref: ev.ticketNumber, detail: "" }] : []),
+                ...(isLeader ? travellerBookingRows(ev, trip?.travelers) : []),
+              ].map(({ name, ref, detail }) => (
+                <Pressable key={`${name}-${ref}`} onPress={() => copyRef(ref)} accessibilityRole="button" accessibilityLabel={`Copy ${ref}, ${name}${detail ? `, ${detail}` : ""}`} style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[fs.stubLabel, { color: P.textTertiary }]} numberOfLines={1}>{name}</Text>
+                    {detail ? <Text style={[fs.stubLabel, { color: P.textTertiary }]} numberOfLines={1}>{detail}</Text> : null}
+                  </View>
                   <Text style={[fs.stubValue, { color: P.textPrimary }]}>{ref}</Text>
                   <Copy size={14} color={P.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
                 </Pressable>

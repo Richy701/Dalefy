@@ -32,10 +32,14 @@ export function changePersonOnTrip(data: TripPeopleDoc, person: User, duplicateI
     if (!duplicateId) return event;
     const next = event.assignedTo?.includes(duplicateId)
       ? { ...event, assignedTo: [...new Set(event.assignedTo.map(id => id === duplicateId ? person.id : id))] } : event;
-    const ref = next.travelerRefs?.[duplicateId];
-    if (ref === undefined) return next;
-    const rest = Object.entries(next.travelerRefs!).filter(([id]) => id !== duplicateId);
-    return { ...next, travelerRefs: { [person.id]: ref, ...Object.fromEntries(rest) } };
+    const merged = { ...next };
+    for (const field of ["travelerRefs", "travelerSeats", "travelerTickets"] as const) {
+      const value = merged[field]?.[duplicateId];
+      if (value === undefined) continue;
+      const rest = Object.entries(merged[field]!).filter(([id]) => id !== duplicateId);
+      merged[field] = { [person.id]: value, ...Object.fromEntries(rest) };
+    }
+    return merged;
   });
   const organizer = (value?: TripOrganizer | null) => value?.travelerId === duplicateId && duplicateId ? { ...value!, travelerId: person.id } : value;
   const next = { ...data, travelers: patchPeople(data.travelers), traveler_ids: [...new Set((data.traveler_ids || []).map(id => id === duplicateId ? person.id : id))], events: events(data.events), organizer: organizer(data.organizer) };

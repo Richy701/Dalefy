@@ -32,6 +32,10 @@ export interface TravelEvent {
   confNumber?: string;
   /** Individual booking references by traveller id; anyone without one uses confNumber */
   travelerRefs?: Record<string, string>;
+  /** Seats by traveller id; each traveller's phone only gets their own */
+  travelerSeats?: Record<string, string>;
+  /** Ticket numbers by traveller id; each traveller's phone only gets their own */
+  travelerTickets?: Record<string, string>;
   image?: string;
   imagePosition?: ImageFocalPoint;
   roomType?: string;
