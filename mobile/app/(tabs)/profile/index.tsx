@@ -14,8 +14,6 @@ import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui
 import { SegmentedControl } from "@/components/native/SegmentedControl";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as Clipboard from "expo-clipboard";
-import * as Application from "expo-application";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Palette, Bell, LockSimple,
@@ -88,7 +86,6 @@ export default function ProfileScreen() {
 
 
 
-  const appVersion = `${Application.nativeApplicationVersion ?? "-"} (${Application.nativeBuildVersion ?? "-"})`;
 
   const { onScroll, barStyle, scrollY } = useCollapsingHeader();
   const { stretchStyle } = useBannerStretch(HERO_H + insets.top, scrollY);
@@ -397,25 +394,13 @@ export default function ProfileScreen() {
 
         {/* ── Footer ── */}
         <View style={s.footer}>
+          <Text style={s.footerText}>Powered by {brand.name}</Text>
           {brand.logoUrl ? (
             <Image source={{ uri: brand.logoUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
           ) : (
             <Logo size={14} color={C.textTertiary} />
           )}
-          <Text style={s.footerText}>Powered by {brand.name}</Text>
         </View>
-        <Pressable
-          onPress={async () => {
-            haptic.selection();
-            await Clipboard.setStringAsync(`Dalefy v${appVersion}`);
-            toast("Version copied");
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Dalefy version ${appVersion}, copy`}
-          style={({ pressed }) => ({ alignSelf: "center", paddingVertical: S.xs, opacity: pressed ? 0.6 : 1 })}
-        >
-          <Text style={s.footerText}>Dalefy {appVersion}</Text>
-        </Pressable>
         </View>
 
       </Animated.ScrollView>
