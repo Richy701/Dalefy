@@ -112,7 +112,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   );
 }
 
-/** Where travellers get the app. Unlisted, so this link is the only way in; it opens once Apple releases the app. */
+/** Where travellers get the app. Unlisted, so this link is the only way in. */
 const APP_STORE_URL = "https://apps.apple.com/gb/app/id6765462755";
 
 const SHORTCUTS: { keys: string[]; label: string }[] = [
@@ -699,7 +699,6 @@ export function SettingsPage() {
                 <div>
                   <p className="text-[13px] font-medium text-foreground">Dalefy for iPhone</p>
                   <p className="text-[12px] text-muted-foreground mt-0.5 break-all">{APP_STORE_URL}</p>
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-1.5">Waiting for Apple's approval. The link opens once the app is released.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={copyAppLink} className="h-9 rounded-xl text-[13px] gap-1.5"><Copy className="h-3.5 w-3.5" /> Copy link</Button>
