@@ -33,7 +33,7 @@ import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { T, R, S, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS, toLngLat, isSamePoint, distanceKm } from "@/shared/coordinates";
-import { useMemo, useCallback, useState, useEffect } from "react";
+import { Fragment, useMemo, useCallback, useState, useEffect } from "react";
 import Animated from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
 import type { Trip } from "@/shared/types";
@@ -500,7 +500,7 @@ export default function EventDetailScreen() {
   if (ev.price) detailRows.push({ icon: Hash, label: "Price", value: ev.price });
   if (isLeader && ev.supplier) detailRows.push({ icon: Users, label: "Supplier", value: ev.supplier });
   // The server sends a traveller only their own reference; leaders also get everyone's, by name
-  if (ev.confNumber) detailRows.push({ icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
+  if (ev.confNumber) detailRows.push({ icon: Hash, label: isLeader ? "Group booking ref" : "Your booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
   if (isLeader) for (const { name, ref } of travellerRefRows(ev, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
 
   // Neighbouring events on the same day
@@ -985,6 +985,7 @@ function FlightDetailScreen({
     ...(ev.checkin ? [{ label: "Check-in", value: ev.checkin }] : []),
     ...((live?.baggageBelt || ev.baggageBelt) ? [{ label: "Baggage belt", value: (live?.baggageBelt || ev.baggageBelt) as string }] : []),
   ];
+  const personRows = isLeader ? travellerBookingRows(ev, trip?.travelers) : [];
   // The journey: what happens before the flight that day, the flight itself, and what follows
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the list has trip?.id and the compiler wants all of trip, but only trip.id is read, inside the press handler
   const journey = useMemo(() => {
@@ -1207,11 +1208,17 @@ function FlightDetailScreen({
               </View>
 
               {[
-                ...(ev.confNumber ? [{ name: "Booking reference", ref: ev.confNumber, detail: "" }] : []),
-                ...(ev.ticketNumber ? [{ name: "Ticket number", ref: ev.ticketNumber, detail: "" }] : []),
-                ...(isLeader ? travellerBookingRows(ev, trip?.travelers) : []),
-              ].map(({ name, ref, detail }) => (
-                <Pressable key={`${name}-${ref}`} onPress={() => copyRef(ref)} accessibilityRole="button" accessibilityLabel={`Copy ${ref}, ${name}${detail ? `, ${detail}` : ""}`} style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
+                ...(ev.confNumber ? [{ name: isLeader ? "Group booking reference" : "Your booking reference", ref: ev.confNumber, detail: "" }] : []),
+                ...(ev.ticketNumber ? [{ name: "Your ticket number", ref: ev.ticketNumber, detail: "" }] : []),
+              ].concat(personRows).map(({ name, ref, detail }, i) => (
+                <Fragment key={`${name}-${ref}`}>
+                  {/* Says why these names are here, and that travellers can't see them */}
+                  {personRows.length > 0 && i === (ev.confNumber ? 1 : 0) + (ev.ticketNumber ? 1 : 0) ? (
+                    <Text style={[fs.stubLabel, fs.refHeading, { color: P.textSecondary, borderTopColor: P.border }]}>
+                      {ev.travelerSeats || ev.travelerTickets ? "Everyone's seats and tickets, only leaders see these" : "Different bookings, only leaders see these"}
+                    </Text>
+                  ) : null}
+                <Pressable onPress={() => copyRef(ref)} accessibilityRole="button" accessibilityLabel={`Copy ${ref}, ${name}${detail ? `, ${detail}` : ""}`} style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[fs.stubLabel, { color: P.textTertiary }]} numberOfLines={1}>{name}</Text>
                     {detail ? <Text style={[fs.stubLabel, { color: P.textTertiary }]} numberOfLines={1}>{detail}</Text> : null}
@@ -1219,6 +1226,7 @@ function FlightDetailScreen({
                   <Text style={[fs.stubValue, { color: P.textPrimary }]}>{ref}</Text>
                   <Copy size={14} color={P.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
                 </Pressable>
+                </Fragment>
               ))}
               </View>
             </Animated.View>
@@ -1344,6 +1352,7 @@ function makeFlightStyles(C: ThemeColors) {
     stubLabel: { fontSize: T.xs, marginBottom: 3 },
     stubNote: { fontSize: T.base, lineHeight: 22, paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.sm },
     stubValue: { fontSize: T.xl, fontWeight: T.semibold, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
+    refHeading: { paddingHorizontal: S.md, paddingTop: S.sm2, paddingBottom: S.xs, borderTopWidth: StyleSheet.hairlineWidth },
     refRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth },
 
     countRow: { alignItems: "center" },
