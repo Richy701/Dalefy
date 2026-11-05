@@ -52,6 +52,25 @@ function timeToMins(t: string): number {
   return parseInt(match[1]) * 60 + parseInt(match[2]);
 }
 
+/** The provider's per-second limit, which clears at once. Not the monthly allowance, whose refusal says something else. */
+export async function isPerSecondLimit(resp: Response): Promise<boolean> {
+  return resp.status === 429 && /per second/i.test(await resp.clone().text().catch(() => ""));
+}
+
+/**
+ * One AeroDataBox request, waiting and retrying when it trips the per-second limit. Several lookups at once
+ * trip it, and a refusal handled as "no flight" is how real flights went unlooked-up on import.
+ */
+export async function fetchAero(url: string, key: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(url, { headers: aeroHeaders(key), signal: controller.signal }).finally(() => clearTimeout(timeout));
+    if (attempt >= 3 || !await isPerSecondLimit(resp)) return resp;
+    await new Promise(resolve => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 export async function searchFlights(from: string, to: string, date: string, key: string) {
   try {
     // AeroDataBox limits to 12hr windows, so fetch two halves of the day
@@ -99,7 +118,8 @@ export async function searchFlights(from: string, to: string, date: string, key:
     });
 
     return { flights };
-  } catch {
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
     throw new HttpError(500, "Failed to fetch from AeroDataBox");
   }
 }
@@ -109,10 +129,11 @@ export async function lookupFlightNumber(number: string, date: string, key: stri
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${clean}/${date}`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const resp = await fetch(url, { headers: aeroHeaders(key), signal: controller.signal });
-    clearTimeout(timeout);
+    const resp = await fetchAero(url, key);
+    // Refused isn't the same as no such flight, so the caller can say so
+    if (resp.status === 429 || resp.status === 403) throw new HttpError(429, "Flight lookups are busy. Try again shortly.");
+    // 204 is no such flight, 400 a date further ahead than the provider covers
+    if (!resp.ok || resp.status === 204) return { flights: [] };
     const data = await resp.json() as AeroFlight[] | unknown;
 
     const filtered = (Array.isArray(data) ? data as AeroFlight[] : [])

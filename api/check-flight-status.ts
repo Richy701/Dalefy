@@ -5,6 +5,8 @@ import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, isFarOut, scheduleDifference, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
+import { fetchAero, isPerSecondLimit } from "./_flightsCore.js";
+import { flightNumberOf } from "./_flightNumber.js";
 import { readAllowance, allowanceLevel, shouldWarn, isAllowanceRefusal, type Allowance } from "./_flightAllowance.js";
 import { sendPush, logPush, checkPushReceipts, newPushLogId } from "./_expoPush.js";
 import { sendEmail } from "./_mailer.js";
@@ -61,13 +63,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
       for (let i = 0; i < rawEvents.length; i++) {
         const ev = rawEvents[i];
-        if (ev.type !== "flight" || !ev.flightNum || !ev.date) continue;
+        const flightNum = flightNumberOf(ev);
+        if (ev.type !== "flight" || !flightNum || !ev.date) continue;
 
         if (!isDue(ev, now)) continue;
         const eventDate = (ev.date as string).slice(0, 10);
 
         // Query AeroDataBox
-        const result = await lookup(ev.flightNum, eventDate);
+        const result = await lookup(flightNum, eventDate);
         if (!result) continue;
 
         // Save missing route details even when nothing changed: without the
@@ -297,18 +300,10 @@ async function lookupFlight(
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${clean}/${date}`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const resp = await fetch(url, {
-      headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+    const resp = await fetchAero(url, apiKey);
     usage.allowance = readAllowance(resp.headers) ?? usage.allowance;
-    if (isAllowanceRefusal(resp.status)) usage.refused = true;
+    // Going too fast isn't running out, so it doesn't send the "allowance used up" email
+    if (isAllowanceRefusal(resp.status) && !await isPerSecondLimit(resp)) usage.refused = true;
     if (!resp.ok) return null;
     const data: unknown = await resp.json();
 

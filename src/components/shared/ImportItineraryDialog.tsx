@@ -27,6 +27,8 @@ import { logger } from "@/lib/logger";
 import { EVENT_TEXT_COLORS, EVENT_ICONS, type EventType } from "@/config/eventStyles";
 import { matchOrCreateTravelers } from "@/lib/travelerSync";
 import { lookupFlight } from "@/services/serpapi";
+import { flightNumberOf } from "@/lib/bookingRefs";
+import { toast } from "sonner";
 import { geocodeMany } from "@/services/geocode";
 import { firebaseAuth } from "@/services/firebase";
 
@@ -1557,12 +1559,16 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     }
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
 
-    // Enrich flight events with live data (times, terminals, airline). Throttle to 3 concurrent.
-    const FLIGHT_NUM_RE = /\b([A-Z]{2})\s*(\d{2,4})\b/;
-    const enrichFlight = async (ev: TravelEvent): Promise<void> => {
-      const match = ev.title.match(FLIGHT_NUM_RE) || ev.flightNum?.match(FLIGHT_NUM_RE);
-      if (!match) return;
-      const num = `${match[1]}${match[2]}`;
+    // Enrich flight events with live data (times, terminals, airline). One at a time: the provider refuses
+    // several per second. Whatever can't be looked up is reported, so wrong times don't pass as checked.
+    const notFound: string[] = [], tooFar: string[] = [], failedLookups: string[] = [];
+    const LOOKUP_DAYS_AHEAD = 180;
+    const enrichFlight = async (ev: TravelEvent): Promise<boolean> => {
+      const num = flightNumberOf(ev).replace(/[\s-]/g, "");
+      if (!num) return false;
+      // Kept even if the lookup fails: logos, matching and the delay checks all go by it
+      if (!ev.flightNum?.trim()) ev.flightNum = num;
+      if (new Date(`${ev.date}T00:00:00Z`).getTime() - Date.now() > LOOKUP_DAYS_AHEAD * 86_400_000) { tooFar.push(num); return false; }
       try {
         const results = await lookupFlight(num, ev.date);
         if (results.length > 0) {
@@ -1581,13 +1587,17 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           if (f.arrTz) ev.arrTz = f.arrTz;
           if (f.status) ev.status = f.status;
           logger.log("Import", "enriched flight:", num, "→", f.departTime, f.terminal);
-        }
-      } catch { /* flight lookup failed, keep parsed data */ }
+        } else notFound.push(num);
+      } catch { failedLookups.push(num); }
+      return true;
     };
     const flightEvents = events.filter(ev => ev.type === "flight");
-    for (let i = 0; i < flightEvents.length; i += CONCURRENCY) {
-      await Promise.all(flightEvents.slice(i, i + CONCURRENCY).map(enrichFlight));
+    for (const ev of flightEvents) {
+      if (await enrichFlight(ev)) await new Promise(resolve => setTimeout(resolve, 1100));
     }
+    const unchecked = [...notFound, ...failedLookups];
+    if (unchecked.length) toast.warning(`Couldn't look up ${unchecked.join(", ")}. Check ${unchecked.length === 1 ? "its times" : "their times"} against your document.`);
+    if (tooFar.length) toast.info(`${tooFar.join(", ")} ${tooFar.length === 1 ? "is" : "are"} over 6 months away, too far ahead to look up. Times come from your document for now.`);
 
     // Enrich hotel events with Google Places data (correct name, address, image). Throttle to 3 concurrent.
     const destination = parsed.destination || "";

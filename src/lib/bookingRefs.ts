@@ -1,4 +1,7 @@
 import type { TravelEvent, User } from "@/types";
+import { flightNumberOf } from "../../api/_flightNumber.ts";
+
+export { flightNumberOf };
 
 type Person = Pick<User, "id" | "name">;
 
@@ -64,12 +67,6 @@ const nameKey = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]
 /** "QR 022", "qr-22" and "QR22" are the same flight */
 const flightKey = (flight: string) => flight.toUpperCase().replace(/[\s-]/g, "").replace(/^([A-Z0-9]{2}[A-Z]?)0+(?=\d)/, "$1");
 
-/** Imported flights often carry the number only in the title: "QR847 — Phuket to Doha" */
-export function flightNumberOf(event: { type?: TravelEvent["type"]; title?: string; flightNum?: string }): string {
-  if (event.flightNum?.trim()) return event.flightNum.trim();
-  if (event.type !== "flight") return "";
-  return event.title?.match(/\b(?:[A-Z][A-Z0-9]|[0-9][A-Z])[A-Z]?[\s-]?\d{1,4}\b/)?.[0] ?? "";
-}
 const sameFlight = (event: Parameters<typeof flightNumberOf>[0], flight: string) => {
   const number = flightNumberOf(event);
   return !!number && flightKey(number) === flightKey(flight);

@@ -124,6 +124,9 @@ test('a flight number only in the title still counts, for logos and for matching
   assert.equal(flightNumberOf({ type: 'flight', title: 'Flight to Doha' }), '');
   assert.equal(flightNumberOf({ type: 'transfer', title: 'M25 transfer' }), '');
   assert.equal(flightNumberOf({ type: 'flight', title: 'QR847', flightNum: 'BA1' }), 'BA1');
+  assert.equal(flightNumberOf({ type: 'flight', title: 'EK1 to London' }), 'EK1');
+  assert.equal(flightNumberOf({ type: 'flight', title: 'IndiGo 6E 123' }), '6E 123');
+  assert.equal(flightNumberOf({ type: 'flight', title: 'A380 service QR10' }), 'QR10');
   const row = { passenger: 'Jordan Fell', flight: 'QR0847', bookingRef: 'R', ticketNumber: '', seat: '1A' };
   assert.equal(matchBookingRows([row], [titled], pax).filled[0].eventId, 'q');
 });
