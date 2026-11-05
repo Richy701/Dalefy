@@ -144,7 +144,7 @@ export async function signIn(
     const profile = await upsertProfile(fbUser);
     return { user: profile, error: null };
   } catch (err: unknown) {
-    return { user: null, error: friendlyError(err) };
+    return { user: null, error: passwordError(err) };
   }
 }
 
@@ -273,7 +273,7 @@ export async function upgradeWithEmail(
     const profile = await upsertProfile(fbUser, name);
     return { user: profile, error: null };
   } catch (err: unknown) {
-    return { user: null, error: friendlyError(err) };
+    return { user: null, error: passwordError(err) };
   }
 }
 
@@ -421,6 +421,14 @@ export function onAuthStateChange(
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Firebase answers a wrong password with its general "invalid credential" code, so password sign-in says it plainly */
+function passwordError(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code;
+  return code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found"
+    ? "That email or password isn't right. Check them and try again."
+    : friendlyError(err);
+}
+
 function friendlyError(err: unknown): string {
   const code = (err as { code?: string }).code ?? "";
   switch (code) {
@@ -434,7 +442,7 @@ function friendlyError(err: unknown): string {
     case "auth/wrong-password":
       return "Invalid email or password";
     case "auth/invalid-credential":
-      return "Sign-in failed - invalid credential";
+      return "Sign-in didn't work. Try again.";
     case "auth/too-many-requests":
       return "Too many attempts - try again later";
     case "auth/credential-already-in-use":

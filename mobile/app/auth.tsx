@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type ComponentRef } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, TurboModuleRegistry,
@@ -10,6 +10,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Envelope, LockKey, CaretLeft,
 } from "@/components/ui/OnboardingIcons";
+import { Eye, EyeSlash } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
@@ -68,6 +69,8 @@ export default function AuthScreen() {
   const [step, setStep] = useState<Step>(isUpgrade ? "options" : "splash");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,6 +89,7 @@ export default function AuthScreen() {
     haptic.selection();
     setError("");
     setNotice("");
+    setShowPassword(false);
     setStep(next);
   }, [haptic]);
 
@@ -399,6 +403,7 @@ export default function AuthScreen() {
   const title =
     step === "options" ? (isUpgrade ? "Save your trips" : "Sign in")
     : step === "email" ? "What's your work email?"
+    : isUpgrade ? "Create a password"
     : "Sign in with a password";
 
   const subtitle =
@@ -408,7 +413,9 @@ export default function AuthScreen() {
         : "Use the email your organiser has for you, so your trips find you.")
     : step === "email"
       ? "Use the one your organiser has for you, so your trips and name find you. We'll email a sign-in link, no password needed."
-      : "For accounts that were set up with a password.";
+      : isUpgrade
+        ? "You'll use this email and password to get your trips on a new phone."
+        : "For accounts that were set up with a password.";
 
   return (
     <View style={styles.safe}>
@@ -473,9 +480,11 @@ export default function AuthScreen() {
                     autoCorrect={false}
                     autoFocus
                     keyboardType="email-address"
-                    textContentType="emailAddress"
+                    textContentType={step === "password" ? "username" : "emailAddress"}
+                    autoComplete={step === "password" ? "username" : "email"}
                     returnKeyType={step === "email" ? "send" : "next"}
-                    onSubmitEditing={step === "email" ? sendLink : undefined}
+                    onSubmitEditing={step === "email" ? sendLink : () => passwordInput.current?.focus()}
+                    submitBehavior={step === "email" ? "blurAndSubmit" : "submit"}
                     style={styles.input}
                   />
                 </View>
@@ -483,17 +492,33 @@ export default function AuthScreen() {
                   <View style={[styles.inputRow, error ? { borderColor: "#ff8a80" } : undefined]}>
                     <LockKey size={18} color={C.textTertiary} weight="regular" />
                     <TextInput
+                      ref={passwordInput}
                       value={password}
                       onChangeText={(t) => { setPassword(t); setError(""); }}
-                      placeholder="Password"
+                      // The email is already typed by this step, so the cursor starts here unless it needs fixing
+                      autoFocus={emailValid}
+                      placeholder={isUpgrade ? "At least 6 characters" : "Password"}
                       placeholderTextColor={C.textTertiary}
-                      secureTextEntry
+                      secureTextEntry={!showPassword}
                       autoCapitalize="none"
-                      textContentType="password"
+                      autoCorrect={false}
+                      textContentType={isUpgrade ? "newPassword" : "password"}
+                      autoComplete={isUpgrade ? "new-password" : "current-password"}
                       returnKeyType="go"
                       onSubmitEditing={signInWithPassword}
                       style={styles.input}
                     />
+                    <Pressable
+                      onPress={() => { haptic.selection(); setShowPassword(v => !v); }}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                      hitSlop={10}
+                      style={({ pressed }) => pressed && { opacity: 0.6 }}
+                    >
+                      {showPassword
+                        ? <EyeSlash size={20} color={C.textSecondary} />
+                        : <Eye size={20} color={C.textSecondary} />}
+                    </Pressable>
                   </View>
                 )}
               </Animated.View>
@@ -505,7 +530,7 @@ export default function AuthScreen() {
               <Animated.Text entering={FadeIn.duration(200)} style={styles.noticeText}>{notice}</Animated.Text>
             ) : null}
 
-            {step === "password" && (
+            {step === "password" && !isUpgrade && (
               <Pressable onPress={forgotPassword} disabled={loading} accessibilityRole="button" style={({ pressed }) => [{ marginTop: S.sm, alignSelf: "flex-start" }, pressed && { opacity: 0.6 }]}>
                 <Text style={styles.linkText}>Forgot password?</Text>
               </Pressable>
@@ -524,26 +549,31 @@ export default function AuthScreen() {
                 >
                   {loading
                     ? <ActivityIndicator size="small" color={C.onAccent} />
-                    : <Text style={[styles.ctaText, !emailValid && { color: C.tealText }]}>Send link</Text>}
+                    : <Text style={[styles.ctaText, !emailValid && { color: C.tealText }]}>Email me a sign-in link</Text>}
                 </Pressable>
-                <Pressable onPress={() => go("password")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
-                  <Text style={styles.mutedLinkText}>Use a password instead</Text>
+                <Pressable onPress={() => go("password")} accessibilityRole="button" style={({ pressed }) => [styles.secondaryBtn, { marginTop: S.xs }, pressed && styles.pressed]}>
+                  <Text style={styles.secondaryText}>{isUpgrade ? "Create a password instead" : "Use a password instead"}</Text>
                 </Pressable>
               </>
             )}
 
             {step === "password" && (
-              <Pressable
-                onPress={signInWithPassword}
-                disabled={!emailValid || !password || loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in"
-                style={({ pressed }) => [styles.cta, (!emailValid || !password) && styles.ctaDisabled, pressed && emailValid && !!password && styles.pressed]}
-              >
-                {loading
-                  ? <ActivityIndicator size="small" color={C.onAccent} />
-                  : <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.tealText }]}>Sign in</Text>}
-              </Pressable>
+              <>
+                <Pressable
+                  onPress={signInWithPassword}
+                  disabled={!emailValid || !password || loading}
+                  accessibilityRole="button"
+                  accessibilityLabel={isUpgrade ? "Create account" : "Sign in"}
+                  style={({ pressed }) => [styles.cta, (!emailValid || !password) && styles.ctaDisabled, pressed && emailValid && !!password && styles.pressed]}
+                >
+                  {loading
+                    ? <ActivityIndicator size="small" color={C.onAccent} />
+                    : <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.tealText }]}>{isUpgrade ? "Create account" : "Sign in"}</Text>}
+                </Pressable>
+                <Pressable onPress={() => go("email")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
+                  <Text style={styles.mutedLinkText}>Email me a sign-in link instead</Text>
+                </Pressable>
+              </>
             )}
 
             {step === "options" && !isUpgrade && (

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, S } from "@/constants/theme";
+import { T, R, S } from "@/constants/theme";
 
 export default function AuthCallbackScreen() {
   const { C } = useTheme();
@@ -45,8 +45,15 @@ export default function AuthCallbackScreen() {
       <SafeAreaView style={styles.center}>
         {error ? (
           <>
-            <Text style={[styles.title, { color: C.textPrimary }]}>Something went wrong</Text>
+            <Text style={[styles.title, { color: C.textPrimary }]}>That link didn't work</Text>
             <Text style={[styles.sub, { color: C.textSecondary }]}>{error}</Text>
+            <Pressable
+              onPress={() => router.replace(auth.isAuthenticated ? "/(tabs)" : "/auth")}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.button, { backgroundColor: C.teal }, pressed && { opacity: 0.85 }]}
+            >
+              <Text style={[styles.buttonText, { color: C.onAccent }]}>{auth.isAuthenticated ? "Back to the app" : "Back to sign in"}</Text>
+            </Pressable>
           </>
         ) : (
           <>
@@ -66,4 +73,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: S.xl },
   title: { fontSize: T.xl, fontWeight: "700", marginBottom: S.sm },
   sub: { fontSize: T.base, textAlign: "center" },
+  button: { height: 52, alignSelf: "stretch", marginTop: S.xl, borderRadius: R.xl, alignItems: "center", justifyContent: "center" },
+  buttonText: { fontSize: T.md, fontWeight: T.bold },
 });

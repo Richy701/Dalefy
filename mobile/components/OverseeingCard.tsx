@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Linking, Pressable } from "react-native";
-import { AirplaneTilt, DeviceMobile, Headset, Phone } from "phosphor-react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { AirplaneTilt, DeviceMobile, Headset } from "phosphor-react-native";
 import * as Haptics from "@/services/haptics";
 import { fetchTripOversight, type TripOversight } from "@/services/firebaseTrips";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
@@ -20,7 +20,7 @@ function flightProblems(trip: Trip) {
   });
 }
 
-/** For someone overseeing the trip from home: what's wrong, who can't be reached in the app, and who to call. */
+/** For someone overseeing the trip from home: what's wrong and who can't be reached in the app. */
 export function OverseeingCard({ trip, C }: { trip: Trip; C: ThemeColors }) {
   const s = useMemo(() => makeStyles(C), [C]);
   const [oversight, setOversight] = useState<TripOversight | null>(null);
@@ -81,25 +81,6 @@ export function OverseeingCard({ trip, C }: { trip: Trip; C: ThemeColors }) {
         </View>
       ) : null}
 
-      {oversight?.leaders.map(leader => (
-        <View key={leader.name} style={s.row}>
-          <Phone size={16} color={C.textSecondary} />
-          <View style={s.rowText}>
-            <Text style={s.rowTitle} numberOfLines={1}>{leader.name}</Text>
-            <Text style={s.sub}>Group leader</Text>
-          </View>
-          {leader.phone ? (
-            <Pressable
-              onPress={() => { Haptics.selectionAsync(); Linking.openURL(`tel:${leader.phone}`).catch(() => {}); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Call ${leader.name}`}
-              hitSlop={8}
-            >
-              <Text style={s.link}>Call</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ))}
     </View>
   );
 }
