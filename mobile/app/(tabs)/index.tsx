@@ -342,8 +342,7 @@ function shareTrip(name: string, link: string) {
 }
 
 // ── Trip cards ──────────────────────────────────────────────────────────────
-// Other trips as Spotify-style squares, name and dates underneath. All one size: two fill the
-// width as a pair, more become a shelf that runs off the edge.
+// Other trips as Spotify-style squares, name and dates underneath. One size everywhere, in a row that swipes.
 function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number }) {
   const { C } = useTheme();
   const { toast } = useToast();
@@ -419,7 +418,7 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
         ) : null}
       </View>
       <View style={styles.tripCardBody}>
-        <Text style={styles.tripCardName} numberOfLines={2}>{trip.name}</Text>
+        <Text style={styles.tripCardName} numberOfLines={1}>{trip.name}</Text>
         <Text style={styles.tripCardSub} numberOfLines={1}>
           {flag ? `${flag}  ` : ""}{isPast ? dateRange : trip.destination || dateRange}
         </Text>
@@ -567,8 +566,8 @@ export default function HomeScreen() {
 
   const fmtDay = shortDay;
   const { width: screenW } = useWindowDimensions();
-  const pairCard = Math.floor((screenW - S.md * 2 - S.sm2) / 2);
-  const shelfCard = Math.floor(pairCard * 0.86);
+  // One size in every section; a bit under half the screen, so a third trip peeks in and shows the row swipes
+  const tripCardSize = Math.floor(((screenW - S.md * 2 - S.sm2) / 2) * 0.86);
   // Pulling past the top stretches the photo from its top edge instead of dragging it off the status bar
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y; });
@@ -868,7 +867,7 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.groupHeader} accessibilityRole="header">{g.title}</Text>
               <ScrollView horizontal scrollEnabled={g.list.length > 2} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripCards}>
-                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} />)}
+                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={tripCardSize} />)}
               </ScrollView>
             </View>
           </FadeIn>
