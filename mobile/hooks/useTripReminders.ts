@@ -5,6 +5,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { parseTripDate } from "@/shared/dates";
 import { getDepAirportTz, getDestinationTz, getUtcOffsetMins } from "@/shared/timezones";
+import { zonedEvents } from "@/shared/today";
 import { darkColors } from "@/constants/theme";
 import { File, Paths } from "expo-file-system";
 import { prepareWidgetImage } from "@/hooks/useWidgetSync";
@@ -243,7 +244,8 @@ async function scheduleReminders(trips: Trip[]) {
     }
 
     // --- Per-event reminders ---
-    for (const ev of trip.events) {
+    const events = zonedEvents(trip);
+    for (const ev of events) {
       const evDate = parseEventDateTime(ev, tripDestTz);
       if (!evDate || evDate.getTime() <= now) continue;
 
@@ -256,7 +258,7 @@ async function scheduleReminders(trips: Trip[]) {
           const lines = [where || "Time to head to the airport"];
           const details = [ev.airline, ev.duration].filter(Boolean).join(", ");
           if (details) lines.push(details);
-          const next = findNextEvent(trip.events, ev, tripDestTz);
+          const next = findNextEvent(events, ev, tripDestTz);
           if (next) lines.push(next.time ? `Then ${next.title} at ${next.time}` : `Then ${next.title}`);
 
           await scheduleOne(
@@ -302,7 +304,7 @@ async function scheduleReminders(trips: Trip[]) {
         if (remind.getTime() > now) {
           const lines = [ev.title];
           if (ev.location) lines.push(`Pickup at ${ev.location}`);
-          const next = findNextEvent(trip.events, ev, tripDestTz);
+          const next = findNextEvent(events, ev, tripDestTz);
           if (next) lines.push(`Heading to ${next.title}`);
 
           await scheduleOne(
@@ -417,7 +419,7 @@ function parseEventDateTime(ev: TravelEvent, tripDestTz?: string): Date | null {
       if (ampm === "PM" && hours < 12) hours += 12;
       if (ampm === "AM" && hours === 12) hours = 0;
 
-      const tz = ev.type === "flight" ? getDepAirportTz(ev) : tripDestTz;
+      const tz = ev.type === "flight" ? getDepAirportTz(ev) : ev.localTz ?? tripDestTz;
       if (tz) {
         const offsetMins = getUtcOffsetMins(tz, ev.date);
         const h = String(hours).padStart(2, "0");

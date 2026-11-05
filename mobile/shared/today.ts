@@ -48,13 +48,78 @@ export function visibleTodayEvents(events: TravelEvent[], travelerId?: string | 
   return events.filter(event => !travelerId || !event.assignedTo?.length || event.assignedTo.includes(travelerId));
 }
 
+/** One stretch of the journey out: at this flight's departure airport, on its clock, until it lands */
+export interface JourneyStage {
+  zone: string;
+  until: number;
+  flight: TravelEvent;
+}
+
+const journeyCache = new WeakMap<TravelEvent[], { key: string; stages: JourneyStage[]; events: TravelEvent[] }>();
+
+function resolveJourney(trip: Trip) {
+  const destZone = getDestinationTz(trip.destination);
+  const key = `${destZone}|${trip.start}`;
+  const cached = journeyCache.get(trip.events);
+  if (cached?.key === key) return cached;
+  const flights = destZone ? trip.events
+    .filter(event => event.type === "flight" && !/cancel/i.test(event.status || ""))
+    .map(event => ({ event, ...eventTiming(event, destZone, 0) }))
+    .filter((f): f is typeof f & { start: number } => f.start != null)
+    .sort((a, b) => a.start - b.start) : [];
+  const first = flights[0];
+  const homeZone = first && getDepAirportTz(first.event);
+  const stages: JourneyStage[] = [];
+  // A first flight later in the trip is a hop between stops, not the journey out
+  if (first && homeZone && homeZone !== destZone && calendarDays(trip.start, first.event.date) <= 1) {
+    let zone = homeZone;
+    let previousEnd = first.start;
+    for (const flight of flights) {
+      if (flight.start - previousEnd > 24 * 3_600_000) break;
+      zone = getDepAirportTz(flight.event) ?? zone;
+      previousEnd = flight.end ?? flight.start;
+      stages.push({ zone, until: previousEnd, flight: flight.event });
+      if ((flight.event.arrTz ?? IATA_TZ[flight.event.arrAirport ?? ""]) === destZone) break;
+    }
+  }
+  const events = stages.length ? trip.events.map(event => ({
+    ...event,
+    localTz: stages.find(stage => {
+      const start = eventInstant(event.date, scheduledMinutes(event.time) ?? 0, stage.zone);
+      return start != null && start < stage.until;
+    })?.zone ?? destZone,
+  })) : trip.events;
+  const resolved = { key, stages, events };
+  journeyCache.set(trip.events, resolved);
+  return resolved;
+}
+
+export function journeyStages(trip: Trip) {
+  return resolveJourney(trip).stages;
+}
+
+/** Where the group is on the journey out right now, or null once they have landed at the destination */
+export function journeyStage(trip: Trip, now: number) {
+  return journeyStages(trip).find(stage => now < stage.until) ?? null;
+}
+
+/** The trip's events, each knowing the zone its clock time is in */
+export function zonedEvents(trip: Trip) {
+  return resolveJourney(trip).events;
+}
+
+/** The zone that decides what "today" is on this trip right now */
+export function tripZone(trip: Trip, now: number) {
+  return journeyStage(trip, now)?.zone ?? getDestinationTz(trip.destination);
+}
+
 export function selectTodayTrips(trips: Trip[], now: number) {
   const sorted = [...trips].sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
   const active = sorted.find(t => {
-    const today = dateInZone(now, getDestinationTz(t.destination));
+    const today = dateInZone(now, tripZone(t, now));
     return t.start <= today && t.end >= today;
   }) ?? null;
-  const upcoming = active ? null : sorted.find(t => t.start > dateInZone(now, getDestinationTz(t.destination))) ?? null;
+  const upcoming = active ? null : sorted.find(t => t.start > dateInZone(now, tripZone(t, now))) ?? null;
   const past = active || upcoming ? null : [...sorted].sort((a, b) => b.end.localeCompare(a.end))[0] ?? null;
   return { active, upcoming, past };
 }
@@ -63,12 +128,12 @@ export type TodayEventPhase = "unscheduled" | "upcoming" | "current" | "earlier"
 
 export function eventTiming(event: TravelEvent, destinationZone: string | undefined, now: number) {
   const minutes = scheduledMinutes(event.time);
-  const timeZone = event.type === "flight" ? getDepAirportTz(event) ?? destinationZone : destinationZone;
+  const timeZone = event.type === "flight" ? getDepAirportTz(event) ?? destinationZone : event.localTz ?? destinationZone;
   const start = minutes == null ? null : eventInstant(event.date, minutes, timeZone);
   let end: number | null = null;
   const endMinutes = scheduledMinutes(event.endTime ?? "");
   if (start != null && endMinutes != null) {
-    const endZone = event.type === "flight" ? event.arrTz ?? IATA_TZ[event.arrAirport ?? ""] ?? destinationZone : destinationZone;
+    const endZone = event.type === "flight" ? event.arrTz ?? IATA_TZ[event.arrAirport ?? ""] ?? destinationZone : timeZone;
     let endDate = event.endDate || event.date;
     end = eventInstant(endDate, endMinutes, endZone);
     if (!event.endDate && end != null && end < start) {

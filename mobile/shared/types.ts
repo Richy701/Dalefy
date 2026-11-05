@@ -62,6 +62,8 @@ export interface TravelEvent {
   arrCoords?: [number, number];
   depTz?: string;
   arrTz?: string;
+  /** Worked out by zonedEvents, never saved: the zone this event's clock time is in */
+  localTz?: string;
   checkin?: string;
   checkout?: string;
   isOvernight?: boolean;

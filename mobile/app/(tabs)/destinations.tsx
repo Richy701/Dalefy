@@ -38,7 +38,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
-import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
+import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance, LOCATION_COORDS } from "@/shared/coordinates";
 import { getDestinationTz, IATA_TZ } from "@/shared/timezones";
 import { PreTripSheetContent, PostTripSheetContent, SectionHeader, StayCard, LinkRow, tripStays } from "@/components/TodayPreTrip";
 import { sheetStyles as ps } from "@/components/todaySheetStyles";
@@ -46,7 +46,7 @@ import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { ArrivalSection, arrivingFlight, landingTime, afterLanding, ARRIVAL_WINDOW_MS } from "@/components/TodayArrival";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
-import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext } from "@/shared/today";
+import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext, journeyStage, tripZone, zonedEvents } from "@/shared/today";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -115,6 +115,7 @@ export default function TodayScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  // Where the map is centred: the destination, or the airport the group is at on the way there
   const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
   const mapViewRef = useRef<MapView>(null);
   const cameraRef = useRef<Camera>(null);
@@ -138,12 +139,13 @@ export default function TodayScreen() {
   const displayTrip = activeTrip ?? upcomingTrip ?? mostRecentTrip;
   const isLiveDay = !!activeTrip;
   const destTz = getDestinationTz(displayTrip?.destination);
-  const todayISO = dateInZone(now, destTz);
+  const dayTz = displayTrip ? tripZone(displayTrip, now) : destTz;
+  const todayISO = dateInZone(now, dayTz);
   const linkedTravelerId = useLinkedTravelerId(displayTrip?.id);
-  const visibleEvents = useMemo(() => visibleTodayEvents(displayTrip?.events ?? [], linkedTravelerId), [displayTrip?.events, linkedTravelerId]);
+  const visibleEvents = useMemo(() => visibleTodayEvents(displayTrip ? zonedEvents(displayTrip) : [], linkedTravelerId), [displayTrip, linkedTravelerId]);
   const travellerTrip = useMemo(() => displayTrip ? { ...displayTrip, events: visibleEvents } : null, [displayTrip, visibleEvents]);
   const displayEvents = useMemo(() => activeTrip
-    ? dayEvents(visibleEvents, todayISO, destTz, now)
+    ? dayEvents(visibleEvents, todayISO, dayTz, now)
     : (() => {
         const placed = [...visibleEvents].filter(e => e.type !== "flight" && (e.location || e.locationCoords))
           .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity));
@@ -159,28 +161,36 @@ export default function TodayScreen() {
         });
         return (stays.length ? stays : placed).slice(0, 40);
       })(),
-  [activeTrip, visibleEvents, todayISO, destTz, now]);
+  [activeTrip, visibleEvents, todayISO, dayTz, now]);
   const next = useMemo(() => activeTrip ? currentOrNext(displayEvents, destTz, now) : null, [activeTrip, displayEvents, destTz, now]);
   // For a day with nothing on: the first plan on a later day
   const nextPlanned = useMemo(() => [...visibleEvents]
     .filter(e => e.date > todayISO)
     .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity))[0] ?? null,
   [visibleEvents, todayISO]);
+  // On the way out the map follows the group: home, then each stopover, then the destination
+  const departureFlight = activeTrip ? journeyStage(activeTrip, now)?.flight ?? null : null;
+  const departureCode = (departureFlight?.depAirport || departureFlight?.location?.match(/^([A-Z]{3})\s+to\s+/i)?.[1] || "").toUpperCase();
+  const departureCoord = useMemo((): [number, number] | null => {
+    const latLng = LOCATION_COORDS[departureCode] ?? departureFlight?.depCoords;
+    return latLng ? [latLng[1], latLng[0]] : null;
+  }, [departureCode, departureFlight?.depCoords]);
   const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the previous trip's map centre before geocoding the new destination
     setDestCenter(null);
     if (!displayTrip?.destination || !MapboxGL) return;
+    if (departureCoord) { setDestCenter(departureCoord); setMapLoading(false); return; }
     let cancelled = false;
     setMapLoading(true);
-    geocodeLocation(displayTrip.destination).then(center => {
+    geocodeLocation(departureCode ? `${departureCode} airport` : displayTrip.destination).then(center => {
       if (cancelled) return;
       setDestCenter(center);
       setMapLoading(false);
     });
     return () => { cancelled = true; };
-  }, [displayTrip?.destination, mapAttempt]);
+  }, [displayTrip?.destination, departureCode, departureCoord, mapAttempt]);
 
 
   // ── Geocode event locations for map markers ──
@@ -228,7 +238,7 @@ export default function TodayScreen() {
     let cancelled = false;
     const locMap = new Map<string, string[]>();
     for (const ev of displayEvents) {
-      if (!ev.location) continue;
+      if (!ev.location || (departureFlight && ev.type === "flight")) continue;
       const storedNear = toLngLat(ev.locationCoords, destCenter);
       // Some imported coords are another city's airport; those get looked up again from the address
       if (storedNear && distanceKm(storedNear, destCenter) < 1500) continue;
@@ -238,6 +248,11 @@ export default function TodayScreen() {
     }
     const directCoords: Record<string, [number, number]> = {};
     for (const ev of displayEvents) {
+      // A route is not a place: on the way out only the flight leaving from here gets a pin
+      if (departureFlight && ev.type === "flight") {
+        if (ev.id === departureFlight.id) directCoords[ev.id] = destCenter;
+        continue;
+      }
       const stored = toLngLat(ev.locationCoords, destCenter);
       // Stored coords equal to the destination centroid are a failed geocode, not a venue
       if (stored && !isSamePoint(stored, destCenter) && distanceKm(stored, destCenter) < 1500) directCoords[ev.id] = stored;
@@ -259,7 +274,7 @@ export default function TodayScreen() {
       setEventCoords(next);
     });
     return () => { cancelled = true; };
-  }, [displayEvents, destCenter]);
+  }, [displayEvents, destCenter, departureFlight]);
 
   const markerFeatures = useMemo(() => {
     const features = displayEvents
@@ -409,8 +424,8 @@ export default function TodayScreen() {
   }, [mapReady, focusedMapEventId, eventCoords]);
 
   const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const showLocalTime = !!destTz && destTz !== deviceTz;
-  const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: destTz, hour: "2-digit", minute: "2-digit" }).format(now);
+  const showLocalTime = !!dayTz && dayTz !== deviceTz;
+  const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: dayTz, hour: "2-digit", minute: "2-digit" }).format(now);
   const nextFlight = next?.event.type === "flight" ? next.event : null;
   // One live lookup: the flight that may have just landed, else the next one. A flight whose arrival is
   // over (or that was cancelled or diverted) is let go, so the next flight gets the live data and phones

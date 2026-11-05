@@ -1,5 +1,5 @@
 import type { Trip, TravelEvent } from './types';
-import { calendarDays, dateInZone, dayEvents, eventTiming, selectTodayTrips, eventInstant, currentOrNext } from './today';
+import { calendarDays, dateInZone, dayEvents, eventTiming, selectTodayTrips, eventInstant, currentOrNext, journeyStages, tripZone, zonedEvents } from './today';
 import { getDestinationTz } from './timezones';
 
 export function surfaceEvents(events: TravelEvent[], travelerId?: string | null) {
@@ -7,7 +7,7 @@ export function surfaceEvents(events: TravelEvent[], travelerId?: string | null)
 }
 
 export function surfaceCandidates(trips: Trip[], now: number, flights: boolean) {
-  return trips.flatMap(trip => trip.events
+  return trips.flatMap(trip => zonedEvents(trip)
     .filter(event => (event.type === 'flight') === flights && !/cancel|landed|arrived/i.test(event.status || ''))
     .map(event => {
       const timing = eventTiming(event, getDestinationTz(trip.destination), now);
@@ -30,9 +30,9 @@ export function widgetProps(trips: Trip[], now: number, accentColor: string, ima
   const trip = active || upcoming;
   const empty = { state: 'empty', tripName: '', destination: '', tripImage: '', daysLeft: 0, startDate: '', currentDay: 0, totalDays: 0, accentColor, event1: '', event2: '', event3: '', eventTime: '', eventTitle: '', eventLocation: '', eventLabel: '', url: '/(tabs)' };
   if (!trip) return empty;
-  const zone = getDestinationTz(trip.destination);
+  const zone = tripZone(trip, now);
   const date = dateInZone(now, zone);
-  const events = active ? dayEvents(trip.events, date, zone, now).filter(event => {
+  const events = active ? dayEvents(zonedEvents(trip), date, zone, now).filter(event => {
     const timing = eventTiming(event, zone, now);
     return timing.start == null || timing.start >= now || (timing.end != null && timing.end > now);
   }) : [];
@@ -62,15 +62,16 @@ export function widgetTimelineDates(trips: Trip[], now: number) {
   // Hourly entries cover local midnight/DST changes, even when the app is closed.
   for (let i = 1; i <= 24 * 7; i++) dates.add(now + i * 3600000);
   for (const trip of trips) {
-    const zone = getDestinationTz(trip.destination);
-    const today = dateInZone(now, zone);
-    for (let day = 1; day <= 60; day++) {
-      const date = new Date(Date.parse(`${today}T12:00:00Z`) + day * 86400000).toISOString().slice(0, 10);
-      const midnight = eventInstant(date, 0, zone);
-      if (midnight != null) dates.add(midnight);
+    for (const zone of new Set([getDestinationTz(trip.destination), ...journeyStages(trip).map(stage => stage.zone)])) {
+      const today = dateInZone(now, zone);
+      for (let day = 1; day <= 60; day++) {
+        const date = new Date(Date.parse(`${today}T12:00:00Z`) + day * 86400000).toISOString().slice(0, 10);
+        const midnight = eventInstant(date, 0, zone);
+        if (midnight != null) dates.add(midnight);
+      }
     }
   }
-  for (const trip of trips) for (const event of trip.events) {
+  for (const trip of trips) for (const event of zonedEvents(trip)) {
     const timing = eventTiming(event, getDestinationTz(trip.destination), now);
     for (const date of [timing.start, timing.end ?? (timing.start == null ? null : timing.start + 60000)]) {
       if (date != null && date > now && date < now + 60 * 86400000) dates.add(date);
