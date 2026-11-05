@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, TurboModuleRegistry,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +27,10 @@ import { GoogleG, AppleMark } from "@/components/BrandLogos";
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Android signs in through Google's own account picker. Builds from before it was added don't have the
+// native code, and Google refuses the browser route on Android, so they don't offer Google at all.
+const nativeGoogle = Platform.OS === "android" && !!TurboModuleRegistry.get("RNGoogleSignin");
+
 type Step = "splash" | "options" | "email" | "sent" | "password";
 
 export default function AuthScreen() {
@@ -48,7 +52,7 @@ export default function AuthScreen() {
 
   const googleEnabled = Platform.select({
     ios: !!iosClientId,
-    android: !!androidClientId,
+    android: nativeGoogle && !!webClientId,
     default: true,
   });
 
@@ -99,8 +103,39 @@ export default function AuthScreen() {
   }, [googleResponse]);
 
   // ── Providers ──
+  const handleAndroidGoogle = useCallback(async () => {
+    setError("");
+    setBusyProvider("google");
+    const failed = (message: string) => { setBusyProvider(null); haptic.warning(); setError(message); };
+    try {
+      const { GoogleSignin, isErrorWithCode, statusCodes } = await import("@react-native-google-signin/google-signin");
+      try {
+        GoogleSignin.configure({ webClientId });
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        // Otherwise it silently reuses the last account, and someone who signed out could never switch
+        await GoogleSignin.signOut().catch(() => {});
+        const res = await GoogleSignin.signIn();
+        if (res.type !== "success") { setBusyProvider(null); return; }
+        if (!res.data.idToken) { failed("Google sign-in didn't complete. Try again."); return; }
+        const err = await auth.signInWithGoogle(res.data.idToken);
+        setBusyProvider(null);
+        if (err) { haptic.warning(); setError(err); }
+        else finish();
+      } catch (e: unknown) {
+        if (isErrorWithCode(e) && e.code === statusCodes.IN_PROGRESS) { setBusyProvider(null); return; }
+        if (isErrorWithCode(e) && e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) { failed("Google sign-in needs Google Play services. Use your work email instead."); return; }
+        console.warn("[auth] Android Google sign-in failed:", e);
+        failed("Google sign-in isn't working right now. Use your work email instead.");
+      }
+    } catch (e: unknown) {
+      console.warn("[auth] Android Google sign-in unavailable:", e);
+      failed("Google sign-in isn't working right now. Use your work email instead.");
+    }
+  }, [auth, haptic, finish, webClientId]);
+
   const handleGoogle = useCallback(async () => {
-    if ((Platform.OS === "ios" && !iosClientId) || (Platform.OS === "android" && !androidClientId)) {
+    if (Platform.OS === "android") { await handleAndroidGoogle(); return; }
+    if (Platform.OS === "ios" && !iosClientId) {
       setError("Google sign-in isn't available in this build.");
       return;
     }
@@ -113,7 +148,7 @@ export default function AuthScreen() {
       setBusyProvider(null);
       setError((e as { message?: string } | null)?.message ?? "Google sign-in failed.");
     }
-  }, [promptGoogle, iosClientId, androidClientId]);
+  }, [promptGoogle, iosClientId, handleAndroidGoogle]);
 
   const handleApple = useCallback(async () => {
     if (Platform.OS !== "ios") return;
