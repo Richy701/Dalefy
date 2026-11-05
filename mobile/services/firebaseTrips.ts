@@ -4,6 +4,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { setCoordinating, markCoordinating } from "@/services/coordinating";
+import { setListedTrips, type ListedTrip } from "@/services/listedTrips";
 import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Trip, Notification } from "@/shared/types";
@@ -65,9 +66,10 @@ export async function fetchTrips(): Promise<Trip[]> {
     collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId),
   )))).docs;
   const ids = [...new Set([...members.docs, ...legacyMembers].map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
-  const [trips, coordinating] = await Promise.all([Promise.all(ids.map(fetchTripById)), fetchCoordinatingTrips()]);
+  const [trips, { coordinating, listed }] = await Promise.all([Promise.all(ids.map(fetchTripById)), fetchAccountTrips()]);
   if (uid !== firebaseAuth().currentUser?.uid) throw new Error("Account changed");
   setCoordinating(coordinating.map(t => t.id));
+  setListedTrips(listed);
   const joined = trips.filter((t): t is Trip => t !== null);
   // Someone can be both: the coordinator's copy has the fuller view
   const merged = [...coordinating, ...joined.filter(t => !coordinating.some(c => c.id === t.id))];
@@ -250,20 +252,24 @@ export async function fetchTripOversight(tripId: string): Promise<TripOversight 
 }
 
 /**
- * Trips this person oversees from home. A failure throws, like the membership lookup, so a bad connection
- * keeps the saved list rather than dropping these trips from it. Guests have none.
+ * Trips this person oversees from home, and the ones an organiser has listed their email on. A failure throws,
+ * like the membership lookup, so a bad connection keeps the saved list rather than dropping these trips from it.
+ * Guests have none.
  */
-async function fetchCoordinatingTrips(): Promise<Trip[]> {
+async function fetchAccountTrips(): Promise<{ coordinating: Trip[]; listed: ListedTrip[] }> {
   const user = firebaseAuth().currentUser;
-  if (!user || user.isAnonymous) return [];
+  if (!user || user.isAnonymous) return { coordinating: [], listed: [] };
   const token = await user.getIdToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(`${API_BASE}/api/my-trips`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
     if (!response.ok) throw new Error("Unable to load coordinated trips");
-    const data = await response.json() as { coordinating?: Array<Record<string, unknown>> };
-    return (data.coordinating ?? []).map(t => docToTrip(String(t.id), t));
+    const data = await response.json() as { coordinating?: Array<Record<string, unknown>>; trips?: Array<{ trip: Record<string, unknown>; travelerId: string | null }> };
+    return {
+      coordinating: (data.coordinating ?? []).map(t => docToTrip(String(t.id), t)),
+      listed: (data.trips ?? []).map(t => ({ trip: docToTrip(String(t.trip.id), t.trip), travelerId: t.travelerId })),
+    };
   } finally { clearTimeout(timer); }
 }
 

@@ -41,6 +41,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
 import { useTrips } from "@/context/TripsContext";
 import { leaveTrip } from "@/services/firebaseTrips";
+import { dismissListedTrip, useListedTrips } from "@/services/listedTrips";
+import { ListedTrips } from "@/components/ListedTrips";
 import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { useNotifications } from "@/context/NotificationContext";
@@ -366,6 +368,7 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
       { text: "Leave", style: "destructive", onPress: async () => {
         try {
           await leaveTrip(trip.id);
+          dismissListedTrip(trip.id);
           deleteTrip(trip.id);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           toast("You've left the trip");
@@ -434,6 +437,11 @@ export default function HomeScreen() {
   const router = useRouter();
   const { toast } = useToast();
   const { prefs } = usePreferences();
+  const listedTrips = useListedTrips();
+  const notJoined = useMemo(
+    () => listedTrips.filter(l => !trips.some(t => t.id === l.trip.id) && daysUntil(l.trip.end) >= 0),
+    [listedTrips, trips],
+  );
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     // A light tap when the pull triggers a refresh, like Mail
@@ -656,6 +664,8 @@ export default function HomeScreen() {
               </View>
             )}
 
+            {notJoined.length > 0 && <ListedTrips rows={notJoined} C={C} />}
+
             {/* ── Next up, then the rest of that day ── */}
             <FadeIn delay={0}>
               {!nextEvent ? (
@@ -850,6 +860,7 @@ export default function HomeScreen() {
             offline={offline}
             onRetry={onRefresh}
             retrying={refreshing}
+            listed={notJoined.length > 0 ? <ListedTrips rows={notJoined} C={themeC} inset /> : undefined}
           />
         )}
       </Animated.ScrollView>

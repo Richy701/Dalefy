@@ -186,7 +186,7 @@ export interface Trip {
   /** Denormalized traveler display info — synced for shared view access */
   /** invitedAt: when the itinerary was last emailed to them from the web */
   /** avatar: the directory photo, copied here so the app can show it */
-  travelers?: Array<{ id: string; name: string; initials: string; email?: string; invitedAt?: string; avatar?: string }>;
+  travelers?: Array<{ id: string; name: string; initials: string; email?: string; invitedAt?: string; avatar?: string; tripLeader?: boolean }>;
   destination?: string;
   paxCount?: string;
   tripType?: string;

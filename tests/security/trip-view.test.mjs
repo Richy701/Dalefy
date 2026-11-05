@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = readFileSync(new URL('../../api/_tripView.ts', import.meta.url), 'utf8');
 const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { publishedTripView, membershipMatches, mergeTravelerMedia, listedAsCoordinator, oversightView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+const { publishedTripView, membershipMatches, mergeTravelerMedia, listedAsCoordinator, listedAsTripLeader, oversightView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 const trip = {
   status: 'Published', user_id: 'owner', budget: 'SECRET_BUDGET', short_code: 'SECRET_CODE',
   events: [{ title: 'SECRET_DRAFT' }],
@@ -276,4 +276,22 @@ test('a coordinator who has not joined cannot change the gallery', async () => {
   await handler({ method: 'POST', headers: asCoordinator, query: {}, body: { tripId: 'trip', add: [], remove: [] } }, response);
   assert.equal(response.code, 403);
   assert.deepEqual(writes, []);
+});
+
+test('trip leader tick matches the ticked entry by email only, and stays off the published view', () => {
+  const ticked = { ...trip, travelers: [
+    { id: 'emma', name: 'Emma', email: 'Emma@Team.test ', tripLeader: true },
+    { id: 'tony', name: 'Tony', email: 'tony@team.test' },
+  ] };
+  assert.equal(listedAsTripLeader(ticked, 'emma@team.test'), true);
+  assert.equal(listedAsTripLeader(ticked, 'tony@team.test'), false);
+  assert.equal(listedAsTripLeader(ticked, ''), false);
+  assert.equal(listedAsTripLeader(ticked, undefined), false);
+  assert.equal(listedAsTripLeader(trip, 'emma@team.test'), false);
+  const snap = { ...trip.published_snapshot, travelers: [{ id: 'emma', name: 'Emma', email: 'e@team.test', tripLeader: true }] };
+  assert.deepEqual(Object.keys(publishedTripView('trip', { ...trip, published_snapshot: snap }).travelers[0]).includes('tripLeader'), false);
+});
+test('a ticked leader who has joined counts in the coordinator overview', () => {
+  const data = { published_snapshot: { travelers: [{ id: 'emma', name: 'Emma' }] }, travelers: [{ id: 'emma', name: 'Emma', phone: '+44 1', tripLeader: true }] };
+  assert.deepEqual(oversightView(data, [{ linked_traveler_id: 'emma', role: 'traveler' }]).leaders, [{ name: 'Emma', phone: '+44 1' }]);
 });

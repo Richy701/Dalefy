@@ -77,7 +77,8 @@ import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { publishedChanges } from "@/lib/tripChanges";
-import { fetchTripMembers, APP_MEMBERS_ERROR, setMemberTraveler, unlinkTraveler, removeUserFromTrip, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, APP_MEMBERS_ERROR, setMemberTraveler, unlinkTraveler, removeUserFromTrip, updateTripMemberRole, type TripMember } from "@/services/firebaseTrips";
+import { Checkbox } from "@/components/ui/checkbox";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { shrinkImage } from "@/lib/shrinkImage";
@@ -456,6 +457,28 @@ export function WorkspacePage() {
   const [editCoordinators, setEditCoordinators] = useState<TripCoordinator[]>([]);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
   const { members: teamMembers, failed: teamFailed } = useTeamMembers(trip?.organizationId, editOrgOpen);
+  // The team on the People tab: who can be added from it, and whose row offers Trip leader
+  const { members: peopleTeam } = useTeamMembers(trip?.organizationId, activeTab === "people" && !isViewer);
+  const sameEmail = (a?: string, b?: string) => !!a?.trim() && a.trim().toLowerCase() === b?.trim().toLowerCase();
+  const teamToAdd = useMemo(() => (peopleTeam ?? []).filter(member => !!member.email && ![...tripTravelers, ...availableTravelers].some(person => sameEmail(person.email, member.email))),
+    [peopleTeam, tripTravelers, availableTravelers]);
+  const canBeTripLeader = (email?: string) => !trip?.private && !isViewer && !!peopleTeam?.some(member => sameEmail(member.email, email));
+  // Ticking works before they join: the server gives them the role once they do, and only while they're on the team
+  const setTripLeader = async (t: UserType, on: boolean) => {
+    if (!trip) return;
+    // Older trips can hold someone by id alone, with no entry to tick yet
+    const listed = trip.travelers?.find(p => p.id === t.id);
+    const { tripLeader: _was, ...rest } = listed ?? tripTravelerOf(t) as NonNullable<Trip["travelers"]>[number];
+    const next = on ? { ...rest, email: rest.email || t.email, tripLeader: true } : rest;
+    const travelers = trip.travelers ?? [];
+    updateTrip(trip.id, { travelers: listed ? travelers.map(p => (p.id === t.id ? next : p)) : [...travelers, next] });
+    const member = memberByTraveler.get(t.id);
+    if (member) {
+      await updateTripMemberRole(member.uid || member.device_id, trip.id, on ? "leader" : "traveler").catch(() => toast.error("Saved, but couldn't update their app yet"));
+      setMembersReload(n => n + 1);
+    }
+    toast.success(on ? "Made trip leader" : "Now a traveller");
+  };
   const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
@@ -618,6 +641,8 @@ export function WorkspacePage() {
     updateTrip(trip.id, updates);
     events.forEach(ev => updateEvent(trip.id, ev));
     if (memberByTraveler.has(t.id)) {
+      const member = memberByTraveler.get(t.id)!;
+      if (trip.travelers?.find(p => p.id === t.id)?.tripLeader) await updateTripMemberRole(member.uid || member.device_id, trip.id, "traveler").catch(() => {});
       await unlinkTraveler(trip.id, t.id).catch(() => toast.error("Removed, but couldn't unlink their app account"));
       setMembersReload(n => n + 1);
     }
@@ -2114,6 +2139,15 @@ export function WorkspacePage() {
                                 ) : null}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
+                                {canBeTripLeader(t.email) && (
+                                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-muted-foreground">
+                                    <Checkbox
+                                      checked={!!trip.travelers?.find(p => p.id === t.id)?.tripLeader || memberByTraveler.get(t.id)?.role === "leader"}
+                                      onCheckedChange={on => void setTripLeader(t, on === true)}
+                                    />
+                                    Trip leader
+                                  </label>
+                                )}
                                 {eventCount > 0 && (
                                   <span className="text-[11px] font-medium text-brand/60 hidden sm:inline">
                                     {eventCount} tagged
@@ -2257,6 +2291,42 @@ export function WorkspacePage() {
                       ) : (
                         <div className="text-center py-4 text-muted-foreground">
                           <p className="text-xs font-medium">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Teammates aren't always in the directory; adding one uses their login email, so the app matches them */}
+                    {(() => {
+                      const team = teamToAdd.filter(m => !peopleSearch || m.name.toLowerCase().includes(peopleSearch.toLowerCase()) || m.email.toLowerCase().includes(peopleSearch.toLowerCase()));
+                      return team.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <p className="text-xs font-medium text-muted-foreground mb-3">Your team</p>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                            {team.map(m => {
+                              const initials = m.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+                              return (
+                                <button
+                                  key={m.userId}
+                                  type="button"
+                                  onClick={() => {
+                                    const id = `custom-${Date.now()}`;
+                                    const email = m.email.trim().toLowerCase();
+                                    setCustomTravelers(prev => [...prev, { id, name: m.name, email, role: "Traveler", avatar: m.avatar ?? "", initials, status: "Active" }]);
+                                    updateTrip(trip.id, { travelerIds: [...(trip.travelerIds || []), id], travelers: [...(trip.travelers || []), tripTravelerOf({ id, name: m.name, initials, email, avatar: m.avatar })] });
+                                    toast.success(`Added ${m.name} to trip`);
+                                  }}
+                                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-background border border-border hover:border-brand/30 hover:bg-brand/5 transition-all group text-left"
+                                >
+                                  <PersonAvatar avatar={m.avatar} initials={initials} name={m.name} className="h-9 w-9" fallbackClassName="text-[10px] font-black group-hover:bg-brand/10 group-hover:text-brand transition-colors" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-foreground/80 truncate">{m.name}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{m.email}</p>
+                                  </div>
+                                  <Plus className="h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })()}

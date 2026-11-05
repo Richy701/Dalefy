@@ -514,13 +514,20 @@ export function TravelersPage() {
     const newRole: TripMemberRole = currentRole === "leader" ? "traveler" : "leader";
     try {
       for (const key of keys) await updateTripMemberRole(key, tripId, newRole);
+      // The Workspace's Trip leader tick would give the role straight back
+      if (newRole === "traveler") {
+        const mine = appUsers.filter(m => m.trip_id === tripId && keys.includes(personKey(m)));
+        const trip = trips.find(t => t.id === tripId);
+        const ticked = (p: { id: string; email?: string; tripLeader?: boolean }) => !!p.tripLeader && mine.some(m => m.linked_traveler_id === p.id || (!!p.email && m.email?.toLowerCase() === p.email.toLowerCase()));
+        if (trip?.travelers?.some(ticked)) updateTrip(tripId, { travelers: trip.travelers.map(p => { if (!ticked(p)) return p; const { tripLeader: _was, ...rest } = p; return rest; }) });
+      }
       setAppUsers(prev => prev.map(m => keys.includes(personKey(m)) && m.trip_id === tripId ? { ...m, role: newRole } : m));
       showToast(newRole === "leader" ? "Made trip leader" : "Now a traveller");
     } catch (err) {
       console.error("Role update failed:", err);
       showToast("Couldn't change their role");
     }
-  }, [showToast]);
+  }, [showToast, appUsers, trips, updateTrip]);
 
   const exportCSV = useCallback(() => {
     if (!visible.length) return;

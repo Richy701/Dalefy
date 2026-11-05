@@ -126,6 +126,16 @@ export function listedAsCoordinator(trip: Data, uid: string): boolean {
   return trip.private !== true && list(trip.coordinators).some(c => record(c).userId === uid);
 }
 
+/**
+ * Ticked as trip leader in the Workspace, on the traveller entry carrying this verified sign-in email. Matched by
+ * email because a member can change their own linked_traveler_id, so that link can't be what grants leader access.
+ */
+export function listedAsTripLeader(trip: Data, email: unknown): boolean {
+  const norm = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
+  const me = norm(email);
+  return !!me && list(trip.travelers).map(record).some(t => t.tripLeader === true && norm(t.email) === me);
+}
+
 /** A coordinator's picture of who is reachable. Names and leaders' phones only; never emails, seats or who else's device. */
 export function oversightView(trip: Data, members: Data[]) {
   const travelers = list(record(trip.published_snapshot).travelers).map(record);
@@ -134,8 +144,8 @@ export function oversightView(trip: Data, members: Data[]) {
   const nameOf = (t: Data) => (typeof t.name === "string" ? t.name.trim() : "");
   const leaders = new Map<string, { name: string; phone: string | null }>();
   for (const m of members) {
-    if (m.role !== "leader") continue;
     const entry = working.find(t => t.id === m.linked_traveler_id);
+    if (m.role !== "leader" && entry?.tripLeader !== true) continue;
     const name = nameOf(entry ?? m);
     if (!name) continue;
     const phone = entry && typeof entry.phone === "string" && entry.phone.trim() ? entry.phone.trim() : null;

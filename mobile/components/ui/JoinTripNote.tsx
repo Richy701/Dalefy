@@ -64,8 +64,10 @@ const EMPTY_PIN = "";
 const INVITE_LINK = /shared\/([A-Za-z0-9_-]+)/;
 
 /** Home before joining: a holiday photo, then the PIN boxes right there, so joining is one step. */
-export function NoTripsHero({ greeting, offline, onRetry, retrying }: RecoveryProps & {
+export function NoTripsHero({ greeting, offline, onRetry, retrying, listed }: RecoveryProps & {
   greeting: string;
+  /** Trips they've been added to, ahead of asking for a PIN */
+  listed?: React.ReactNode;
 }) {
   const { C } = useTheme();
   const insets = useSafeAreaInsets();
@@ -176,6 +178,7 @@ export function NoTripsHero({ greeting, offline, onRetry, retrying }: RecoveryPr
       <View style={styles.welcome}>
         <Text style={[styles.eyebrow, { color: C.textSecondary }]}>{offline ? "Connection unavailable" : greeting}</Text>
         <Text accessibilityRole="header" style={[styles.homeTitle, { color: C.textPrimary }]}>{offline ? "You’re offline" : "Your trip, all in one place."}</Text>
+        {!offline && listed}
         {offline ? (
           <>
             <Text style={[styles.body, styles.homeBody, { color: C.textSecondary }]}>
