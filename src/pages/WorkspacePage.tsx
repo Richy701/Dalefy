@@ -155,15 +155,22 @@ export function WorkspacePage() {
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
   // What travellers would notice if this were published now: -1 for a trip that's never been published
-  const pendingChanges = useMemo(() => {
-    if (!trip) return 0;
-    const snap = trip.publishedSnapshot;
-    if (trip.status !== "Published" || !snap) return -1;
-    const itinerary = publishedChanges(snap, { events: trip.events, start: trip.start, end: trip.end, info: trip.info }).length;
-    // The organiser card is left out: directory syncs rewrite the published copy's contact fields on their own
-    const header = [snap.name !== trip.name, snap.image !== trip.image].filter(Boolean).length;
-    return itinerary + header;
+  const pendingList = useMemo(() => {
+    const snap = trip?.publishedSnapshot;
+    if (!trip || !snap) return { notified: [], quiet: [] };
+    const notified = publishedChanges(snap, { events: trip.events, start: trip.start, end: trip.end, info: trip.info });
+    // The organiser counts when it's a different person: directory syncs rewrite the published copy's contact fields on their own
+    const organiserWas = snap.organizer?.name?.trim() ?? "", organiserNow = trip.organizer?.name?.trim() ?? "";
+    const quiet = [
+      snap.name !== trip.name ? `Trip name now ${trip.name}` : "",
+      snap.image !== trip.image ? "Cover photo changed" : "",
+      organiserWas.toLowerCase() !== organiserNow.toLowerCase()
+        ? (organiserNow ? `Organiser now ${organiserNow}${organiserWas ? `, was ${organiserWas}` : ""}` : `Organiser ${organiserWas} removed`)
+        : "",
+    ].filter(Boolean);
+    return { notified, quiet };
   }, [trip]);
+  const pendingChanges = !trip ? 0 : trip.status !== "Published" || !trip.publishedSnapshot ? -1 : pendingList.notified.length + pendingList.quiet.length;
   const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
 
   // Auto-open event from ?event= query param (e.g. from Dashboard event cards)
@@ -3228,11 +3235,23 @@ export function WorkspacePage() {
         onOpenChange={setPublishConfirmOpen}
         title={pendingChanges > 0 ? `Publish ${pendingChanges} ${pendingChanges === 1 ? "change" : "changes"}?` : "Publish this trip?"}
         description={pendingChanges > 0
-          ? `Travellers on ${trip.name} get the latest version and a notification about what changed.`
+          ? `Travellers on ${trip.name} get the latest version${pendingList.notified.length ? " and a notification about what changed" : ""}.`
           : `Travellers can open ${trip.name} and get a notification that it's published.`}
         confirmLabel="Publish"
         onConfirm={handlePublish}
         subject={{ title: trip.name, subtitle: trip.destination, image: trip.image }}
+        details={pendingChanges > 0 ? (
+          <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-border p-3">
+            {([["Travellers are notified", pendingList.notified], ["Updates without a notification", pendingList.quiet]] as const).map(([heading, lines]) => lines.length > 0 && (
+              <div key={heading} className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">{heading}</p>
+                <ul className="space-y-1.5">
+                  {lines.map((line, i) => <li key={`${i}-${line}`} className="text-sm text-foreground break-words">{line}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : undefined}
       />
 
       <SendInviteModal

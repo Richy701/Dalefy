@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { SpinnerGap } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,11 @@ interface ConfirmDialogProps {
   onConfirm: () => void | Promise<void>;
   destructive?: boolean;
   subject?: ConfirmSubject;
+  /** More to read before deciding, such as the list of what will change */
+  details?: ReactNode;
 }
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel = "Confirm", onConfirm, destructive, subject }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel = "Confirm", onConfirm, destructive, subject, details }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const popup = useRef<HTMLDivElement>(null);
@@ -67,6 +69,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
             </div>
           </div>
         )}
+        {details}
         {error && <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>}
         <DialogFooter className="flex gap-2 pt-1">
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)} className="rounded-xl h-9 px-4">
