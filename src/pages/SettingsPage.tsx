@@ -113,7 +113,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
 }
 
 /** Where travellers get the app. Unlisted, so this link is the only way in; it opens once Apple releases the app. */
-const APP_STORE_URL = "https://apps.apple.com/app/id6765462755";
+const APP_STORE_URL = "https://apps.apple.com/gb/app/id6765462755";
 
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["⌘", "K"], label: "Open command palette" },
