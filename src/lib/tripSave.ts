@@ -55,7 +55,7 @@ export function tripPatch(before: Record<string, unknown>, desired: Record<strin
 }
 
 type LinkedPerson = { id: string; name: string; email?: string; avatar?: string };
-type LinkedRoster = { organizer?: { travelerId?: string } | null; travelers?: LinkedPerson[] | null };
+type LinkedRoster = { organizer?: { travelerId?: string; email?: string } | null; travelers?: LinkedPerson[] | null };
 
 export function syncLinkedOrganizer<T extends LinkedRoster & { published_snapshot?: LinkedRoster | null }>(data: T): T {
   const sync = (organizer: LinkedRoster['organizer'], travelers: LinkedPerson[]) => {
@@ -64,6 +64,11 @@ export function syncLinkedOrganizer<T extends LinkedRoster & { published_snapsho
     return person ? { ...organizer, name: person.name, email: person.email || '', avatar: person.avatar || '' } : null;
   };
   const result = { ...data, organizer: sync(data.organizer, data.travelers || []) ?? null };
-  if (data.published_snapshot) result.published_snapshot = { ...data.published_snapshot, organizer: sync(data.published_snapshot.organizer, data.published_snapshot.travelers || []) ?? null };
+  if (data.published_snapshot) {
+    // The published list never holds emails, so the organiser's own email has to survive the sync, or every save blanks it
+    const was = data.published_snapshot.organizer;
+    const synced = sync(was, data.published_snapshot.travelers || []);
+    result.published_snapshot = { ...data.published_snapshot, organizer: synced ? { ...synced, email: was?.email || '' } : null };
+  }
   return result;
 }

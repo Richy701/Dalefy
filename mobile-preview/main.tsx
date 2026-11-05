@@ -11,6 +11,8 @@ const MotionSettings = lazy(() => import('./motion'));
 const TripScreen = lazy(() => import('../mobile/app/trip/[id]'));
 const EventScreen = lazy(() => import('../mobile/app/trip/event'));
 const InfoScreen = lazy(() => import('../mobile/app/trip/info'));
+const PeopleScreen = lazy(() => import('../mobile/app/trip/people'));
+const OrganiserScreen = lazy(() => import('../mobile/app/trip/organiser'));
 export interface PreviewPayload {
   trip: Trip;
   brand: { name: string; logoUrl: string | null; accentColor: string | null };
@@ -30,7 +32,7 @@ function Preview() {
     const next = typeof target === 'string'
       ? { pathname: target.split('?')[0], params: Object.fromEntries(new URLSearchParams(target.split('?')[1])) }
       : target;
-    if (['/trip/[id]', '/trip/event', '/trip/info'].includes(next.pathname)) setRoute(next);
+    if (['/trip/[id]', '/trip/event', '/trip/info', '/trip/people', '/trip/organiser'].includes(next.pathname)) setRoute(next);
   }, []);
   const previousRef = useRef<PreviewPayload | null>(null);
   useEffect(() => {
@@ -70,7 +72,9 @@ function Preview() {
         <Suspense fallback={<Loading />}>
           <MotionSettings reduced={data.reducedMotion} />
           {route.pathname === '/trip/event' ? <EventScreen key={route.params.eventId} />
-            : route.pathname === '/trip/info' ? <InfoScreen /> : <TripScreen key={data.trip.id} />}
+            : route.pathname === '/trip/info' ? <InfoScreen />
+            : route.pathname === '/trip/people' ? <PeopleScreen />
+            : route.pathname === '/trip/organiser' ? <OrganiserScreen /> : <TripScreen key={data.trip.id} />}
         </Suspense>
       </ErrorBoundary>
     </div>

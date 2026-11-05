@@ -301,10 +301,14 @@ function AppStack() {
           >
             <Stack.Screen name="join" options={glassSheetOptions} />
             <Stack.Screen name="notifications" options={glassSheetOptions} />
+            <Stack.Screen name="trip/people" options={glassSheetOptions} dangerouslySingular />
+            <Stack.Screen name="trip/organiser" options={{ ...glassSheetOptions, sheetAllowedDetents: [0.62] }} dangerouslySingular />
             <Stack.Screen name="edit-profile" options={glassSheetOptions} />
             {/* Joining: each step lands on the same photo in the same place, so they fade rather than slide */}
             <Stack.Screen name="shared/[tripId]" options={({ route }) => ((route.params as { join?: string } | undefined)?.join === "1" ? { animation: "fade" } : {})} />
-            <Stack.Screen name="trip/[id]" options={({ route }) => ((route.params as { arrived?: string } | undefined)?.arrived ? { animation: "fade" } : {})} />
+            {/* A double tap pushes twice; one screen per trip or event means the second tap lands on the one already open */}
+            <Stack.Screen name="trip/event" dangerouslySingular={(_name, params) => (typeof params.eventId === "string" ? params.eventId : undefined)} />
+            <Stack.Screen name="trip/[id]" dangerouslySingular={(_name, params) => (typeof params.id === "string" ? params.id : undefined)} options={({ route }) => ((route.params as { arrived?: string } | undefined)?.arrived ? { animation: "fade" } : {})} />
             <Stack.Screen
               name="tour"
               options={({ route }) => ({

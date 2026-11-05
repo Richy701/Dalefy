@@ -82,7 +82,7 @@ export function destinationFlag(destination?: string): string | null {
 }
 
 // ── Next event ───────────────────────────────────────────────────────────────
-function timeToMinutes(t?: string): number | null {
+export function timeToMinutes(t?: string): number | null {
   if (!t) return null;
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
   if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
@@ -93,6 +93,15 @@ function timeToMinutes(t?: string): number | null {
   if (pm && h < 12) h += 12;
   if (!pm && h === 12) h = 0;
   return h * 60 + parseInt(m[2]);
+}
+
+/** One day's events as the itinerary shows them: timed ones by time, untimed ones keep the organiser's place */
+export function inDayOrder<E extends { time: string }>(events: E[]): E[] {
+  const out = [...events];
+  const slots = out.map((e, i) => (timeToMinutes(e.time) == null ? -1 : i)).filter(i => i >= 0);
+  const timed = slots.map(i => out[i]).sort((a, b) => timeToMinutes(a.time)! - timeToMinutes(b.time)!);
+  slots.forEach((slot, k) => { out[slot] = timed[k]; });
+  return out;
 }
 
 /** The first event that has not started yet, in the device's local time. */

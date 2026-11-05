@@ -323,3 +323,18 @@ test('a leader gets everyone, under their names', () => {
   assert.deepEqual(view.events[0].travelerTickets, { a: '157111', b: 'SECRET_TICKET' });
   assert.equal(view.events[0].seatDetails, '14E');
 });
+
+const orgTrip = (published, working) => ({ status: 'Published', organizer: working, published_snapshot: { name: 'T', publishedAt: '2026-09-11T00:00:00Z', events: [], organizer: published } });
+test('organiser contact comes from the working copy when blank, only for the same person', () => {
+  const blank = orgTrip({ name: 'Laura Davies', email: '' }, { name: 'laura davies', email: 'l@x.test', phone: '+44 1' }).published_snapshot.organizer;
+  const view = working => publishedTripView('t', orgTrip(blank, working)).organizer;
+  assert.equal(view({ name: 'laura davies', email: 'l@x.test' }).email, 'l@x.test');
+  assert.equal(view({ name: 'Laura Davies', phone: ' +44 1 ' }).phone, '+44 1');
+  assert.equal(view({ name: 'Tony Marsh', email: 't@x.test', phone: '+44 2' }).email, '');
+  assert.equal(view({ name: 'Tony Marsh', email: 't@x.test', phone: '+44 2' }).phone, undefined);
+  assert.equal(publishedTripView('t', orgTrip({ name: 'Laura Davies', email: 'old@x.test', phone: '+44 9' }, { name: 'Laura Davies', email: 'new@x.test', phone: '+44 1' })).organizer.phone, '+44 9');
+  assert.equal(publishedTripView('t', orgTrip({ name: 'Laura Davies', email: 'old@x.test' }, { name: 'Laura Davies', email: 'new@x.test' })).organizer.email, 'old@x.test');
+  assert.equal(publishedTripView('t', orgTrip(null, { name: 'Laura Davies', email: 'l@x.test' })).organizer, null);
+  const leaked = JSON.stringify(publishedTripView('t', orgTrip(blank, { name: 'Laura Davies', budget: 'SECRET_BUDGET' })));
+  assert.equal(leaked.includes('SECRET'), false);
+});

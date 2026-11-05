@@ -1,6 +1,6 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
 import * as Haptics from "@/services/haptics";
-import { Phone, Envelope } from "phosphor-react-native";
+import { Phone, Envelope, CaretRight } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { Avatar } from "@/components/ui/Avatar";
 import type { TripOrganizer } from "@/shared/types";
@@ -9,9 +9,11 @@ interface OrganizerCardProps {
   organizer: TripOrganizer;
   C: ThemeColors;
   isLeader?: boolean;
+  /** Opens their details; leave out where there's no trip to open them from */
+  onPress?: () => void;
 }
 
-export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardProps) {
+export function OrganizerCard({ organizer, C, isLeader = false, onPress }: OrganizerCardProps) {
   const s = makeStyles(C);
 
   if (!organizer?.name?.trim()) return null;
@@ -34,7 +36,13 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
 
   return (
     <View style={s.card}>
-      <View style={s.topRow}>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        accessibilityRole={onPress ? "button" : undefined}
+        accessibilityHint={onPress ? "Shows their details" : undefined}
+        style={({ pressed }) => [s.topRow, { opacity: pressed ? 0.7 : 1 }]}
+      >
         <Avatar size={44} uri={organizer.avatar} initials={initials} />
 
         {/* Info */}
@@ -44,7 +52,8 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
             {["Your organiser", organizer.role, organizer.company].filter(Boolean).join(", ")}
           </Text>
         </View>
-      </View>
+        {onPress ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
+      </Pressable>
 
       {/* Action buttons — leader only */}
       {isLeader && (organizer.phone || organizer.email) && (

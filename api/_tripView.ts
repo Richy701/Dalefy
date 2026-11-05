@@ -56,6 +56,25 @@ function ownBookingRef(event: Data, travelerId: string | null): string | null {
 }
 
 /**
+ * How to reach the organiser is taken from the working copy when the published copy has none and it's still the same
+ * person. Saves used to blank a linked organiser's email there, and a number added later doesn't count as a change to
+ * publish. Never from anyone else: a replaced organiser's details wait for the next publish.
+ */
+function publishedOrganizer(published: unknown, working: unknown): Data | null {
+  const org = strings(published, ["name", "role", "company", "email", "phone", "avatar"]);
+  if (typeof org.name !== "string" || !org.name.trim()) return null;
+  const now = record(working);
+  const same = typeof now.name === "string" && now.name.trim().toLowerCase() === org.name.trim().toLowerCase();
+  if (same) {
+    for (const key of ["email", "phone"]) {
+      const value = now[key];
+      if (!String(org[key] ?? "").trim() && typeof value === "string" && value.trim()) org[key] = value.trim();
+    }
+  }
+  return org;
+}
+
+/**
  * Explicit allowlists keep new internal fields private by default.
  * linkedTravelerId is who a joined member picked; only a member's own value may be passed.
  */
@@ -121,9 +140,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     status: "Published",
     events,
     info,
-    organizer: typeof record(snap.organizer).name === "string" && String(record(snap.organizer).name).trim()
-      ? strings(snap.organizer, ["name", "role", "company", "email", "phone", "avatar"])
-      : null,
+    organizer: publishedOrganizer(snap.organizer, trip.organizer),
     documents: documents(snap.documents),
     // Names support the intentional itinerary-personalization picker; never expose emails.
     travelers: list(snap.travelers).map(v => strings(v, ["id", "name", "initials", "avatar"])),

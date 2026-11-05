@@ -1,8 +1,7 @@
 import {
   View, Text, ScrollView, Pressable,
   StyleSheet, RefreshControl, Platform, Share, Alert,
-  Dimensions, useWindowDimensions,
-} from "react-native";
+  Dimensions, useWindowDimensions, Image } from "react-native";
 // Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
 const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
 import Animated, {
@@ -10,6 +9,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
+import { airlineLogo } from "@/shared/airlineLogos";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { Avatar, avatarColor } from "@/components/ui/Avatar";
@@ -18,12 +18,12 @@ import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
-import { daysUntil, tripFactLine, shortDay, destinationFlag } from "@/shared/tripSummary";
+import { daysUntil, tripFactLine, shortDay, destinationFlag, nextEvent as findNextEvent, inDayOrder, timeToMinutes, todayKey } from "@/shared/tripSummary";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   CalendarDots,
-  Bell, Plus,
+  Bell, Plus, CaretRight,
   WifiSlash,
   Info, Export, Camera, ChatsTeardrop,
 } from "phosphor-react-native";
@@ -485,14 +485,24 @@ export default function HomeScreen() {
   const pastTrips = useMemo(() => otherTrips.filter(t => parseTripDate(t.end) < new Date()).reverse(), [otherTrips]);
 
   // The day the Itinerary card shows: today while travelling, otherwise the first day.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Finished events drop off without needing a reopen
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(tick);
+  }, []);
   const heroDay = useMemo(() => {
     if (!heroTrip) return { date: null as string | null, events: [] as TravelEvent[], dayCount: 0 };
     const dates = [...new Set(heroTrip.events.map(e => e.date))].sort();
-    const date = dates.includes(todayStr) ? todayStr : (dates.find(d => d >= todayStr) ?? dates[0] ?? null);
-    const events = date ? heroTrip.events.filter(e => e.date === date) : [];
-    return { date, events, dayCount: dates.length };
-  }, [heroTrip, todayStr]);
+    const today = todayKey();
+    const next = findNextEvent(heroTrip.events, now);
+    // The day of what's next; once a trip's last event has passed, its last day stays on show
+    const date = next?.date ?? (dates.includes(today) ? today : dates.find(d => d >= today) ?? dates[dates.length - 1] ?? null);
+    const day = date ? inDayOrder(heroTrip.events.filter(e => e.date === date)) : [];
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const ahead = date === today ? day.filter(e => { const m = timeToMinutes(e.time); return m == null || m >= nowMins; }) : day;
+    return { date, events: ahead.length ? ahead : day, dayCount: dates.length };
+  }, [heroTrip, now]);
   // Every calendar day of the trip for the day strip, with the day's first real event for its icon
   const tripDays = useMemo(() => {
     if (!heroTrip) return [] as { date: string; weekday: string; day: number; ev?: TravelEvent }[];
@@ -501,7 +511,7 @@ export default function HomeScreen() {
     for (let d = parseTripDate(heroTrip.start); d <= end && out.length < 60; d = new Date(d.getTime() + 86400000)) {
       const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       // Itinerary order, the same as the card above, so untimed days still lead with the right event
-      const ev = heroTrip.events.find(e => e.date === date);
+      const ev = inDayOrder(heroTrip.events.filter(e => e.date === date))[0];
       out.push({ date, weekday: d.toLocaleDateString("en-GB", { weekday: "short" }), day: d.getDate(), ev });
     }
     return out;
@@ -527,6 +537,10 @@ export default function HomeScreen() {
       sub: [flightNo && !place.includes(flightNo) ? flightNo : "", place].filter(Boolean).join(", "),
     };
   }, [nextEvent]);
+  // The airline's own mark on a flight; imported flights can carry the number only in the title
+  const nextLogo = nextEvent?.type === "flight"
+    ? airlineLogo((nextEvent.flightNum || nextEvent.title).match(/\b([A-Z0-9]{2})[\s-]?\d{1,4}\b/)?.[1])
+    : null;
   const NextIcon = nextEvent ? categoryIcon(nextEvent.type, nextEvent.transferType) : CalendarDots;
 
   // Latest photos — diversify across uploaders, then fill chronologically
@@ -697,8 +711,14 @@ export default function HomeScreen() {
                       </Text>
                       {hasTime(nextEvent) ? <Text style={styles.nextCountdown}>{nextEvent.time}</Text> : null}
                     </View>
-                    <Text style={styles.nextTitle} numberOfLines={2}>{nextHeadline.title}</Text>
-                    {nextHeadline.sub ? <Text style={styles.nextSub} numberOfLines={2}>{nextHeadline.sub}</Text> : null}
+                    <View style={styles.nextBody}>
+                      <View style={styles.nextText}>
+                        <Text style={styles.nextTitle} numberOfLines={2}>{nextHeadline.title}</Text>
+                        {nextHeadline.sub ? <Text style={styles.nextSub} numberOfLines={2}>{nextHeadline.sub}</Text> : null}
+                      </View>
+                      {nextLogo ? <Image source={nextLogo} accessible={false} style={styles.nextLogo} resizeMode="cover" /> : null}
+                      <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                    </View>
                   </Pressable>
 
                   <View style={styles.card}>
@@ -722,6 +742,7 @@ export default function HomeScreen() {
                           {rowSub(ev) ? <Text style={styles.evSub} numberOfLines={1}>{rowSub(ev)}</Text> : null}
                         </View>
                         {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
+                        <CaretRight size={14} color={C.textTertiary} weight="regular" />
                       </Pressable>
                     ))}
                     {/* Jump to any day of the trip; the day shown above is picked out */}
@@ -944,6 +965,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // ── Next up ──
     nextUp: { paddingHorizontal: S.md, gap: S.xs },
     nextMeta: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    nextBody: { flexDirection: "row", alignItems: "center", gap: S.sm2 },
+    nextText: { flex: 1, minWidth: 0, gap: S.xs },
+    nextLogo: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff" },
     nextLabel: { flex: 1, fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary },
     nextCountdown: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
     nextTitle: { fontSize: 24, lineHeight: 29, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },

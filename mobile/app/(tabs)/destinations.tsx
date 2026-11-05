@@ -20,7 +20,7 @@ function MapGlass({ style, children }: { style: StyleProp<ViewStyle>; children: 
     ? <GlassView glassEffectStyle="regular" style={[style, { overflow: "hidden" }]}>{children}</GlassView>
     : <View style={[style, { backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE }]}>{children}</View>;
 }
-import { Sun, Calendar, NavigationArrow, MapTrifold, WifiSlash } from "phosphor-react-native";
+import { Sun, Calendar, CaretRight, NavigationArrow, MapTrifold, WifiSlash } from "phosphor-react-native";
 import { WeatherIcon } from "@/components/ui/WeatherIcon";
 import { fetchCurrentWeather, type Weather } from "@/services/weather";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
@@ -654,6 +654,7 @@ export default function TodayScreen() {
                     ].filter(Boolean).join(", ")}
                   </Text>
                 </View>
+                <CaretRight size={14} color={C.textTertiary} weight="regular" />
               </View>
               {(nextFlightLive?.terminal || nextFlightLive?.gate || nextFlightLive?.status) ? (
                 <View style={[ps.flightMeta, { borderTopColor: C.border }]}>
@@ -729,6 +730,7 @@ export default function TodayScreen() {
                           {ev.location ? `, ${tidyLocation(ev.location)}` : ""}
                         </Text>
                       </View>
+                      <CaretRight size={14} color={C.textTertiary} weight="regular" />
                     </View>
                   </ScalePress>
                 </View>
@@ -761,6 +763,7 @@ export default function TodayScreen() {
                   <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={1}>{normaliseTitle(nextPlanned.title, nextPlanned.type, nextPlanned.transferType)}</Text>
                 </View>
                 {nextPlanned.time && !/^tb[acd]$/i.test(nextPlanned.time) ? <Text style={[ps.freeTime, { color: C.tealText }]}>{nextPlanned.time}</Text> : null}
+                <CaretRight size={14} color={C.textTertiary} weight="regular" />
               </ScalePress>
             ) : null}
           </View>

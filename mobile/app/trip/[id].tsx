@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
-import { CaretLeft, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
+import { CaretLeft, CaretRight, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
 import type { NativeSyntheticEvent, ScrollViewInstance } from "react-native";
 import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
@@ -497,7 +497,14 @@ export default function TripScreen() {
             <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
 
             {/* A hosted group, not a solo plan: who is coming and who is looking after them */}
-            <View style={styles.groupRow}>
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/people", params: { tripId: trip.id } }); }}
+              disabled={travellers.length === 0}
+              accessibilityRole={travellers.length > 0 ? "button" : undefined}
+              accessibilityHint={travellers.length > 0 ? "Shows everyone on this trip" : undefined}
+              hitSlop={8}
+              style={({ pressed }) => [styles.groupRow, { opacity: pressed ? 0.7 : 1 }]}
+            >
               {travellers.length > 0 && (
                 <View style={styles.avatars}>
                   {/* Faces first: the row holds five, so people with a photo lead and initials fill the rest */}
@@ -517,7 +524,8 @@ export default function TripScreen() {
                 {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"}, ` : ""}Hosted by {brand.name}
               </Text>
               {brand.logoUrl ? <Image source={{ uri: brand.logoUrl }} style={styles.hostLogo} accessible={false} /> : null}
-            </View>
+              {travellers.length > 0 ? <CaretRight size={14} color="rgba(255,255,255,0.85)" weight="regular" /> : null}
+            </Pressable>
           </Animated.View>
         </View>
 
@@ -554,6 +562,7 @@ export default function TripScreen() {
                   {upNext.location ? tidyTitleSeparators(upNext.location) : ""}
                 </Text>
               </View>
+              <CaretRight size={14} color={C.textTertiary} weight="regular" />
             </Pressable>
             {upNext.type === "flight" ? (
               <Pressable
@@ -592,6 +601,7 @@ export default function TripScreen() {
             ? { ...trip.organizer, avatar: trip.travelers?.find(t => t.name.trim().toLowerCase() === trip.organizer!.name.trim().toLowerCase())?.avatar }
             : trip.organizer}
           onAsk={() => router.push({ pathname: "/trip/ask", params: { tripId: trip.id } })}
+          onOrganizer={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })}
         />
 
         {isCoordinator ? <OverseeingCard trip={trip} C={C} /> : null}
@@ -669,8 +679,12 @@ export default function TripScreen() {
                           onPress={() => { router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                           accessibilityRole="button"
                           accessibilityLabel={`${cleanTitle(ev.title)}${isPlaceholderTime(ev.time) ? "" : `, ${ev.time}`}`}
-                          onLayout={e => { evRowMid.current[ev.id] = e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2; syncDot(ev.id); }}
-                          style={({ pressed }) => [styles.tlRow, { backgroundColor: pressed ? C.elevated : "transparent" }]}
+                          style={({ pressed }) => ({ backgroundColor: pressed ? C.elevated : "transparent" })}
+                        >
+                        {/* The whole block is one tap, a flight's airport lines included; the rail's dots line up with this top row */}
+                        <View
+                          onLayout={e => { evRowMid.current[ev.id] = (i > 0 ? StyleSheet.hairlineWidth : 0) + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2; syncDot(ev.id); }}
+                          style={styles.tlRow}
                         >
                           <CategoryDot palette={C} base={photoPage ? "transparent" : undefined} type={ev.type} transferType={ev.transferType} size={DOT} />
                           <View style={{ flex: 1 }}>
@@ -684,7 +698,8 @@ export default function TripScreen() {
                           {ev.time && !isPlaceholderTime(ev.time) ? (
                             <Text style={styles.tlTime}>{ev.time}</Text>
                           ) : null}
-                        </Pressable>
+                          <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                        </View>
 
                         {/* Flights expand into departure and arrival */}
                         {ev.type === "flight" && (ev.depAirport || ev.arrAirport) ? (
@@ -705,6 +720,7 @@ export default function TripScreen() {
                             </View>
                           </View>
                         ) : null}
+                        </Pressable>
                       </View>
                     ))}
                   </View>

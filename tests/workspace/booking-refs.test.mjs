@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookableEvents, connectingLegs, flightNumberOf, matchBookingRows, parseBookingTable, parseRefsPaste } from '../../src/lib/bookingRefs.ts';
+import { bookableEvents, connectingLegs, flightNumberOf, matchBookingRows, parseBookingTable, parseRefsPaste, suggestTraveller } from '../../src/lib/bookingRefs.ts';
 
 const flight = (id, date, depAirport, arrAirport, extra = {}) => ({ id, type: 'flight', date, depAirport, arrAirport, ...extra });
 const ids = list => list.map(item => item.id);
@@ -129,4 +129,13 @@ test('a flight number only in the title still counts, for logos and for matching
   assert.equal(flightNumberOf({ type: 'flight', title: 'A380 service QR10' }), 'QR10');
   const row = { passenger: 'Jordan Fell', flight: 'QR0847', bookingRef: 'R', ticketNumber: '', seat: '1A' };
   assert.equal(matchBookingRows([row], [titled], pax).filled[0].eventId, 'q');
+});
+
+test('a suggestion needs exactly one traveller with that surname', () => {
+  const people = [{ id: 'tony', name: 'Tony Griffiths' }, { id: 'ann', name: 'Ann Lee' }, { id: 'bob', name: 'Bob Lee' }];
+  assert.equal(suggestTraveller('Anthony Howard Griffiths', people)?.id, 'tony');
+  assert.equal(suggestTraveller('GRIFFITHS/ANTHONY MR', people)?.id, 'tony');
+  assert.equal(suggestTraveller('Michael Lee', people), null);
+  assert.equal(suggestTraveller('Nobody Known', people), null);
+  assert.equal(suggestTraveller('', people), null);
 });

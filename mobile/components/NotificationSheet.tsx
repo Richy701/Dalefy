@@ -16,6 +16,7 @@ import {
   Bell, Trash, AirplaneLanding, AirplaneTakeoff,
   Warning, Bed, ForkKnife, CalendarDots, Car, Check,
   CheckCircle,
+  CaretRight,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -285,6 +286,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
                   </Text>
                 )}
               </View>
+              {navigable ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
             </View>
           </Pressable>
         </ContextMenu>

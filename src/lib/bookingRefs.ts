@@ -140,6 +140,21 @@ export function matchBookingRows(
   return result;
 }
 
+/**
+ * Who a name in a booking table might be: airlines print middle names and formal names, so "Anthony Howard Griffiths"
+ * is often "Tony Griffiths". Only ever a suggestion for the organiser to confirm, and only when one surname fits.
+ */
+export function suggestTraveller<T extends { name: string }>(name: string, travellers: T[]): T | null {
+  const surnameOf = (full: string) => {
+    // Airline style puts the surname first: GRIFFITHS/ANTHONY MR
+    const words = full.split("/")[0].trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return words[words.length - 1] ?? "";
+  };
+  const surname = surnameOf(name);
+  const fits = surname ? travellers.filter(t => surnameOf(t.name) === surname) : [];
+  return fits.length === 1 ? fits[0] : null;
+}
+
 const FLIGHT_CELL = /^[A-Z0-9]{2}[A-Z]?[\s-]*\d{1,4}$/i;
 
 /**

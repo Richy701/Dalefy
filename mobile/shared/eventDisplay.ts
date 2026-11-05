@@ -61,3 +61,30 @@ export function travellerBookingRows(ev: Pick<TravelEvent, "travelerRefs" | "tra
     };
   });
 }
+
+/** "4" or "T4" alone doesn't say what it is: "Terminal 4". Names read naturally: "North terminal". */
+export function terminalLabel(name: string): string {
+  const t = name.trim();
+  if (/terminal/i.test(t)) return t;
+  return /^(t\s*)?\d+[a-z]?$|^[a-z]$/i.test(t) ? `Terminal ${t.replace(/^t\s*/i, "")}` : `${t} terminal`;
+}
+
+const clockMinutes = (time?: string) => {
+  const m = (time ?? "").trim().match(/^(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
+/** Minutes from one clock time to a later one, across days if needed; null when either isn't a real time or it isn't later */
+export function minutesBetween(fromDate: string, fromTime: string | null | undefined, toDate: string, toTime: string | null | undefined): number | null {
+  const a = clockMinutes(fromTime ?? ""), b = clockMinutes(toTime ?? "");
+  if (a == null || b == null) return null;
+  const days = Math.round((Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000);
+  const gap = days * 1440 + b - a;
+  return Number.isFinite(gap) && gap > 0 ? gap : null;
+}
+
+export function gapText(minutes: number): string {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
+}
+

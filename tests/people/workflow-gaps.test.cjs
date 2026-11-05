@@ -42,3 +42,14 @@ test('the same trip data with fields in another order is not a conflict',()=>{
  const before={info:[{id:'i',title:'A',body:'x'}]};const current={info:[{body:'x',title:'A',id:'i'}]};
  assert.deepEqual(save.tripPatch(before,{info:[{id:'i',title:'B',body:'x'}]},current),{info:[{id:'i',title:'B',body:'x'}]});
 });
+
+test('saving keeps a linked organiser\'s email on the published copy, whose traveller list has no emails', () => {
+ const person={id:'laura',name:'Laura Davies',email:'laura@example.com',avatar:'a.png'};
+ const published={travelers:[{id:'laura',name:'Laura Davies',avatar:'a.png'}],organizer:{travelerId:'laura',name:'Laura Davies',email:'laura@example.com',avatar:'a.png'}};
+ const out=save.syncLinkedOrganizer({travelers:[person],organizer:published.organizer,published_snapshot:published});
+ assert.equal(out.published_snapshot.organizer.email,'laura@example.com');
+ assert.equal(out.organizer.email,'laura@example.com');
+ assert.equal('email' in out.published_snapshot.travelers[0],false);
+ const removed=save.syncLinkedOrganizer({travelers:[{...person,email:''}],organizer:published.organizer,published_snapshot:published});
+ assert.equal(removed.organizer.email,'');
+});

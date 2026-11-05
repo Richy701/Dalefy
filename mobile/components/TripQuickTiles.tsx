@@ -1,8 +1,6 @@
 import { useMemo } from "react";
-import { View, Text, StyleSheet, Linking, Platform, Alert } from "react-native";
-// Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
-const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
-import { FileText, ChatsTeardrop } from "phosphor-react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { CaretRight, FileText, ChatsTeardrop } from "phosphor-react-native";
 import * as Haptics from "@/services/haptics";
 import { ScalePress } from "@/components/ScalePress";
 import { Avatar } from "@/components/ui/Avatar";
@@ -10,39 +8,21 @@ import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TripOrganizer } from "@/shared/types";
 
 /** Trip info (stays, notes, documents), the organiser and the trip concierge, near the top of the itinerary. */
-export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk }: {
+export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk, onOrganizer }: {
   C: ThemeColors;
   docCount: number;
   onDocs: () => void;
   organizer?: TripOrganizer | null;
   onAsk?: () => void;
+  onOrganizer?: () => void;
 }) {
   const s = useMemo(() => makeStyles(C), [C]);
   const org = organizer?.name?.trim() ? organizer : null;
   if (!docCount && !org && !onAsk) return null;
 
   const initials = org ? org.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("") : "";
-  // Only the ways the organiser actually left
-  const contacts = org ? [
-    org.phone ? { label: "Call", url: `tel:${org.phone}` } : null,
-    org.phone ? { label: "Message", url: `sms:${org.phone}` } : null,
-    org.email ? { label: "Email", url: `mailto:${org.email}` } : null,
-  ].filter(Boolean) as { label: string; url: string }[] : [];
-
-  const contact = () => {
-    if (!org || !contacts.length) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const open = (url: string) => Linking.openURL(url).catch(() => {});
-    const title = [org.name, org.company].filter(Boolean).join(", ");
-    if (ActionSheetIOS) {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { title, options: [...contacts.map(c => c.label), "Cancel"], cancelButtonIndex: contacts.length },
-        (i) => { if (i < contacts.length) open(contacts[i].url); },
-      );
-    } else {
-      Alert.alert(title, undefined, [...contacts.map(c => ({ text: c.label, onPress: () => open(c.url) })), { text: "Cancel", style: "cancel" as const }]);
-    }
-  };
+  // Says what it does only when there's a way to reach them; either way it opens who they are
+  const reachable = !!(org?.phone?.trim() || org?.email?.trim());
 
   const askTile = onAsk ? (
     <ScalePress
@@ -59,7 +39,8 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk }: {
         <Text style={s.title} numberOfLines={1}>Ask Dale</Text>
         <Text style={s.sub} numberOfLines={1}>Quick answers</Text>
       </View>
-    </ScalePress>
+      <CaretRight size={14} color={C.textTertiary} weight="regular" />
+        </ScalePress>
   ) : null;
   const paired = (docCount > 0 ? 1 : 0) + (org ? 1 : 0);
 
@@ -81,22 +62,24 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk }: {
             <Text style={s.title} numberOfLines={1}>Trip info</Text>
             <Text style={s.sub} numberOfLines={1}>All the details</Text>
           </View>
+          <CaretRight size={14} color={C.textTertiary} weight="regular" />
         </ScalePress>
       ) : null}
       {org ? (
         <ScalePress
-          activeScale={contacts.length ? 0.97 : 1}
-          onPress={contacts.length ? contact : undefined}
-          disabled={!contacts.length}
-          accessibilityRole={contacts.length ? "button" : undefined}
-          accessibilityLabel={`${org.name}, your organiser${contacts.length ? `, ${contacts.map(c => c.label.toLowerCase()).join(" or ")}` : ""}`}
+          activeScale={0.97}
+          onPress={() => { Haptics.selectionAsync(); onOrganizer?.(); }}
+          accessibilityRole="button"
+          accessibilityLabel={`${org.name}, your organiser`}
+          accessibilityHint="Shows their details"
           style={s.tile}
         >
           <Avatar size={36} uri={org.avatar} initials={initials} />
           <View style={s.text}>
             <Text style={s.title} numberOfLines={1}>{org.name}</Text>
-            <Text style={s.sub} numberOfLines={1}>{contacts.length ? "Get in touch" : org.company || "Your organiser"}</Text>
+            <Text style={s.sub} numberOfLines={1}>{reachable ? "Get in touch" : org.company || "Your organiser"}</Text>
           </View>
+          <CaretRight size={14} color={C.textTertiary} weight="regular" />
         </ScalePress>
       ) : null}
       {/* Ask fills the second half beside a lone tile, or takes its own row under a full pair */}

@@ -17,20 +17,20 @@ const SCALE = 1.12;
 // Dark enough that white text at 0.75 stays above 4.5:1 even over a bright photo
 const SHADE = "rgba(8,8,10,0.66)";
 
-function BlurredPhoto({ uri }: { uri: string }) {
+function BlurredPhoto({ uri, shade = SHADE }: { uri: string; shade?: string }) {
   return (
     <>
       <CachedImage uri={uri} blurRadius={BLUR} transition={0} style={[StyleSheet.absoluteFill, { transform: [{ scale: SCALE }] }]} accessible={false} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: SHADE }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: shade }]} />
     </>
   );
 }
 
 /** Full-page backdrop; place first inside the screen's root view. */
-export function PhotoBackdrop({ uri }: { uri: string }) {
+export function PhotoBackdrop({ uri, shade }: { uri: string; shade?: string }) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <BlurredPhoto uri={uri} />
+      <BlurredPhoto uri={uri} shade={shade} />
     </View>
   );
 }
@@ -40,7 +40,7 @@ export function PhotoBackdrop({ uri }: { uri: string }) {
  * Pass the page's scroll offset: the backdrop stays put while the hero scrolls, so the copy here moves back down
  * by the same amount to stay lined up with it, or a seam shows at the hero's bottom edge.
  */
-export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedValue<number> }) {
+export function PhotoDissolve({ uri, scrollY, shade }: { uri: string; scrollY?: SharedValue<number>; shade?: string }) {
   const { height } = useWindowDimensions();
   const follow = useAnimatedStyle(() => ({ transform: [{ translateY: Math.max(0, scrollY?.value ?? 0) }] }));
   return (
@@ -50,7 +50,7 @@ export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedV
       maskElement={<LinearGradient colors={["transparent", "rgba(0,0,0,0.5)", "#000"]} locations={[0.55, 0.8, 1]} style={{ flex: 1 }} />}
     >
       <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, height }, follow]}>
-        <BlurredPhoto uri={uri} />
+        <BlurredPhoto uri={uri} shade={shade} />
       </Animated.View>
     </MaskedView>
   );

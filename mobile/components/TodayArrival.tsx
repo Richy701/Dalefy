@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { Suitcase, Phone } from "phosphor-react-native";
+import { Suitcase, Phone, CaretRight } from "phosphor-react-native";
 import type { TravelEvent } from "@/shared/types";
 import { eventTiming } from "@/shared/today";
 import { tidyLocation } from "@/shared/eventTitle";
@@ -121,6 +121,7 @@ export function ArrivalSection({ tripId, flight, live, landedAt, then, place, ti
               {[terminal ? `Terminal ${terminal}` : "", flight.flightNum ?? "", `landed ${clock(landedAt)}`].filter(Boolean).join(", ")}
             </Text>
           </View>
+          <CaretRight size={14} color={C.textTertiary} weight="regular" />
         </View>
       </ScalePress>
       {then ? (

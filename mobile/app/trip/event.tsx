@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
-import { travellerRefRows, travellerBookingRows } from "@/shared/eventDisplay";
+import { travellerRefRows, travellerBookingRows, terminalLabel, minutesBetween, gapText } from "@/shared/eventDisplay";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -95,7 +95,13 @@ function passFill(hex: string): [string, string] {
 }
 const EV_PHOTO_H = 260;
 // Photo pages: tall enough that the photo itself shows before it melts into the blur
-const EV_PHOTO_PAGE_H = 400;
+const EV_PHOTO_PAGE_H = 320;
+// Event pages are for reading, so the blur sits darker here than on Home
+const EV_SHADE = "rgba(8,8,10,0.76)";
+// Organisers write whole instructions as titles: the longer it is, the quieter it gets, so it doesn't push the time away
+const titleSize = (title: string) => (title.length > 60 ? { fontSize: 22, lineHeight: 28 } : title.length > 34 ? { fontSize: 24, lineHeight: 30 } : null);
+// A bare number from an organiser's document means minutes
+const durationText = (d?: string) => (d && /^\d+$/.test(d.trim()) ? `${d.trim()} min` : d || null);
 const LOGO_PLATE = "#fff";
 const LOGO_INK = "#111";
 
@@ -530,6 +536,7 @@ export default function EventDetailScreen() {
     { label: "Before", e: dayIdx > 0 ? dayEvents[dayIdx - 1] : null },
     { label: "Up next", e: dayIdx >= 0 && dayIdx < dayEvents.length - 1 ? dayEvents[dayIdx + 1] : null },
   ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
+  const upNextEvent = neighbours.some(n => n.label === "Up next");
   const goToEvent = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace({ pathname: "/trip/event", params: { tripId: trip.id, eventId: id } });
@@ -537,7 +544,7 @@ export default function EventDetailScreen() {
 
   return (
     <View style={[styles.safe, photoPage && { backgroundColor: "#000" }]}>
-      {photoPage && <PhotoBackdrop uri={backdropImage!} />}
+      {photoPage && <PhotoBackdrop uri={backdropImage!} shade={EV_SHADE} />}
       <Stack.Screen options={{
         headerShown: true,
         title: typeLabel,
@@ -577,7 +584,7 @@ export default function EventDetailScreen() {
                 <>
                   <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={heroPosition(ev.imagePosition)} accessible={false} />
                   <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-                  <PhotoDissolve uri={ev.image!} scrollY={scrollY} />
+                  <PhotoDissolve uri={ev.image!} scrollY={scrollY} shade={EV_SHADE} />
                 </>
               ) : (
                 <PhotoBlend>
@@ -587,7 +594,7 @@ export default function EventDetailScreen() {
             </Animated.View>
           </View>
         ) : (
-          <View style={{ height: insets.top + 52 }} />
+          <View style={{ height: insets.top + 52 + 28 }} />
         )}
 
         {/* Title block: the date and a time slot first (TBC holds its place), then the title */}
@@ -598,20 +605,31 @@ export default function EventDetailScreen() {
             </View>
           )}
           {/* The title leads; when it happens sits under it as one line */}
-          <Text style={[styles.heroTitle, { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
-          {!isHotel && (
-            <Text style={[styles.whenLine, { color: C.textSecondary }]}>
-              {[
-                ev.date ? formatLongDate(ev.date) : null,
-                ev.date ? daysAgoText(ev.date) : null,
-                whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
-                ev.duration || null,
-              ].filter(Boolean).join(", ")}
-            </Text>
-          )}
-          {!isHotel && whenText ? <Text style={[styles.timeBig, { color: C.textPrimary }]}>{whenText}</Text> : null}
+          <Text style={[styles.heroTitle, titleSize(isHotel ? stayName : title), { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
           {isHotel && stayDetail ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{stayDetail}</Text> : null}
-          {liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
+          {isHotel && liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
+          {/* When, on its own card: the first thing someone opening this on the day is looking for */}
+          {!isHotel && (
+            <View style={[styles.whenCard, { backgroundColor: C.elevated }]} accessible accessibilityLabel={[whenText, ev.date ? formatLongDate(ev.date) : null, durationText(ev.duration), liveLine].filter(Boolean).join(", ")}>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                {whenText ? <Text style={[styles.timeBig, { color: C.textPrimary }]}>{whenText}</Text> : null}
+                <Text style={[styles.whenLine, { color: whenText ? C.textSecondary : C.textPrimary }]}>
+                  {[
+                    ev.date ? formatLongDate(ev.date) : null,
+                    ev.date ? daysAgoText(ev.date) : null,
+                    whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
+                    durationText(ev.duration),
+                  ].filter(Boolean).join(", ")}
+                </Text>
+              </View>
+              {liveLine ? (
+                <View style={{ alignItems: "flex-end", gap: 2 }}>
+                  <Text style={[styles.whenLine, { color: C.textSecondary }]}>{endsIn ? "Ends in" : "Starts in"}</Text>
+                  <Text style={[styles.whenCountdown, { color: C.tealText }]}>{endsIn || startsIn}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
         </View>
 
         {/* Hotel: check in and check out side by side */}
@@ -776,40 +794,47 @@ export default function EventDetailScreen() {
           </Animated.View>
         )}
 
-        {/* Before / up next on the same day */}
+        {/* What's next that day; what came before follows it, under its own label */}
         {neighbours.length > 0 && (
           <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
-            <Text style={[styles.sectionLabel, { paddingHorizontal: S.md }]}>On this day</Text>
-            {neighbours.map(({ label, e }, i) => (
-              <Pressable
-                key={e.id}
-                onPress={() => goToEvent(e.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`${label}: ${cleanEventTitle(e.title, e.type, e.transferType)}`}
-                style={({ pressed }) => [
-                  styles.detailListRow,
-                  { alignItems: "center", backgroundColor: pressed ? C.elevated : "transparent" },
-                  i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
-                ]}
-              >
-                <CategoryDot palette={C} type={e.type} transferType={e.transferType} size={28} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{label}</Text>
-                  <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={1}>
-                    {e.type === "hotel" ? cleanEventTitle(e.title, e.type, e.transferType).split(" – ")[0] : cleanEventTitle(e.title, e.type, e.transferType)}
-                  </Text>
-                </View>
-                {e.time ? <Text style={{ fontSize: T.sm, color: /^tb[acd]$/i.test(e.time) ? C.textTertiary : C.tealText, fontWeight: T.medium, fontVariant: ["tabular-nums"] }}>{/^tb[acd]$/i.test(e.time) ? "TBC" : e.time}</Text> : null}
-                <CaretRight size={14} color={C.textTertiary} weight="regular" />
-              </Pressable>
-            ))}
+            <Text style={[styles.sectionLabel, { paddingHorizontal: S.md }]}>{upNextEvent ? "Next" : "Before"}</Text>
+            {[...neighbours].sort((a, b) => Number(b.label === "Up next") - Number(a.label === "Up next")).map(({ label, e }, i) => {
+              const isNext = label === "Up next";
+              const logo = e.type === "flight" ? airlineLogo((e.flightNum || e.title).match(/\b([A-Z0-9]{2})[\s-]?\d{1,4}\b/)?.[1]) : null;
+              const gap = isNext ? minutesBetween(ev.endDate || ev.date, ev.endTime || ev.time, e.date, e.time) : null;
+              const sub = [e.type === "flight" ? e.flightNum?.trim() : null, gap != null ? `${gapText(gap)} after this` : null].filter(Boolean).join(", ");
+              const name = e.type === "hotel" ? cleanEventTitle(e.title, e.type, e.transferType).split(" – ")[0] : cleanEventTitle(e.title, e.type, e.transferType);
+              return (
+                <Pressable
+                  key={e.id}
+                  onPress={() => goToEvent(e.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${isNext ? "Next" : "Before"}: ${name}${sub ? `, ${sub}` : ""}`}
+                  style={({ pressed }) => [
+                    styles.detailListRow,
+                    { alignItems: "center", backgroundColor: pressed ? C.elevated : "transparent" },
+                    i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
+                  ]}
+                >
+                  {logo ? <Image source={logo} accessible={false} style={styles.nextLogo} resizeMode="cover" /> : <CategoryDot palette={C} type={e.type} transferType={e.transferType} size={28} />}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    {/* The heading says it when there's only one kind of row */}
+                    {!isNext && upNextEvent ? <Text style={{ fontSize: T.sm, color: C.textTertiary }}>Before</Text> : null}
+                    <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={2}>{name}</Text>
+                    {sub ? <Text style={{ fontSize: T.sm, color: C.textSecondary, marginTop: 1 }} numberOfLines={1}>{sub}</Text> : null}
+                  </View>
+                  {e.time ? <Text style={{ fontSize: T.sm, color: /^tb[acd]$/i.test(e.time) ? C.textTertiary : C.tealText, fontWeight: T.medium, fontVariant: ["tabular-nums"] }}>{/^tb[acd]$/i.test(e.time) ? "TBC" : e.time}</Text> : null}
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                </Pressable>
+              );
+            })}
           </Animated.View>
         )}
 
         {/* Organiser contact */}
         {trip.organizer && (
           <Animated.View style={{ marginTop: -S.sm, marginBottom: S.md }}>
-            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />
+            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} />
           </Animated.View>
         )}
       </Animated.ScrollView>
@@ -976,6 +1001,10 @@ function FlightDetailScreen({
       time: known(e.time),
       onPress: () => router.replace({ pathname: "/trip/event", params: { tripId: trip.id, eventId: e.id } }),
     });
+    // The next flight leaving from where this one lands: how long there is to change planes
+    const onward = after[0]?.type === "flight" && (!after[0].depAirport || !arrCode || after[0].depAirport === arrCode) ? after[0] : null;
+    const layover = onward ? minutesBetween(ev.endDate || ev.date, arrTime, onward.date, known(onward.time)) : null;
+    const connection = layover != null && layover < 24 * 60 ? `${gapText(layover)} to change planes${arrCity ? ` in ${arrCity}` : ""}` : null;
     const flightLeg = [dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""} in the air` : null, distance ? `${distance.toLocaleString()} km` : null].filter(Boolean).join(", ");
     return [
       ...before.map(toEvent),
@@ -983,7 +1012,7 @@ function FlightDetailScreen({
         key: "depart",
         icon: <CategoryDot type="flight" size={28} base={C.bg} />,
         title: `Depart ${depCity || depAirportName || depCode || "origin"}`,
-        sub: [depTerminal ? `${depTerminal}${/^\d|^[A-Z]$/.test(depTerminal) ? "" : " terminal"}` : null, `gate ${live?.gate || ev.gate || "TBC"}`].filter(Boolean).join(", "),
+        sub: [depTerminal ? terminalLabel(depTerminal) : null, `gate ${live?.gate || ev.gate || "TBC"}`].filter(Boolean).join(", "),
         note: flightLeg || undefined,
         time: depTime || null,
         dashed: true,
@@ -992,7 +1021,8 @@ function FlightDetailScreen({
         key: "arrive",
         icon: <CategoryDot type="flight" size={28} base={C.bg} />,
         title: `Arrive ${arrCity || arrAirportName || arrCode || "destination"}`,
-        sub: arrTz ? `Local time ${arrTz.abbr || arrTz.offset}` : undefined,
+        sub: arrTz ? `${arrCity || arrAirportName || arrCode} local time` : undefined,
+        note: connection ?? undefined,
         time: arrTime || null,
       },
       ...after.map(toEvent),
@@ -1213,7 +1243,7 @@ function FlightDetailScreen({
                   </View>
                   <View style={fs.jBody}>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[fs.jTitle, { color: C.textPrimary }]} numberOfLines={2}>{step.title}</Text>
+                      <Text style={[fs.jTitle, { color: C.textPrimary }]}>{step.title}</Text>
                       {step.sub ? <Text style={[fs.jSub, { color: C.textSecondary }]} numberOfLines={2}>{step.sub}</Text> : null}
                       {step.note ? <Text style={[fs.jNote, { color: C.textTertiary }]}>{step.note}</Text> : null}
                     </View>
@@ -1223,7 +1253,7 @@ function FlightDetailScreen({
               ))}
             </View>
 
-            {trip?.organizer && <View style={{ marginHorizontal: -S.md }}><OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} /></View>}
+            {trip?.organizer && <View style={{ marginHorizontal: -S.md }}><OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} /></View>}
 
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
@@ -1339,8 +1369,10 @@ function makeStyles(C: ThemeColors) {
     heroBody: { paddingHorizontal: S.md, paddingBottom: S.md, gap: S.xs },
     heroTypeRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
     titleBlock: { paddingHorizontal: S.md, paddingBottom: S.lg, gap: 4 },
-    whenLine: { fontSize: T.base, lineHeight: 22, marginTop: S.xs },
-    timeBig: { fontSize: 32, fontWeight: T.bold, letterSpacing: -0.8, fontVariant: ["tabular-nums"] },
+    whenCard: { flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.md, paddingHorizontal: S.md, paddingVertical: S.sm2, borderRadius: R.xl },
+    whenLine: { fontSize: T.sm, lineHeight: 20 },
+    whenCountdown: { fontSize: T.md, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
+    timeBig: { fontSize: 30, lineHeight: 36, fontWeight: T.bold, letterSpacing: -0.6, fontVariant: ["tabular-nums"] },
     stayRow: { flexDirection: "row", alignItems: "center", marginHorizontal: S.md, marginBottom: S.lg, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
     stayDivider: { width: StyleSheet.hairlineWidth, alignSelf: "stretch", marginHorizontal: S.md },
     stayLabel: { fontSize: T.sm },
@@ -1355,7 +1387,7 @@ function makeStyles(C: ThemeColors) {
     routePlace: { fontSize: T.md, fontWeight: T.medium },
     sectionLabel: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2, marginBottom: S.xs },
     heroType: { fontSize: T.sm, fontWeight: T.medium, flex: 1 },
-    heroTitle: { fontSize: 28, lineHeight: 33, fontWeight: T.bold, letterSpacing: -0.4 },
+    heroTitle: { fontSize: 28, lineHeight: 33, fontWeight: T.semibold, letterSpacing: -0.3 },
     heroFact: { fontSize: T.base, fontWeight: T.medium },
 
     locationCard: {
@@ -1385,7 +1417,8 @@ function makeStyles(C: ThemeColors) {
       marginBottom: S.lg,
       paddingHorizontal: S.md,
     },
-    infoValue: { fontSize: T.sm, lineHeight: 20, fontWeight: T.regular },
+    nextLogo: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#fff" },
+    infoValue: { fontSize: T.base, lineHeight: 23, fontWeight: T.regular },
 
     detailListRow: {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,
