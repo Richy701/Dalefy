@@ -524,7 +524,7 @@ export default function TripScreen() {
                 {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"}, ` : ""}Hosted by {brand.name}
               </Text>
               {brand.logoUrl ? <Image source={{ uri: brand.logoUrl }} style={styles.hostLogo} accessible={false} /> : null}
-              {travellers.length > 0 ? <CaretRight size={14} color="rgba(255,255,255,0.85)" weight="regular" /> : null}
+              {travellers.length > 0 ? <CaretRight size={14} color="rgba(255,255,255,0.85)" weight="regular" style={{ flexShrink: 0 }} /> : null}
             </Pressable>
           </Animated.View>
         </View>
@@ -849,8 +849,8 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
     },
     flag: { fontSize: 24, lineHeight: 30 },
-    groupRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.sm },
-    avatars: { flexDirection: "row", alignItems: "center" },
+    groupRow: { maxWidth: "100%", flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.sm },
+    avatars: { flexShrink: 0, flexDirection: "row", alignItems: "center" },
     // Every circle opaque, photo or initials, so a stack of headshots and fallbacks reads as one row
     avatarSlot: { borderRadius: 13, backgroundColor: "rgba(255,255,255,0.92)" },
     avatarMore: {
@@ -860,7 +860,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
     },
     avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "rgba(0,0,0,0.82)" },
     groupText: { fontSize: T.sm, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.94)" : C.textPrimary, flexShrink: 1 },
-    hostLogo: { width: 16, height: 16, borderRadius: 4 },
+    hostLogo: { flexShrink: 0, width: 16, height: 16, borderRadius: 4 },
 
     // Next up
     // Boxless: sections sit on the page, rows at the standard 16pt gutter
