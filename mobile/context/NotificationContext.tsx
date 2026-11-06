@@ -87,7 +87,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!loaded) return;
     syncInbox();
     const sub = AppState.addEventListener("change", state => { if (state === "active") syncInbox(); });
-    return () => sub.remove();
+    const timer = setInterval(() => { if (AppState.currentState === "active") syncInbox(); }, 60_000);
+    return () => { sub.remove(); clearInterval(timer); };
   }, [loaded, syncInbox]);
 
   const unreadCount = notifications.filter(n => !n.read).length;

@@ -82,6 +82,7 @@ export interface TravelEvent {
 }
 
 export interface TripMedia {
+  likes?: { uid: string; name: string }[];
   id: string;
   type: "image" | "video";
   name: string;
@@ -251,4 +252,5 @@ export interface Notification {
   infoId?: string;
   /** In the server's push log, so it comes back on any phone and survives the daily reset */
   logged?: boolean;
+  mediaId?: string;
 }

@@ -338,3 +338,14 @@ test('organiser contact comes from the working copy when blank, only for the sam
   const leaked = JSON.stringify(publishedTripView('t', orgTrip(blank, { name: 'Laura Davies', budget: 'SECRET_BUDGET' })));
   assert.equal(leaked.includes('SECRET'), false);
 });
+
+test('app gallery URLs merge and delete with the same account and trip ownership checks', () => {
+  const photo = { ...item('me', 'app-photo'), url: url('me', 'member_app-photo') };
+  const merged = mergeTravelerMedia([], [photo], [], 'me', 'trip', 'test-bucket');
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].uploaderId, 'me');
+  assert.throws(() => mergeTravelerMedia([], [photo], [], 'other', 'trip', 'test-bucket'), /belong/);
+  assert.throws(() => mergeTravelerMedia([], [photo], [], 'me', 'other-trip', 'test-bucket'), /belong/);
+  assert.equal(mergeTravelerMedia(merged, [], ['app-photo'], 'me', 'trip', 'test-bucket').length, 0);
+  assert.throws(() => mergeTravelerMedia(merged, [], ['app-photo'], 'other', 'trip', 'test-bucket'), /own uploads/);
+});

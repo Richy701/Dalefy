@@ -144,14 +144,14 @@ function GreetingHero({ nextTrip, scrollY, overPhoto = !!nextTrip }: {
           </Pressable>
         </View>
         <Logo size={24} color={overPhoto ? "#fff" : C.textPrimary} />
-        <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
-          <IconCircleButton variant="glass" size={36}
+        <View style={[styles.headerActions, { justifyContent: "flex-end", gap: 16 }]}>
+          <IconCircleButton variant="glass" size={36} nativeSymbol="plus"
             onPress={openJoinSheet}
             accessibilityLabel="Join a trip"
           >
             <Plus size={18} color={barIcon} weight="bold" />
           </IconCircleButton>
-          <IconCircleButton variant="glass" size={36}
+          <IconCircleButton variant="glass" size={36} nativeSymbol="bell.fill"
             onPress={() => openSheet("/notifications")}
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
             badge={unreadCount > 0 ? (

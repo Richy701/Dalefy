@@ -124,7 +124,7 @@ export function NotificationList({ onClose }: Props) {
     if (!n.read) markRead(n.id);
     if (n.tripId) {
       onClose();
-      setTimeout(() => router.push(notificationPath({ tripId: n.tripId!, eventId: n.eventId, date: n.date, infoId: n.infoId }) as Href), 300);
+      setTimeout(() => router.push(notificationPath({ tripId: n.tripId!, eventId: n.eventId, date: n.date, infoId: n.infoId, mediaId: n.mediaId }) as Href), 300);
     }
   }, [markRead, onClose, router]);
 

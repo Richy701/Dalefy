@@ -1,9 +1,9 @@
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { CachedImage } from "@/components/CachedImage";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
-  View, Text, ScrollView, StyleSheet, Dimensions, FlatList,
-  Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
+  ActivityIndicator, View, Text, StyleSheet, Dimensions, FlatList,
+  Pressable, Alert, Platform, RefreshControl, Modal, Share,
 } from "react-native";
 import type { HostInstance } from "react-native";
 import type { NativeSyntheticEvent, StyleProp, ViewStyle } from "react-native";
@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash, Heart, Export, VideoCamera, ImageSquare,
-  CaretRight, CaretDown, Images, Flag,
+  CaretDown, Images, Flag,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -26,8 +26,8 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
-import { DragHandle } from "@/components/ui/DragHandle";
-import { MicroLabel } from "@/components/ui/MicroLabel";
+import { PhotoLikesSheet } from "@/components/PhotoLikesSheet";
+import { GalleryUploadSheet } from "@/components/GalleryUploadSheet";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -35,14 +35,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "@/components/ScrollViewMarker";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, SCROLL_BOTTOM_PAD } from "@/constants/theme";
-import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { uploadTripMedia } from "@/services/mediaUpload";
 import { parseTripDate } from "@/shared/dates";
-import { changeTripMedia, fetchTripById, reportTripMedia } from "@/services/firebaseTrips";
+import { reportTripMedia } from "@/services/firebaseTrips";
 import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
-import type { TripMedia, Trip } from "@/shared/types";
+import type { TripMedia } from "@/shared/types";
 
 const API_BASE = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/api`;
 
@@ -179,14 +177,6 @@ function rowHeight(row: GalleryRow): number {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** EXIF "2026:11:09 14:02:11" -> { takenAt: "2026-11-09T14:02:11" }; omitted when missing (Firestore rejects undefined) */
-function exifTakenAt(exif: { DateTimeOriginal?: unknown; DateTime?: unknown; "{Exif}"?: { DateTimeOriginal?: unknown } } | null | undefined): { takenAt?: string } {
-  const raw = exif?.DateTimeOriginal ?? exif?.["{Exif}"]?.DateTimeOriginal ?? exif?.DateTime;
-  if (typeof raw !== "string") return {};
-  const m = raw.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-  return m ? { takenAt: `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}` } : {};
-}
-
 function formatDateCompact(iso: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
@@ -195,106 +185,6 @@ function formatDateCompact(iso: string) {
   const h = d.getHours();
   const m = d.getMinutes().toString().padStart(2, "0");
   return `${day} ${mon}, ${h}:${m}`;
-}
-
-/**
- * Pick media from the device library.
- * Returns items with local URIs — caller is responsible for uploading.
- */
-async function pickMedia(onPicked: (items: TripMedia[]) => void) {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert("Permission needed", "Allow access to your photo library to upload memories.");
-    return;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"],
-    allowsMultipleSelection: true,
-    quality: 0.85,
-    selectionLimit: 20,
-    exif: true,
-  });
-  if (!result.canceled) {
-    const items: TripMedia[] = result.assets.map((a, i) => ({
-      id: `upload-${Date.now()}-${i}`,
-      type: (a.type === "video" ? "video" : "image") as "image" | "video",
-      name: a.fileName ?? `media-${i + 1}`,
-      url: a.uri,
-      size: a.fileSize ?? 0,
-      uploadedAt: new Date().toISOString(),
-      ...exifTakenAt(a.exif),
-    }));
-    onPicked(items);
-  }
-}
-
-
-// ── Trip Picker Sheet ────────────────────────────────────────────────────────
-
-function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
-  visible: boolean;
-  trips: Trip[];
-  onPick: (tripId: string) => void;
-  onClose: () => void;
-  C: ThemeColors;
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} />
-      </Pressable>
-      <View style={{
-        position: "absolute", bottom: 0, left: 0, right: 0,
-        backgroundColor: C.card,
-        borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
-        paddingBottom: insets.bottom + S.md,
-        maxHeight: "70%",
-      }}>
-        <DragHandle />
-        <Text style={{
-          fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary,
-          letterSpacing: -0.3, paddingHorizontal: S.md, marginBottom: S.sm,
-        }}>Upload to trip</Text>
-        <Text style={{
-          fontSize: T.sm, color: C.textTertiary, paddingHorizontal: S.md,
-          marginBottom: S.md, lineHeight: 18,
-        }}>Which trip are these memories from?</Text>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {trips.map(t => (
-            <Pressable
-              key={t.id}
-              accessibilityRole="button"
-              accessibilityLabel={t.name}
-              style={({ pressed }) => ({
-                flexDirection: "row", alignItems: "center", gap: S.sm,
-                paddingHorizontal: S.md, paddingVertical: S.sm,
-                backgroundColor: pressed ? C.elevated : "transparent",
-              })}
-              onPress={() => { Haptics.selectionAsync(); onPick(t.id); }}
-            >
-              <CachedImage uri={t.image} style={{
-                width: 48, height: 48, borderRadius: R.md,
-              }} />
-              <View style={{ flex: 1 }}>
-                {t.destination && (
-                  <MicroLabel color={C.tealText} style={{ marginBottom: 2 }}>{t.destination}</MicroLabel>
-                )}
-                <Text style={{
-                  fontSize: T.base, fontWeight: T.bold, color: C.textPrimary,
-                }} numberOfLines={1}>{t.name}</Text>
-                <Text style={{
-                  fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium,
-                  marginTop: 2,
-                }}>{t.media?.length ?? 0} items</Text>
-              </View>
-              <CaretRight size={16} color={C.textTertiary} weight="regular" />
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-    </Modal>
-  );
 }
 
 // ── Zoomable Image ──────────────────────────────────────────────────────────
@@ -413,7 +303,7 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
-function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, onReport, canDelete, hearted, onToggleHeart, C }: {
+function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, onReport, canDelete, liking, onToggleHeart, C }: {
   items: ViewerItem[];
   initialIndex: number;
   visible: boolean;
@@ -422,13 +312,14 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   onDelete: (item: ViewerItem) => void;
   onReport: (item: ViewerItem) => void;
   canDelete: (item: ViewerItem) => boolean;
-  hearted: Set<string>;
-  onToggleHeart: (id: string) => void;
+  liking: Set<string>;
+  onToggleHeart: (item: ViewerItem) => void;
   C: ThemeColors;
 }) {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [chromeVisible, setChromeVisible] = useState(true);
+  const [showLikes, setShowLikes] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const dismissY = useSharedValue(0);
@@ -699,19 +590,23 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                 <Pressable
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onToggleHeart(current.id);
+                    onToggleHeart(current);
                   }}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel={hearted.has(current.id) ? "Remove from favourites" : "Add to favourites"}
-                  accessibilityState={{ selected: hearted.has(current.id) }}
+                  disabled={liking.has(`${current.tripId}:${current.id}`)}
+                  accessibilityLabel={(current.likes ?? []).some(like => like.uid === firebaseAuth().currentUser?.uid) ? "Unlike photo" : "Like photo"}
+                  accessibilityState={{ selected: (current.likes ?? []).some(like => like.uid === firebaseAuth().currentUser?.uid) }}
                   style={({ pressed }) => [viewerStyles.tool, { opacity: pressed ? 0.6 : 1 }]}
                 >
-                  <Heart
+                  {liking.has(`${current.tripId}:${current.id}`) ? <ActivityIndicator color="#fff" /> : <Heart
                     size={24}
-                    color={hearted.has(current.id) ? "#ff4d6d" : "#fff"}
-                    weight={hearted.has(current.id) ? "fill" : "regular"}
-                  />
+                    color={(current.likes ?? []).some(like => like.uid === firebaseAuth().currentUser?.uid) ? "#ff4d6d" : "#fff"}
+                    weight={(current.likes ?? []).some(like => like.uid === firebaseAuth().currentUser?.uid) ? "fill" : "regular"}
+                  />}
+                </Pressable>
+                <Pressable onPress={() => setShowLikes(true)} accessibilityRole="button" accessibilityLabel={`See ${(current.likes ?? []).length} likes`} style={[viewerStyles.tool, { width: 64 }]}>
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>{(current.likes ?? []).length} {(current.likes ?? []).length === 1 ? "like" : "likes"}</Text>
                 </Pressable>
                 {canDelete(current) && (
                   <Pressable
@@ -739,6 +634,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
             </LinearGradient>
           </Animated.View>
         </Animated.View>
+        {showLikes && current && <PhotoLikesSheet likes={current.likes ?? []} onClose={() => setShowLikes(false)} />}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -812,21 +708,18 @@ const GridItem = React.memo(function GridItem({ item, tripId, size, onPress, onD
     </Pressable>
     </ContextMenu>
   );
-}, (prev, next) =>
-  prev.item.id === next.item.id &&
-  prev.item.thumbUrl === next.item.thumbUrl &&
-  prev.size === next.size &&
-  prev.C === next.C
-);
+});
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MediaScreen() {
   const { C } = useTheme();
+  const route = useLocalSearchParams<{ tripId?: string; mediaId?: string }>();
+  const openedPhoto = useRef<string | null>(null);
   const { toast } = useToast();
   const { prefs } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, ready, offline, updateTrip, updateTripLocal, reload } = useTrips();
+  const { trips, ready, offline, deletePhoto, likePhoto, reload } = useTrips();
   const [deviceId, setDeviceId] = useState<string | null>(null);
   useEffect(() => { getDeviceId().then(setDeviceId); }, []);
   const [refreshing, setRefreshing] = useState(false);
@@ -836,84 +729,16 @@ export default function MediaScreen() {
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [viewerOrigin, setViewerOrigin] = useState<OriginRect | null>(null);
 
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
-  /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
-  const PENDING_KEY = "daf-pending-media";
-  const [pendingMedia, setPendingMediaRaw] = useState<Record<string, TripMedia[]>>({});
-  const pendingLoaded = useRef(false);
-
-  // Wrap setter to also persist
-  const setPendingMedia = useCallback((updater: (prev: Record<string, TripMedia[]>) => Record<string, TripMedia[]>) => {
-    setPendingMediaRaw(prev => {
-      const next = updater(prev);
-      AsyncStorage.setItem(PENDING_KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
-  }, []);
-
-  // Load persisted pending media on mount
-  useEffect(() => {
-    AsyncStorage.getItem(PENDING_KEY).then(raw => {
-      if (raw) setPendingMediaRaw(JSON.parse(raw));
-      pendingLoaded.current = true;
-    }).catch(() => { pendingLoaded.current = true; });
-  }, []);
-
   const onRefresh = useCallback(async () => {
-    // A light tap when the pull triggers a refresh, like Mail
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    // Clear pending media cache — Firestore is the source of truth
-    setPendingMedia(() => ({}));
-    await reload();
-    setRefreshing(false);
-  }, [reload, setPendingMedia]);
+    try { await reload(); } finally { setRefreshing(false); }
+  }, [reload]);
 
-  // Clean up pending items that have been uploaded, are stale, have dead local URIs,
-  // or belong to trips the user is no longer a member of
-  useEffect(() => {
-    // An empty or offline list says nothing about membership, and dropping these loses the photos for good
-    if (!ready || offline || !trips.length) return;
-    let changed = false;
-    const staleMs = 60 * 60 * 1000; // 1 hour
-    const now = Date.now();
-    const tripIds = new Set(trips.map(t => t.id));
-    const cleaned: Record<string, TripMedia[]> = {};
-    for (const [tripId, items] of Object.entries(pendingMedia)) {
-      if (!tripIds.has(tripId)) { changed = true; continue; }
-      const trip = trips.find(t => t.id === tripId);
-      const existingIds = new Set((trip?.media ?? []).map(m => m.id));
-      const remaining = items.filter(m => {
-        if (existingIds.has(m.id)) return false;
-        if (m.url.includes("firebasestorage")) return false;
-        // Drop local URIs older than 1h — iOS reclaims temp files
-        const age = m.uploadedAt ? now - new Date(m.uploadedAt).getTime() : staleMs + 1;
-        if (!m.url.startsWith("https://") && age > staleMs) return false;
-        return true;
-      });
-      if (remaining.length !== items.length) changed = true;
-      if (remaining.length > 0) cleaned[tripId] = remaining;
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- only writes when something was removed, so it settles after one pass
-    if (changed) setPendingMedia(() => cleaned);
-  }, [trips, ready, offline, pendingMedia, setPendingMedia]);
-
-  const isValidMediaUrl = useCallback((url?: string) =>
-    !!url && (url.startsWith("https://") || url.startsWith("file://") || url.startsWith("ph://")),
-  []);
-
-  const mergedTrips = useMemo(() =>
-    trips.map(t => {
-      const ownMedia = (t.media ?? []).filter(m => m.url?.startsWith("https://"));
-      const pending = pendingMedia[t.id];
-      if (!pending?.length) return { ...t, media: ownMedia };
-      const existingIds = new Set(ownMedia.map(m => m.id));
-      const newItems = pending.filter(m => !existingIds.has(m.id) && isValidMediaUrl(m.url));
-      if (!newItems.length) return { ...t, media: ownMedia };
-      return { ...t, media: [...ownMedia, ...newItems] };
-    }),
-    [trips, pendingMedia, isValidMediaUrl],
-  );
+  // Only confirmed gallery records appear here; upload previews live in the sharing sheet.
+  const mergedTrips = useMemo(() => trips.map(t => ({
+    ...t, media: (t.media ?? []).filter(m => m.url?.startsWith("https://")),
+  })), [trips]);
 
   // Photos this person reported stay hidden on this device, whatever the organiser decides
   const HIDDEN_KEY = "daf-media-hidden";
@@ -962,28 +787,41 @@ export default function MediaScreen() {
     return out;
   }, [galleryRows]);
 
+  useEffect(() => {
+    if (!route.tripId || !route.mediaId) return;
+    const key = `${route.tripId}:${route.mediaId}`;
+    if (openedPhoto.current === key) return;
+    // Present after navigation has attached the gallery screen to its window.
+    const frame = requestAnimationFrame(() => {
+      if (resolvedTripFilter !== route.tripId) { setTripFilter(route.tripId!); return; }
+      const index = allItems.findIndex(photo => photo.tripId === route.tripId && photo.id === route.mediaId);
+      if (index >= 0) { openedPhoto.current = key; setViewerIndex(index); }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [route.tripId, route.mediaId, allItems, resolvedTripFilter]);
+
   const allItemsIndex = useMemo(() => {
     const map = new Map<string, number>();
     allItems.forEach((m, i) => map.set(m.id, i));
     return map;
   }, [allItems]);
 
-  // Hearts are private favourites kept on this device
-  const HEARTS_KEY = "daf-media-hearts";
-  const [hearted, setHearted] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    AsyncStorage.getItem(HEARTS_KEY).then(raw => {
-      if (raw) setHearted(new Set(JSON.parse(raw)));
-    }).catch(() => {});
-  }, []);
-  const toggleHeart = useCallback((id: string) => {
-    setHearted(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      AsyncStorage.setItem(HEARTS_KEY, JSON.stringify([...next])).catch(() => {});
-      return next;
-    });
-  }, []);
+  const [liking, setLiking] = useState<Set<string>>(new Set());
+  const likeRequests = useRef(new Set<string>());
+  const toggleHeart = useCallback(async (item: ViewerItem) => {
+    const key = `${item.tripId}:${item.id}`;
+    if (likeRequests.current.has(key)) return;
+    likeRequests.current.add(key);
+    setLiking(new Set(likeRequests.current));
+    try {
+      const liked = (item.likes ?? []).some(like => like.uid === firebaseAuth().currentUser?.uid);
+      await likePhoto(item.tripId, item.id, !liked);
+    } catch { toast("Couldn’t save your like. Please try again.", "error"); }
+    finally {
+      likeRequests.current.delete(key);
+      setLiking(new Set(likeRequests.current));
+    }
+  }, [likePhoto, toast]);
   const router = useRouter();
   const emptyTrip = useMemo(() => {
     if (resolvedTripFilter !== "all") return trips.find(t => t.id === resolvedTripFilter) ?? null;
@@ -1019,17 +857,9 @@ export default function MediaScreen() {
       {
         text: "Delete", style: "destructive",
         onPress: async () => {
-          const trip = trips.find(t => t.id === item.tripId);
-          if (!trip) return;
-          const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
           setViewerIndex(-1);
-          setPendingMedia(prev => {
-            const remaining = (prev[item.tripId] ?? []).filter(m => m.id !== item.id);
-            if (!remaining.length) { const next = { ...prev }; delete next[item.tripId]; return next; }
-            return { ...prev, [item.tripId]: remaining };
-          });
           try {
-            await updateTrip(updated);
+            await deletePhoto(item.tripId, item.id);
           } catch {
             toast("Couldn't remove this photo. Please try again.", "error");
             return;
@@ -1038,7 +868,7 @@ export default function MediaScreen() {
         },
       },
     ]);
-  }, [trips, updateTrip, toast, deviceId, setPendingMedia]);
+  }, [deletePhoto, toast, deviceId]);
 
   const handleReport = useCallback((item: TripMedia & { tripId: string }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -1116,92 +946,17 @@ export default function MediaScreen() {
     );
   }, [C, styles, openMedia, handleDelete, handleReport, isMine]);
 
-  const handleUploadToTrip = useCallback((tripId: string) => {
-    const trip = trips.find(t => t.id === tripId);
-    if (!trip) return;
-    setPickerOpen(false);
-    pickMedia((rawItems) => {
-      // Stamp uploader name onto each item
-      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveller", uploaderId: deviceId || "" }));
-
-      // 1. Show immediately using component-local state (subscription can't touch this)
-      setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
-      setUploadProgress({ done: 0, total: items.length });
-
-      // 2. Upload to cloud, then write directly to Firestore
-      uploadTripMedia(items, tripId, (done, total) => {
-        setUploadProgress({ done, total });
-      })
-        .then(async (uploaded) => {
-          // Fetch latest trip from Firestore to avoid overwriting media from other uploads
-          const freshTrip = await fetchTripById(tripId) ?? trip;
-          const existingMedia = freshTrip.media ?? [];
-          // Deduplicate by id in case of retry
-          const existingIds = new Set(existingMedia.map(m => m.id));
-          const newMedia = uploaded.filter(m => !existingIds.has(m.id) && m.url.startsWith("https://"));
-          const finalMedia = [...existingMedia, ...newMedia];
-          const finalTrip = { ...freshTrip, media: finalMedia };
-
-          // Write to Firestore FIRST — only clear pending once confirmed
-          try {
-            await changeTripMedia(tripId, newMedia);
-            // Firestore confirmed! Update local state only (no double-write)
-            updateTripLocal(finalTrip);
-            const itemIds = new Set(items.map(m => m.id));
-            setPendingMedia(prev => {
-              const remaining = (prev[tripId] ?? []).filter(m => !itemIds.has(m.id));
-              if (!remaining.length) {
-                const next = { ...prev };
-                delete next[tripId];
-                return next;
-              }
-              return { ...prev, [tripId]: remaining };
-            });
-            toast(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
-
-            // Notify other trip members
-            const uploaderName = prefs.name || "Someone";
-            const count = newMedia.length;
-            const dest = trip.destination || trip.name;
-            notifyTripMembers(tripId, dest, uploaderName, count, deviceId).catch(() => {});
-          } catch (err) {
-            console.warn("[Media] Firestore write failed:", err);
-            // Keep pending items — they'll persist via AsyncStorage
-            updateTripLocal(finalTrip);
-            toast("Photos saved. Syncing shortly");
-          }
-        })
-        .catch((err) => {
-          console.warn("[Media] Upload failed:", err);
-          const msg = err?.message ?? "";
-          toast(msg.includes("too large") ? msg : "Couldn't upload. Try again later", "error");
-        })
-        .finally(() => {
-          setUploadProgress(null);
-        });
-    });
-  }, [trips, updateTripLocal, setPendingMedia, toast, deviceId, prefs.name]);
-
   const handleUploadNew = useCallback(() => {
-    if (trips.length === 0) {
-      Alert.alert("No trips", "Join a trip first before uploading memories.");
-      return;
-    }
-    if (trips.length === 1) {
-      handleUploadToTrip(trips[0].id);
-      return;
-    }
+    if (!trips.length) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (Platform.OS === "ios") {
-      const options = [...trips.map(t => t.destination || t.name), "Cancel"];
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: options.length - 1, title: "Upload to trip" },
-        (idx) => { if (idx < trips.length) handleUploadToTrip(trips[idx].id); },
-      );
-    } else {
-      setPickerOpen(true);
-    }
-  }, [trips, handleUploadToTrip]);
+    setPickerOpen(true);
+  }, [trips.length]);
+
+  const handleShared = useCallback((tripId: string, count: number) => {
+    setTripFilter(tripId);
+    const trip = trips.find(t => t.id === tripId);
+    if (trip && count) void notifyTripMembers(tripId, trip.destination || trip.name, prefs.name || "Someone", count, deviceId);
+  }, [trips, prefs.name, deviceId]);
 
   const mediaChips = useMemo(() => ([
     { id: "all" as const, label: "All" },
@@ -1256,19 +1011,6 @@ export default function MediaScreen() {
         </View>
       )}
 
-      {/* ── Upload progress ── */}
-      {uploadProgress && (
-        <View style={styles.progressCard}>
-          <View style={styles.progressHead}>
-            <Text style={styles.progressText}>Uploading {Math.min(uploadProgress.done + 1, uploadProgress.total)} of {uploadProgress.total}</Text>
-            <Text style={styles.progressPct}>{Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%` }]} />
-          </View>
-        </View>
-      )}
-
       {/* ── Empty states ── */}
       {trips.length === 0 ? null : filteredTrips.length === 0 && mediaFilter !== "all" && tripsWithMedia.length > 0 ? (
         <View style={styles.emptyWrap}>
@@ -1306,7 +1048,7 @@ export default function MediaScreen() {
       ) : null}
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mediaChips and router are no longer read in this header, they only cause a harmless extra recompute
-  ), [C, mediaChips, tripMenuLabel, tripMenuImage, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, uploadProgress, router, handleUploadNew]);
+  ), [C, mediaChips, tripMenuLabel, tripMenuImage, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, router, handleUploadNew]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -1326,7 +1068,7 @@ export default function MediaScreen() {
                 <IconCircleButton
                   variant="glass" size={36}
                   onPress={handleUploadNew}
-                  accessibilityLabel="Upload photos"
+                  accessibilityLabel="Add photos to the trip gallery"
                 >
                   <Plus size={18} color={C.textPrimary} weight="bold" />
                 </IconCircleButton>
@@ -1351,13 +1093,12 @@ export default function MediaScreen() {
 
       <CompactHeader title="Gallery" barStyle={barStyle} />
 
-      <TripPickerSheet
-        visible={pickerOpen}
+      {pickerOpen && <GalleryUploadSheet
         trips={trips}
-        onPick={handleUploadToTrip}
+        initialTripId={resolvedTripFilter !== "all" ? resolvedTripFilter : undefined}
+        onShared={handleShared}
         onClose={() => setPickerOpen(false)}
-        C={C}
-      />
+      />}
 
       <MediaViewer
         items={allItems}
@@ -1368,7 +1109,7 @@ export default function MediaScreen() {
         onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
         onReport={(item) => { setViewerIndex(-1); handleReport(item); }}
         canDelete={isMine}
-        hearted={hearted}
+        liking={liking}
         onToggleHeart={toggleHeart}
         C={C}
       />

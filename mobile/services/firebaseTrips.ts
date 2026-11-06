@@ -610,10 +610,26 @@ export async function fetchInbox(): Promise<Notification[]> {
         eventId: typeof e.event_id === "string" ? e.event_id : undefined,
         date: typeof e.date === "string" ? e.date : undefined,
         infoId: typeof e.info_id === "string" ? e.info_id : undefined,
+        mediaId: typeof e.media_id === "string" ? e.media_id : undefined,
         logged: true,
       } satisfies Notification;
     });
   } catch {
     return [];
   }
+}
+
+export async function setGalleryLike(tripId: string, mediaId: string, liked: boolean): Promise<NonNullable<NonNullable<Trip["media"]>[number]["likes"]>> {
+  await waitForAuth();
+  const user = firebaseAuth().currentUser;
+  const token = await user?.getIdToken();
+  if (!token) throw new Error("Sign in to like photos");
+  const response = await withTimeout(fetch(`${API_BASE}/api/media-like`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ tripId, mediaId, liked }),
+  }));
+  if (!response.ok) throw new Error("Couldn’t save your like");
+  const data = await response.json();
+  if (user?.uid !== firebaseAuth().currentUser?.uid || !Array.isArray(data.likes)) throw new Error("Couldn’t save your like");
+  return data.likes;
 }

@@ -146,6 +146,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     travelers: list(snap.travelers).map(v => strings(v, ["id", "name", "initials", "avatar"])),
     media: member ? list(trip.media).map(v => ({
       ...strings(v, ["id", "type", "name", "url", "thumbUrl", "uploadedAt", "takenAt", "uploadedBy", "uploaderId"]),
+      likes: list(record(v).likes).map(like => strings(like, ["uid", "name"])),
       size: typeof record(v).size === "number" ? record(v).size : 0,
     })) : [],
   };

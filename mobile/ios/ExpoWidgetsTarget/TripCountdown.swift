@@ -692,16 +692,41 @@ private struct EventTimer: View {
   }
 }
 
+// iOS can keep the compact presentation but reduce its width beside another
+// activity. A timer Text stretches to its proposal, so reserve its full width
+// before ViewThatFits measures it; otherwise it accepts a truncated countdown.
+private struct IslandCountdown: View {
+  let target: Date
+  let accent: Color
+  let fallback: String
+
+  var body: some View {
+    ViewThatFits(in: .horizontal) {
+      Text(timerInterval: Date()...target, countsDown: true)
+        .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+        .lineLimit(1)
+        .frame(width: 64)
+        .fixedSize(horizontal: true, vertical: false)
+      Image(systemName: fallback)
+        .font(.system(size: 14, weight: .semibold))
+    }
+    .foregroundStyle(accent)
+  }
+}
+
 private struct CmpLeading: View {
   let name: String
   let props: [String: Any]
   var body: some View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
-      HStack(spacing: 4) {
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 4) {
+          AirlineLogo(p: p, size: 18)
+          Text(p.from.count <= 4 ? p.from : "Flight").foregroundStyle(.white)
+        }.font(.system(size: 13, weight: .semibold)).fixedSize()
         AirlineLogo(p: p, size: 18)
-        Text(p.from.count <= 4 ? p.from : "Flight").foregroundStyle(.white)
-      }.font(.system(size: 13, weight: .semibold)).lineLimit(1)
+      }
     } else {
       let p = EventProps(props)
       Image(systemName: p.icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(p.accent)
@@ -717,15 +742,28 @@ private struct CmpTrailing: View {
       let p = FlightProps(props)
       // The countdown, until boarding starts and the gate matters more
       if p.isBoarding && !p.gate.isEmpty {
-        Text(p.gate).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.accent).lineLimit(1)
+        ViewThatFits(in: .horizontal) {
+          Text(p.gate).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.accent).fixedSize()
+          Image(systemName: "airplane.departure").foregroundStyle(p.accent)
+        }
       } else if let c = p.countdown {
-        Text(timerInterval: Date()...c.target, countsDown: true)
-          .font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(p.accent)
-          .frame(maxWidth: 56)
+        IslandCountdown(target: c.target, accent: p.accent, fallback: "airplane")
       } else {
-        Text(p.to).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+        ViewThatFits(in: .horizontal) {
+          Text(p.to).font(.system(size: 13, weight: .semibold)).fixedSize()
+          Image(systemName: "airplane.arrival")
+        }
       }
-    } else { EventTimer(p: EventProps(props)) }
+    } else {
+      let p = EventProps(props)
+      let now = Date().timeIntervalSince1970 * 1000
+      let target = p.startTimestamp > now ? p.startTimestamp : p.endTimestamp
+      if target > now {
+        IslandCountdown(target: Date(timeIntervalSince1970: target / 1000), accent: p.accent, fallback: p.icon)
+      } else {
+        Image(systemName: p.icon).foregroundStyle(p.accent)
+      }
+    }
   }
 }
 

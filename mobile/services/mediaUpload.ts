@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, type StorageReference } from "firebase/storage";
 import { firebaseStorage, waitForAuth, firebaseAuth } from "./firebase";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Image } from "react-native";
@@ -18,6 +18,14 @@ function isHeic(uri: string, mimeType: string): boolean {
 
 const MAX_IMAGE_EDGE = 2048;
 const THUMB_EDGE = 600;
+
+/** A stalled connection returns control to the retry screen instead of hanging for minutes. */
+async function uploadWithTimeout(target: StorageReference, blob: Blob, contentType: string, onProgress?: (fraction: number) => void): Promise<void> {
+  const task = uploadBytesResumable(target, blob, { contentType });
+  const unsubscribe = task.on("state_changed", snapshot => onProgress?.(snapshot.totalBytes ? snapshot.bytesTransferred / snapshot.totalBytes : 0));
+  const timeout = setTimeout(() => task.cancel(), 90_000);
+  try { await task; } finally { clearTimeout(timeout); unsubscribe(); }
+}
 
 /** Bound the longest edge so the image never exceeds `edge` pixels. */
 async function resizeToFit(uri: string, edge: number, compress: number): Promise<string> {
@@ -91,6 +99,7 @@ export async function uploadMediaFile(
   localUri: string,
   tripId: string,
   mediaId: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<{ url: string; thumbUrl?: string } | null> {
   try {
     await waitForAuth();
@@ -130,9 +139,9 @@ export async function uploadMediaFile(
     };
     const ext = extMap[contentType] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
 
-    const storagePath = `trips/${tripId}/media/${uid}/${mediaId}.${ext}`;
+    const storagePath = `trips/${tripId}/media/${uid}/member_${mediaId}.${ext}`;
     const storageRef = ref(firebaseStorage(), storagePath);
-    await uploadBytes(storageRef, blob, { contentType });
+    await uploadWithTimeout(storageRef, blob, contentType, onProgress);
 
     const url = await getDownloadURL(storageRef);
     console.log("[MediaUpload] Uploaded:", storagePath);
@@ -141,8 +150,8 @@ export async function uploadMediaFile(
     if (contentType.startsWith("image/")) {
       try {
         const thumbBlob = await uriToBlob(await resizeToFit(uploadUri, THUMB_EDGE, 0.7));
-        const thumbRef = ref(firebaseStorage(), `trips/${tripId}/media/${uid}/${mediaId}_thumb.jpg`);
-        await uploadBytes(thumbRef, thumbBlob, { contentType: "image/jpeg" });
+        const thumbRef = ref(firebaseStorage(), `trips/${tripId}/media/${uid}/member_${mediaId}_thumb.jpg`);
+        await uploadWithTimeout(thumbRef, thumbBlob, "image/jpeg");
         thumbUrl = await getDownloadURL(thumbRef);
       } catch (err) {
         console.warn("[MediaUpload] Thumbnail skipped:", err);
@@ -163,7 +172,7 @@ export async function uploadMediaFile(
 export async function uploadTripMedia(
   items: TripMedia[],
   tripId: string,
-  onProgress?: (completed: number, total: number) => void,
+  onProgress?: (completed: number, total: number, fraction?: number) => void,
 ): Promise<TripMedia[]> {
   const total = items.length;
   const results: TripMedia[] = [];
@@ -172,10 +181,10 @@ export async function uploadTripMedia(
     if (item.url.includes("firebasestorage")) {
       results.push(item);
     } else {
-      const uploaded = await uploadMediaFile(item.url, tripId, item.id);
+      const uploaded = await uploadMediaFile(item.url, tripId, item.id, fraction => onProgress?.(i, total, (i + fraction) / total));
       results.push(uploaded ? { ...item, url: uploaded.url, thumbUrl: uploaded.thumbUrl } : item);
     }
-    onProgress?.(i + 1, total);
+    onProgress?.(i + 1, total, (i + 1) / total);
   }
   return results;
 }

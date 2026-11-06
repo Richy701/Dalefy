@@ -3,9 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
 import { withEventTimes24h } from "@/shared/dates";
-import { fetchTrips, changeTripMedia, subscribeToTrips } from "@/services/firebaseTrips";
+import { fetchTrips, setGalleryLike, subscribeToTrips } from "@/services/firebaseTrips";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/services/firebase";
+
+import { deleteGalleryPhoto, withoutGalleryPhoto } from "@/services/galleryDelete";
 
 const CACHE_KEY = "daf-published-trips-cache-v3";
 // Only hydrate data fetched through the filtered API after the security cutover.
@@ -37,7 +39,8 @@ interface TripsContextValue {
   _debug: { lc: number | null; ok: boolean; err: boolean };
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
-  updateTrip: (trip: Trip) => Promise<void>;
+  likePhoto: (tripId: string, mediaId: string, liked: boolean) => Promise<void>;
+  deletePhoto: (tripId: string, mediaId: string) => Promise<void>;
   /** Optimistic-only update — no Firestore write */
   updateTripLocal: (trip: Trip) => void;
   clearTrips: () => Promise<void>;
@@ -259,18 +262,30 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     setLocalCache(prev => update(prev ?? []));
   }, [qc]);
 
-  const updateTrip = useCallback(async (trip: Trip) => {
-    const previous = (qc.getQueryData<Trip[]>(["trips"]) ?? []).find(t => t.id === trip.id);
-    const keep = new Set((trip.media ?? []).map(m => m.id));
-    const removed = (previous?.media ?? []).filter(m => !keep.has(m.id)).map(m => m.id);
-    const update = (prev: Trip[]) => {
-      const next = prev.map(t => t.id === trip.id ? trip : t);
-      save(next);
-      return next;
-    };
+  const deletePhoto = useCallback(async (tripId: string, mediaId: string) => {
     pendingWrites.current++;
     try {
-      await changeTripMedia(trip.id, [], removed);
+      await deleteGalleryPhoto(tripId, mediaId);
+      // Apply to the latest cache after confirmation, preserving concurrent uploads.
+      const update = (prev: Trip[]) => {
+        const next = withoutGalleryPhoto(prev, tripId, mediaId);
+        save(next);
+        return next;
+      };
+      qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
+      setLocalCache(prev => update(prev ?? []));
+    } finally { pendingWrites.current--; }
+  }, [qc]);
+
+  const likePhoto = useCallback(async (tripId: string, mediaId: string, liked: boolean) => {
+    pendingWrites.current++;
+    try {
+      const likes = await setGalleryLike(tripId, mediaId, liked);
+      const update = (prev: Trip[]) => {
+        const next = prev.map(trip => trip.id !== tripId ? trip : { ...trip, media: trip.media?.map(photo => photo.id === mediaId ? { ...photo, likes } : photo) });
+        save(next);
+        return next;
+      };
       qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
       setLocalCache(prev => update(prev ?? []));
     } finally { pendingWrites.current--; }
@@ -303,7 +318,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   return (
-    <TripsContext.Provider value={{ trips, ready, offline, _debug, addTrip, deleteTrip, updateTrip, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
+    <TripsContext.Provider value={{ trips, ready, offline, _debug, addTrip, deleteTrip, deletePhoto, likePhoto, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
       {children}
     </TripsContext.Provider>
   );

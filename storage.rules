@@ -57,13 +57,18 @@ service firebase.storage {
 
     // Gallery reads/uploads require membership; editors may moderate any upload.
     match /trips/{tripId}/media/{uid}/{fileName} {
-      allow read: if tripStaff(tripId) || tripMember(tripId);
+      // The app marks new uploads by filename so each request follows one access
+      // route, staying within Storage's two-document Firestore lookup limit.
+      // Existing organiser filenames and download URLs remain compatible.
+      allow read: if request.auth != null && (fileName.matches('member_.*')
+        ? tripMember(tripId) : tripStaff(tripId) || tripMember(tripId));
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && (tripEditor(tripId) || tripMember(tripId))
+        && (fileName.matches('member_.*') ? tripMember(tripId) : tripEditor(tripId) || tripMember(tripId))
         && request.resource.size < 25 * 1024 * 1024
         && request.resource.contentType.matches('(image|video)/.*');
-      allow delete: if tripEditor(tripId)
-        || (request.auth != null && request.auth.uid == uid && tripMember(tripId));
+      allow delete: if request.auth != null && (fileName.matches('member_.*')
+        ? (request.auth.uid == uid ? tripMember(tripId) : tripEditor(tripId))
+        : tripEditor(tripId) || (request.auth.uid == uid && tripMember(tripId)));
     }
     match /trips/{tripId}/media/{fileName} {
       allow read: if tripStaff(tripId) || tripMember(tripId);

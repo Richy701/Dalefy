@@ -1142,7 +1142,7 @@ function FlightDetailScreen({
 
               <View style={fs.routeRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[fs.code, { color: P.textPrimary }]}>{depCode || "---"}</Text>
+                  <Text style={[fs.code, { color: P.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{depCode || "---"}</Text>
                   <Text style={[fs.city, { color: P.textSecondary }]} numberOfLines={1}>{depCity || depAirportName || " "}</Text>
                 </View>
                 <View style={fs.routeMid}>
@@ -1156,7 +1156,7 @@ function FlightDetailScreen({
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
-                  <Text style={[fs.code, { color: P.textPrimary }]}>{arrCode || "---"}</Text>
+                  <Text style={[fs.code, { color: P.textPrimary, textAlign: "right" }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{arrCode || "---"}</Text>
                   <Text style={[fs.city, { color: P.textSecondary, textAlign: "right" }]} numberOfLines={1}>{arrCity || arrAirportName || " "}</Text>
                 </View>
               </View>
@@ -1329,9 +1329,9 @@ function makeFlightStyles(C: ThemeColors) {
     flightNum: { fontSize: T.sm, marginTop: 1 },
 
     routeRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: S.md, paddingTop: S.lg },
-    code: { fontSize: 46, lineHeight: 50, fontWeight: T.bold, letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
+    code: { width: "100%", fontSize: 46, lineHeight: 50, fontWeight: T.bold, letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
     city: { fontSize: T.sm, marginTop: 2 },
-    routeMid: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.xs, paddingTop: 18, width: 116 },
+    routeMid: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.xs, paddingTop: 18, width: "30%", maxWidth: 116 },
     routeLine: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "stretch" },
     routeRule: { flex: 1, height: 1 },
     durLabel: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6, fontVariant: ["tabular-nums"] },

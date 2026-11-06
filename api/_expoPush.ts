@@ -93,7 +93,7 @@ export interface PushLogEntry {
   sentBy: string;
   tickets: Ticket[];
   /** Where tapping it in the app goes */
-  target?: { eventId?: string; date?: string; infoId?: string };
+  target?: { mediaId?: string; eventId?: string; date?: string; infoId?: string };
   /** People it didn't reach (no notifications, or Expo refused it) */
   missed?: string[];
 }
@@ -116,6 +116,7 @@ export async function logPush(entry: PushLogEntry, id = newPushLogId()): Promise
       sent_at: { stringValue: new Date().toISOString() },
       sent: { integerValue: String(sent) },
       failed: { integerValue: String(entry.tickets.length - sent) },
+      ...(entry.target?.mediaId ? { media_id: { stringValue: entry.target.mediaId } } : {}),
       ...(entry.target?.eventId ? { event_id: { stringValue: entry.target.eventId } } : {}),
       ...(entry.target?.date ? { date: { stringValue: entry.target.date } } : {}),
       ...(entry.target?.infoId ? { info_id: { stringValue: entry.target.infoId } } : {}),

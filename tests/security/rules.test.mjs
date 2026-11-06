@@ -213,3 +213,20 @@ test('a private trip\'s files are its creator\'s alone; shared trip files stay t
   await assertSucceeds(storage('agent').ref('trips/mine-only/new.pdf').put(new Uint8Array([1]), { contentType: 'application/pdf' }));
   for (const uid of ['owner', 'admin', 'agent', 'viewer']) await assertSucceeds(storage(uid).ref('trips/published/voucher.pdf').getMetadata());
 });
+
+test('app gallery route admits members and preserves organiser moderation without mixed lookups', async () => {
+  const path = 'trips/published/media/traveler/member_photo.jpg';
+  const member = context('traveler').storage();
+  await assertSucceeds(member.ref(path).put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
+  await assertSucceeds(member.ref(path).getMetadata());
+  await assertSucceeds(context('leader').storage().ref(path).getMetadata());
+  await assertFails(context('outsider').storage().ref(path).getMetadata());
+  await assertFails(member.ref('trips/published/media/other/member_forged.jpg').put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
+  await assertFails(member.ref('trips/private/media/traveler/member_draft.jpg').put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
+  await assertFails(member.ref('trips/published/media/traveler/member_file.pdf').put(new Uint8Array([1]), { contentType: 'application/pdf' }));
+  await assertFails(context('leader').storage().ref(path).delete());
+  await assertFails(context('viewer').storage().ref(path).delete());
+  await assertSucceeds(context('agent').storage().ref(path).delete());
+  await assertSucceeds(member.ref(path).put(new Uint8Array([1]), { contentType: 'image/jpeg' }));
+  await assertSucceeds(member.ref(path).delete());
+});

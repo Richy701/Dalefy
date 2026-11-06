@@ -1,4 +1,4 @@
-import { Pressable, type StyleProp, type ViewStyle } from "react-native";
+import { Platform, View, Pressable, type StyleProp, type ViewStyle } from "react-native";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
@@ -17,7 +17,8 @@ const PRESSED_SCALE = 0.88;
  * Circular icon-only button. accessibilityLabel is required — icon-only
  * controls are invisible to screen readers without one.
  */
-export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style, badge, glassScheme }: {
+export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style, badge, glassScheme, nativeSymbol }: {
+  nativeSymbol?: "plus" | "bell.fill";
   size?: number;
   onPress: () => void;
   variant?: Variant;
@@ -43,6 +44,19 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
     accent: C.teal,
     plain: "transparent",
   }[variant];
+  if (Platform.OS === "ios" && nativeSymbol) {
+    const { Host, Button } = require("@expo/ui/swift-ui");
+    const { buttonStyle, buttonBorderShape, controlSize, foregroundStyle, frame, labelStyle } = require("@expo/ui/swift-ui/modifiers");
+    // Let UIKit/SwiftUI own hit testing, including Reachability's window transform.
+    return <View style={[{ width: 44, height: 44 }, style]}>
+      <Host colorScheme={glassScheme ?? (isDark ? "dark" : "light")} style={{ width: 44, height: 44 }}>
+        <Button onPress={press} label={accessibilityLabel} systemImage={nativeSymbol}
+          modifiers={[buttonStyle(LIQUID_GLASS ? "glass" : "bordered"), buttonBorderShape("circle"), controlSize("large"),
+            labelStyle("iconOnly"), foregroundStyle(isDark ? "#fff" : C.textPrimary), frame({ width: 44, height: 44 })]} />
+      </Host>
+      {badge}
+    </View>;
+  }
   if (nativeGlass) {
     // The glass keeps its own Pressable so it gets the touch for its press shimmer. The glass clips
     // that Pressable's hitSlop to the visible circle, so an outer Pressable catches the extra margin
