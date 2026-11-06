@@ -389,8 +389,8 @@ private struct FlightProps {
     if s.contains("cancel") { return "Cancelled" }
     if s.contains("delay") { return "Delayed" }
     if s.contains("landed") || s.contains("arrived") { return "Landed" }
-    if s.contains("boarding") || isBoarding { return "Boarding" }
-    if s.contains("in flight") || s.contains("airborne") || s.contains("departed") || (departsAt > 0 && now >= departsAt) { return "In the air" }
+    if s.contains("boarding") { return "Boarding" }
+    if s.contains("in flight") || s.contains("airborne") || s.contains("departed") || s.contains("enroute") { return "In the air" }
     if s.contains("on time") { return "On time" }
     return "Scheduled"
   }
@@ -407,15 +407,14 @@ private struct FlightProps {
   /** What the countdown runs to right now; nil once the flight has landed */
   var countdown: (lead: String, target: Date)? {
     let n = now
-    if boardsAt > n { return ("Boards in", Date(timeIntervalSince1970: boardsAt / 1000)) }
+    if boardsAt > n { return ("Boarding expected in", Date(timeIntervalSince1970: boardsAt / 1000)) }
     if departsAt > n { return ("Departs in", Date(timeIntervalSince1970: departsAt / 1000)) }
-    if arrivesAt > n { return ("Lands in", Date(timeIntervalSince1970: arrivesAt / 1000)) }
+    if arrivesAt > n { return ("Arrival expected in", Date(timeIntervalSince1970: arrivesAt / 1000)) }
     return nil
   }
 
   var airlineCode: String {
-    let letters = flightNum.prefix(while: { $0.isLetter })
-    return letters.isEmpty ? String(flightNum.prefix(2)).uppercased() : String(letters).uppercased()
+    return String(flightNum.filter { !$0.isWhitespace }.prefix(2)).uppercased()
   }
 
   init(_ d: [String: Any]) {
@@ -529,12 +528,29 @@ private struct BannerView: View {
   }
 }
 
+/** Bundled logos remain available in flight mode and in the widget extension. */
+private struct AirlineLogo: View {
+  let p: FlightProps
+  var size: CGFloat = 20
+  var body: some View {
+    if let image = UIImage(named: "airline-" + p.airlineCode) {
+      Image(uiImage: image).resizable().scaledToFit()
+        .frame(width: size, height: size)
+        .accessibilityLabel(p.airline.isEmpty ? p.airlineCode : p.airline)
+    } else {
+      Image(systemName: "airplane").foregroundStyle(p.accent)
+        .frame(width: size, height: size)
+    }
+  }
+}
+
 private struct FlightBanner: View {
   let p: FlightProps
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       // Flight and airline, status in words
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
+      HStack(alignment: .center, spacing: 6) {
+        AirlineLogo(p: p, size: 22)
         Text(p.flightNum).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.accent)
         if !p.airline.isEmpty {
           Text(p.airline).font(.system(size: 13)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
@@ -683,7 +699,7 @@ private struct CmpLeading: View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
       HStack(spacing: 4) {
-        Image(systemName: "airplane").foregroundStyle(p.accent)
+        AirlineLogo(p: p, size: 18)
         Text(p.from.count <= 4 ? p.from : "Flight").foregroundStyle(.white)
       }.font(.system(size: 13, weight: .semibold)).lineLimit(1)
     } else {
@@ -717,8 +733,12 @@ private struct MinView: View {
   let name: String
   let props: [String: Any]
   var body: some View {
-    Image(systemName: name == "FlightTracker" ? "airplane" : EventProps(props).icon)
-      .font(.system(size: 14, weight: .semibold)).foregroundStyle(name == "FlightTracker" ? FlightProps(props).accent : EventProps(props).accent)
+    if name == "FlightTracker" {
+      AirlineLogo(p: FlightProps(props), size: 20)
+    } else {
+      Image(systemName: EventProps(props).icon)
+        .font(.system(size: 14, weight: .semibold)).foregroundStyle(EventProps(props).accent)
+    }
   }
 }
 
@@ -771,7 +791,8 @@ private struct ExBottom: View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
       VStack(spacing: 10) {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .center, spacing: 6) {
+          AirlineLogo(p: p, size: 20)
           Text(p.flightNum).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.accent)
           Text(p.statusLabel).font(.system(size: 13)).foregroundStyle(p.statusColor)
           Spacer()

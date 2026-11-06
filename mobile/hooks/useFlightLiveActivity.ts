@@ -144,17 +144,13 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
     if (prefs.liveActivity === false) {
       startingRef.current = null;
       if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
       return;
     }
 
-    // Clean up any orphaned activities from previous mount cycles
-    try {
-      const stale = FlightTracker.getInstances();
-      for (const inst of stale) safe(() => inst.end("immediate"));
-    } catch {}
+    let disposed = false;
 
     function update() {
       const now = Date.now();
@@ -163,7 +159,7 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       if (!bestFlight) {
         startingRef.current = null;
         if (activityRef.current) {
-          safe(() => activityRef.current!.activity.end("default"));
+          safe(() => activityRef.current!.activity.end("immediate"));
           activityRef.current = null;
         }
         return;
@@ -183,14 +179,14 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       }
 
       if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
 
       startingRef.current = key;
       const flight = bestFlight;
       const doStart = (p: FlightTrackerProps) => {
-        if (startingRef.current !== key) return;
+        if (disposed || startingRef.current !== key) return;
         try {
           const activity = FlightTracker!.start(p, tripDayUrl(selected!.trip.id, flight.date), staleDate);
           activityRef.current = { eventId: key, activity };
@@ -212,23 +208,28 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       }
     }
 
-    updateRef.current = update;
-    // Delay initial start so UpcomingEvent hook's cleanup finishes first
-    const startTimer = setTimeout(update, 800);
+    // Finish removing the old cards before creating their replacement.
+    void (async () => {
+      try { await Promise.all(FlightTracker!.getInstances().map(inst => inst.end("immediate"))); }
+      catch { return; }
+      if (disposed) return;
+      updateRef.current = update;
+      update();
+    })();
 
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") update();
+      if (state === "active") updateRef.current?.();
     });
-    const progressInterval = setInterval(update, 60000);
+    const progressInterval = setInterval(() => updateRef.current?.(), 60000);
 
     return () => {
-      clearTimeout(startTimer);
+      disposed = true;
       sub.remove();
       clearInterval(progressInterval);
       updateRef.current = null;
       startingRef.current = null;
       if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
       try {

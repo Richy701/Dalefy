@@ -117,17 +117,13 @@ export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfa
 
     if (prefs.liveActivity === false) {
       if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
       return;
     }
 
-    // Clean up any orphaned activities from previous mount cycles
-    try {
-      const stale = UpcomingEvent.getInstances();
-      for (const inst of stale) safe(() => inst.end("immediate"));
-    } catch {}
+    let disposed = false;
 
     function update() {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -155,19 +151,25 @@ export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfa
       timerRef.current = setTimeout(update, 60000);
     }
 
-    updateRef.current = update;
-    update();
+    void (async () => {
+      try { await Promise.all(UpcomingEvent!.getInstances().map(inst => inst.end("immediate"))); }
+      catch { return; }
+      if (disposed) return;
+      updateRef.current = update;
+      update();
+    })();
 
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") update();
+      if (state === "active") updateRef.current?.();
     });
 
     return () => {
+      disposed = true;
       if (timerRef.current) clearTimeout(timerRef.current);
       sub.remove();
       updateRef.current = null;
       if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
       try {

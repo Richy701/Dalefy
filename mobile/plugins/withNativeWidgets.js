@@ -26,6 +26,19 @@ module.exports = function withNativeWidgets(config) {
     const project = config.modResults;
     const targetUuid = project.findTargetKey("ExpoWidgetsTarget");
     const target = targetUuid ? project.pbxNativeTargetSection()[targetUuid] : null;
+    // Asset catalogs are compiled into the extension, with no network dependency.
+    const catalog = path.join(targetDir, "Airlines.xcassets");
+    fs.mkdirSync(catalog, { recursive: true });
+    fs.writeFileSync(path.join(catalog, "Contents.json"), JSON.stringify({ info: { version: 1, author: "xcode" } }));
+    const logos = path.join(projectRoot, "assets/airlines");
+    for (const file of fs.readdirSync(logos).filter(f => /^[A-Z0-9]{2}\.png$/.test(f))) {
+      const set = path.join(catalog, `airline-${path.basename(file, ".png")}.imageset`);
+      fs.mkdirSync(set, { recursive: true });
+      fs.copyFileSync(path.join(logos, file), path.join(set, file));
+      fs.writeFileSync(path.join(set, "Contents.json"), JSON.stringify({
+        images: [{ filename: file, idiom: "universal" }], info: { version: 1, author: "xcode" },
+      }));
+    }
     const resourcesSection = project.hash.project.objects["PBXResourcesBuildPhase"] || {};
     const hasResources = (target?.buildPhases || []).some((p) => resourcesSection[p.value]);
     if (target && !hasResources && files.includes("PrivacyInfo.xcprivacy")) {
@@ -37,6 +50,10 @@ module.exports = function withNativeWidgets(config) {
         "app_extension",
         '""'
       );
+    }
+
+    if (target && !project.hasFile("ExpoWidgetsTarget/Airlines.xcassets")) {
+      project.addResourceFile("ExpoWidgetsTarget/Airlines.xcassets", { target: targetUuid });
     }
 
     return config;

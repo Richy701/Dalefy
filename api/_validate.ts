@@ -67,6 +67,35 @@ export function pickBestFlight(flights: AeroFlight[]): AeroFlight | null {
   return flights.reduce((best, f) => scoreAeroFlight(f) > scoreAeroFlight(best) ? f : best);
 }
 
+/** Match a booked service before considering feed completeness or status. */
+export function pickBookedFlight(flights: AeroFlight[], booking: { date: string; time?: string; depAirport?: string; arrAirport?: string }): AeroFlight | null {
+  const matches = flights.filter(f => {
+    const dep = f.departure;
+    if (dep?.scheduledTime?.local?.slice(0, 10) !== booking.date.slice(0, 10)) return false;
+    if (booking.depAirport && dep.airport?.iata?.toUpperCase() !== booking.depAirport.toUpperCase()) return false;
+    if (booking.arrAirport && f.arrival?.airport?.iata?.toUpperCase() !== booking.arrAirport.toUpperCase()) return false;
+    return true;
+  });
+  // Several legs or services can share a number. Never guess between them.
+  const services = new Map<string, AeroFlight[]>();
+  for (const f of matches) {
+    const key = `${f.departure?.airport?.iata}:${f.arrival?.airport?.iata}:${f.departure?.scheduledTime?.local}`;
+    services.set(key, [...(services.get(key) ?? []), f]);
+  }
+  if (services.size === 1) return pickBestFlight(matches);
+  if (booking.time) {
+    const m = booking.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (m) {
+      let hour = Number(m[1]);
+      if (m[3]) hour = hour % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0);
+      const time = `${String(hour).padStart(2, '0')}:${m[2]}`;
+      const exact = [...services.values()].filter(group => group[0].departure?.scheduledTime?.local?.slice(11, 16) === time);
+      if (exact.length === 1) return pickBestFlight(exact[0]);
+    }
+  }
+  return null;
+}
+
 /** Require GOOGLE_API_KEY env var — returns the key or sends 500 */
 export function requireGoogleApi(res: ApiResponse): string | null {
   const key = process.env.GOOGLE_API_KEY;

@@ -139,18 +139,8 @@ export async function lookupFlightNumber(number: string, date: string, key: stri
     const filtered = (Array.isArray(data) ? data as AeroFlight[] : [])
       .filter((f: AeroFlight) => f.codeshareStatus !== "IsCodeshared");
 
-    // Prefer non-arrived flights when duplicates exist (daily flights return yesterday + today)
-    const hasActive = filtered.some((f: AeroFlight) => {
-      const s = (f.status ?? "").toLowerCase();
-      return !s.includes("arrived") && !s.includes("landed");
-    });
-    const raw = (hasActive
-      ? filtered.filter((f: AeroFlight) => {
-          const s = (f.status ?? "").toLowerCase();
-          return !s.includes("arrived") && !s.includes("landed");
-        })
-      : filtered
-    )
+    // The provider can return adjacent days. Status must never choose the day.
+    const raw = filtered.filter(f => f.departure?.scheduledTime?.local?.slice(0, 10) === date)
       .sort((a: AeroFlight, b: AeroFlight) => scoreAeroFlight(b) - scoreAeroFlight(a))
       .slice(0, 8);
 

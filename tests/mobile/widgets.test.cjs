@@ -39,7 +39,7 @@ test('flight selection uses instants rather than trip array order', () => {
   assert.equal(surfaceCandidates(trips, Date.parse('2026-09-11T01:00Z'), true)[0].event.id, 'first');
 });
 test('links preserve trip identity and date', () => {
-  assert.equal(tripDayUrl('trip & one','2026-09-11'), '/trip/day?tripId=trip%20%26%20one&date=2026-09-11');
+  assert.equal(tripDayUrl('trip & one','2026-09-11'), 'dafadventures:///trip/trip%20%26%20one?date=2026-09-11');
 });
 
 test('device surfaces hide other assignments, including while identity is loading', () => {

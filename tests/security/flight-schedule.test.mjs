@@ -87,3 +87,32 @@ test('each level warns once per billing period', () => {
   assert.equal(shouldWarn('low', { level: 'exhausted', period: 'p1' }, 'p2'), true);
   assert.equal(shouldWarn(null, {}, 'p1'), false);
 });
+
+const { pickBookedFlight } = await load('_validate.ts');
+const service = (date, from = 'LHR', to = 'DOH', time = '08:35', status = 'Scheduled') => ({
+  status,
+  departure: { airport: { iata: from }, scheduledTime: { local: `${date} ${time}+00:00` } },
+  arrival: { airport: { iata: to }, ...(status === 'Arrived' ? { actualTime: { utc: `${date} 15:00Z` } } : {}) },
+});
+const booking = { date: '2026-11-06', time: '08:35', depAirport: 'LHR', arrAirport: 'DOH' };
+test('yesterday’s landed flight cannot replace today’s booked service', () => {
+  const today = service('2026-11-06');
+  assert.equal(pickBookedFlight([service('2026-11-05', 'LHR', 'DOH', '08:35', 'Arrived'), today], booking), today);
+  assert.equal(pickBookedFlight([service('2026-11-05')], booking), null);
+});
+test('a completed different leg cannot send landing updates for the booked leg', () => {
+  const today = service('2026-11-06');
+  assert.equal(pickBookedFlight([service('2026-11-06', 'DOH', 'BKK', '08:35', 'Arrived'), today], booking), today);
+  assert.equal(pickBookedFlight([service('2026-11-06', 'DOH', 'BKK')], booking), null);
+});
+test('ambiguous services are skipped unless the booked time identifies one', () => {
+  const first = service('2026-11-06');
+  const later = service('2026-11-06', 'LHR', 'DOH', '20:35');
+  assert.equal(pickBookedFlight([first, later], booking), first);
+  assert.equal(pickBookedFlight([first, later], { ...booking, time: undefined }), null);
+  assert.equal(pickBookedFlight([first, later], { ...booking, time: '8:35 PM' }), later);
+});
+test('a genuine arrival on the booked date is retained', () => {
+  const arrived = service('2026-11-06', 'LHR', 'DOH', '08:35', 'Arrived');
+  assert.equal(pickBookedFlight([arrived], booking), arrived);
+});

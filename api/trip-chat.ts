@@ -62,7 +62,6 @@ export default async function handler(req: Request, res: Response) {
 
     const linked = typeof member.linked_traveler_id === "string" && member.linked_traveler_id ? member.linked_traveler_id : null;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const trip = decode(found);
     const question = input.messages[input.messages.length - 1].content;
     // Live flight details and weather help, but a question is still answered without them
     const live = await liveContext(view, Array.isArray(trip.events) ? trip.events as Record<string, unknown>[] : [], linked, question, process.env.OPENWEATHER_KEY)

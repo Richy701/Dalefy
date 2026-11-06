@@ -1,5 +1,5 @@
 import { getDocument, queryDocumentsRange, queryDocumentsIn, updateDocument, setDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
-import { pickBestFlight } from "./_validate.js";
+import { pickBookedFlight } from "./_validate.js";
 import type { AeroFlight } from "./_flightsCore.js";
 import type { ApiRequest, ApiResponse } from "./_rateLimit.js";
 import { airportTz } from "./_airportTz.js";
@@ -43,12 +43,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // One lookup per flight per run, however many events or trips share it
     const usage: LookupUsage = { allowance: null, refused: false };
     const lookups = new Map<string, Promise<LiveFlightData | null>>();
-    const lookup = (flightNum: string, date: string) => {
-      const key = `${flightNum.replace(/\s+/g, "").toUpperCase()}:${date}`;
+    const lookup = (flightNum: string, date: string, event: StoredFlightEvent) => {
+      const key = `${flightNum.replace(/\s+/g, "").toUpperCase()}:${date}:${event.depAirport || ''}:${event.arrAirport || ''}:${event.time || ''}`;
       let pending = lookups.get(key);
       if (!pending) {
         flightsChecked++;
-        pending = lookupFlight(flightNum, date, rapidApiKey, usage);
+        pending = lookupFlight(flightNum, date, rapidApiKey, usage, event);
         lookups.set(key, pending);
       }
       return pending;
@@ -70,7 +70,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const eventDate = (ev.date as string).slice(0, 10);
 
         // Query AeroDataBox
-        const result = await lookup(flightNum, eventDate);
+        const result = await lookup(flightNum, eventDate, ev);
         if (!result) continue;
 
         // Save missing route details even when nothing changed: without the
@@ -295,6 +295,7 @@ async function lookupFlight(
   date: string,
   apiKey: string,
   usage: LookupUsage,
+  event: StoredFlightEvent,
 ): Promise<LiveFlightData | null> {
   const clean = flightNum.replace(/\s+/g, "");
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${clean}/${date}`;
@@ -312,7 +313,8 @@ async function lookupFlight(
 
     if (flights.length === 0) return null;
 
-    const f = pickBestFlight(flights)!;
+    const f = pickBookedFlight(flights, { ...event, date });
+    if (!f) return null;
     const dep = f.departure ?? {};
     const arr = f.arrival ?? {};
 
