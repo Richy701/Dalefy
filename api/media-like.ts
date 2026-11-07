@@ -26,8 +26,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const travelers = record(trip.published_snapshot).travelers;
       const traveler = Array.isArray(travelers) ? travelers.map(record).find(person => person.id === member.linked_traveler_id) : null;
       const name = typeof traveler?.name === "string" ? traveler.name : typeof member.name === "string" ? member.name : "Traveller";
-      const avatar = typeof traveler?.avatar === "string" && traveler.avatar ? traveler.avatar : typeof member.avatar === "string" ? member.avatar : undefined;
-      const result = applyPhotoLike(trip.media, mediaId, token.sub, name, liked);
+      // The picture they set in the app comes first; the organiser's photo of them only fills in without one
+      const avatar = typeof member.avatar === "string" && member.avatar ? member.avatar : typeof traveler?.avatar === "string" && traveler.avatar ? traveler.avatar : undefined;
+      const result = applyPhotoLike(trip.media, mediaId, token.sub, name, liked, avatar);
       try {
         await updateDocument("trips", tripId, { media: encodeValue(result.media) }, ["media"], found.updateTime);
       } catch (error) {

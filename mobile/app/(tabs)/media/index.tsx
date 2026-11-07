@@ -18,8 +18,8 @@ import {
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS,
-  interpolate, Extrapolation,
+  useSharedValue, useAnimatedStyle, withTiming, runOnJS,
+  interpolate, Extrapolation, Easing,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
@@ -207,7 +207,8 @@ const viewerStyles = StyleSheet.create({
   tool: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
 });
 
-const ZOOM_SPRING = { damping: 15, stiffness: 120 };
+// Glides into place and stops, no overshoot
+const SETTLE = { duration: 260, easing: Easing.out(Easing.cubic) };
 
 const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, height, onTap, onZoomChange }: {
   uri: string; thumbUri?: string; width: number; height: number; onTap: () => void; onZoomChange: (zoomed: boolean) => void;
@@ -237,17 +238,17 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
     const { x, y } = limits(s);
     const nx = clamp(translateX.value, x);
     const ny = clamp(translateY.value, y);
-    translateX.value = withSpring(nx, ZOOM_SPRING);
-    translateY.value = withSpring(ny, ZOOM_SPRING);
+    translateX.value = withTiming(nx, SETTLE);
+    translateY.value = withTiming(ny, SETTLE);
     savedTranslateX.value = nx;
     savedTranslateY.value = ny;
   };
 
   const reset = () => {
     "worklet";
-    scale.value = withSpring(1, ZOOM_SPRING);
-    translateX.value = withSpring(0, ZOOM_SPRING);
-    translateY.value = withSpring(0, ZOOM_SPRING);
+    scale.value = withTiming(1, SETTLE);
+    translateX.value = withTiming(0, SETTLE);
+    translateY.value = withTiming(0, SETTLE);
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
@@ -262,7 +263,7 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
         return;
       }
       const s = Math.min(scale.value, 4);
-      if (scale.value > 4) scale.value = withSpring(4, ZOOM_SPRING);
+      if (scale.value > 4) scale.value = withTiming(4, SETTLE);
       savedScale.value = s;
       settle(s);
       runOnJS(reportZoom)(true);
@@ -273,10 +274,8 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
     .maxPointers(2)
     .onUpdate((e) => {
       const { x, y } = limits(scale.value);
-      // A little give past the edge, like Photos
-      const rubber = (v: number, max: number) => v > max ? max + (v - max) * 0.3 : v < -max ? -max + (v + max) * 0.3 : v;
-      translateX.value = rubber(savedTranslateX.value + e.translationX, x);
-      translateY.value = rubber(savedTranslateY.value + e.translationY, y);
+      translateX.value = clamp(savedTranslateX.value + e.translationX, x);
+      translateY.value = clamp(savedTranslateY.value + e.translationY, y);
     })
     .onEnd(() => {
       settle(savedScale.value);
@@ -294,9 +293,9 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
         const { x, y } = limits(s);
         const nx = clamp((width / 2 - e.x) * (s - 1), x);
         const ny = clamp((height / 2 - e.y) * (s - 1), y);
-        scale.value = withSpring(s, ZOOM_SPRING);
-        translateX.value = withSpring(nx, ZOOM_SPRING);
-        translateY.value = withSpring(ny, ZOOM_SPRING);
+        scale.value = withTiming(s, SETTLE);
+        translateX.value = withTiming(nx, SETTLE);
+        translateY.value = withTiming(ny, SETTLE);
         savedScale.value = s;
         savedTranslateX.value = nx;
         savedTranslateY.value = ny;
@@ -361,6 +360,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showLikes, setShowLikes] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  const { trips } = useTrips();
   const flatListRef = useRef<FlatList>(null);
 
   const dismissY = useSharedValue(0);
@@ -383,7 +383,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
     if (openStartedRef.current) return;
     openStartedRef.current = true;
     bgOpacity.value = withTiming(1, { duration: 260 });
-    progress.value = withSpring(1, { damping: 22, stiffness: 190, mass: 0.8 }, (finished) => {
+    progress.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) }, (finished) => {
       if (finished) {
         pagerOpacity.value = 1;
         runOnJS(hideHero)();
@@ -466,8 +466,8 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
       if (Math.abs(e.translationY) > 120 || Math.abs(e.velocityY) > 800) {
         runOnJS(animateClose)();
       } else {
-        dismissY.value = withSpring(0, { damping: 20, stiffness: 200 });
-        bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
+        dismissY.value = withTiming(0, SETTLE);
+        bgOpacity.value = withTiming(1, SETTLE);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissY and bgOpacity are useSharedValues, their references never change
     }), [animateClose, zoomed]);
@@ -531,10 +531,12 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
           {/* Like the trip pages: the photo, blurred and darkened, fills the space around it */}
           {current.type === "image" && (
             <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden" }, backdropStyle]}>
-              <CachedImage
-                uri={current.thumbUrl ?? current.url}
+              {/* One image view that changes source: the old blur stays up until the next one cross-fades in, so swiping never flashes blank */}
+              <ExpoImage
+                source={{ uri: current.thumbUrl ?? current.url }}
                 blurRadius={60}
-                transition={250}
+                transition={{ duration: 250, effect: "cross-dissolve" }}
+                cachePolicy="memory-disk"
                 style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.3 }] }]}
                 accessible={false}
               />
@@ -679,7 +681,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
             </LinearGradient>
           </Animated.View>
         </Animated.View>
-        {showLikes && current && <PhotoLikesSheet likes={current.likes ?? []} onClose={() => setShowLikes(false)} />}
+        {showLikes && current && <PhotoLikesSheet likes={current.likes ?? []} travelers={trips.find(t => t.id === current.tripId)?.travelers} onClose={() => setShowLikes(false)} />}
       </GestureHandlerRootView>
     </Modal>
   );

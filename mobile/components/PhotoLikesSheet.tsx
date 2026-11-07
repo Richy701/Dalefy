@@ -1,11 +1,12 @@
 import React, { useRef } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import BottomSheet from "@expo/ui/community/bottom-sheet";
 import { GalleryAction } from "./GalleryNativeControls";
 import { useTheme } from "@/context/ThemeContext";
 import { firebaseAuth } from "@/services/firebase";
 
-export function PhotoLikesSheet({ likes, onClose }: { likes: { uid: string; name: string }[]; onClose: () => void }) {
+export function PhotoLikesSheet({ likes, travelers, onClose }: { likes: { uid: string; name: string; avatar?: string }[]; travelers?: { name: string; avatar?: string }[]; onClose: () => void }) {
   const { C } = useTheme();
   const ref = useRef<BottomSheet>(null);
   return <BottomSheet ref={ref} snapPoints={["50%", "85%"]} enableDynamicSizing={false} enablePanDownToClose onClose={onClose} backgroundStyle={{ backgroundColor: C.bg }}>
@@ -16,10 +17,16 @@ export function PhotoLikesSheet({ likes, onClose }: { likes: { uid: string; name
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
         {!likes.length && <Text style={{ color: C.textSecondary, fontSize: 16, paddingVertical: 24 }}>No likes yet. Be the first to like this photo.</Text>}
-        {likes.map(like => <View key={like.uid} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
-          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.tealText, fontSize: 18, fontWeight: "600" }}>{like.name.trim().charAt(0).toUpperCase() || "T"}</Text></View>
+        {likes.map(like => {
+          // Their own profile picture, saved with the like; likes from before that use the trip's photo of them, by exact name
+          const avatar = (like.avatar && /^https:\/\//.test(like.avatar) ? like.avatar : undefined) ?? travelers?.find(t => t.name === like.name && !!t.avatar)?.avatar;
+          return <View key={like.uid} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
+          {avatar
+            ? <ExpoImage source={{ uri: avatar }} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated }} contentFit="cover" accessibilityIgnoresInvertColors />
+            : <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.tealText, fontSize: 18, fontWeight: "600" }}>{like.name.trim().charAt(0).toUpperCase() || "T"}</Text></View>}
           <Text style={{ color: C.textPrimary, fontSize: 16, flex: 1 }}>{like.name}{like.uid === firebaseAuth().currentUser?.uid ? " (you)" : ""}</Text>
-        </View>)}
+        </View>;
+        })}
       </ScrollView>
     </View>
   </BottomSheet>;

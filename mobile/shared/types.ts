@@ -82,7 +82,7 @@ export interface TravelEvent {
 }
 
 export interface TripMedia {
-  likes?: { uid: string; name: string }[];
+  likes?: { uid: string; name: string; avatar?: string }[];
   id: string;
   type: "image" | "video";
   name: string;

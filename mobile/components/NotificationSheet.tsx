@@ -112,13 +112,15 @@ function getNotifTone(n: { type: string; message: string }, Icon: GlyphIcon, C: 
 }
 
 /** A like shows who liked it and which photo. Older inbox rows carry no avatar, so the liker is found by
- *  exact name among the trip's travellers. */
+ *  exact name: their profile picture saved on the like, else the trip's photo of them. */
 function photoNotice(n: Notification, trips: Trip[]): { avatar?: string; thumb?: string } {
   if (!n.mediaId || !n.tripId) return {};
   const trip = trips.find(t => t.id === n.tripId);
   const photo = trip?.media?.find(m => m.id === n.mediaId);
-  const liker = trip?.travelers?.find(t => !!t.avatar && n.detail.startsWith(`${t.name} liked your photo`));
-  return { avatar: n.avatar ?? liker?.avatar, thumb: photo?.thumbUrl ?? photo?.url };
+  const likedBy = (name: string) => n.detail.startsWith(`${name} liked your photo`);
+  const own = photo?.likes?.find(l => !!l.avatar && likedBy(l.name))?.avatar;
+  const listed = trip?.travelers?.find(t => !!t.avatar && likedBy(t.name))?.avatar;
+  return { avatar: n.avatar ?? own ?? listed, thumb: photo?.thumbUrl ?? photo?.url };
 }
 
 /* ── Main sheet ── */
