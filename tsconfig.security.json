@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["api/trip.ts", "api/media-like.ts", "api/_tripView.ts", "api/my-trips.ts", "api/_coordinatorAccess.ts"]
+  "include": ["api/trip.ts", "api/media-like.ts", "api/_mediaLikes.ts", "api/_tripView.ts", "api/my-trips.ts", "api/_coordinatorAccess.ts"]
 }

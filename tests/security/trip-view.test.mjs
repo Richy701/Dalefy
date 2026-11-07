@@ -123,7 +123,9 @@ const handlerJs = ts.transpileModule(handlerSource, { compilerOptions: { target:
 const accessSource = readFileSync(new URL('../../api/_coordinatorAccess.ts', import.meta.url), 'utf8');
 const accessJs = ts.transpileModule(accessSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
   .replace('./_firebaseAdmin.js', dbModule).replace('./_tripView.js', moduleUrl(output));
-const { default: handler } = await import(moduleUrl(handlerJs.replace('./_coordinatorAccess.js', moduleUrl(accessJs))));
+const likesJs = ts.transpileModule(readFileSync(new URL('../../api/_mediaLikes.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
+  .replace('./_tripView.js', moduleUrl(output));
+const { default: handler } = await import(moduleUrl(handlerJs.replace('./_coordinatorAccess.js', moduleUrl(accessJs)).replace('./_mediaLikes.js', moduleUrl(likesJs))));
 
 function setupHttp(member = { uid: 'traveler', trip_id: 'trip', role: 'traveler' }) {
   const writes = [];

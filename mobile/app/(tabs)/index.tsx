@@ -826,7 +826,7 @@ export default function HomeScreen() {
                           <CachedImage uri={photo.thumbUrl ?? photo.url} style={styles.latestPhoto} />
                           {firstName ? (
                             <View style={styles.photoCaption}>
-                              <Avatar size={16} initials={initial} />
+                              <Avatar size={16} initials={initial} uri={photo.uploaderAvatar ?? heroTrip?.travelers?.find(t => t.name === photo.uploadedBy && !!t.avatar)?.avatar} />
                               <Text style={styles.photoCaptionText} numberOfLines={1}>
                                 {firstName}, {relativeTime(photo.uploadedAt)}
                               </Text>

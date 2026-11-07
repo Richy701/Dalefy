@@ -25,3 +25,42 @@ export function applyPhotoLike(media: unknown, mediaId: string, uid: string, nam
   if (liked) likes.push({ uid, name: name.trim().slice(0, 80) || "Traveller", ...(picture ? { avatar: picture } : {}) });
   return { media: media.map(item => record(item).id === mediaId ? { ...record(item), likes } : item), likes, added: liked && !hadLike, photo };
 }
+
+/**
+ * Likes and uploads show the person's current profile picture. Travellers can't read each other's memberships,
+ * so the server fills it in when it sends the trip: their own app picture first, then the organiser's photo of
+ * the traveller they joined as, then whatever was saved with the like.
+ */
+export async function withPeoplePictures<T extends Record<string, unknown>>(
+  view: T,
+  tripId: string,
+  readMember: (uid: string, tripId: string) => Promise<Record<string, unknown>>,
+): Promise<T> {
+  const media = Array.isArray(view.media) ? view.media.map(record) : [];
+  const uids = [...new Set(media.flatMap(photo => [
+    ...photoLikes(photo.likes).map(like => like.uid),
+    ...(typeof photo.uploaderId === "string" && photo.uploaderId ? [photo.uploaderId] : []),
+  ]))].slice(0, 200);
+  if (!uids.length) return view;
+  const travelers = Array.isArray(view.travelers) ? view.travelers.map(record) : [];
+  const pictures = new Map<string, string>();
+  await Promise.all(uids.map(async uid => {
+    const member = await readMember(uid, tripId).catch(() => ({} as Record<string, unknown>));
+    if (member.uid !== uid || member.trip_id !== tripId) return;
+    const listed = travelers.find(t => t.id === member.linked_traveler_id);
+    const picture = avatarUrl(member.avatar) ?? avatarUrl(listed?.avatar);
+    if (picture) pictures.set(uid, picture);
+  }));
+  return {
+    ...view,
+    media: media.map(photo => {
+      const uploaderAvatar = typeof photo.uploaderId === "string" ? pictures.get(photo.uploaderId) : undefined;
+      const likes = Array.isArray(photo.likes) ? photoLikes(photo.likes).map(like => {
+        const avatar = pictures.get(like.uid) ?? like.avatar;
+        return avatar ? { ...like, avatar } : { uid: like.uid, name: like.name };
+      }) : undefined;
+      if (!uploaderAvatar && !likes) return photo;
+      return { ...photo, ...(likes ? { likes } : {}), ...(uploaderAvatar ? { uploaderAvatar } : {}) };
+    }),
+  };
+}

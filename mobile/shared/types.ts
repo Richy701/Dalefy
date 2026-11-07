@@ -83,6 +83,8 @@ export interface TravelEvent {
 
 export interface TripMedia {
   likes?: { uid: string; name: string; avatar?: string }[];
+  /** The uploader's profile picture, filled in by the server */
+  uploaderAvatar?: string;
   id: string;
   type: "image" | "video";
   name: string;

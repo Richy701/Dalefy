@@ -3,6 +3,7 @@ import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, publishedTripView, membershipMatches, mergeTravelerMedia, oversightView } from "./_tripView.js";
 import { hasCoordinatorAccess, settledRole } from "./_coordinatorAccess.js";
+import { withPeoplePictures } from "./_mediaLikes.js";
 
 interface Request {
   method?: string;
@@ -59,7 +60,10 @@ export default async function handler(req: Request, res: Response) {
       const members = await queryDocuments("trip_members", "trip_id", tripId, 2000);
       return res.json({ oversight: oversightView(trip, members.map(decode)) });
     }
-    if (req.method === "GET") return res.json({ trip: coordinating ? { ...view, coordinator: true } : view });
+    if (req.method === "GET") {
+      const shown = await withPeoplePictures(view, tripId, async (uid, trip) => decode(await getDocument("trip_members", `${uid}_${trip}`)));
+      return res.json({ trip: coordinating ? { ...shown, coordinator: true } : shown });
+    }
     if (!payload?.sub || !joined) return res.status(403).json({ error: "Join this trip before changing its gallery" });
     const bucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;
     if (!bucket) return res.status(503).json({ error: "Storage not configured" });

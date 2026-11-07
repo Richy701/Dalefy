@@ -6,7 +6,7 @@ const url = code => `data:text/javascript;base64,${Buffer.from(code).toString('b
 const compile = file => ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const viewUrl = url(compile('../../api/_tripView.ts'));
 const likesUrl = url(compile('../../api/_mediaLikes.ts').replace('./_tripView.js', viewUrl));
-const { applyPhotoLike } = await import(likesUrl);
+const { applyPhotoLike, withPeoplePictures } = await import(likesUrl);
 const { publishedTripView } = await import(viewUrl);
 const base = { status: 'Published', name: 'Trip', published_snapshot: { name: 'Trip', publishedAt: '2026-11-06', events: [] }, media: [{ id: 'photo', uploaderId: 'owner', url: 'image', likes: [{ uid: 'other', name: 'Other' }] }, { id: 'untouched' }] };
 test('like retries are idempotent and unlike only removes the caller', () => {
@@ -72,4 +72,28 @@ test('deleted photos and unpublished trips reject likes without writes or alerts
   state.get = async (...args) => { const doc = await get(...args); if (args[0] === 'trips') doc.fields = { ...doc.fields, status: 'Draft' }; return doc; };
   assert.equal((await request()).code, 404);
   assert.equal(state.writes.length, 0);
+});
+
+test('likes show the liker\'s current profile picture, only from their own membership of this trip', async () => {
+  const view = { travelers: [{ id: 't1', name: 'Ann', avatar: 'https://org/ann.jpg' }], media: [{ id: 'p', likes: [
+    { uid: 'dp', name: 'Dee' }, { uid: 'listed', name: 'Ann' }, { uid: 'saved', name: 'Sam', avatar: 'https://old/sam.jpg' }, { uid: 'stranger', name: 'X' },
+  ] }, { id: 'none' }] };
+  const members = {
+    dp: { uid: 'dp', trip_id: 'trip', avatar: 'https://app/dee.jpg', linked_traveler_id: 't1' },
+    listed: { uid: 'listed', trip_id: 'trip', avatar: null, linked_traveler_id: 't1' },
+    saved: { uid: 'saved', trip_id: 'trip' },
+    stranger: { uid: 'someone-else', trip_id: 'trip', avatar: 'https://evil/x.jpg' },
+  };
+  const out = await withPeoplePictures(view, 'trip', async uid => members[uid] ?? {});
+  assert.deepEqual(out.media[0].likes.map(l => l.avatar), ['https://app/dee.jpg', 'https://org/ann.jpg', 'https://old/sam.jpg', undefined]);
+  assert.equal(out.media[1], view.media[1]);
+  assert.equal(await withPeoplePictures({ media: [{ id: 'p' }] }, 'trip', async () => { throw Error('no reads'); }).then(v => v.media.length), 1);
+});
+
+test('each photo shows its uploader\'s profile picture, never one from another trip', async () => {
+  const view = { travelers: [], media: [{ id: 'a', uploaderId: 'dp' }, { id: 'b', uploaderId: 'other-trip' }, { id: 'c', uploaderId: 'organiser' }] };
+  const members = { dp: { uid: 'dp', trip_id: 'trip', avatar: 'https://app/dee.jpg' }, 'other-trip': { uid: 'other-trip', trip_id: 'elsewhere', avatar: 'https://x/y.jpg' } };
+  const out = await withPeoplePictures(view, 'trip', async uid => members[uid] ?? {});
+  assert.deepEqual(out.media.map(m => m.uploaderAvatar), ['https://app/dee.jpg', undefined, undefined]);
+  assert.equal(out.media[2], view.media[2]);
 });

@@ -27,6 +27,7 @@ import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { PhotoLikesSheet } from "@/components/PhotoLikesSheet";
+import { Avatar } from "@/components/ui/Avatar";
 import { GalleryUploadSheet } from "@/components/GalleryUploadSheet";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
@@ -603,9 +604,19 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                   </ViewerGlass>
                 </Pressable>
                 <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: "#fff", ...TEXT_ON_PHOTO }} numberOfLines={1}>
-                    {current.uploadedBy?.trim() || "Someone on the trip"}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%" }}>
+                    {!!current.uploadedBy?.trim() && (
+                      <Avatar
+                        size={22}
+                        solid
+                        initials={current.uploadedBy.trim().charAt(0).toUpperCase()}
+                        uri={current.uploaderAvatar ?? trips.find(t => t.id === current.tripId)?.travelers?.find(t => t.name === current.uploadedBy && !!t.avatar)?.avatar}
+                      />
+                    )}
+                    <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: "#fff", flexShrink: 1, ...TEXT_ON_PHOTO }} numberOfLines={1}>
+                      {current.uploadedBy?.trim() || "Someone on the trip"}
+                    </Text>
+                  </View>
                   <Text style={{ fontSize: T.sm, color: "rgba(255,255,255,0.85)", marginTop: 1, ...TEXT_ON_PHOTO }} numberOfLines={1}>
                     {[/^Day \d/.test(current.dayLabel) ? current.dayLabel : null, formatDateCompact(current.takenAt ?? current.uploadedAt)].filter(Boolean).join(", ")}
                   </Text>
