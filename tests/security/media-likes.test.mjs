@@ -74,7 +74,7 @@ test('deleted photos and unpublished trips reject likes without writes or alerts
   assert.equal(state.writes.length, 0);
 });
 
-test('likes show the liker\'s current profile picture, only from their own membership of this trip', async () => {
+test('likes show the organiser\'s photo of the traveller first, else their app picture, only from their own membership of this trip', async () => {
   const view = { travelers: [{ id: 't1', name: 'Ann', avatar: 'https://org/ann.jpg' }], media: [{ id: 'p', likes: [
     { uid: 'dp', name: 'Dee' }, { uid: 'listed', name: 'Ann' }, { uid: 'saved', name: 'Sam', avatar: 'https://old/sam.jpg' }, { uid: 'stranger', name: 'X' },
   ] }, { id: 'none' }] };
@@ -85,7 +85,7 @@ test('likes show the liker\'s current profile picture, only from their own membe
     stranger: { uid: 'someone-else', trip_id: 'trip', avatar: 'https://evil/x.jpg' },
   };
   const out = await withPeoplePictures(view, 'trip', async uid => members[uid] ?? {});
-  assert.deepEqual(out.media[0].likes.map(l => l.avatar), ['https://app/dee.jpg', 'https://org/ann.jpg', 'https://old/sam.jpg', undefined]);
+  assert.deepEqual(out.media[0].likes.map(l => l.avatar), ['https://org/ann.jpg', 'https://org/ann.jpg', 'https://old/sam.jpg', undefined]);
   assert.equal(out.media[1], view.media[1]);
   assert.equal(await withPeoplePictures({ media: [{ id: 'p' }] }, 'trip', async () => { throw Error('no reads'); }).then(v => v.media.length), 1);
 });

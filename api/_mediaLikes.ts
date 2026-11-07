@@ -28,8 +28,8 @@ export function applyPhotoLike(media: unknown, mediaId: string, uid: string, nam
 
 /**
  * Likes and uploads show the person's current profile picture. Travellers can't read each other's memberships,
- * so the server fills it in when it sends the trip: their own app picture first, then the organiser's photo of
- * the traveller they joined as, then whatever was saved with the like.
+ * so the server fills it in when it sends the trip: the organiser's photo of the traveller they joined as first,
+ * then their own app picture, then whatever was saved with the like.
  */
 export async function withPeoplePictures<T extends Record<string, unknown>>(
   view: T,
@@ -48,7 +48,8 @@ export async function withPeoplePictures<T extends Record<string, unknown>>(
     const member = await readMember(uid, tripId).catch(() => ({} as Record<string, unknown>));
     if (member.uid !== uid || member.trip_id !== tripId) return;
     const listed = travelers.find(t => t.id === member.linked_traveler_id);
-    const picture = avatarUrl(member.avatar) ?? avatarUrl(listed?.avatar);
+    // The photo the organiser set for this traveller wins, as on the app's Profile tab; their own app picture fills in without one
+    const picture = avatarUrl(listed?.avatar) ?? avatarUrl(member.avatar);
     if (picture) pictures.set(uid, picture);
   }));
   return {
