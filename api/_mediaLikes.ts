@@ -43,11 +43,28 @@ export async function withPeoplePictures<T extends Record<string, unknown>>(
   ]))].slice(0, 200);
   if (!uids.length) return view;
   const travelers = Array.isArray(view.travelers) ? view.travelers.map(record) : [];
+  // The name each person uploaded or liked under, for people who never picked themselves on the trip
+  const names = new Map<string, string>();
+  for (const photo of media) {
+    if (typeof photo.uploaderId === "string" && typeof photo.uploadedBy === "string") names.set(photo.uploaderId, photo.uploadedBy);
+    for (const like of photoLikes(photo.likes)) if (!names.has(like.uid)) names.set(like.uid, like.name);
+  }
+  const byName = (name: unknown) => {
+    const wanted = typeof name === "string" ? name.trim().toLowerCase() : "";
+    if (!wanted) return undefined;
+    const full = travelers.filter(t => typeof t.name === "string" && t.name.trim().toLowerCase() === wanted);
+    if (full.length === 1) return full[0];
+    // Only a first name that belongs to exactly one traveller on this trip
+    const first = (n: unknown) => typeof n === "string" ? n.trim().toLowerCase().split(/\s+/)[0] : "";
+    const same = travelers.filter(t => first(t.name) === first(wanted));
+    return same.length === 1 ? same[0] : undefined;
+  };
   const pictures = new Map<string, string>();
   await Promise.all(uids.map(async uid => {
     const member = await readMember(uid, tripId).catch(() => ({} as Record<string, unknown>));
     if (member.uid !== uid || member.trip_id !== tripId) return;
-    const listed = travelers.find(t => t.id === member.linked_traveler_id);
+    const listed = (member.linked_traveler_id ? travelers.find(t => t.id === member.linked_traveler_id) : undefined)
+      ?? byName(member.name) ?? byName(names.get(uid));
     // The photo the organiser set for this traveller wins, as on the app's Profile tab; their own app picture fills in without one
     const picture = avatarUrl(listed?.avatar) ?? avatarUrl(member.avatar);
     if (picture) pictures.set(uid, picture);

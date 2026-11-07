@@ -14,6 +14,7 @@ import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, publishedTripView } from "./_tripView.js";
 import { hasCoordinatorAccess } from "./_coordinatorAccess.js";
+import { withPeoplePictures } from "./_mediaLikes.js";
 
 interface Request {
   method?: string;
@@ -40,7 +41,9 @@ async function coordinatingTrips(uid: string): Promise<Record<string, unknown>[]
     const data = decode(doc);
     if (!await hasCoordinatorAccess(data, uid)) return null;
     const view = publishedTripView(docId(doc), data, true, true);
-    return view ? { ...view, coordinator: true } : null;
+    if (!view) return null;
+    const shown = await withPeoplePictures(view, docId(doc), async (member, trip) => decode(await getDocument("trip_members", `${member}_${trip}`)));
+    return { ...shown, coordinator: true };
   }));
   return views.filter((v): v is NonNullable<typeof v> => v !== null);
 }

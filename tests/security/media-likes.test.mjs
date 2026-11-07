@@ -97,3 +97,13 @@ test('each photo shows its uploader\'s profile picture, never one from another t
   assert.deepEqual(out.media.map(m => m.uploaderAvatar), ['https://app/dee.jpg', undefined, undefined]);
   assert.equal(out.media[2], view.media[2]);
 });
+
+test('people who never picked themselves get the photo set for them by name, only when it is unambiguous', async () => {
+  const view = {
+    travelers: [{ id: 'c', name: 'Carlo Rossi', avatar: 'https://org/carlo.jpg' }, { id: 'j1', name: 'Jo Smith', avatar: 'https://org/jo1.jpg' }, { id: 'j2', name: 'Jo Brown', avatar: 'https://org/jo2.jpg' }],
+    media: [{ id: 'a', uploaderId: 'carlo', uploadedBy: 'Carlo' }, { id: 'b', uploaderId: 'jo', uploadedBy: 'Jo' }, { id: 'c', uploaderId: 'full', uploadedBy: 'Jo Brown' }],
+  };
+  const members = { carlo: { uid: 'carlo', trip_id: 'trip' }, jo: { uid: 'jo', trip_id: 'trip' }, full: { uid: 'full', trip_id: 'trip' } };
+  const out = await withPeoplePictures(view, 'trip', async uid => members[uid] ?? {});
+  assert.deepEqual(out.media.map(m => m.uploaderAvatar), ['https://org/carlo.jpg', undefined, 'https://org/jo2.jpg']);
+});
