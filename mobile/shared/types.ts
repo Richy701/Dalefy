@@ -253,4 +253,6 @@ export interface Notification {
   /** In the server's push log, so it comes back on any phone and survives the daily reset */
   logged?: boolean;
   mediaId?: string;
+  /** Photo of the person behind it, e.g. who liked your photo */
+  avatar?: string;
 }

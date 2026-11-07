@@ -18,13 +18,15 @@ import {
   CheckCircle,
   CaretRight,
 } from "phosphor-react-native";
+import { Image as ExpoImage } from "expo-image";
 import { useTheme } from "@/context/ThemeContext";
+import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { T, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
-import type { Notification } from "@/shared/types";
+import type { Notification, Trip } from "@/shared/types";
 import { notificationPath } from "@/services/notificationTarget";
 
 const ON_RED = "#fff";
@@ -109,6 +111,16 @@ function getNotifTone(n: { type: string; message: string }, Icon: GlyphIcon, C: 
   return { fg: C.tealText, bg: C.tealDim };
 }
 
+/** A like shows who liked it and which photo. Older inbox rows carry no avatar, so the liker is found by
+ *  exact name among the trip's travellers. */
+function photoNotice(n: Notification, trips: Trip[]): { avatar?: string; thumb?: string } {
+  if (!n.mediaId || !n.tripId) return {};
+  const trip = trips.find(t => t.id === n.tripId);
+  const photo = trip?.media?.find(m => m.id === n.mediaId);
+  const liker = trip?.travelers?.find(t => !!t.avatar && n.detail.startsWith(`${t.name} liked your photo`));
+  return { avatar: n.avatar ?? liker?.avatar, thumb: photo?.thumbUrl ?? photo?.url };
+}
+
 /* ── Main sheet ── */
 
 /** Notification centre body; app/notifications.tsx presents it in a native sheet with a Done button. */
@@ -116,6 +128,7 @@ export function NotificationList({ onClose }: Props) {
   const { C } = useTheme();
   const router = useRouter();
   const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearAll } = useNotifications();
+  const { trips } = useTrips();
   const styles = useMemo(() => makeStyles(C), [C]);
   const haptic = useHaptic();
   const sections = useMemo(() => groupNotifications(notifications), [notifications]);
@@ -170,6 +183,7 @@ export function NotificationList({ onClose }: Props) {
             renderItem={({ item }) => (
               <NotificationRow
                 notification={item}
+                photo={photoNotice(item, trips)}
                 C={C}
                 styles={styles}
                 onPress={() => { haptic.light(); handleNavigate(item); }}
@@ -190,6 +204,7 @@ export function NotificationList({ onClose }: Props) {
 
 interface RowProps {
   notification: Notification;
+  photo: { avatar?: string; thumb?: string };
   C: ThemeColors;
   styles: ReturnType<typeof makeStyles>;
   onPress: () => void;
@@ -197,7 +212,7 @@ interface RowProps {
   onRemove: () => void;
 }
 
-function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
+function NotificationRow({ notification: n, photo, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
   const swipeRef = useRef<SwipeableMethods>(null);
   const Icon = getNotifIcon(n);
   const tone = getNotifTone(n, Icon, C);
@@ -265,10 +280,14 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
           >
             {/* iOS notification shape: coloured circle, title with the time on the right, detail underneath */}
             <View style={styles.itemRow}>
-              <View style={[styles.iconWrap, { backgroundColor: tone.bg }, n.read && { opacity: 0.6 }]}>
-                {/* eslint-disable-next-line react-hooks/static-components -- Icon is an imported icon returned by getNotifIcon, not a component created in render */}
-                <Icon size={18} color={tone.fg} weight="fill" />
-              </View>
+              {photo.avatar ? (
+                <ExpoImage source={{ uri: photo.avatar }} style={[styles.iconWrap, { backgroundColor: C.elevated }]} contentFit="cover" accessibilityIgnoresInvertColors />
+              ) : (
+                <View style={[styles.iconWrap, { backgroundColor: tone.bg }, n.read && { opacity: 0.6 }]}>
+                  {/* eslint-disable-next-line react-hooks/static-components -- Icon is an imported icon returned by getNotifIcon, not a component created in render */}
+                  <Icon size={18} color={tone.fg} weight="fill" />
+                </View>
+              )}
 
               <View style={styles.itemContent}>
                 <View style={styles.itemTitleRow}>
@@ -286,7 +305,9 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
                   </Text>
                 )}
               </View>
-              {navigable ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
+              {photo.thumb
+                ? <ExpoImage source={{ uri: photo.thumb }} style={styles.photoThumb} contentFit="cover" accessibilityIgnoresInvertColors />
+                : navigable ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
             </View>
           </Pressable>
         </ContextMenu>
@@ -430,6 +451,7 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
+    photoThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: C.elevated },
     itemContent: { flex: 1, minWidth: 0, gap: 3 },
     itemTitleRow: {
       flexDirection: "row",

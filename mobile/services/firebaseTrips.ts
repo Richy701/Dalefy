@@ -611,6 +611,7 @@ export async function fetchInbox(): Promise<Notification[]> {
         date: typeof e.date === "string" ? e.date : undefined,
         infoId: typeof e.info_id === "string" ? e.info_id : undefined,
         mediaId: typeof e.media_id === "string" ? e.media_id : undefined,
+        avatar: typeof e.sender_avatar === "string" && /^https:\/\//.test(e.sender_avatar) ? e.sender_avatar : undefined,
         logged: true,
       } satisfies Notification;
     });

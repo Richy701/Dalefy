@@ -207,8 +207,10 @@ const viewerStyles = StyleSheet.create({
   tool: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
 });
 
-const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, height, onTap }: {
-  uri: string; thumbUri?: string; width: number; height: number; onTap: () => void;
+const ZOOM_SPRING = { damping: 15, stiffness: 120 };
+
+const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, height, onTap, onZoomChange }: {
+  uri: string; thumbUri?: string; width: number; height: number; onTap: () => void; onZoomChange: (zoomed: boolean) => void;
 }) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -216,52 +218,89 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
   const translateY = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
+  const aspect = useSharedValue(width / height);
+  // While zoomed, one finger moves the photo, and the pager and swipe-to-close stand down
+  const [zoomed, setZoomed] = useState(false);
+  const reportZoom = useCallback((next: boolean) => { setZoomed(next); onZoomChange(next); }, [onZoomChange]);
+
+  /** How far the photo may move at a scale before its edge leaves the screen's edge */
+  const limits = (s: number) => {
+    "worklet";
+    const contentW = Math.min(width, height * aspect.value);
+    const contentH = Math.min(height, width / aspect.value);
+    return { x: Math.max(0, (contentW * s - width) / 2), y: Math.max(0, (contentH * s - height) / 2) };
+  };
+  const clamp = (v: number, max: number) => { "worklet"; return Math.min(max, Math.max(-max, v)); };
+
+  const settle = (s: number) => {
+    "worklet";
+    const { x, y } = limits(s);
+    const nx = clamp(translateX.value, x);
+    const ny = clamp(translateY.value, y);
+    translateX.value = withSpring(nx, ZOOM_SPRING);
+    translateY.value = withSpring(ny, ZOOM_SPRING);
+    savedTranslateX.value = nx;
+    savedTranslateY.value = ny;
+  };
+
+  const reset = () => {
+    "worklet";
+    scale.value = withSpring(1, ZOOM_SPRING);
+    translateX.value = withSpring(0, ZOOM_SPRING);
+    translateY.value = withSpring(0, ZOOM_SPRING);
+    savedScale.value = 1;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+    runOnJS(reportZoom)(false);
+  };
 
   const pinch = Gesture.Pinch()
     .onUpdate((e) => { scale.value = savedScale.value * e.scale; })
     .onEnd(() => {
-      if (scale.value < 1) {
-        scale.value = withSpring(1, { damping: 15, stiffness: 120 });
-        translateX.value = withSpring(0, { damping: 15, stiffness: 120 });
-        translateY.value = withSpring(0, { damping: 15, stiffness: 120 });
-        savedScale.value = 1;
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-      } else if (scale.value > 4) {
-        scale.value = withSpring(4, { damping: 15, stiffness: 120 });
-        savedScale.value = 4;
-      } else {
-        savedScale.value = scale.value;
+      if (scale.value <= 1.02) {
+        reset();
+        return;
       }
+      const s = Math.min(scale.value, 4);
+      if (scale.value > 4) scale.value = withSpring(4, ZOOM_SPRING);
+      savedScale.value = s;
+      settle(s);
+      runOnJS(reportZoom)(true);
     });
 
   const pan = Gesture.Pan()
-    .minPointers(2)
+    .enabled(zoomed)
+    .maxPointers(2)
     .onUpdate((e) => {
-      if (savedScale.value > 1) {
-        translateX.value = savedTranslateX.value + e.translationX;
-        translateY.value = savedTranslateY.value + e.translationY;
-      }
+      const { x, y } = limits(scale.value);
+      // A little give past the edge, like Photos
+      const rubber = (v: number, max: number) => v > max ? max + (v - max) * 0.3 : v < -max ? -max + (v + max) * 0.3 : v;
+      translateX.value = rubber(savedTranslateX.value + e.translationX, x);
+      translateY.value = rubber(savedTranslateY.value + e.translationY, y);
     })
     .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      settle(savedScale.value);
     });
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
-    .onEnd((_e, success) => {
+    .onEnd((e, success) => {
       if (!success) return;
       if (savedScale.value > 1) {
-        scale.value = withSpring(1, { damping: 15, stiffness: 120 });
-        translateX.value = withSpring(0, { damping: 15, stiffness: 120 });
-        translateY.value = withSpring(0, { damping: 15, stiffness: 120 });
-        savedScale.value = 1;
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
+        reset();
       } else {
-        scale.value = withSpring(2.5, { damping: 15, stiffness: 120 });
-        savedScale.value = 2.5;
+        // Zoom in on the spot that was tapped
+        const s = 2.5;
+        const { x, y } = limits(s);
+        const nx = clamp((width / 2 - e.x) * (s - 1), x);
+        const ny = clamp((height / 2 - e.y) * (s - 1), y);
+        scale.value = withSpring(s, ZOOM_SPRING);
+        translateX.value = withSpring(nx, ZOOM_SPRING);
+        translateY.value = withSpring(ny, ZOOM_SPRING);
+        savedScale.value = s;
+        savedTranslateX.value = nx;
+        savedTranslateY.value = ny;
+        runOnJS(reportZoom)(true);
       }
     });
 
@@ -295,6 +334,7 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
           // Avoid synchronous bitmap resizing while viewer pages mount.
           allowDownscaling={false}
           cachePolicy="memory-disk"
+          onLoad={(e) => { if (e?.source?.width && e?.source?.height) aspect.value = e.source.width / e.source.height; }}
         />
       </Animated.View>
     </GestureDetector>
@@ -320,6 +360,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showLikes, setShowLikes] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const dismissY = useSharedValue(0);
@@ -356,6 +397,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
       // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the viewer page and chrome each time it opens on a new photo
       setActiveIndex(initialIndex);
       setChromeVisible(true);
+      setZoomed(false);
       closingRef.current = false;
       openStartedRef.current = false;
       dismissY.value = 0;
@@ -409,6 +451,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   }, [origin, activeIndex, initialIndex, handleDismiss]);
 
   const swipeToDismiss = useMemo(() => Gesture.Pan()
+    .enabled(!zoomed)
     .minPointers(1)
     .activeOffsetY([-20, 20])
     .failOffsetX([-10, 10])
@@ -427,7 +470,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissY and bgOpacity are useSharedValues, their references never change
-    }), [animateClose]);
+    }), [animateClose, zoomed]);
 
   const dismissStyle = useAnimatedStyle(() => ({
     opacity: pagerOpacity.value,
@@ -466,9 +509,10 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   const toggleChrome = useCallback(() => setChromeVisible(v => !v), []);
 
   const renderItem = useCallback(({ item }: { item: TripMedia & { tripName: string } }) => (
-    <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: "center", alignItems: "center" }}>
+    // Clipped, so a zoomed photo never spills over the next one
+    <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
       {item.type === "image" ? (
-        <ZoomableImage uri={item.url} thumbUri={item.thumbUrl} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} />
+        <ZoomableImage uri={item.url} thumbUri={item.thumbUrl} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} onZoomChange={setZoomed} />
       ) : (
         <Pressable onPress={toggleChrome} accessibilityRole="button" accessibilityLabel="Play video" style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Play size={28} color="#fff" weight="fill" />
@@ -506,6 +550,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                 keyExtractor={(m) => m.id}
                 horizontal
                 pagingEnabled
+                scrollEnabled={!zoomed}
                 showsHorizontalScrollIndicator={false}
                 initialScrollIndex={initialIndex}
                 initialNumToRender={1}

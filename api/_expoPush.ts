@@ -96,6 +96,8 @@ export interface PushLogEntry {
   target?: { mediaId?: string; eventId?: string; date?: string; infoId?: string };
   /** People it didn't reach (no notifications, or Expo refused it) */
   missed?: string[];
+  /** The person behind it, shown instead of the icon in the app's inbox */
+  senderAvatar?: string;
 }
 
 /** Time-first IDs so "newest first" is just descending document order, no index needed. Made before sending, so the push can carry it and the app's inbox matches it to the log. */
@@ -120,6 +122,7 @@ export async function logPush(entry: PushLogEntry, id = newPushLogId()): Promise
       ...(entry.target?.eventId ? { event_id: { stringValue: entry.target.eventId } } : {}),
       ...(entry.target?.date ? { date: { stringValue: entry.target.date } } : {}),
       ...(entry.target?.infoId ? { info_id: { stringValue: entry.target.infoId } } : {}),
+      ...(entry.senderAvatar && /^https:\/\//.test(entry.senderAvatar) ? { sender_avatar: { stringValue: entry.senderAvatar.slice(0, 1000) } } : {}),
       ...(entry.missed?.length ? { missed: { arrayValue: { values: [...new Set(entry.missed)].map(v => ({ stringValue: v })) } } } : {}),
     });
   } catch (err) {

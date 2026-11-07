@@ -26,6 +26,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const travelers = record(trip.published_snapshot).travelers;
       const traveler = Array.isArray(travelers) ? travelers.map(record).find(person => person.id === member.linked_traveler_id) : null;
       const name = typeof traveler?.name === "string" ? traveler.name : typeof member.name === "string" ? member.name : "Traveller";
+      const avatar = typeof traveler?.avatar === "string" && traveler.avatar ? traveler.avatar : typeof member.avatar === "string" ? member.avatar : undefined;
       const result = applyPhotoLike(trip.media, mediaId, token.sub, name, liked);
       try {
         await updateDocument("trips", tripId, { media: encodeValue(result.media) }, ["media"], found.updateTime);
@@ -35,7 +36,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       }
       await touchTripVersion(tripId);
       if (result.added && typeof result.photo.uploaderId === "string" && result.photo.uploaderId !== token.sub) {
-        await logPush({ tripId, tripName: String(trip.name ?? "Your trip"), category: "trip_update", title: "Someone liked your photo", body: `${name.trim().slice(0, 80) || "A traveller"} liked your photo in ${String(trip.name ?? "your trip")}.`, recipients: [result.photo.uploaderId], sentBy: token.sub, tickets: [], target: { mediaId } }, `${Math.floor(Date.now() / 86400000) * 86400000}-like-${createHash("sha256").update(JSON.stringify([tripId, mediaId, token.sub])).digest("hex").slice(0, 24)}`);
+        await logPush({ tripId, tripName: String(trip.name ?? "Your trip"), category: "trip_update", title: "Someone liked your photo", body: `${name.trim().slice(0, 80) || "A traveller"} liked your photo in ${String(trip.name ?? "your trip")}.`, recipients: [result.photo.uploaderId], sentBy: token.sub, tickets: [], target: { mediaId }, senderAvatar: avatar }, `${Math.floor(Date.now() / 86400000) * 86400000}-like-${createHash("sha256").update(JSON.stringify([tripId, mediaId, token.sub])).digest("hex").slice(0, 24)}`);
       }
       return res.status(200).json({ likes: result.likes });
     }
