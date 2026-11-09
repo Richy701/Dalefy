@@ -22,6 +22,13 @@
       }
     ]
   },
+  "redirects": [
+    {
+      "source": "/android",
+      "destination": "https://expo.dev/artifacts/eas/Az3IY3IrUKle48zOZdZ80c1xi-z15vFIBXOhH61GK_4.apk",
+      "permanent": false
+    }
+  ],
   "crons": [
     {
       "path": "/api/check-flight-status",

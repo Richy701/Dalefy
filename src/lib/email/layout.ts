@@ -59,6 +59,14 @@ export const PALETTE = {
 /** Public site, used for the legal links in the footer. */
 export const SITE_URL = "https://dalefy.app";
 
+/** Where travellers download the iPhone app. */
+export const APP_STORE_URL = "https://apps.apple.com/gb/app/id6765462755";
+/** Apple's official badge, as PNG because Gmail and Outlook don't show SVG. */
+export const APP_STORE_BADGE_URL = `${SITE_URL}/app-store-badge.png`;
+/** Redirects to the current APK, so emails already sent keep working after a new build. */
+export const ANDROID_APP_URL = `${SITE_URL}/android`;
+export const ANDROID_ICON_URL = `${SITE_URL}/android-icon-white.png`;
+
 export const FONT_BODY = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 export const FONT_DISPLAY = FONT_BODY;
 export const FONT_MONO = "'SF Mono', Menlo, Consolas, monospace";
@@ -280,6 +288,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
   }
   @media only screen and (max-width:360px) {
     .footer-col { display:block !important; width:100% !important; text-align:left !important; }
+    .store-col { display:block !important; padding:0 0 8px !important; }
     .journey-date { font-size:15px !important; }
     .journey-between { padding-left:6px !important; padding-right:6px !important; }
   }

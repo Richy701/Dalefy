@@ -5,7 +5,7 @@
  */
 
 import {
-  renderEmailShell, paragraphs, journeyStrip, signature, escapeHtml, PALETTE,
+  renderEmailShell, paragraphs, journeyStrip, signature, escapeHtml, PALETTE, APP_STORE_URL, APP_STORE_BADGE_URL, ANDROID_APP_URL, ANDROID_ICON_URL, FONT_BODY, FONT_MONO,
 } from "./email/layout.js";
 
 export { escapeHtml };
@@ -92,13 +92,21 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     email: org.email,
   }) : null;
 
-  const pin = input.shortCode ? {
-    html: `<p style="margin:14px 0 0;font-size:13px;line-height:1.6;color:${PALETTE.muted};">Or join in ${escapeHtml(input.platformName)} with PIN <strong style="color:${PALETTE.ink};letter-spacing:2px;">${escapeHtml(input.shortCode)}</strong></p>`,
-    text: `Join in ${input.platformName} with PIN ${input.shortCode}`,
-  } : null;
+  const app = {
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;border:1px solid ${PALETTE.border};border-radius:8px;background:${PALETTE.raised};"><tr><td style="padding:18px 20px;">
+      <p style="margin:0;font-size:15px;line-height:1.4;font-weight:600;color:${PALETTE.ink};">Get the ${escapeHtml(input.platformName)} app</p>
+      <p style="margin:4px 0 14px;font-size:13px;line-height:1.5;color:${PALETTE.muted};">${input.shortCode ? "Download it on your phone, then join your trip with this PIN." : "Download it on your phone to have your trip with you."}</p>
+      ${input.shortCode ? `<p style="margin:0 0 14px;font-family:${FONT_MONO};font-size:24px;line-height:1.4;font-weight:600;color:${PALETTE.ink};letter-spacing:0.18em;overflow-wrap:anywhere;">${escapeHtml(input.shortCode)}</p>` : ""}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td class="store-col" valign="middle" style="padding:0 10px 0 0;"><a href="${escapeHtml(APP_STORE_URL)}" style="display:block;width:120px;color:${PALETTE.ink};text-decoration:none;"><img src="${escapeHtml(APP_STORE_BADGE_URL)}" alt="iPhone download" width="120" height="40" style="display:block;width:120px;height:40px;font-family:${FONT_BODY};font-size:13px;line-height:40px;font-weight:600;color:${PALETTE.ink};text-align:center;" /></a></td>
+        <td class="store-col" valign="middle" style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-radius:7px;background:${PALETTE.ink};mso-padding-alt:4px 12px 4px 10px;"><a href="${escapeHtml(ANDROID_APP_URL)}" style="display:inline-block;padding:4px 12px 4px 10px;border:1px solid ${PALETTE.ink};border-radius:7px;font-family:${FONT_BODY};color:${PALETTE.card};text-decoration:none;white-space:nowrap;"><img src="${escapeHtml(ANDROID_ICON_URL)}" alt="" width="22" height="22" style="display:inline-block;width:22px;height:22px;margin-right:6px;vertical-align:middle;" /><span style="display:inline-block;vertical-align:middle;text-align:left;color:${PALETTE.card};"><span style="display:block;font-size:10px;line-height:12px;">Download for</span><span style="display:block;font-size:16px;line-height:18px;font-weight:600;">Android</span></span></a></td></tr></table></td>
+      </tr></table>
+    </td></tr></table>`,
+    text: `Get the ${input.platformName} app\niPhone: ${APP_STORE_URL}\nAndroid: ${ANDROID_APP_URL}${input.shortCode ? `\nThen join your trip with PIN ${input.shortCode}` : ""}`,
+  };
   const ctaNote = {
-    html: `${pin?.html ?? ""}<p style="margin:${pin ? "6px" : "14px"} 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>`,
-    text: pin?.text ?? "",
+    html: `<p style="margin:14px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>${app.html}`,
+    text: app.text,
   };
 
   // The journey strip already shows these on invites and reminders; other templates have no strip.
