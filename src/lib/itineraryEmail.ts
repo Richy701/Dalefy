@@ -134,7 +134,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     ctaNoteText: ctaNote.text,
     afterHtml: sig?.html,
     afterText: sig?.text,
-    footerText: `Sent by ${input.brandName} using ${input.platformName}. Your itinerary is live, so the link above always shows the latest version.`,
+    footerText: "This itinerary is live, so the link always shows the latest version.",
   });
 
   return { html, text, subjectHint: `Your itinerary: ${input.tripName}` };

@@ -328,7 +328,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
       <tr><td class="content-pad" style="padding:32px 40px 36px;">
         <div style="height:1px;background:${PALETTE.border};margin-bottom:22px;"></div>
         ${editorial ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:12px;"><tr>
-          <td class="footer-col" valign="middle" style="font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:18px;letter-spacing:-0.5px;font-weight:700;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></td>
+          <td class="footer-col" valign="middle" style="font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:12px;line-height:1.5;font-weight:600;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></td>
           <td class="footer-col" valign="middle" align="right" style="font-size:12px;line-height:1.5;color:${PALETTE.muted};text-align:right;white-space:nowrap;">${footerLinks}</td>
         </tr></table>` : ""}
         <p style="margin:0;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText.replace("Sent by Dalefy using Dalefy.", "Sent by Dalefy."))}</p>
