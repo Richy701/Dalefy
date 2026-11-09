@@ -14,7 +14,9 @@ export function surfaceCandidates(trips: Trip[], now: number, flights: boolean) 
       const start = timing.start;
       const duration = event.duration?.match(/(?:(\d+)h)?\s*(?:(\d+)m)?/);
       const minutes = Number(duration?.[1] || 0) * 60 + Number(duration?.[2] || 0);
-      const end = timing.end ?? (start == null ? null : start + (minutes > 0 ? minutes : flights ? 60 : 30) * 60000);
+      // A hotel's end is check-out, days away, so only the check-in moment counts as the event
+      const hotel = event.type === 'hotel';
+      const end = (hotel ? null : timing.end) ?? (start == null ? null : start + (!hotel && minutes > 0 ? minutes : flights ? 60 : 30) * 60000);
       return { trip, event, start, end };
     }))
     .filter(item => item.start != null && item.end != null && item.end > now && item.start <= now + (flights ? 4 : 1) * 3600000)

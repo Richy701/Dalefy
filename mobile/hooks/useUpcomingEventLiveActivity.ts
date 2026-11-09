@@ -79,7 +79,9 @@ function summarise(title: string): string {
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   const cleaned = cleanTitle(ev.title, ev.type, ev.transferType);
   // Location: just the venue name, strip address details after comma
-  const shortLocation = (ev.location || "").split(",")[0].trim();
+  const [firstPart = "", nextPart = ""] = (ev.location || "").split(",").map(part => part.trim());
+  // A bare number like "318, Some Road" says nothing alone, so keep it with the road or drop it
+  const shortLocation = /^\d+[a-z]?(\/\d+)?$/i.test(firstPart) ? (nextPart && `${firstPart} ${nextPart}`) : firstPart;
   return {
     title: cleaned,
     shortTitle: summarise(cleaned),
