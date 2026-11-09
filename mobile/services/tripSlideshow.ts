@@ -97,12 +97,12 @@ function longDate(day: string): string {
 }
 
 /** A trip's photos as a slideshow: day by day in order, then any that can't be placed on a trip day */
-export function buildSlides(trip: Trip): Slide[] {
+export function buildSlides(trip: Trip, hidden: Set<string>): Slide[] {
   const start = trip.start.slice(0, 10);
   const end = trip.end.slice(0, 10);
   const byDay = new Map<string, TripMedia[]>();
   for (const photo of trip.media ?? []) {
-    if (photo.type === "video") continue;
+    if (photo.type === "video" || hidden.has(photo.id)) continue;
     const day = photoDay(photo);
     const key = day >= start && day <= end ? day : "";
     const list = byDay.get(key);

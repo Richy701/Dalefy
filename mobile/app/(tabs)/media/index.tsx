@@ -38,6 +38,10 @@ import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parseTripDate } from "@/shared/dates";
+import { todayKey } from "@/shared/tripSummary";
+import { storiesTitle } from "@/services/tripSlideshow";
+import { HIDDEN_PHOTOS_KEY, loadHiddenPhotos } from "@/services/hiddenPhotos";
+import { LinkRow } from "@/components/TodayPreTrip";
 import { reportTripMedia } from "@/services/firebaseTrips";
 import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
@@ -73,6 +77,9 @@ const GRID_ITEM_SIZE = (SCREEN_W - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 const TRIP_BANNER_H = 176;
 const TRIP_HEADER_H = TRIP_BANNER_H + S.lg + S.xs;
 const DAY_HEADER_H = 46;
+const STORIES_ROW_H = 52;
+/** Fewer than this and the stories screen has nothing worth playing */
+const MIN_STORY_PHOTOS = 3;
 
 type OriginRect = { x: number; y: number; width: number; height: number; aspect?: number };
 
@@ -88,6 +95,7 @@ function fitRect(aspect?: number): OriginRect {
 
 type GalleryRow =
   | { type: "trip-header"; key: string; name: string; dateRange: string; count: number; cover?: string; first: boolean }
+  | { type: "stories"; key: string; tripId: string; title: string }
   | { type: "day-header"; key: string; label: string; date: string; count: number }
   | { type: "grid-row"; key: string; tripId: string; tripName: string; items: TripMedia[] };
 
@@ -134,6 +142,7 @@ function buildGalleryRows(
   filteredTrips: Array<{ id: string; name: string; destination?: string; start: string; end: string; image?: string; media?: TripMedia[] }>,
 ): GalleryRow[] {
   const rows: GalleryRow[] = [];
+  const today = todayKey();
   for (const [tripIndex, trip] of filteredTrips.entries()) {
     const media = trip.media ?? [];
     if (media.length === 0) continue;
@@ -143,6 +152,9 @@ function buildGalleryRows(
     const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
     const newestPhoto = media.filter(m => m.type === "image").sort((a, b) => mediaTime(b) - mediaTime(a))[0];
     rows.push({ type: "trip-header", key: `h-${trip.id}`, name: tripName, dateRange, count: media.length, cover: newestPhoto?.url || trip.image, first: tripIndex === 0 });
+    if (trip.end.slice(0, 10) < today && media.filter(m => m.type === "image").length >= MIN_STORY_PHOTOS) {
+      rows.push({ type: "stories", key: `s-${trip.id}`, tripId: trip.id, title: storiesTitle(trip) });
+    }
 
     // Newest day first, newest photo first within a day
     const byDay = new Map<string, TripMedia[]>();
@@ -172,6 +184,7 @@ function buildGalleryRows(
 
 function rowHeight(row: GalleryRow): number {
   if (row.type === "trip-header") return TRIP_HEADER_H;
+  if (row.type === "stories") return STORIES_ROW_H;
   if (row.type === "day-header") return DAY_HEADER_H;
   return GRID_ITEM_SIZE + GRID_GAP;
 }
@@ -799,12 +812,9 @@ export default function MediaScreen() {
   })), [trips]);
 
   // Photos this person reported stay hidden on this device, whatever the organiser decides
-  const HIDDEN_KEY = "daf-media-hidden";
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   useEffect(() => {
-    AsyncStorage.getItem(HIDDEN_KEY).then(raw => {
-      if (raw) setHidden(new Set(JSON.parse(raw)));
-    }).catch(() => {});
+    void loadHiddenPhotos().then(setHidden);
   }, []);
 
   // Photos only until the app has a video player: a video tile would open to a play button that does nothing
@@ -937,7 +947,7 @@ export default function MediaScreen() {
         onPress: async () => {
           setHidden(prev => {
             const next = new Set(prev).add(item.id);
-            AsyncStorage.setItem(HIDDEN_KEY, JSON.stringify([...next])).catch(() => {});
+            AsyncStorage.setItem(HIDDEN_PHOTOS_KEY, JSON.stringify([...next])).catch(() => {});
             return next;
           });
           const sent = await reportTripMedia(item.tripId, item.id);
@@ -977,6 +987,19 @@ export default function MediaScreen() {
       );
     }
 
+    if (row.type === "stories") {
+      return (
+        <View style={{ height: STORIES_ROW_H, justifyContent: "center" }}>
+          <LinkRow
+            label={row.title}
+            Icon={Play}
+            C={C}
+            onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/slideshow", params: { tripId: row.tripId } }); }}
+          />
+        </View>
+      );
+    }
+
     if (row.type === "day-header") {
       return (
         <View style={{ height: DAY_HEADER_H, paddingHorizontal: S.md, paddingBottom: S.xs2, flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
@@ -1002,7 +1025,7 @@ export default function MediaScreen() {
         ))}
       </View>
     );
-  }, [C, styles, openMedia, handleDelete, handleReport, isMine]);
+  }, [C, styles, openMedia, handleDelete, handleReport, isMine, router]);
 
   const handleUploadNew = useCallback(() => {
     if (!trips.length) return;

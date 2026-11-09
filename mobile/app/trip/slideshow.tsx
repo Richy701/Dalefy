@@ -17,6 +17,7 @@ import { useTrips } from "@/context/TripsContext";
 import { T } from "@/constants/theme";
 import * as Haptics from "@/services/haptics";
 import { buildSlides, storiesFlag, storiesTitle } from "@/services/tripSlideshow";
+import { loadHiddenPhotos } from "@/services/hiddenPhotos";
 import type { TripMedia } from "@/shared/types";
 
 const SLIDE_MS = 5200;
@@ -100,7 +101,12 @@ export default function TripSlideshowScreen() {
   useKeepAwake();
 
   const trip = trips.find(t => t.id === tripId);
-  const slides = useMemo(() => (trip ? buildSlides(trip) : []), [trip]);
+  // Nothing plays until this arrives, so a photo this person reported can't appear first
+  const [hidden, setHidden] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    void loadHiddenPhotos().then(setHidden);
+  }, []);
+  const slides = useMemo(() => (trip && hidden ? buildSlides(trip, hidden) : []), [trip, hidden]);
   const total = slides.length;
   const dayCount = total ? slides[total - 1].group + 1 : 0;
 
@@ -179,8 +185,8 @@ export default function TripSlideshowScreen() {
   // Reached by a link with too little to show: nothing to play
   const nothingToPlay = !trip || total < 3;
   useEffect(() => {
-    if (nothingToPlay && router.canGoBack()) router.back();
-  }, [nothingToPlay, router]);
+    if (hidden && nothingToPlay && router.canGoBack()) router.back();
+  }, [hidden, nothingToPlay, router]);
   if (nothingToPlay) return <View style={s.root} />;
 
   const layers: { photo: TripMedia; role: Role }[] = [
