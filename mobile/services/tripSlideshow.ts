@@ -1,5 +1,6 @@
 import { calendarDays, scheduledMinutes } from "@/shared/today";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
+import { destinationFlag } from "@/shared/tripSummary";
 import type { Trip, TripMedia, TravelEvent } from "@/shared/types";
 
 /** About four minutes at one photo every five seconds or so */
@@ -21,6 +22,11 @@ export interface Slide {
 export function storiesTitle(trip: Pick<Trip, "destination">): string {
   const place = (trip.destination ?? "").split(/[(,]/)[0].trim();
   return place ? `Your ${place} stories` : "Your trip stories";
+}
+
+/** The destination's flag, reading inside brackets too so "Thailand (Bangkok, Phuket)" finds Thailand */
+export function storiesFlag(trip: Pick<Trip, "destination">): string | null {
+  return destinationFlag((trip.destination ?? "").replace(/[()]/g, ","));
 }
 
 /** Calendar day a photo belongs to, the same way the gallery groups them: when it was taken, else when it was added */

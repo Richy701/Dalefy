@@ -29,6 +29,8 @@ interface Props {
   accessibilityLabel?: string;
   blurhash?: string | null;
   contentPosition?: { top?: string; left?: string };
+  /** "contain" shows the whole photo; the default fills the view and crops the rest */
+  contentFit?: "cover" | "contain";
   blurRadius?: number;
   onLoad?: (event: ImageLoadEventData) => void;
   /** iOS: decode at the view's size instead of full resolution; use for small tiles of large photos */
@@ -50,6 +52,7 @@ function ImageRequest({
   accessibilityLabel,
   blurhash,
   contentPosition,
+  contentFit = "cover",
   blurRadius,
   onLoad,
   enforceEarlyResizing,
@@ -105,7 +108,7 @@ function ImageRequest({
         blurRadius={blurRadius}
         transition={transition}
         cachePolicy="memory-disk"
-        contentFit="cover"
+        contentFit={contentFit}
         contentPosition={contentPosition}
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
@@ -120,7 +123,7 @@ function ImageRequest({
     <RNImage
       source={{ uri: resolvedUri }}
       style={style}
-      resizeMode="cover"
+      resizeMode={contentFit}
       accessible={accessible}
       accessibilityLabel={accessibilityLabel}
       onError={handleError}

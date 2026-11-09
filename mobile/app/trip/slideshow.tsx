@@ -10,18 +10,23 @@ import Animated, {
   withRepeat, withSequence, withTiming, type SharedValue,
 } from "react-native-reanimated";
 import { X } from "phosphor-react-native";
+import type { ImageLoadEventData } from "expo-image";
 import { CachedImage } from "@/components/CachedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { useTrips } from "@/context/TripsContext";
 import { T } from "@/constants/theme";
 import * as Haptics from "@/services/haptics";
-import { buildSlides, storiesTitle } from "@/services/tripSlideshow";
+import { buildSlides, storiesFlag, storiesTitle } from "@/services/tripSlideshow";
 import type { TripMedia } from "@/shared/types";
 
 const SLIDE_MS = 5200;
 const FADE_MS = 1400;
 const ZOOM_MS = 9000;
 const ZOOM_TO = 1.08;
+const BACKDROP_BLUR = 70;
+/** Just enough to hide the blur's soft edges */
+const BACKDROP_SCALE = 1.12;
+const BACKDROP_SHADE = "rgba(8,8,10,0.5)";
 /** A photo that won't load shouldn't stop the show */
 const LOAD_WAIT_MS = 5000;
 const easing = Easing.inOut(Easing.quad);
@@ -29,10 +34,27 @@ const easing = Easing.inOut(Easing.quad);
 type Role = "previous" | "current" | "next";
 const LAYER_ORDER: Record<Role, number> = { next: 0, previous: 1, current: 2 };
 
-/** One photo. Each keeps its own fade, and the next one is already loading underneath */
-function PhotoLayer({ photo, role, visible, onLoaded, instant }: {
+/**
+ * One photo. Each keeps its own fade, and the next one is already loading underneath.
+ * Portrait photos fill the screen. Landscape and square ones would lose most of their width that way, so they
+ * show whole over a blurred copy of themselves, and only that copy zooms.
+ */
+function PhotoLayer({ photo, role, visible, onLoaded, instant, zoom, widePhotos }: {
   photo: TripMedia; role: Role; visible: boolean; onLoaded: (id: string) => void; instant: boolean;
+  zoom: SharedValue<number>; widePhotos: Set<string>;
 }) {
+  const [wide, setWide] = useState(() => widePhotos.has(photo.id));
+  const handlePhotoLoad = (event: ImageLoadEventData) => {
+    if (event.source.width < event.source.height) {
+      onLoaded(photo.id);
+      return;
+    }
+    // Not ready to show yet: the blurred copy behind it reports in when it arrives
+    widePhotos.add(photo.id);
+    setWide(true);
+  };
+  const photoZoom = useAnimatedStyle(() => ({ transform: [{ scale: wide ? 1 : zoom.value }] }));
+  const backdropZoom = useAnimatedStyle(() => ({ transform: [{ scale: BACKDROP_SCALE * zoom.value }] }));
   const opacity = useSharedValue(0);
   useEffect(() => {
     if (role === "next") opacity.value = 0;
@@ -41,7 +63,15 @@ function PhotoLayer({ photo, role, visible, onLoaded, instant }: {
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { zIndex: LAYER_ORDER[role] }, style]}>
-      <CachedImage uri={photo.url} style={StyleSheet.absoluteFill} transition={0} accessible={false} enforceEarlyResizing onLoad={() => onLoaded(photo.id)} />
+      {wide ? (
+        <Animated.View style={[StyleSheet.absoluteFill, backdropZoom]}>
+          <CachedImage uri={photo.url} style={StyleSheet.absoluteFill} blurRadius={BACKDROP_BLUR} transition={0} accessible={false} enforceEarlyResizing onLoad={() => onLoaded(photo.id)} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: BACKDROP_SHADE }]} />
+        </Animated.View>
+      ) : null}
+      <Animated.View style={[StyleSheet.absoluteFill, photoZoom]}>
+        <CachedImage uri={photo.url} style={StyleSheet.absoluteFill} contentFit={wide ? "contain" : "cover"} transition={0} accessible={false} enforceEarlyResizing onLoad={handlePhotoLoad} />
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -96,6 +126,8 @@ export default function TripSlideshowScreen() {
   const progress = useSharedValue(0);
   const zoom = useSharedValue(1);
   const loaded = useRef(new Set<string>());
+  // Remembered so a photo coming back round is the right shape from its first frame
+  const [widePhotos] = useState(() => new Set<string>());
   const waitingFor = useRef<{ id: string; step: number } | null>(null);
 
   const advance = useCallback(() => { setTapped(false); setStep(n => n + 1); }, []);
@@ -143,7 +175,6 @@ export default function TripSlideshowScreen() {
     );
     return () => cancelAnimation(zoom);
   }, [running, reduceMotion, zoom]);
-  const zoomStyle = useAnimatedStyle(() => ({ transform: [{ scale: zoom.value }] }));
 
   // Reached by a link with too little to show: nothing to play
   const nothingToPlay = !trip || total < 3;
@@ -158,6 +189,7 @@ export default function TripSlideshowScreen() {
     { photo: slide.photo, role: "current" },
   ];
 
+  const flag = storiesFlag(trip);
   const days = Array.from({ length: dayCount }, (_, group) => group);
   const name = slide.photo.uploadedBy?.trim();
   const avatar = slide.photo.uploaderAvatar ?? trip.travelers?.find(t => t.name === slide.photo.uploadedBy && !!t.avatar)?.avatar;
@@ -176,13 +208,13 @@ export default function TripSlideshowScreen() {
   return (
     <View style={s.root}>
       <StatusBar style="light" />
-      <Animated.View style={[StyleSheet.absoluteFill, zoomStyle]}>
+      <View style={StyleSheet.absoluteFill}>
         {layers.map(({ photo, role }) => (
-          <PhotoLayer key={photo.id} photo={photo} role={role} visible={started} onLoaded={onLoaded} instant={tapped || reduceMotion} />
+          <PhotoLayer key={photo.id} photo={photo} role={role} visible={started} onLoaded={onLoaded} instant={tapped || reduceMotion} zoom={zoom} widePhotos={widePhotos} />
         ))}
-      </Animated.View>
+      </View>
 
-      <LinearGradient colors={["rgba(6,6,8,0.55)", "rgba(6,6,8,0)"]} style={[s.scrim, { top: 0, height: insets.top + 120 }]} pointerEvents="none" />
+      <LinearGradient colors={["rgba(6,6,8,0.72)", "rgba(6,6,8,0.5)", "rgba(6,6,8,0)"]} locations={[0, 0.7, 1]} style={[s.scrim, { top: 0, height: insets.top + 120 }]} pointerEvents="none" />
       <LinearGradient colors={["rgba(6,6,8,0)", "rgba(6,6,8,0.78)"]} style={[s.scrim, { bottom: 0, height: insets.bottom + 300 }]} pointerEvents="none" />
 
       <View style={s.tapZones}>
@@ -197,7 +229,10 @@ export default function TripSlideshowScreen() {
       </View>
 
       <View style={[s.header, { top: insets.top + 16 }]} pointerEvents="box-none">
-        <Text style={s.tripName} numberOfLines={1}>{storiesTitle(trip)}</Text>
+        <View style={s.titleRow}>
+          {flag ? <Text style={s.flag} accessible={false}>{flag}</Text> : null}
+          <Text style={s.tripName} numberOfLines={1}>{storiesTitle(trip)}</Text>
+        </View>
         <Pressable onPress={close} hitSlop={4} style={({ pressed }) => [s.close, pressed && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Close stories">
           <X size={20} color="#fff" weight="bold" />
         </Pressable>
@@ -229,7 +264,9 @@ const s = StyleSheet.create({
   segment: { flex: 1, height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.32)" },
   segmentFill: { height: "100%", backgroundColor: "#fff" },
   header: { position: "absolute", left: 16, right: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 6 },
-  tripName: { flex: 1, fontSize: T.md, fontWeight: T.semibold, color: "#fff" },
+  titleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  flag: { fontSize: 22, lineHeight: 26 },
+  tripName: { flexShrink: 1, fontSize: T.md, fontWeight: T.bold, color: "#fff" },
   close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   caption: { position: "absolute", left: 20, right: 20, zIndex: 6 },
   heading: { fontSize: T["5xl"], fontWeight: T.bold, letterSpacing: -0.5, color: "#fff" },
