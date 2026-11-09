@@ -115,6 +115,7 @@ function useLiveCountdown(trip: Trip | undefined) {
     minutes: Math.floor((diff % 3600000) / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
     total: diff,
+    now,
   };
 }
 /** Own component so the 1-second countdown tick re-renders only this block, not the whole dashboard. */
@@ -152,12 +153,20 @@ function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
       </button>
     );
   }
+  const today = new Date(countdown.now);
+  today.setHours(12, 0, 0, 0);
+  const start = parseTripDate(trip.start);
+  const totalDays = Math.round((parseTripDate(trip.end).getTime() - start.getTime()) / 86400000) + 1;
+  const currentDay = Math.min(totalDays, Math.max(1, Math.round((today.getTime() - start.getTime()) / 86400000) + 1));
   return (
     <button onClick={onOpen} className="group mt-5 block text-left">
-      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <span className="h-2 w-2 rounded-full bg-brand" /> Travelling now
-      </p>
-      <p className="mt-1 flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
+      <p className="text-xs font-medium text-muted-foreground mb-1.5">Travelling now</p>
+      <div data-compact-countdown>
+        <span className="text-[28px] sm:text-[34px] font-semibold leading-none tracking-tight text-foreground tabular-nums">
+          Day {currentDay} of {totalDays}
+        </span>
+      </div>
+      <p className="mt-2 flex items-center gap-1 text-sm font-medium text-link group-hover:underline">
         Open today's plan
       </p>
     </button>

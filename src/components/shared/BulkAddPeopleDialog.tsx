@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -23,6 +24,13 @@ const LABELS: Record<PeopleRowStatus, string> = {
   sync: 'Refresh trip email', new: 'New person', matched: 'Existing person', update: 'Add missing email', onTrip: 'Already on trip',
   duplicate: 'Duplicate — skipped', noName: 'Enter a name', invalidEmail: 'Check email', conflict: 'Match needs review',
 };
+const READY = 'text-emerald-700 dark:text-emerald-400';
+const REVIEW = 'text-amber-700 dark:text-amber-400';
+const TONES: Record<PeopleRowStatus, string> = {
+  sync: READY, new: READY, matched: READY, update: READY, onTrip: 'text-muted-foreground', duplicate: 'text-muted-foreground',
+  noName: REVIEW, conflict: REVIEW, invalidEmail: 'text-red-600 dark:text-red-400',
+};
+const COLUMN_LABEL = 'text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground';
 const MAX_PEOPLE = 250;
 
 export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, onTripIds, trips, initialTripId, onAdd }: Props) {
@@ -31,11 +39,13 @@ export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, on
   const [fileName, setFileName] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'reading' | 'parsing' | 'saving'>('idle');
   const [error, setError] = useState('');
+  const [dragging, setDragging] = useState(false);
   const [saved, setSaved] = useState<{ count: number; target: string } | null>(null);
   const [destination, setDestination] = useState(initialTripId || 'directory');
   const busy = phase !== 'idle';
   const busyRef = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
   const createdIds = useRef(new Map<number, string>());
   const chosenTrip = trips?.find(trip => trip.id === destination);
   const idsOnTrip = useMemo(() => chosenTrip ? new Set([...(chosenTrip.travelerIds || []), ...(chosenTrip.travelers || []).map(person => person.id)]) : onTripIds, [chosenTrip, onTripIds]);
@@ -93,10 +103,10 @@ export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, on
   };
   if (saved) return <Dialog open={open} onOpenChange={close}><DialogContent className="max-w-md"><DialogHeader><CheckCircle className="h-10 w-10 text-emerald-600" weight="fill" /><DialogTitle>People saved</DialogTitle><DialogDescription role="status">{saved.count} {saved.count === 1 ? 'person has' : 'people have'} been saved to {saved.target}. Existing profile photos and details have been kept.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => close(false)}>Done</Button></DialogFooter></DialogContent></Dialog>;
   return <Dialog open={open} onOpenChange={close}>
-    <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col bg-card rounded-xl border border-border p-6 shadow-2xl" aria-busy={busy}>
+    <DialogContent ref={popup} initialFocus={popup} className="max-w-2xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col bg-card rounded-xl border border-border p-6 shadow-2xl outline-none" aria-busy={busy}>
       <DialogHeader className="space-y-2 text-left">
-        <DialogTitle className="text-2xl font-semibold tracking-tight">Add or update people</DialogTitle>
-        <DialogDescription>Paste names and emails from Excel or Outlook, or upload a CSV. Review the matches before saving. Missing emails are added to existing people and their trips.</DialogDescription>
+        <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Add or update people</DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground">{tripName && <>Adding to <strong className="font-semibold text-foreground">{tripName}</strong>. </>}Paste names and emails from Excel or Outlook, or upload a CSV. Review the matches before saving. Missing emails are added to existing people and their trips.</DialogDescription>
       </DialogHeader>
       {trips && <div className="space-y-1.5"><label className="text-xs font-medium" id="bulk-destination">Add people to</label>
         <Select value={destination} onValueChange={value => setDestination(value || 'directory')} items={destinationItems} disabled={busy}>
@@ -104,40 +114,53 @@ export function BulkAddPeopleDialog({ open, onOpenChange, existing, tripName, on
           <SelectContent>{destinationItems.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
         </Select>
       </div>}
-      {tripName && <p className="text-sm text-muted-foreground">Adding to <strong className="text-foreground">{tripName}</strong></p>}
       {fileName && <div role="status" className="rounded-lg border border-border bg-muted/40 p-3 flex items-start gap-3"><FileArrowUp className="h-5 w-5 shrink-0 mt-0.5" /><div className="min-w-0"><p className="text-sm font-medium break-all">{fileName}</p><p className="text-xs text-muted-foreground mt-1">{busy ? 'Processing your file…' : rows ? `${rows.length} rows loaded. Review below, then save. Nothing has been saved yet.` : 'File selected. Check any error below.'}</p></div></div>}
       {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {busy && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><SpinnerGap className="h-4 w-4 animate-spin" />{phase === 'reading' ? 'Reading your file…' : phase === 'parsing' ? 'Finding names and emails…' : 'Saving people and trip details… Keep this window open.'}</p>}
-      {!rows ? <div className="space-y-3 mt-2">
-        <Textarea value={text} disabled={busy} onChange={event => setText(event.target.value)} placeholder={'Name, Email\nAma Mensah, ama@example.com\nKofi Boateng <kofi@example.com>'} className="min-h-40 font-mono text-sm" aria-label="People to add" />
-        <div className="flex flex-wrap items-center gap-2">
-          <input ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void preview(file); event.target.value = ''; }} />
-          <Button type="button" variant="outline" disabled={busy} onClick={() => fileInput.current?.click()} className="gap-1.5"><FileArrowUp className="h-4 w-4" /> Choose CSV or text</Button>
-          <span className="text-xs text-muted-foreground">Up to 250 people · 2 MB</span>
+      {!rows ? <div className="space-y-4">
+        <input ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void preview(file); event.target.value = ''; }} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+          onDragOver={event => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={event => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) void preview(file); }}
+          className={`group w-full cursor-pointer outline-none focus-visible:border-foreground/50 flex flex-col items-center justify-center gap-3 px-6 py-8 border border-dashed rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${dragging ? 'border-foreground/50 bg-secondary' : 'border-border bg-secondary/40 hover:bg-secondary/70 hover:border-foreground/30'}`}
+        >
+          <span className="h-12 w-12 rounded-full bg-card border border-border shadow-sm flex items-center justify-center transition-transform group-hover:-translate-y-0.5" aria-hidden="true"><FileArrowUp className="h-5 w-5 text-foreground" /></span>
+          <span className="text-center">
+            <span className="block text-base font-semibold text-foreground tracking-tight">{dragging ? 'Drop it here' : 'Drop your CSV here'}</span>
+            <span className="block text-sm text-muted-foreground mt-1">or click to choose a file</span>
+            <span className="block text-[11px] font-medium text-muted-foreground mt-3">Up to 250 people, 2 MB. Columns can be in any order, and email is optional for new people.</span>
+          </span>
+        </button>
+        <div className="space-y-1.5">
+          <Label htmlFor="bulk-paste" className="text-xs font-medium">Or paste names and emails</Label>
+          <Textarea id="bulk-paste" value={text} disabled={busy} onChange={event => setText(event.target.value)} placeholder={'Name, Email\nAma Mensah, ama@example.com\nKofi Boateng <kofi@example.com>'} className="field-sizing-fixed h-24 resize-none overflow-y-auto text-sm focus-visible:border-foreground/50 focus-visible:ring-0" />
         </div>
-        <p className="text-xs text-muted-foreground">CSV headers can include Name, Email, First name and Last name in any order. Other columns are ignored. Email is optional for new people.</p>
       </div> : <>
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
           <span>{rows.length} found{fileName ? ` in ${fileName}` : ''} · {selected.length} selected · {updates} missing {updates === 1 ? "email" : "emails"} to add</span>
           <div className="flex gap-3"><button type="button" disabled={busy} className="underline" onClick={() => setRows(prev => prev?.map(row => ({ ...row, include: true })) || null)}>Select all valid</button><button type="button" disabled={busy} className="underline" onClick={() => setRows(prev => prev?.map(row => ({ ...row, include: false })) || null)}>Clear selection</button></div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border"><Table>
-          <TableHeader><TableRow><TableHead className="w-10" /><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead className="w-10" /><TableHead className={COLUMN_LABEL}>Name</TableHead><TableHead className={COLUMN_LABEL}>Email</TableHead><TableHead className={COLUMN_LABEL}>Status</TableHead></TableRow></TableHeader>
           <TableBody>{rows.map((row, i) => { const assessment = assessments[i]; return <TableRow key={row.key}>
             <TableCell><Checkbox aria-label={`Include ${row.name || row.email}`} checked={row.include && assessment.eligible} disabled={busy || !assessment.eligible} onCheckedChange={checked => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, include: !!checked } : value) || null)} /></TableCell>
             <TableCell><Input value={row.name} disabled={busy} aria-label={`Name on row ${i + 1}`} placeholder={assessment.matched?.name || 'Name'} className="h-9 min-w-36" onChange={event => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, name: event.target.value, include: true } : value) || null)} /></TableCell>
             <TableCell><Input value={row.email} disabled={busy} aria-label={`Email on row ${i + 1}`} aria-invalid={assessment.status === 'invalidEmail' || assessment.status === 'conflict'} placeholder="Email (optional)" className="h-9 min-w-48" onChange={event => setRows(prev => prev?.map(value => value.key === row.key ? { ...value, email: event.target.value, include: true } : value) || null)} /></TableCell>
-            <TableCell className="text-xs min-w-36"><span className={assessment.eligible ? 'text-foreground' : 'text-muted-foreground'}>{LABELS[assessment.status]}</span>{assessment.status === 'conflict' && <p className="mt-1 text-muted-foreground">A different email or more than one matching person exists. Review their details before importing.</p>}</TableCell>
+            <TableCell className="text-xs min-w-36 whitespace-normal"><span className={`font-medium ${TONES[assessment.status]}`}>{LABELS[assessment.status]}</span>{assessment.status === 'conflict' && <p className="mt-1 text-muted-foreground">A different email or more than one matching person exists. Review their details before importing.</p>}</TableCell>
           </TableRow>; })}</TableBody>
         </Table></div>
-        <p className="text-xs text-muted-foreground">Only selected, valid rows are saved. Existing emails are never replaced automatically. This does not send invitations or messages.</p>
+        <p className="text-[11px] font-medium text-muted-foreground">Only selected, valid rows are saved. Existing emails are never replaced automatically. This does not send invitations or messages.</p>
       </>}
-      <DialogFooter className="pt-3 flex flex-wrap gap-2">
+      <DialogFooter className="pt-3 flex flex-wrap gap-2 sm:items-center">
         <Button type="button" variant="ghost" disabled={busy} onClick={() => rows ? setRows(null) : close(false)}>{rows ? 'Back' : 'Cancel'}</Button>
-        <Button type="button" disabled={busy || (rows ? !selected.length : !text.trim())} onClick={() => rows ? void add() : void preview()} className="gap-1.5 max-w-full h-auto min-h-10 whitespace-normal py-2">
+        {(rows || text.trim()) && <Button type="button" disabled={busy || (rows ? !selected.length : false)} onClick={() => rows ? void add() : void preview()} className="gap-1.5 max-w-full h-auto min-h-10 whitespace-normal py-2">
           {busy ? <SpinnerGap className="h-4 w-4 animate-spin" /> : rows ? <UsersThree className="h-4 w-4" /> : null}
           {phase === 'saving' ? 'Saving…' : rows ? `Save ${selected.length} to ${target}` : 'Review people'}
-        </Button>
+        </Button>}
       </DialogFooter>
     </DialogContent>
   </Dialog>;

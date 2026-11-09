@@ -2229,10 +2229,12 @@ export function WorkspacePage() {
 
                   {/* Add Travelers: opened from the section header, so it's in reach however long the list gets */}
                   <Dialog open={addPeopleOpen} onOpenChange={open => { setAddPeopleOpen(open); if (!open) setPeopleSearch(""); }}>
-                    <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <DialogContent id="add-people-dialog" initialFocus={() => document.getElementById("add-people-dialog")} className="sm:max-w-3xl max-h-[85vh] overflow-y-auto outline-none">
                     <DialogHeader>
                       <DialogTitle className="text-base font-semibold tracking-tight text-foreground">Add travellers</DialogTitle>
                     </DialogHeader>
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:gap-6">
+                    <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="relative flex-1 min-w-0">
                         <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -2252,7 +2254,7 @@ export function WorkspacePage() {
                         !peopleSearch || t.name.toLowerCase().includes(peopleSearch.toLowerCase()) || t.email.toLowerCase().includes(peopleSearch.toLowerCase())
                       );
                       return filtered.length > 0 ? (
-                        <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                        <div className="space-y-1.5 md:h-[402px] md:overflow-y-auto">
                           {filtered.map(t => (
                             <button
                               key={t.id}
@@ -2280,14 +2282,16 @@ export function WorkspacePage() {
                         </div>
                       );
                     })()}
+                    </div>
 
+                    <div className="min-w-0 space-y-4 border-t border-border pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-6">
                     {/* Teammates aren't always in the directory; adding one uses their login email, so the app matches them */}
                     {(() => {
                       const team = teamToAdd.filter(m => !peopleSearch || m.name.toLowerCase().includes(peopleSearch.toLowerCase()) || m.email.toLowerCase().includes(peopleSearch.toLowerCase()));
                       return team.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-border">
+                        <div>
                           <p className="text-xs font-medium text-muted-foreground mb-3">Your team</p>
-                          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          <div className="space-y-1.5 md:max-h-[198px] md:overflow-y-auto">
                             {team.map(m => {
                               const initials = m.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
                               return (
@@ -2318,7 +2322,7 @@ export function WorkspacePage() {
                     })()}
 
                     {/* Quick add traveler inline */}
-                    <div className="mt-4 pt-4 border-t border-border">
+                    <div className="pt-4 border-t border-border first:pt-0 first:border-t-0">
                       <p className="text-xs font-medium text-muted-foreground mb-3">Quick add</p>
                       <form
                         onSubmit={(e) => {
@@ -2345,6 +2349,8 @@ export function WorkspacePage() {
                           <UserPlus className="h-3.5 w-3.5" /> Add to Trip
                         </button>
                       </form>
+                    </div>
+                    </div>
                     </div>
                     </DialogContent>
                   </Dialog>

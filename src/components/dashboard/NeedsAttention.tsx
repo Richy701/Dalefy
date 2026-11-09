@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { objectPosition } from "@/lib/imagePosition";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -25,6 +25,7 @@ export interface AttentionItem {
 }
 
 const DAY = 86_400_000;
+const VISIBLE_ITEMS = 10;
 
 /** "14:30" or "2:30 PM" in minutes; null when there's no time */
 function minutes(t?: string): number | null {
@@ -85,9 +86,9 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
         const canEmail = notInvited.length - noEmail;
         // Two different jobs, so two rows: emailing those we can reach, and finding addresses for those we can't
         if (canEmail) out.push({ key: `${t.id}-invite`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=email`, soon: daysOut <= 14, action: "Email them",
-          message: `${plural(canEmail, "traveller")} not emailed` });
+          message: `${canEmail} not emailed` });
         if (noEmail) out.push({ key: `${t.id}-no-email`, tripId: t.id, tripName: t.name, icon: EnvelopeSimple, to: `${open}?do=add-emails`, soon: daysOut <= 14, action: "Add emails",
-          message: `${plural(noEmail, "traveller")} with no email` });
+          message: `${noEmail} with no email` });
       }
       const dueTasks = (t.tasks ?? []).filter(task => !task.completed && task.dueDate && parseTripDate(task.dueDate).getTime() - today.getTime() <= 7 * DAY);
       if (dueTasks.length) {
@@ -125,7 +126,7 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
   }, [trips, reports, extra, now]);
 
   const [showAll, setShowAll] = useState(false);
-  const shown = showAll ? items : items.slice(0, 6);
+  const shown = showAll ? items : items.slice(0, VISIBLE_ITEMS);
 
   // One block per trip: trips with something urgent first, then the soonest to leave
   const groups = useMemo(() => {
@@ -141,7 +142,7 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
     const byTrip = new Map<string, AttentionItem[]>();
     for (const item of shown) byTrip.set(item.tripId, [...(byTrip.get(item.tripId) ?? []), item]);
     return [...byTrip.entries()]
-      .map(([tripId, rows]) => ({ tripId, tripName: rows[0].tripName, trip: trips.find(t => t.id === tripId), when: when(tripId), rows, urgent: rows.some(r => r.urgent) }))
+      .map(([tripId, rows]) => ({ tripId, tripName: rows[0].tripName, trip: trips.find(t => t.id === tripId), when: when(tripId), rows, urgent: rows.some(r => r.urgent), lead: rows.find(r => r.urgent) ?? rows.find(r => r.soon) ?? rows[0] }))
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || startOf(a.tripId) - startOf(b.tripId));
   }, [shown, trips, now]);
 
@@ -171,45 +172,49 @@ export function NeedsAttention({ trips, extra = [] }: { trips: Trip[]; extra?: A
         <>
           <div className="divide-y divide-border border-t border-border">
             {groups.map(group => (
-              <section key={group.tripId} aria-label={group.tripName} className="px-5 py-3.5">
-                <div className="flex items-center gap-3 pb-1.5">
+              <section key={group.tripId} aria-label={group.tripName} className="flex flex-col gap-2.5 px-5 py-3 lg:flex-row lg:items-center lg:gap-4">
+                <div className="flex min-w-0 items-center gap-3 lg:w-72 lg:shrink-0">
                   <span className="h-9 w-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
                     {group.trip?.image && <img src={group.trip.image} alt="" loading="lazy" style={{ objectPosition: objectPosition(group.trip.imagePosition) }} className="h-full w-full object-cover" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground truncate">{group.tripName}</h3>
+                    <h3 className="text-sm font-semibold text-foreground truncate" title={group.tripName}>{group.tripName}</h3>
                     {group.when && <p className="text-xs text-muted-foreground">{group.when}</p>}
                   </div>
                 </div>
-                <ul>
-                  {group.rows.map(item => {
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.key}>
-                        <button
-                          type="button"
-                          onClick={() => navigate(item.to)}
-                          className="group -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-secondary/50 transition-colors"
-                        >
-                          <Icon aria-hidden="true" weight={item.urgent || item.soon ? "bold" : "regular"} className={`h-4 w-4 shrink-0 ${
-                            item.urgent ? "text-red-600 dark:text-red-400"
-                              : item.soon ? "text-amber-700 dark:text-amber-400"
-                              : "text-muted-foreground"}`} />
-                          <span className="min-w-0 flex-1 text-sm text-foreground">{item.message}</span>
-                          <span className={`inline-flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
-                            item.urgent ? "bg-primary text-primary-foreground group-hover:opacity-90"
-                              : "border border-border bg-card text-foreground group-hover:bg-secondary"}`}>
-                            {item.action}<CaretRight className="h-3 w-3" />
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                  <group.lead.icon aria-hidden="true" weight={group.lead.urgent || group.lead.soon ? "bold" : "regular"} className={`mt-0.5 h-4 w-4 shrink-0 ${
+                    group.lead.urgent ? "text-red-600 dark:text-red-400"
+                      : group.lead.soon ? "text-amber-700 dark:text-amber-400"
+                      : "text-muted-foreground"}`} />
+                  <p className="min-w-0 text-sm text-foreground">
+                    {group.rows.map((item, i) => (
+                      <Fragment key={item.key}>
+                        {i > 0 && ", "}
+                        <span className={item.urgent ? "font-medium text-red-600 dark:text-red-400" : undefined}>{item.message}</span>
+                      </Fragment>
+                    ))}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 lg:max-w-[50%] lg:shrink-0 lg:justify-end">
+                  {group.rows.map(item => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      aria-label={`${item.action}: ${item.message}`}
+                      onClick={() => navigate(item.to)}
+                      className={`inline-flex w-28 items-center justify-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold shrink-0 whitespace-nowrap transition-colors ${
+                        item.urgent ? "bg-primary text-primary-foreground hover:opacity-90"
+                          : "border border-border bg-card text-foreground hover:bg-secondary"}`}
+                    >
+                      {item.action}<CaretRight className="h-3 w-3" />
+                    </button>
+                  ))}
+                </div>
               </section>
             ))}
           </div>
-          {items.length > 6 && (
+          {items.length > VISIBLE_ITEMS && (
             <button type="button" onClick={() => setShowAll(s => !s)} className="w-full border-t border-border px-5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
               {showAll ? "Show fewer" : `Show all ${items.length}`}
             </button>

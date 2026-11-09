@@ -57,7 +57,9 @@ export function parsePeople(text: string): ParsedPerson[] {
 
     if (columns) {
       const field = (pattern: RegExp) => clean(cells[columns!.findIndex(label => pattern.test(label))] || "");
-      const email = field(/^(e-?mail|email address)$/).toLowerCase();
+      // A spreadsheet can leave the email column's heading blank, so fall back to the cell holding one
+      const unlabelled = !columns.some(label => /^(e-?mail|email address)$/.test(label));
+      const email = (unlabelled ? cells.join(" ").match(EMAIL_RE)?.[0] ?? "" : field(/^(e-?mail|email address)$/)).toLowerCase();
       const full = field(/^(full\s*name|name)$/);
       const first = field(/^(first\s*name|given\s*name)$/);
       const last = field(/^(last\s*name|surname|family\s*name)$/);
