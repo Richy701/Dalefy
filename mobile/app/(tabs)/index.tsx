@@ -16,6 +16,7 @@ import { Avatar, avatarColor } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
+import { useHiddenPhotos } from "@/services/hiddenPhotos";
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
 import { daysUntil, tripFactLine, shortDay, destinationFlag, nextEvent as findNextEvent, inDayOrder, timeToMinutes, todayKey } from "@/shared/tripSummary";
@@ -543,10 +544,11 @@ export default function HomeScreen() {
   const NextIcon = nextEvent ? categoryIcon(nextEvent.type, nextEvent.transferType) : CalendarDots;
 
   // Latest photos — diversify across uploaders, then fill chronologically
+  const hiddenPhotos = useHiddenPhotos();
   const latestPhotos = useMemo(() => {
     if (!heroTrip?.media?.length) return [];
     const all = [...heroTrip.media]
-      .filter(m => m.type === "image" && m.url?.startsWith("https://"))
+      .filter(m => m.type === "image" && m.url?.startsWith("https://") && !hiddenPhotos.has(m.id))
       .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
     const seen = new Set<string>();
     const picks: typeof all = [];
@@ -562,7 +564,7 @@ export default function HomeScreen() {
       }
     }
     return picks;
-  }, [heroTrip]);
+  }, [heroTrip, hiddenPhotos]);
 
   const fmtDay = shortDay;
   const { width: screenW } = useWindowDimensions();

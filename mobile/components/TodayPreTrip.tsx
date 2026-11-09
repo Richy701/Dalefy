@@ -15,10 +15,11 @@ import { useTripRole } from "@/hooks/useTripRole";
 import { DaleEventCard } from "@/components/DaleEventCard";
 import { type ThemeColors, T, S, statusTone } from "@/constants/theme";
 import { calendarDays, scheduledMinutes } from "@/shared/today";
-import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
+import type { Trip, TravelEvent, TripInfo, TripMedia } from "@/shared/types";
 import { sheetStyles } from "@/components/todaySheetStyles";
 import { fetchDayForecast, type DayForecast } from "@/services/weather";
 import { storiesTitle } from "@/services/tripSlideshow";
+import { useHiddenPhotos } from "@/services/hiddenPhotos";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -174,12 +175,11 @@ export function StayCard({ stay, tripId, C, label }: { stay: Stay; tripId: strin
 }
 
 /** The trip's photos, newest first, opening the gallery */
-function PhotoStrip({ trip, C }: { trip: Trip; C: ThemeColors }) {
+function PhotoStrip({ media, C }: { media: TripMedia[]; C: ThemeColors }) {
   const router = useRouter();
-  const photos = useMemo(() => [...(trip.media ?? [])]
-    .filter(m => m.type !== "video")
+  const photos = useMemo(() => [...media]
     .sort((a, b) => String(b.uploadedAt ?? "").localeCompare(String(a.uploadedAt ?? "")))
-    .slice(0, 10), [trip.media]);
+    .slice(0, 10), [media]);
   const open = () => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); };
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.photoStrip}>
@@ -349,7 +349,9 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
   const { C, isDark } = useTheme();
   const router = useRouter();
   const daysSince = Math.max(0, daysBetween(trip.end, todayISO));
-  const photoCount = (trip.media ?? []).filter(m => m.type !== "video").length;
+  const hidden = useHiddenPhotos();
+  const visiblePhotos = useMemo(() => (trip.media ?? []).filter(m => m.type !== "video" && !hidden.has(m.id)), [trip.media, hidden]);
+  const photoCount = visiblePhotos.length;
   const openTrip = () => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); };
   const openGallery = () => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); };
   const playTrip = () => { Haptics.selectionAsync(); router.push({ pathname: "/trip/slideshow", params: { tripId: trip.id } }); };
@@ -393,7 +395,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
         {photoCount > 0 ? (
           <>
             <SectionHeader title={`${photoCount} ${photoCount === 1 ? "photo" : "photos"} from the group`} action="See all" onAction={openGallery} C={C} />
-            <PhotoStrip trip={trip} C={C} />
+            <PhotoStrip media={visiblePhotos} C={C} />
           </>
         ) : (
           <>
