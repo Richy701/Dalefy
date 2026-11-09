@@ -21,16 +21,16 @@ function MapGlass({ style, children }: { style: StyleProp<ViewStyle>; children: 
     : <View style={[style, { backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE }]}>{children}</View>;
 }
 import { Sun, Calendar, CaretRight, NavigationArrow, MapTrifold, WifiSlash } from "phosphor-react-native";
-import { WeatherIcon } from "@/components/ui/WeatherIcon";
 import { fetchCurrentWeather, type Weather } from "@/services/weather";
 import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactElement } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
-import Animated, { useAnimatedRef, useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import Animated, { useAnimatedReaction, useAnimatedRef, useAnimatedStyle, interpolate, runOnJS, Extrapolation } from "react-native-reanimated";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useAndroidSheetDrag } from "@/hooks/useAndroidSheetDrag";
+import { WeatherIcon } from "@/components/ui/WeatherIcon";
 import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, S, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
@@ -205,6 +205,12 @@ export default function TodayScreen() {
     opacity: interpolate(scrollY.value, [0, 90], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: interpolate(scrollY.value, [0, 90], [0, -24], Extrapolation.CLAMP) }],
   }));
+  // iOS scroll views take every touch inside their frame, even with box-none. While the sheet is resting, the
+  // page's touch area starts at the sheet, so drags above it reach the map. Once it has risen, the page takes them.
+  const [sheetResting, setSheetResting] = useState(true);
+  useAnimatedReaction(() => scrollY.value <= 4, (resting, previous) => {
+    if (resting !== previous) runOnJS(setSheetResting)(resting);
+  });
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
   const stayCoord = useMemo((): [number, number] | null => {
@@ -569,17 +575,24 @@ export default function TodayScreen() {
         </MapboxGL.MapView>
       )}
 
-      {/* Over the map: where you are in the trip, like the stay chip before it starts; recenter */}
+      {/* Over the map: where you are in the trip, the weather and time there; recenter */}
       <Animated.View style={[styles.mapTop(insets.top), mapControlsStyle]} pointerEvents="box-none">
         {dayInfo ? (
-          <MapGlass style={styles.dayChip}>
-            <View style={styles.dayChipRow}>
-              {weather ? <WeatherIcon condition={weather.condition} isDay={weather.isDay} size={16} color={SHEET_GLASS ? C.textPrimary : "#fff"} /> : null}
-              <Text style={[styles.pinTitle, { color: SHEET_GLASS ? C.textPrimary : "#fff", flexShrink: 1 }]} numberOfLines={1}>
-                {[weather ? `${weather.temp}°` : "", `Day ${dayInfo.day} of ${dayInfo.total}`, showLocalTime && localTimeStr ? `${localTimeStr} local` : ""].filter(Boolean).join(", ")}
-              </Text>
-            </View>
-          </MapGlass>
+          <View style={styles.dayPills} pointerEvents="none">
+            <MapGlass style={styles.dayPill}>
+              <Text style={[styles.dayPillText, { color: SHEET_GLASS ? C.textPrimary : "#fff" }]} numberOfLines={1}>{`Day ${dayInfo.day} of ${dayInfo.total}`}</Text>
+            </MapGlass>
+            {weather || (showLocalTime && localTimeStr) ? (
+              <MapGlass style={styles.dayPill}>
+                <View style={styles.dayPillRow}>
+                  {weather ? <WeatherIcon condition={weather.condition} isDay={weather.isDay} size={16} color={SHEET_GLASS ? C.textPrimary : "#fff"} /> : null}
+                  <Text style={[styles.dayPillText, { color: SHEET_GLASS ? C.textPrimary : "#fff" }]} numberOfLines={1}>
+                    {[weather ? `${weather.temp}°` : "", showLocalTime ? localTimeStr : ""].filter(Boolean).join(", ")}
+                  </Text>
+                </View>
+              </MapGlass>
+            ) : null}
+          </View>
         ) : <View />}
         {markerCoords.length > 0 && (
           <Pressable
@@ -600,8 +613,10 @@ export default function TodayScreen() {
       <Animated.ScrollView
         ref={scheduleScrollRef}
         pointerEvents="box-none"
+        hitSlop={Platform.OS === "ios" && sheetResting ? { top: -(mapH - 28) } : undefined}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        // box-none here too: the content container spans the clear space above the sheet and would otherwise take the map's touches
+        contentContainerStyle={{ flexGrow: 1, pointerEvents: "box-none" }}
         onScroll={onScroll}
         scrollEventThrottle={16}
         onLayout={e => { sheetDrag.viewH.value = e.nativeEvent.layout.height; }}
@@ -817,8 +832,6 @@ function makeStyles(C: ThemeColors) {
     }),
     ...StyleSheet.create({
     mapButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-    dayChip: { minHeight: 44, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 7, justifyContent: "center", flexShrink: 1 },
-    dayChipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     pinWrap: { alignItems: "center" },
     dayPin: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center" },
     pin: {
@@ -827,6 +840,10 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE,
     },
     pinIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+    dayPills: { flexDirection: "row", alignItems: "center", gap: S.sm, flexShrink: 1 },
+    dayPill: { minHeight: 40, borderRadius: 20, paddingHorizontal: 15, justifyContent: "center", flexShrink: 1 },
+    dayPillRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    dayPillText: { fontSize: 14, fontWeight: T.semibold, flexShrink: 1 },
     pinTitle: { fontSize: T.sm, fontWeight: T.semibold, color: "#fff" },
     pinSub: { fontSize: T.xs, color: "rgba(255,255,255,0.72)" },
     pinStem: { width: 2, height: 7, backgroundColor: MAP_GLASS },

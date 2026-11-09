@@ -17,6 +17,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useTrips } from "@/context/TripsContext";
+import { useSavedInfo } from "@/hooks/useSavedInfo";
+import { withSavedInfo } from "@/services/savedInfo";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
@@ -1348,6 +1350,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // re-render this whole dialog on every keystroke. Only a boolean tracks emptiness.
   const [hasPaste, setHasPaste] = useState(false);
   const { trips, addTrip, updateTrip } = useTrips();
+  const { items: savedInfo } = useSavedInfo();
   const [directoryTravelers, setDirectoryTravelers] = useDirectoryTravelers();
   const { showToast, addNotification } = useNotifications();
   const isReimport = !!existingTripId;
@@ -1827,7 +1830,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         organizer: parsed.organizer,
         info: cleanedInfo.length > 0 ? cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item })) : undefined,
       };
-      addTrip(trip);
+      addTrip(withSavedInfo(trip, savedInfo));
       const mediaSuffix = tripMedia.length > 0 ? ` + ${tripMedia.length} media` : "";
       showToast(`Imported "${trip.name}" - ${trip.events.length} events${mediaSuffix}`);
       addNotification({ message: "Itinerary imported", detail: trip.name, time: "Just now", type: "success" });

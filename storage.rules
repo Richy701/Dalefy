@@ -55,6 +55,14 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Forms attached to a team's saved info. Trips reuse the download link, so files stay when an item is removed.
+    match /saved-info/{orgId}/{uid}/{fileName} {
+      allow read: if orgRole(orgId, ['owner', 'admin', 'agent', 'viewer']);
+      allow create: if request.auth != null && request.auth.uid == uid
+        && orgRole(orgId, ['owner', 'admin', 'agent'])
+        && request.resource.size < 50 * 1024 * 1024;
+    }
+
     // Gallery reads/uploads require membership; editors may moderate any upload.
     match /trips/{tripId}/media/{uid}/{fileName} {
       // The app marks new uploads by filename so each request follows one access

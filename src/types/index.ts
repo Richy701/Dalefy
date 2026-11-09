@@ -113,6 +113,8 @@ export interface TripCoordinator {
 
 export interface TripInfo {
   id: string;
+  /** The team saved info item this page was copied from */
+  savedInfoId?: string;
   title: string;
   body: string;
   leaderOnly?: boolean;

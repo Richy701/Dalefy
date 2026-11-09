@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
 import { withEventTimes24h } from "@/shared/dates";
-import { fetchTrips, setGalleryLike, subscribeToTrips } from "@/services/firebaseTrips";
+import { fetchTripById, fetchTrips, setGalleryLike, subscribeToTrips } from "@/services/firebaseTrips";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/services/firebase";
 
@@ -45,6 +45,8 @@ interface TripsContextValue {
   updateTripLocal: (trip: Trip) => void;
   clearTrips: () => Promise<void>;
   reload: () => Promise<boolean>;
+  /** After a join is saved: the copy fetched before joining has no photos, because the server only sends those to members */
+  refreshJoinedTrip: (id: string) => Promise<void>;
   /** Block subscription/reload overwrites while a long-running operation is in progress */
   holdWrites: () => void;
   releaseWrites: () => void;
@@ -300,6 +302,15 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const holdWrites = useCallback(() => { pendingWrites.current++; }, []);
   const releaseWrites = useCallback(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, []);
 
+  const refreshJoinedTrip = useCallback(async (id: string) => {
+    const fresh = await fetchTripById(id).catch(() => null);
+    if (!fresh) return;
+    const next = (qc.getQueryData<Trip[]>(["trips"]) ?? []).map(t => (t.id === id ? fresh : t));
+    qc.setQueryData<Trip[]>(["trips"], next);
+    setLocalCache(next);
+    save(next);
+  }, [qc]);
+
   const reload = useCallback(async (): Promise<boolean> => {
     if (pendingWrites.current > 0) return false;
     try {
@@ -318,7 +329,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   return (
-    <TripsContext.Provider value={{ trips, ready, offline, _debug, addTrip, deleteTrip, deletePhoto, likePhoto, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
+    <TripsContext.Provider value={{ trips, ready, offline, _debug, addTrip, refreshJoinedTrip, deleteTrip, deletePhoto, likePhoto, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
       {children}
     </TripsContext.Provider>
   );

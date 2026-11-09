@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
   Sun, Moon, CircleHalf, Download, Trash, Lock, Buildings, Users, SpinnerGap,
-  DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera, ClockCounterClockwise,
+  DeviceMobile, EnvelopeSimple, Globe, SignOut, Copy, ArrowSquareOut, Camera, ClockCounterClockwise, Files,
 } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
 import { isFirebaseConfigured, firebaseDb, firebaseStorage } from "@/services/firebase";
@@ -32,6 +32,7 @@ import { usePreferences, ACCENT_PRESETS, MONO_ACCENT } from "@/context/Preferenc
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { TeamManagement } from "@/components/shared/TeamManagement";
+import { SavedInfoManager } from "@/components/shared/SavedInfoManager";
 import { TeamActivity } from "@/components/shared/TeamActivity";
 import { useStaffPhoto } from "@/hooks/useStaffPhoto";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
@@ -669,6 +670,19 @@ export function SettingsPage() {
                 : `Who's on ${currentOrg.name}. Ask an admin to change roles or invite people.`}
             >
               <TeamManagement onInvite={() => setInviteOpen(true)} />
+            </Section>
+          )}
+
+          {/* ── Saved info for every trip ── */}
+          {realAuth && currentOrg && (
+            <Section
+            id="saved-info"
+              icon={Files}
+              wide
+              title="Saved info"
+              description="Things that belong on every trip, like the 24/7 contact, travel insurance and behavioural standards. New trips get them automatically."
+            >
+              <SavedInfoManager />
             </Section>
           )}
 

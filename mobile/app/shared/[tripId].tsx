@@ -92,7 +92,7 @@ export default function SharedTripScreen() {
   // Like Home: the cover photo, blurred, carries down the whole page, so the photo palette in both themes
   const C = useMemo(() => photoPalette(themeC, themeDark), [themeC, themeDark]);
   const isDark = true;
-  const { trips, addTrip } = useTrips();
+  const { trips, addTrip, refreshJoinedTrip } = useTrips();
   const { prefs } = usePreferences();
   const { user: authUser, isAnonymous } = useAuth();
   const { toast } = useToast();
@@ -146,6 +146,7 @@ export default function SharedTripScreen() {
           toast("Couldn't save this trip. Check your connection and try again.", "error");
           return;
         }
+        void refreshJoinedTrip(trip.id);
         if (linkedTravelerId && !isAnonymous && authUser?.email) {
           patchTravelerEmail(trip.id, linkedTravelerId, authUser.email);
         }
@@ -159,7 +160,7 @@ export default function SharedTripScreen() {
 
     // Joining from onboarding, the arrival screen's button moves them on; elsewhere, straight to the trip
     if (!joining) setTimeout(() => openJoinedTrip(trip.id), 1200);
-  }, [trip, addTrip, addScale, prefs, openJoinedTrip, joining, isAnonymous, authUser, toast]);
+  }, [trip, addTrip, refreshJoinedTrip, addScale, prefs, openJoinedTrip, joining, isAnonymous, authUser, toast]);
 
   const handleAddToMyTrips = useCallback(async () => {
     if (!trip || alreadyInMyTrips || justAdded) return;

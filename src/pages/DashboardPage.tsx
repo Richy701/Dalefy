@@ -7,7 +7,7 @@ import {
   Plus, MagnifyingGlass, AirplaneTilt, Calendar as LucideCalendar, Trash,
   DotsThreeVertical, GridFour, List, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, Compass,
-  X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
+  X, Upload, SpinnerGap, CaretRight,
   Clock, Hash, Tag, Copy, Stack, FloppyDisk, Warning, CaretDown, Archive, ArrowCounterClockwise, ListChecks, FileText, LockSimple } from "@phosphor-icons/react";
 import { liveTrips } from "@/lib/tripLifecycle";
 import { STORAGE } from "@/config/storageKeys";
@@ -46,8 +46,9 @@ import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
-import { searchImages } from "@/services/imageSearch";
-import { COVER_IMAGES } from "@/data/images";
+import { CoverPhotoPicker } from "@/components/shared/CoverPhotoPicker";
+import { useSavedInfo } from "@/hooks/useSavedInfo";
+import { withSavedInfo } from "@/services/savedInfo";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { tripTimingLine, tripDatesLine, stayLine, shortDay } from "@/lib/tripSummary";
 import { FlightsBoard } from "@/components/dashboard/FlightsBoard";
@@ -178,6 +179,7 @@ function buttonA11y(label: string, onActivate: () => void) {
 
 export function DashboardPage() {
   const { trips: allTrips, ready: tripsReady, addTrip, deleteTrip, updateTrip } = useTrips();
+  const { items: savedInfo } = useSavedInfo();
   // Archived trips are put away: out of the cards, counts and attention list unless asked for
   const trips = useMemo(() => liveTrips(allTrips), [allTrips]);
   const archivedTrips = useMemo(() => allTrips.filter(t => !!t.archivedAt), [allTrips]);
@@ -231,11 +233,6 @@ export function DashboardPage() {
     name: string; attendees: string; dateRange: DateRange | undefined; image: string;
     destination: string; paxCount: string; tripType: string; budget: string; currency: string;
   }>({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: defaultCurrency });
-  const [coverSearch, setCoverSearch] = useState("");
-  const [coverResults, setCoverResults] = useState<string[]>([]);
-  const [isCoverSearching, setIsCoverSearching] = useState(false);
-  const [coverPage, setCoverPage] = useState(1);
-  const [coverLastQuery, setCoverLastQuery] = useState("");
 
   const filteredTrips = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -339,28 +336,7 @@ export function DashboardPage() {
     return { rows: rows.slice(0, 5), total: rows.length, overdue: rows.filter(r => r.overdue).length };
   }, [trips]);
 
-  const [coverNotice, setCoverNotice] = useState<string | null>(null);
   const [newTripDateError, setNewTripDateError] = useState<string | null>(null);
-
-  const runCoverSearch = async (query: string, page = 1) => {
-    if (!query.trim()) { setCoverResults([]); setCoverNotice(null); return; }
-    setIsCoverSearching(true);
-    setCoverLastQuery(query);
-    setCoverPage(page);
-    setCoverNotice(null);
-    try {
-      const { urls } = await searchImages(query, page, 12);
-      if (urls.length) { setCoverResults(urls); return; }
-      const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
-      setCoverResults(shuffled.map(i => i.url));
-      setCoverNotice(`No photos found for "${query}". Showing our stock covers instead.`);
-    } catch {
-      setCoverResults([]);
-      setCoverNotice("Photo search isn't available right now. Pick a stock cover or try again.");
-    } finally {
-      setIsCoverSearching(false);
-    }
-  };
 
   const handleCreateTripSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -389,10 +365,9 @@ export function DashboardPage() {
       })(),
       events: [],
     };
-    addTrip(newTrip);
+    addTrip(withSavedInfo(newTrip, savedInfo));
     setIsNewTripOpen(false);
     setNewTripData({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: defaultCurrency });
-    setCoverSearch(""); setCoverResults([]);
     toast.success("Trip created successfully");
     addNotification({ message: "Trip created", detail: newTrip.name, time: "Just now", type: "success" });
   };
@@ -451,7 +426,7 @@ export function DashboardPage() {
         date: shiftDate(e.date),
       })),
     };
-    addTrip(newTrip);
+    addTrip(withSavedInfo(newTrip, savedInfo));
     toast.success("Trip created from template");
     navigate(`/trip/${newTrip.id}`);
   };
@@ -1404,66 +1379,11 @@ export function DashboardPage() {
                       <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
                     </div>
                   )}
-                  {/* Search bar */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        value={coverSearch}
-                        onChange={e => setCoverSearch(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
-                        placeholder="Search photos, e.g. Maasai Mara"
-                        aria-label="Search cover photos"
-                        className="w-full pl-9"
-                      />
-                    </div>
-                    <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
-                      className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
-                      {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
-                    </button>
-                    {coverResults.length > 0 && (
-                      <>
-                        <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                          <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
-                        </button>
-                        <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                          <CaretRight className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {coverNotice && <p className="text-[11px] text-muted-foreground">{coverNotice}</p>}
-                  {/* Thumbnail grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {isCoverSearching ? (
-                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-muted-foreground">
-                        <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
-                        <span className="text-xs font-medium">Searching…</span>
-                      </div>
-                    ) : coverResults.length > 0 ? (
-                      coverResults.map((url, i) => (
-                        <button key={i} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
-                          className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                          <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
-                        </button>
-                      ))
-                    ) : (
-                      COVER_IMAGES.map(({ url, label }) => (
-                        <button key={url} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
-                          className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                          <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
-                          <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
-                          <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-medium text-white">{label}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                  <CoverPhotoPicker
+                    value={newTripData.image}
+                    onChange={url => setNewTripData(prev => ({ ...prev, image: url }))}
+                    destination={newTripData.destination}
+                  />
                 </div>
 
                     </div>

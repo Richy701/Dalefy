@@ -303,6 +303,7 @@ function AppStack() {
             <Stack.Screen name="notifications" options={glassSheetOptions} />
             <Stack.Screen name="trip/people" options={glassSheetOptions} dangerouslySingular />
             <Stack.Screen name="trip/organiser" options={{ ...glassSheetOptions, sheetAllowedDetents: [0.62] }} dangerouslySingular />
+            <Stack.Screen name="trip/slideshow" options={{ presentation: "fullScreenModal", animation: "fade", contentStyle: { backgroundColor: "#0E0E10" } }} dangerouslySingular />
             <Stack.Screen name="edit-profile" options={glassSheetOptions} />
             {/* Joining: each step lands on the same photo in the same place, so they fade rather than slide */}
             <Stack.Screen name="shared/[tripId]" options={({ route }) => ((route.params as { join?: string } | undefined)?.join === "1" ? { animation: "fade" } : {})} />

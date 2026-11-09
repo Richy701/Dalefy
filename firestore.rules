@@ -159,6 +159,18 @@ service cloud.firestore {
     }
 
     // ── Org invites ─────────────────────────────────────────────────────────
+    // ── Saved info: text and forms a team reuses on every trip ──
+    match /org_saved_info/{itemId} {
+      allow read: if request.auth != null && isOrgMember(resource.data.organization_id);
+      allow create: if request.auth != null
+        && request.resource.data.organization_id is string
+        && isOrgEditor(request.resource.data.organization_id);
+      allow update: if request.auth != null
+        && isOrgEditor(resource.data.organization_id)
+        && request.resource.data.organization_id == resource.data.organization_id;
+      allow delete: if request.auth != null && isOrgEditor(resource.data.organization_id);
+    }
+
     match /org_invites/{inviteId} {
       // Org admins see their org's invites; an invitee can read the invite addressed to them
       allow read: if request.auth != null

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Platform } from
 import type { StyleProp, ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
 import {
-  WarningCircle, Clock, Calendar, Check, Images, FileText, MapPin, NavigationArrow, CaretRight,
+  WarningCircle, Clock, Calendar, Check, Images, FileText, MapPin, NavigationArrow, CaretRight, Play,
 } from "phosphor-react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -18,6 +18,7 @@ import { calendarDays, scheduledMinutes } from "@/shared/today";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
 import { sheetStyles } from "@/components/todaySheetStyles";
 import { fetchDayForecast, type DayForecast } from "@/services/weather";
+import { storiesTitle } from "@/services/tripSlideshow";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -351,6 +352,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
   const photoCount = (trip.media ?? []).filter(m => m.type !== "video").length;
   const openTrip = () => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); };
   const openGallery = () => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); };
+  const playTrip = () => { Haptics.selectionAsync(); router.push({ pathname: "/trip/slideshow", params: { tripId: trip.id } }); };
 
   // A one-line recap of what the trip was
   const recap = useMemo(() => {
@@ -401,6 +403,11 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
             </Card>
           </>
         )}
+        {photoCount >= 3 ? (
+          <Card C={C} isDark={isDark} style={{ marginTop: S.sm }}>
+            <LinkRow label={storiesTitle(trip)} onPress={playTrip} C={C} Icon={Play} />
+          </Card>
+        ) : null}
         <Card C={C} isDark={isDark} style={{ marginTop: S.sm }}>
           <LinkRow label="Relive the itinerary" onPress={openTrip} C={C} Icon={Calendar} />
         </Card>

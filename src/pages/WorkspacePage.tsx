@@ -18,10 +18,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
+  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Files, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,9 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { objectPosition } from "@/lib/imagePosition";
 import { FocalPointPicker } from "@/components/shared/FocalPointPicker";
+import { CoverPhotoPicker, ImagePager } from "@/components/shared/CoverPhotoPicker";
+import { useSavedInfo } from "@/hooks/useSavedInfo";
+import { hasSavedInfo, infoFromSaved } from "@/services/savedInfo";
 import type { TravelEvent, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
@@ -101,7 +104,7 @@ import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { CategoryDot } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { sortEvents, inDayOrder } from "@/lib/sortEvents";
-import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
+import { IMAGE_BANK, getEventImageCategory, generateEventImage } from "@/data/images";
 // The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +150,7 @@ export function WorkspacePage() {
   const navigate = useNavigate();
   const { trips, ready, updateTrip, saveTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { user } = useAuth();
+  const { items: savedInfo } = useSavedInfo();
   const { theme, toggleTheme } = useTheme();
   const { addNotification } = useNotifications();
   const { canDeleteTrip, isOrgMember, isViewer } = usePermissions();
@@ -415,11 +419,6 @@ export function WorkspacePage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editTripOpen, setEditTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Partial<Trip>>({});
-  const [tripImageSearch, setTripImageSearch] = useState("");
-  const [tripImageResults, setTripImageResults] = useState<string[]>([]);
-  const [isTripImageSearching, setIsTripImageSearching] = useState(false);
-  const [tripImagePage, setTripImagePage] = useState(1);
-  const [tripImageLastQuery, setTripImageLastQuery] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [sendInviteOpen, setSendInviteOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
@@ -1032,22 +1031,6 @@ export function WorkspacePage() {
     }
   };
 
-  const runTripImageSearch = async (query: string, page = 1) => {
-    if (!query.trim()) { setTripImageResults([]); return; }
-    setIsTripImageSearching(true);
-    setTripImageLastQuery(query);
-    setTripImagePage(page);
-    try {
-      const srcParam = preferredImageSource === "auto" ? undefined : preferredImageSource;
-      const { urls } = await searchImages(query, page, 12, srcParam);
-      if (urls.length) { setTripImageResults(urls); return; }
-      const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
-      setTripImageResults(shuffled.map(i => i.url));
-    } finally {
-      setIsTripImageSearching(false);
-    }
-  };
-
   const canPickCoordinators = !!trip?.organizationId && !trip?.private;
   const handleOpenEditOrg = () => {
     if (demoGate()) return;
@@ -1066,6 +1049,8 @@ export function WorkspacePage() {
     setEditOrgOpen(false);
     toast.success("Saved");
   };
+
+  const unusedSavedInfo = savedInfo.filter(item => !hasSavedInfo(editInfoData, item));
 
   const handleOpenEditInfo = () => {
     if (demoGate()) return;
@@ -1228,8 +1213,6 @@ export function WorkspacePage() {
       organizer: trip.organizer ?? undefined,
       info: trip.info ? trip.info.map(i => ({ ...i })) : [],
     });
-    setTripImageSearch("");
-    setTripImageResults([]);
     setEditTripOpen(true);
   };
 
@@ -2990,21 +2973,12 @@ export function WorkspacePage() {
                           </button>
                         ))}
                       </div>
-                      {(imageSearchSource === "google" || imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
-                            className="flex-1 h-7 rounded-lg bg-secondary border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
-                            <ArrowsClockwise className="h-3 w-3" /> Refresh
-                          </button>
-                          <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
-                            className="flex-1 h-7 rounded-lg bg-brand/10 border border-brand/40 text-xs font-medium text-brand hover:bg-brand/20 transition-colors flex items-center justify-center gap-1">
-                            Next <CaretRight className="h-3 w-3" />
-                          </button>
-                        </div>
+                      {imageLastQuery && (
+                        <ImagePager page={imagePage} busy={isSearchingImages} atEnd={imageSearchSource === "local"} onPage={next => runImageSearch(imageLastQuery, next)} />
                       )}
                       {imageSearchSource === "local" && (
-                        <p className="text-[9px] text-muted-foreground/70 font-medium text-center pt-1">
-                          Suggested images · APIs unavailable
+                        <p className="text-xs text-muted-foreground text-center pt-1" role="status">
+                          {imageLastQuery ? `No photos found for "${imageLastQuery}". Showing suggestions instead.` : "Showing suggestions."}
                         </p>
                       )}
                       {imageSearchSource === "google" && (
@@ -3364,67 +3338,13 @@ export function WorkspacePage() {
                   </FocalPointPicker>
                 )}
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                    <Input
-                      value={tripImageSearch}
-                      onChange={e => setTripImageSearch(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runTripImageSearch(tripImageSearch); } }}
-                      placeholder="Search destinations…"
-                      className="w-full pl-9"
-                    />
-                  </div>
-                  <button type="button" onClick={() => coverInputRef.current?.click()}
-                    className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0"
-                    title="Upload cover image">
-                    <Upload className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
-                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
-                    {isTripImageSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
-                  </button>
-                  {tripImageResults.length > 0 && (
-                    <>
-                      <button type="button" aria-label="Refresh" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                        <ArrowsClockwise className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
-                      </button>
-                      <button type="button" aria-label="Next page" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage + 1)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                        <CaretRight className="h-3.5 w-3.5" />
-                      </button>
-                      <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); setTripImagePage(1); setTripImageLastQuery(""); }}
-                        className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                  {isTripImageSearching ? (
-                    <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-muted-foreground">
-                      <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
-                      <span className="text-xs font-medium">Searching…</span>
-                    </div>
-                  ) : tripImageResults.length > 0 ? (
-                    tripImageResults.map((url, i) => (
-                      <button key={i} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }))}
-                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                        <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
-                      </button>
-                    ))
-                  ) : (
-                    COVER_IMAGES.map(({ url, label }) => (
-                      <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }))}
-                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
-                        <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
-                        <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
-                        <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-medium text-white">{label}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
+                <CoverPhotoPicker
+                  value={editingTrip.image}
+                  onChange={url => setEditingTrip(prev => ({ ...prev, image: url, imagePosition: undefined }))}
+                  destination={editingTrip.destination}
+                  source={preferredImageSource === "auto" ? undefined : preferredImageSource}
+                  onUploadClick={() => coverInputRef.current?.click()}
+                />
               </div>
 
               {/* ── Section: Trip Details ── */}
@@ -3897,6 +3817,26 @@ export function WorkspacePage() {
               <Button type="button" variant="outline" onClick={() => setEditInfoData(prev => [...prev, { id: Date.now().toString(), title: "", body: "" }])} className="w-full">
                 <Plus /> Add page
               </Button>
+              {unusedSavedInfo.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className={buttonVariants({ variant: "outline", className: "w-full mt-2" })}>
+                    <Files /> Add from saved info
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72 bg-card border border-border shadow-2xl rounded-xl p-1">
+                    {unusedSavedInfo.map(item => (
+                      <DropdownMenuItem key={item.id} onClick={() => setEditInfoData(prev => [...prev, infoFromSaved(item)])}>
+                        <span className="truncate">{item.title}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    {unusedSavedInfo.length > 1 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setEditInfoData(prev => [...prev, ...unusedSavedInfo.map(infoFromSaved)])}>Add all</DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
               {/* Documents section inside edit dialog */}
               <div className="mt-8">
