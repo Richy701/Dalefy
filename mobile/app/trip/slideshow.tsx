@@ -209,7 +209,12 @@ export default function TripSlideshowScreen() {
   };
   const hold = () => setPaused(true);
   const release = () => setPaused(false);
-  const close = () => { Haptics.selectionAsync(); router.back(); };
+  // Opened from a link there may be nothing behind this screen to go back to
+  const close = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/media");
+  };
 
   return (
     <View style={s.root}>
