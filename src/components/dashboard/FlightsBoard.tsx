@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format, addDays } from "date-fns";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { CategoryDot } from "@/components/ui/category-dot";
+import { AirlineMark } from "@/components/shared/AirlineMark";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { shortDay } from "@/lib/tripSummary";
 import { cn } from "@/lib/utils";
@@ -130,7 +131,7 @@ export function FlightsBoard({ trips, directory, onOpen }: { trips: Trip[]; dire
               onClick={() => onOpen(trip.id)}
               className="flex items-center gap-3 px-5 py-2.5 text-left hover:bg-secondary/60 transition-colors focus-visible:outline-none focus-visible:bg-secondary/60"
             >
-              <CategoryDot type="flight" size="sm" />
+              <AirlineMark flightNum={ev.flightNum} className="h-7 w-7" fallback={<CategoryDot type="flight" size="sm" />} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground truncate">
                   <span className="font-medium">{[ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title}</span>
