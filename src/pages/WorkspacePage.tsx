@@ -283,6 +283,7 @@ export function WorkspacePage() {
   const [exporting, setExporting] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState<{ id: string; name: string }[]>([]);
   const [editingEvent, setEditingEvent] = useState<TravelEvent | null>(null);
   const [eventErrors, setEventErrors] = useState<EventErrors>({});
   useEffect(() => { editingEventIdRef.current = isEditPanelOpen && editingEvent ? editingEvent.id : null; }, [isEditPanelOpen, editingEvent]);
@@ -764,6 +765,7 @@ export function WorkspacePage() {
     e.preventDefault();
     if (demoGate()) return;
     if (!editingEvent) return;
+    if (uploadingDocs.length) { toast("Wait a moment, still uploading your documents"); return; }
     const errors = validateEvent(editingEvent);
     if (Object.keys(errors).length > 0) {
       setEventErrors(errors);
@@ -841,6 +843,7 @@ export function WorkspacePage() {
 
   const handleEventDialogOpenChange = (open: boolean) => {
     if (open) { setIsEditPanelOpen(true); return; }
+    if (uploadingDocs.length) { toast("Wait a moment, still uploading your documents"); return; }
     if (isEventDirty()) { setDiscardPromptOpen(true); return; }
     setIsEditPanelOpen(false);
     setEventErrors({});
@@ -978,6 +981,9 @@ export function WorkspacePage() {
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !editingEvent) return;
+    // A row per file straight away, so the few seconds of uploading are visible and the editor stays open
+    const pending = files.map(file => ({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: file.name }));
+    setUploadingDocs(prev => [...prev, ...pending]);
     const MAX_SIZE = isFirebaseConfigured() && user?.id !== "demo" ? 50 * 1024 * 1024 : MAX_DOC_BYTES;
     const oversized = files.filter(f => f.size > MAX_SIZE);
     if (oversized.length) {
@@ -1001,6 +1007,7 @@ export function WorkspacePage() {
       const newDocs = await Promise.all(uploads);
       setEditingEvent(prev => prev ? { ...prev, documents: [...(prev.documents || []), ...newDocs] } : null);
     } catch { toast.error("Document upload failed"); }
+    finally { setUploadingDocs(prev => prev.filter(doc => !pending.some(p => p.id === doc.id))); }
     e.target.value = "";
   };
 
@@ -3122,12 +3129,27 @@ export function WorkspacePage() {
                         </div>
                       </SortableContext>
                     </DndContext>
-                  ) : (
+                  ) : uploadingDocs.length ? null : (
                     <button type="button" onClick={() => documentInputRef.current?.click()}
                       className="w-full h-10 rounded-lg border-2 border-dashed border-border flex items-center justify-center gap-2 text-muted-foreground hover:border-brand/50 hover:text-brand transition-colors">
                       <Paperclip className="h-4 w-4" />
                       <span className="text-xs font-medium">Attach PDF, voucher, or booking confirmation</span>
                     </button>
+                  )}
+                  {uploadingDocs.length > 0 && (
+                    <div className="space-y-1.5" role="status" aria-live="polite">
+                      {uploadingDocs.map(doc => (
+                        <div key={doc.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-background border border-dashed border-border">
+                          <div className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                            <SpinnerGap className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">{doc.name}</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Uploading...</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -3255,7 +3277,7 @@ export function WorkspacePage() {
 
             {/* Footer */}
             <div className="px-4 sm:px-8 py-4 sm:py-5 bg-card border-t border-border flex items-center justify-between gap-3 shrink-0">
-              <Button type="button" variant="ghost" onClick={() => setIsEditPanelOpen(false)} className="h-10 px-4 text-[13px] font-medium text-muted-foreground">Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => { if (uploadingDocs.length) { toast("Wait a moment, still uploading your documents"); return; } setIsEditPanelOpen(false); }} className="h-10 px-4 text-[13px] font-medium text-muted-foreground">Cancel</Button>
               <Button disabled={savingChanges} type="submit" className="h-10 px-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] shadow-lg shadow-brand/20">
                 Save event
               </Button>
