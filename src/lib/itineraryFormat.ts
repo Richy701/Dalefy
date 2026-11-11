@@ -55,6 +55,8 @@ function areaOf(address: string): string {
 }
 
 export function rowSub(ev: TravelEvent): string {
+  // A night in a stay already checked into: just say so, the check-in row has the details
+  if (ev.type === "hotel" && ev.isOvernight) return ["Overnight", ev.location ? areaOf(tidyLocation(ev.location)) : ""].filter(Boolean).join(", ");
   if (!ev.location) return "";
   const loc = tidyLocation(ev.location);
   if (ev.type === "transfer") {

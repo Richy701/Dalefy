@@ -2627,26 +2627,37 @@ export function WorkspacePage() {
                               if (!prev) return null;
                               const formatted = format(day, "yyyy-MM-dd");
                               const updates: Partial<TravelEvent> = { date: formatted };
-                              if (prev.type === "hotel") updates.checkin = formatted;
+                              if (prev.type === "hotel" && !prev.isOvernight) updates.checkin = formatted;
                               return { ...prev, ...updates };
                             }); }} initialFocus />
                         </PopoverContent>
                       </Popover>
                       {eventErrors.date && <p className="text-[11px] font-semibold text-red-500">{eventErrors.date}</p>}
                     </div>
-                    <div className="space-y-1.5">
+                    {/* An overnight is a night in a stay already checked into: no time of its own */}
+                    {!(editingEvent?.type === "hotel" && editingEvent?.isOvernight) && <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in time" : "Start time"}</Label>
                       <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
                       <p className="text-[11px] text-muted-foreground">Leave blank if the time is not confirmed.</p>
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
-                    </div>
+                    </div>}
                   </div>
 
                   {/* Overnight toggle for hotel */}
                   {editingEvent?.type === "hotel" && (
                     <button
                       type="button"
-                      onClick={() => setEditingEvent(prev => prev ? { ...prev, isOvernight: !prev.isOvernight } : null)}
+                      onClick={() => {
+                        setEditingEvent(prev => {
+                          if (!prev) return null;
+                          if (prev.isOvernight) return { ...prev, isOvernight: false };
+                          // The check-in item already carries the time, reference and confirmations; a duplicate's copies go
+                          const { travelerRefs: _refs, travelerDocs: _docs, ...rest } = prev;
+                          return { ...rest, isOvernight: true, time: "", endTime: "", confNumber: "", checkin: "", checkout: "" };
+                        });
+                        setEventErrors(prev => ({ ...prev, time: undefined }));
+                      }}
+                      aria-pressed={!!editingEvent.isOvernight}
                       className="flex items-center gap-2.5 group/toggle"
                     >
                       <div className={cn(
@@ -2789,13 +2800,13 @@ export function WorkspacePage() {
                         {knownSuppliers.map(name => <option key={name} value={name} />)}
                       </datalist>
                     </div>
-                    <div className="space-y-1.5">
+                    {!(editingEvent?.type === "hotel" && editingEvent?.isOvernight) && <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">Booking reference</Label>
                       <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC123" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
-                    </div>
+                    </div>}
                   </div>
 
-                  {editingEvent && (
+                  {editingEvent && !(editingEvent.type === "hotel" && editingEvent.isOvernight) && (
                     <TravelerRefsFields
                       event={editingEvent}
                       travellers={tripTravelers}

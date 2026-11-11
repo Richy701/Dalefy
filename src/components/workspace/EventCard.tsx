@@ -119,6 +119,7 @@ function rowFacts(event: TravelEvent, arrTz: string): { label: string; value: st
   const t = (v?: string) => (v && !isPlaceholderTime(v) ? v.split(" ")[0] : "");
   const facts: [string, string | undefined][] =
     event.type === "flight" ? [["Arrives", [t(event.endTime), t(event.endTime) && arrTz].filter(Boolean).join(" ")], ["Duration", event.duration], ["Ref", event.confNumber]]
+    : event.type === "hotel" && event.isOvernight ? [["Room", event.roomType]]
     : event.type === "hotel" ? [["Check-in", stayValue(event.checkin) || t(event.time)], ["Check-out", stayValue(event.checkout) || t(event.endTime)], ["Room", event.roomType]]
     : event.type === "transfer" ? [["Meet at", event.meetingPoint], ["Driver", event.contactName], ["Ref", event.confNumber]]
     : [["Until", t(event.endTime)], ["With", event.supplier], ["Ref", event.confNumber]];

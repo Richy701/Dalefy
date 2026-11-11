@@ -34,9 +34,12 @@ export function namedRefs(event: Pick<TravelEvent, "travelerRefs">, travellers: 
 
 type Leg = Pick<TravelEvent, "id" | "type" | "date" | "endDate" | "depAirport" | "arrAirport">;
 
-/** The events the references list shows: flights and hotels, plus anything else that already has a reference */
-export function bookableEvents<T extends Pick<TravelEvent, "type" | "confNumber" | "travelerRefs">>(events: T[]): T[] {
-  return events.filter(e => e.type === "flight" || e.type === "hotel" || hasBookingRef(e));
+/**
+ * The events the references list shows: flights and hotels, plus anything else that already has a reference.
+ * A hotel's overnight is a night in a stay booked on its check-in, so it has no reference of its own to fill.
+ */
+export function bookableEvents<T extends Pick<TravelEvent, "type" | "confNumber" | "travelerRefs" | "isOvernight">>(events: T[]): T[] {
+  return events.filter(e => hasBookingRef(e) || e.type === "flight" || (e.type === "hotel" && !e.isOvernight));
 }
 
 const airport = (code?: string) => code?.trim().toUpperCase() || "";
@@ -223,12 +226,13 @@ export interface StayMatch { filled: StayFill[]; skipped: { file: StayFile; prob
  */
 export function matchStays(
   files: StayFile[],
-  events: Pick<TravelEvent, "id" | "type" | "title" | "location" | "date" | "assignedTo">[],
+  events: Pick<TravelEvent, "id" | "type" | "title" | "location" | "date" | "assignedTo" | "isOvernight">[],
   travellers: (Pick<User, "id" | "name"> & { email?: string })[],
   chosen: Record<string, string> = {},
 ): StayMatch {
   const result: StayMatch = { filled: [], skipped: [] };
-  const hotels = events.filter(e => e.type === "hotel");
+  // A confirmation belongs to the check-in, never to the overnights after it
+  const hotels = events.filter(e => e.type === "hotel" && !e.isOvernight);
   const taken = new Set<string>();
   const byEmail = (email: string) => {
     const wanted = email.trim().toLowerCase();

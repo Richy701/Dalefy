@@ -354,6 +354,14 @@ test('a leader gets everyone\'s confirmation PDFs and their own in documents', (
   assert.deepEqual(view.events[0].documents.map(d => d.url), ['shared-map.pdf', 'amy-qr.pdf']);
 });
 
+test('an overnight hotel night never repeats the stay\'s reference or confirmation PDF', () => {
+  const trip = { status: 'Published', published_snapshot: { name: 'N', publishedAt: '2026-09-11T00:00:00Z', travelers: [{ id: 'a', name: 'Amy' }],
+    events: [{ id: 'n', type: 'hotel', title: 'Siyam World', isOvernight: true, confNumber: 'COPIED', travelerRefs: { a: 'COPIED' }, travelerDocs: { a: doc('c', 'copied.pdf') } }] } };
+  const view = publishedTripView('t', trip, false, true, 'a');
+  assert.equal(/COPIED|copied\.pdf/.test(JSON.stringify(view)), false);
+  assert.equal(view.events[0].isOvernight, true);
+});
+
 const orgTrip = (published, working) => ({ status: 'Published', organizer: working, published_snapshot: { name: 'T', publishedAt: '2026-09-11T00:00:00Z', events: [], organizer: published } });
 test('organiser contact comes from the working copy when blank, only for the same person', () => {
   const blank = orgTrip({ name: 'Laura Davies', email: '' }, { name: 'laura davies', email: 'l@x.test', phone: '+44 1' }).published_snapshot.organizer;

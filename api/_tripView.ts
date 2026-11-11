@@ -49,8 +49,10 @@ function onEvent(event: Data, travelerId: string): boolean {
   const assigned = list(event.assignedTo);
   return !assigned.length || assigned.includes(travelerId);
 }
+/** A hotel's overnight is a night in a stay already shown on its check-in; a duplicate's copied reference isn't repeated */
+const isOvernightStay = (event: Data) => event.type === "hotel" && event.isOvernight === true;
 function ownBookingRef(event: Data, travelerId: string | null): string | null {
-  if (!travelerId || !onEvent(event, travelerId)) return null;
+  if (!travelerId || !onEvent(event, travelerId) || isOvernightStay(event)) return null;
   const shared = typeof event.confNumber === "string" ? event.confNumber.trim() : "";
   return travelerRefs(event.travelerRefs)[travelerId] || shared || null;
 }
@@ -131,7 +133,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
       const all = Object.fromEntries(Object.entries(ownDocs).map(([id, doc]) => [id, documents([doc])[0]] as const).filter(([, doc]) => doc.url));
       if (Object.keys(all).length) result.travelerDocs = all;
     }
-    if (listedId && onEvent(data, listedId) && ownDocs[listedId]) {
+    if (listedId && onEvent(data, listedId) && ownDocs[listedId] && !isOvernightStay(data)) {
       const own = documents([ownDocs[listedId]])[0];
       if (own.url) result.documents = [...(result.documents as Data[]), own];
     }

@@ -695,7 +695,7 @@ export default function TripScreen() {
                               <Text style={styles.tlSub} numberOfLines={1}>{rowSub(ev)}</Text>
                             ) : null}
                           </View>
-                          {ev.time && !isPlaceholderTime(ev.time) ? (
+                          {ev.time && !isPlaceholderTime(ev.time) && !(ev.type === "hotel" && ev.isOvernight) ? (
                             <Text style={styles.tlTime}>{ev.time}</Text>
                           ) : null}
                           <CaretRight size={14} color={C.textTertiary} weight="regular" />

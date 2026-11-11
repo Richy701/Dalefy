@@ -507,8 +507,10 @@ export default function EventDetailScreen() {
   if (ev.price) detailRows.push({ icon: Hash, label: "Price", value: ev.price });
   if (isLeader && ev.supplier) detailRows.push({ icon: Users, label: "Supplier", value: ev.supplier });
   // The server sends a traveller only their own reference; leaders also get everyone's, by name
-  if (ev.confNumber) detailRows.push({ icon: Hash, label: isLeader ? "Group booking ref" : "Your booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
-  if (isLeader) for (const { name, ref } of travellerRefRows(ev, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
+  // An overnight is a night in a stay already shown on its check-in, so its booking isn't repeated
+  const overnight = isHotel && !!ev.isOvernight;
+  if (ev.confNumber && !overnight) detailRows.push({ icon: Hash, label: isLeader ? "Group booking ref" : "Your booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
+  if (isLeader && !overnight) for (const { name, ref } of travellerRefRows(ev, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
 
   // Neighbouring events on the same day
   const dayEvents = trip.events
