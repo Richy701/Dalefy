@@ -1,4 +1,5 @@
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { T, type ThemeColors } from "@/constants/theme";
 
@@ -37,7 +38,7 @@ export function Avatar({ size = 32, uri, initials, color, ringColor, solid = fal
       }}
     >
       {showPhoto ? (
-        <Image source={{ uri: uri! }} style={{ width: size, height: size }} onError={() => setFailedUri(uri!)} />
+        <Image source={{ uri: uri! }} style={{ width: size, height: size }} contentFit="cover" cachePolicy="memory-disk" transition={0} onError={() => setFailedUri(uri!)} />
       ) : (
         <Text style={{ fontSize: Math.max(T["2xs"], Math.round(size * 0.38)), fontWeight: T.bold, color: solid ? "rgba(0,0,0,0.82)" : fill }}>
           {initials ?? "?"}
