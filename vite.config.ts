@@ -7,7 +7,7 @@ import { defineConfig, loadEnv, type Connect, type ViteDevServer } from "vite"
 import type { ServerResponse } from "http"
 import { fileURLToPath } from "url"
 import Anthropic from "@anthropic-ai/sdk"
-import { runParse, runAssist, runReadBookings, aiErrorToHttp, type AssistInput, type ParseInput } from "./api/_parseItineraryCore.ts"
+import { runParse, runAssist, runReadBookings, runReadStay, aiErrorToHttp, type AssistInput, type ParseInput } from "./api/_parseItineraryCore.ts"
 import { searchFlights, lookupFlightNumber } from "./api/_flightsCore.ts"
 import { searchImages } from "./api/_imagesCore.ts"
 import { geocode, suggest, PROXIMITY_RE, WITHIN_RE, COUNTRY_RE } from "./api/_geocodeCore.ts"
@@ -144,6 +144,17 @@ function apiRoutesPlugin(env: Record<string, string>) {
                 res.end(JSON.stringify(result))
               } catch (err) {
                 console.error("assist-event error:", err)
+                const mapped = aiErrorToHttp(err)
+                res.statusCode = mapped.status; res.end(JSON.stringify({ error: mapped.error }))
+              }
+              return
+            }
+
+            if (url.searchParams.get("mode") === "stays") {
+              try {
+                res.end(JSON.stringify(await runReadStay(client, { pdf: parsed.pdf })))
+              } catch (err) {
+                console.error("read-stay error:", err)
                 const mapped = aiErrorToHttp(err)
                 res.statusCode = mapped.status; res.end(JSON.stringify({ error: mapped.error }))
               }

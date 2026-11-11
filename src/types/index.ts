@@ -36,6 +36,8 @@ export interface TravelEvent {
   travelerSeats?: Record<string, string>;
   /** Ticket numbers by traveller id; each traveller's phone only gets their own */
   travelerTickets?: Record<string, string>;
+  /** A traveller's own booking confirmation (a hotel's PDF with its QR), by traveller id; each phone only gets their own */
+  travelerDocs?: Record<string, EventDocument>;
   image?: string;
   imagePosition?: ImageFocalPoint;
   roomType?: string;

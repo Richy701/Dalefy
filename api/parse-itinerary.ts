@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit, type ApiRequest, type ApiResponse } from "./_rateLimit.js";
-import { runParse, runAssist, runReadBookings, aiErrorToHttp, type AssistInput, type ParseInput } from "./_parseItineraryCore.js";
+import { runParse, runAssist, runReadBookings, runReadStay, aiErrorToHttp, type AssistInput, type ParseInput } from "./_parseItineraryCore.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -15,14 +15,26 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const payload = await verifyFirebaseToken(auth.replace("Bearer ", ""), { allowImpersonation: true });
   if (!payload) return res.status(401).json({ error: "Unauthorized" });
 
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  // A trip's hotel confirmations arrive as one PDF a request, often dozens at once, so they get their own allowance
+  const stays = url.searchParams.get("mode") === "stays";
+
   // Cap per-user request rate as a second line of defence against abuse.
-  if (!rateLimit(req, res, { bucket: "parse-itinerary", limit: 20, windowMs: 60_000 })) return;
+  if (!rateLimit(req, res, stays ? { bucket: "read-stays", limit: 60, windowMs: 60_000 } : { bucket: "parse-itinerary", limit: 20, windowMs: 60_000 })) return;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
   }
 
-  const url = new URL(req.url!, `http://${req.headers.host}`);
+  if (stays) {
+    try {
+      return res.status(200).json(await runReadStay(client, { pdf: (req.body as ParseInput | undefined)?.pdf }));
+    } catch (err) {
+      console.error("read-stay error:", err);
+      const { status, error } = aiErrorToHttp(err);
+      return res.status(status).json({ error });
+    }
+  }
 
   if (url.searchParams.get("mode") === "assist") {
     const { type, title, location, date, time, destination } = (req.body ?? {}) as AssistInput;

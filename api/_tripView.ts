@@ -125,6 +125,16 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     if (focal) result.imagePosition = focal;
     result.assignedTo = list(data.assignedTo).filter(v => typeof v === "string");
     result.documents = documents(data.documents);
+    // A hotel's confirmation PDF carries a QR that checks the guest in, so like a reference it only goes to its own traveller
+    const ownDocs = record(data.travelerDocs);
+    if (leader) {
+      const all = Object.fromEntries(Object.entries(ownDocs).map(([id, doc]) => [id, documents([doc])[0]] as const).filter(([, doc]) => doc.url));
+      if (Object.keys(all).length) result.travelerDocs = all;
+    }
+    if (listedId && onEvent(data, listedId) && ownDocs[listedId]) {
+      const own = documents([ownDocs[listedId]])[0];
+      if (own.url) result.documents = [...(result.documents as Data[]), own];
+    }
     result.media = list(data.media).map(v => strings(v, ["type", "url", "name"]));
     return result;
   });

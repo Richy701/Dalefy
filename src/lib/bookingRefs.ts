@@ -179,3 +179,87 @@ export function parseBookingTable(text: string): BookingRow[] | null {
     passenger: cells[name], flight, bookingRef: cells[ref] ?? "", ticketNumber: cells[ticket] ?? "", seat: cells[at] ?? "",
   })));
 }
+
+const TITLE_WORD = /^(mr|mrs|ms|miss|mx|dr|mstr|master|sir|prof|lady|lord)$/;
+/**
+ * The same person however a hotel writes them: "FARRAGHER/KIERAN MR", "Farragher, Kieran" and "Mr Kieran Farragher"
+ * are all "kieran farragher". Titles go on both sides, since the directory has names like "Miss Lisa White".
+ */
+export function guestKey(name: string): string {
+  let n = name.trim();
+  const slash = n.split("/");
+  if (slash.length === 2) n = `${slash[1]} ${slash[0]}`;
+  else { const comma = n.split(","); if (comma.length === 2) n = `${comma[1]} ${comma[0]}`; }
+  return nameKey(n.replace(/[.,]/g, " ")).split(" ").filter(w => w && !TITLE_WORD.test(w)).join(" ");
+}
+
+const HOTEL_FILLER = new Set(["hotel", "hotels", "the", "and", "resort", "spa", "suites", "by", "at", "de", "la", "le", "&"]);
+const hotelWords = (text: string) => new Set(nameKey(text).replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 1 && !HOTEL_FILLER.has(w)));
+/** How many real words a hotel event's title or address shares with the hotel's name on the confirmation */
+const hotelOverlap = (event: Pick<TravelEvent, "title" | "location">, hotel: string) => {
+  const have = hotelWords(`${event.title} ${event.location ?? ""}`);
+  return [...hotelWords(hotel)].filter(w => have.has(w)).length;
+};
+/**
+ * The events that fit the hotel's name best. A chain shares words across its hotels ("Sun Siyam Iru Fushi",
+ * "Sun Siyam Olhuveli"), so only the closest fit counts, and a tie stays a tie for the organiser.
+ */
+function bestHotels<T extends Pick<TravelEvent, "title" | "location">>(events: T[], hotel: string): T[] {
+  const scored = events.map(e => ({ e, score: hotelOverlap(e, hotel) }));
+  const top = Math.max(0, ...scored.map(x => x.score));
+  return top ? scored.filter(x => x.score === top).map(x => x.e) : [];
+}
+
+export type StayProblem = RefPasteProblem | "guests" | "duplicate" | "unread";
+export interface StayFile { key: string; guests: string[]; hotel: string; checkIn: string; confirmationNumber: string; email: string }
+export interface StayFill { eventId: string; travellerId: string; ref: string; key: string }
+export interface StayMatch { filled: StayFill[]; skipped: { file: StayFile; problem: StayProblem }[] }
+
+/**
+ * Which traveller and which hotel stay each confirmation belongs to. The person is an exact name (titles and
+ * surname-first order aside) or, failing that, an exact email; the stay is the hotel on that check-in date, with the
+ * hotel's name to settle a tie. Never a guess: the PDF carries a QR that checks someone in. `chosen` is the organiser
+ * saying who a guest name is.
+ */
+export function matchStays(
+  files: StayFile[],
+  events: Pick<TravelEvent, "id" | "type" | "title" | "location" | "date" | "assignedTo">[],
+  travellers: (Pick<User, "id" | "name"> & { email?: string })[],
+  chosen: Record<string, string> = {},
+): StayMatch {
+  const result: StayMatch = { filled: [], skipped: [] };
+  const hotels = events.filter(e => e.type === "hotel");
+  const taken = new Set<string>();
+  const byEmail = (email: string) => {
+    const wanted = email.trim().toLowerCase();
+    return wanted ? travellers.filter(t => t.email?.trim().toLowerCase() === wanted) : [];
+  };
+  for (const file of files) {
+    const skip = (problem: StayProblem) => result.skipped.push({ file, problem });
+    const guests = file.guests.map(g => g.trim()).filter(Boolean);
+    if (!guests.length) { skip("unread"); continue; }
+    if (guests.length > 1) { skip("guests"); continue; }
+    const guest = guests[0];
+    let people = chosen[guest] ? travellers.filter(t => t.id === chosen[guest]) : travellers.filter(t => guestKey(t.name) === guestKey(guest));
+    if (!people.length && !chosen[guest]) people = byEmail(file.email);
+    if (people.length === 0) { skip("person"); continue; }
+    if (people.length > 1) { skip("ambiguous"); continue; }
+    const person = people[0];
+    // An email on the booking that belongs to someone else means the name matched the wrong person
+    const emailed = byEmail(file.email);
+    if (!chosen[guest] && emailed.length && !emailed.some(t => t.id === person.id)) { skip("ambiguous"); continue; }
+
+    const byDate = /^\d{4}-\d{2}-\d{2}$/.test(file.checkIn) ? hotels.filter(e => e.date === file.checkIn) : [];
+    let pool = byDate.length ? byDate : bestHotels(hotels, file.hotel);
+    if (pool.length > 1) { const named = bestHotels(pool, file.hotel); if (named.length) pool = named; }
+    if (!pool.length) { skip("event"); continue; }
+    const theirs = pool.filter(e => !e.assignedTo?.length || e.assignedTo.includes(person.id));
+    if (theirs.length === 0) { skip("not-on-event"); continue; }
+    if (theirs.length > 1) { skip("ambiguous"); continue; }
+    const at = `${theirs[0].id}:${person.id}`;
+    if (taken.has(at)) { skip("duplicate"); continue; }
+    taken.add(at);
+    result.filled.push({ eventId: theirs[0].id, travellerId: person.id, ref: file.confirmationNumber.trim(), key: file.key });
+  }
+  return result;
+}

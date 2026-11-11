@@ -33,11 +33,11 @@ export function changePersonOnTrip(data: TripPeopleDoc, person: User, duplicateI
     const next = event.assignedTo?.includes(duplicateId)
       ? { ...event, assignedTo: [...new Set(event.assignedTo.map(id => id === duplicateId ? person.id : id))] } : event;
     const merged = { ...next };
-    for (const field of ["travelerRefs", "travelerSeats", "travelerTickets"] as const) {
+    for (const field of ["travelerRefs", "travelerSeats", "travelerTickets", "travelerDocs"] as const) {
       const value = merged[field]?.[duplicateId];
       if (value === undefined) continue;
       const rest = Object.entries(merged[field]!).filter(([id]) => id !== duplicateId);
-      merged[field] = { [person.id]: value, ...Object.fromEntries(rest) };
+      (merged as Record<string, unknown>)[field] = { [person.id]: value, ...Object.fromEntries(rest) };
     }
     return merged;
   });

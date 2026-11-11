@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bed, AirplaneTilt, CaretRight, Check, Hash, MagnifyingGlass, SpinnerGap, UploadSimple } from "@phosphor-icons/react";
+import { Bed, AirplaneTilt, CaretRight, Check, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,34 +10,68 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { AirlineMark } from "@/components/shared/AirlineMark";
-import { bookableEvents, cleanTravelerRefs, connectingLegs, flightNumberOf, matchBookingRows, parseBookingTable, parseRefsPaste, peopleOnEvent, suggestTraveller, type BookingFill, type BookingRow, type RefPasteProblem } from "@/lib/bookingRefs";
-import { readBookingPictures } from "@/services/readBookings";
+import { bookableEvents, cleanTravelerRefs, connectingLegs, flightNumberOf, matchBookingRows, matchStays, parseBookingTable, parseRefsPaste, peopleOnEvent, suggestTraveller, type BookingFill, type BookingRow, type StayFile, type StayProblem } from "@/lib/bookingRefs";
+import { readBookingPictures, readStayPdfs } from "@/services/readBookings";
 import { sortEvents } from "@/lib/sortEvents";
-import type { TravelEvent } from "@/types";
+import type { EventDocument, TravelEvent } from "@/types";
 
-interface Person { id: string; name: string; initials: string; avatar?: string }
+interface Person { id: string; name: string; initials: string; avatar?: string; email?: string }
 type Drafts = Record<string, Record<string, string>>;
 const FIELDS = ["travelerRefs", "travelerSeats", "travelerTickets"] as const;
 type Field = typeof FIELDS[number];
 type AllDrafts = Record<Field, Drafts>;
+/** A saved confirmation, or a PDF picked here that uploads on Save */
+export type DocDraft = EventDocument | File;
 /** What's now saved on each changed event. A missing field means the event no longer has any. */
-export type BookingRefChanges = Record<string, Partial<Record<Field, Record<string, string>>>>;
+export type BookingRefChanges = Record<string, Partial<Record<Field, Record<string, string>>> & { travelerDocs?: Record<string, DocDraft> }>;
 
-const PROBLEMS: Record<RefPasteProblem, string> = {
+const PROBLEMS: Record<StayProblem, string> = {
   person: "No traveller with that name",
   event: "No flight or event with that name",
   "not-on-event": "This traveller isn't on that event",
   ambiguous: "More than one match",
   format: "Needs person, flight and reference",
+  guests: "Names more than one guest, add it by hand",
+  duplicate: "Another PDF is already for this stay",
+  unread: "No guest name found",
 };
+const STAY_PROBLEMS: Partial<Record<StayProblem, string>> = {
+  event: "No hotel on the trip for that date or name",
+  "not-on-event": "This traveller isn't on that hotel stay",
+};
+const MAX_PDFS = 100;
+
+/** Files dropped from Finder, with a dropped folder opened up. Entries are taken before any await, while the drop is still readable. */
+async function droppedFiles(transfer: DataTransfer): Promise<File[]> {
+  const entries = [...transfer.items].map(item => item.webkitGetAsEntry?.()).filter((entry): entry is FileSystemEntry => !!entry);
+  if (!entries.some(entry => entry.isDirectory)) return [...transfer.files];
+  const out: File[] = [];
+  const walk = async (entry: FileSystemEntry): Promise<void> => {
+    if (entry.isFile) { out.push(await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject))); return; }
+    if (!entry.isDirectory) return;
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+      if (!batch.length) break;
+      for (const child of batch) await walk(child);
+    }
+  };
+  for (const entry of entries) await walk(entry);
+  return out;
+}
+const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 
 /** What an import found, shown for checking before any of it goes into the list */
 interface Review {
   rows: BookingRow[] | null;
+  stays: StayFile[] | null;
+  /** PDFs that couldn't be read at all, kept when the organiser picks who someone is */
+  errors: { label: string; reason: string }[];
   chosen: Record<string, string>;
   filled: BookingFill[];
+  docs: { eventId: string; travellerId: string; key: string }[];
   unknown: string[];
-  problems: { label: string; problem: RefPasteProblem }[];
+  problems: { label: string; reason: string }[];
 }
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -60,6 +94,10 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const [saved] = useState<AllDrafts>(() => Object.fromEntries(FIELDS.map(field => [field, Object.fromEntries(bookable.map(e => [e.id, e[field] ?? {}]))])) as AllDrafts);
   const [allDrafts, setAllDrafts] = useState<AllDrafts>(saved);
   const drafts = allDrafts.travelerRefs;
+  const [savedDocs] = useState<Record<string, Record<string, DocDraft>>>(() => Object.fromEntries(bookable.map(e => [e.id, e.travelerDocs ?? {}])));
+  const [docs, setDocs] = useState(savedDocs);
+  const pdfFiles = useRef(new Map<string, File>());
+  const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [focused, setFocused] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "import">("list");
@@ -97,10 +135,67 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const reviewRows = (rows: BookingRow[], chosen: Record<string, string> = {}) => {
     const match = matchBookingRows(rows, bookable, travellers, chosen);
     setReview({
-      rows, chosen, filled: match.filled,
+      rows, stays: null, errors: [], chosen, filled: match.filled, docs: [],
       unknown: [...new Set(match.skipped.filter(s => s.problem === "person").map(s => s.row.passenger))],
-      problems: match.skipped.filter(s => s.problem !== "person").map(({ row, problem }) => ({ label: `${row.passenger}, ${row.flight || "no flight"}`, problem })),
+      problems: match.skipped.filter(s => s.problem !== "person").map(({ row, problem }) => ({ label: `${row.passenger}, ${row.flight || "no flight"}`, reason: PROBLEMS[problem] })),
     });
+  };
+
+  const reviewStays = (stays: StayFile[], errors: { label: string; reason: string }[], chosen: Record<string, string> = {}) => {
+    const match = matchStays(stays, bookable, travellers, chosen);
+    const fileName = (key: string) => pdfFiles.current.get(key)?.name ?? "PDF";
+    setReview({
+      rows: null, stays, errors, chosen,
+      filled: match.filled.filter(fill => fill.ref).map(fill => ({ eventId: fill.eventId, travellerId: fill.travellerId, ref: fill.ref, seat: "", ticket: "" })),
+      docs: match.filled,
+      unknown: [...new Set(match.skipped.filter(s => s.problem === "person").map(s => s.file.guests[0]))],
+      problems: [
+        ...errors,
+        ...match.skipped.filter(s => s.problem !== "person").map(({ file, problem }) => ({
+          label: [fileName(file.key), file.guests.join(" and ")].filter(Boolean).join(", "),
+          reason: STAY_PROBLEMS[problem] ?? PROBLEMS[problem],
+        })),
+      ],
+    });
+  };
+
+  const readPdfs = async (files: File[]) => {
+    if (files.length > MAX_PDFS) { setReadError(`Add up to ${MAX_PDFS} PDFs at a time.`); return; }
+    const run = ++readRun.current;
+    pdfFiles.current = new Map();
+    const stays: StayFile[] = [];
+    const errors: { label: string; reason: string }[] = [];
+    let done = 0;
+    setReading(files.map(file => file.name));
+    setPdfProgress({ done: 0, total: files.length });
+    setReadError(null);
+    try {
+      await readStayPdfs(files, (file, result) => {
+        if (run !== readRun.current) return;
+        const key = `${files.indexOf(file)}:${file.name}`;
+        pdfFiles.current.set(key, file);
+        if ("read" in result) stays.push({ key, ...result.read });
+        else errors.push({ label: file.name, reason: result.error });
+        setPdfProgress({ done: ++done, total: files.length });
+      }, () => run !== readRun.current);
+      if (run !== readRun.current) return;
+      // Folder order, so the review reads like the folder
+      stays.sort((a, b) => parseInt(a.key) - parseInt(b.key));
+      reviewStays(stays, errors);
+    } catch (error) {
+      if (run === readRun.current) setReadError(error instanceof Error ? error.message : "Couldn't read those PDFs. Try again.");
+    } finally {
+      if (run === readRun.current) { setReading(null); setPdfProgress(null); }
+    }
+  };
+
+  const readFiles = (files: File[]) => {
+    if (reading) return;
+    setView("import");
+    setReview(null);
+    const pdfs = files.filter(isPdf);
+    if (pdfs.length) void readPdfs(pdfs);
+    else void readPictures(files);
   };
 
   const readPictures = async (files: File[]) => {
@@ -108,7 +203,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     const pictures = files.filter(file => file.type.startsWith("image/"));
     setView("import");
     setReview(null);
-    if (!pictures.length) { if (files.length) setReadError("That isn't a picture. Use a JPG, PNG or screenshot."); return; }
+    if (!pictures.length) { if (files.length) setReadError("That isn't a picture or PDF. Use a JPG, PNG, screenshot or PDF."); return; }
     const run = ++readRun.current;
     setReading(pictures.map(file => file.name));
     setReadError(null);
@@ -124,7 +219,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     }
   };
 
-  const cancelReading = () => { readRun.current++; setReading(null); };
+  const cancelReading = () => { readRun.current++; setReading(null); setPdfProgress(null); };
 
   const readPaste = () => {
     setReadError(null);
@@ -132,17 +227,28 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     if (table) { reviewRows(table); return; }
     const result = parseRefsPaste(pasteText, bookable, travellers);
     setReview({
-      rows: null, chosen: {},
+      rows: null, stays: null, errors: [], chosen: {},
       filled: result.filled.map(fill => ({ ...fill, seat: "", ticket: "" })),
+      docs: [],
       unknown: [],
-      problems: result.skipped.map(({ line, problem }) => ({ label: line.replace(/\t/g, ", "), problem })),
+      problems: result.skipped.map(({ line, problem }) => ({ label: line.replace(/\t/g, ", "), reason: PROBLEMS[problem] })),
     });
   };
+
+  const setDoc = (eventId: string, personId: string, doc: DocDraft | null) => setDocs(prev => {
+    const forEvent = { ...prev[eventId] };
+    if (doc) forEvent[personId] = doc; else delete forEvent[personId];
+    return { ...prev, [eventId]: forEvent };
+  });
 
   const addToList = () => {
     if (!review) return;
     applyFills(review.filled);
-    setUpdated(new Set(review.filled.map(fill => fill.travellerId)));
+    for (const { eventId, travellerId, key } of review.docs) {
+      const file = pdfFiles.current.get(key);
+      if (file) setDoc(eventId, travellerId, file);
+    }
+    setUpdated(new Set([...review.filled, ...review.docs].map(fill => fill.travellerId)));
     setReview(null);
     setPasteText("");
     setView("list");
@@ -156,14 +262,26 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const changes = useMemo(() => {
     const out: BookingRefChanges = {};
     const sorted = (refs?: Record<string, string>) => JSON.stringify(Object.entries(refs ?? {}).sort(([a], [b]) => a.localeCompare(b)));
+    const on = (e: TravelEvent) => new Set(peopleOnEvent(e, travellers).map(t => t.id));
+    const keptDocs = (e: TravelEvent, from: Record<string, Record<string, DocDraft>>) => {
+      const kept = Object.entries(from[e.id] ?? {}).filter(([id]) => on(e).has(id));
+      return kept.length ? Object.fromEntries(kept) : undefined;
+    };
+    // A File is a new pick; a saved document is the same one while its id is
+    const docKey = (doc: DocDraft) => doc instanceof File ? doc : doc.id;
+    const sameDocs = (a?: Record<string, DocDraft>, b?: Record<string, DocDraft>) => {
+      const x = Object.entries(a ?? {}), y = b ?? {};
+      return x.length === Object.keys(y).length && x.every(([id, doc]) => !!y[id] && docKey(y[id]) === docKey(doc));
+    };
     for (const e of bookable) {
       const clean = (from: AllDrafts, field: Field) => cleanTravelerRefs({ assignedTo: e.assignedTo, travelerRefs: from[field][e.id] }, travellers);
-      if (FIELDS.some(field => sorted(clean(allDrafts, field)) !== sorted(clean(saved, field)))) {
-        out[e.id] = Object.fromEntries(FIELDS.map(field => [field, clean(allDrafts, field)]));
+      const docsNow = keptDocs(e, docs);
+      if (FIELDS.some(field => sorted(clean(allDrafts, field)) !== sorted(clean(saved, field))) || !sameDocs(docsNow, keptDocs(e, savedDocs))) {
+        out[e.id] = { ...Object.fromEntries(FIELDS.map(field => [field, clean(allDrafts, field)])), travelerDocs: docsNow };
       }
     }
     return out;
-  }, [bookable, allDrafts, saved, travellers]);
+  }, [bookable, allDrafts, saved, docs, savedDocs, travellers]);
   const dirty = Object.keys(changes).length > 0;
 
   const own = (e: TravelEvent, personId: string) => drafts[e.id]?.[personId]?.trim() || "";
@@ -192,7 +310,8 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const leaveImport = () => { cancelReading(); setReview(null); setReadError(null); setView("list"); };
 
   const reviewCounts = review && {
-    people: new Set(review.filled.map(fill => fill.travellerId)).size,
+    people: new Set([...review.filled, ...review.docs].map(fill => fill.travellerId)).size,
+    pdfs: review.docs.length,
     references: review.filled.filter(fill => fill.ref).length,
     seats: review.filled.filter(fill => fill.seat).length,
     tickets: review.filled.filter(fill => fill.ticket).length,
@@ -202,8 +321,9 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     }, 0),
   };
   const foundLine = reviewCounts && [
-    plural(reviewCounts.references, "reference"), plural(reviewCounts.seats, "seat"), plural(reviewCounts.tickets, "ticket number"),
+    plural(reviewCounts.pdfs, "confirmation PDF"), plural(reviewCounts.references, "reference"), plural(reviewCounts.seats, "seat"), plural(reviewCounts.tickets, "ticket number"),
   ].filter(part => !part.startsWith("0 ")).join(", ");
+  const replacedPdfs = review ? review.docs.filter(doc => docs[doc.eventId]?.[doc.travellerId]).length : 0;
 
   return (
     <>
@@ -238,10 +358,10 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
           <input
             ref={pictureInput}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf,.pdf"
             multiple
             hidden
-            onChange={e => { const files = [...(e.target.files ?? [])]; e.target.value = ""; void readPictures(files); }}
+            onChange={e => { const files = [...(e.target.files ?? [])]; e.target.value = ""; readFiles(files); }}
           />
 
           {view === "import" && (
@@ -249,12 +369,28 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
               <div className="min-h-0 overflow-y-auto px-5 py-5 max-sm:flex-1 sm:px-6">
                 {reading ? (
                   <div role="status" aria-live="polite" className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reading your {reading.length === 1 ? "picture" : `${reading.length} pictures`}</p>
-                    <div className="mt-4 flex items-center gap-3">
-                      <SpinnerGap className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-                      <p className="text-sm text-foreground">Finding each traveller's references, seats and tickets</p>
-                    </div>
-                    <p className="mt-3 text-xs text-muted-foreground">This can take up to a minute. Keep this window open.</p>
+                    {pdfProgress ? (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reading {plural(pdfProgress.total, "PDF")}</p>
+                        <div className="mt-4 flex items-center gap-3">
+                          <SpinnerGap className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                          <p className="text-sm text-foreground tabular-nums">{pdfProgress.done} of {pdfProgress.total} read</p>
+                        </div>
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+                          <div className="h-full bg-foreground/60 transition-[width] duration-300" style={{ width: `${Math.round((pdfProgress.done / pdfProgress.total) * 100)}%` }} />
+                        </div>
+                        <p className="mt-3 text-xs text-muted-foreground">Finding each guest, hotel and confirmation number. Keep this window open.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reading your {reading.length === 1 ? "picture" : `${reading.length} pictures`}</p>
+                        <div className="mt-4 flex items-center gap-3">
+                          <SpinnerGap className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                          <p className="text-sm text-foreground">Finding each traveller's references, seats and tickets</p>
+                        </div>
+                        <p className="mt-3 text-xs text-muted-foreground">This can take up to a minute. Keep this window open.</p>
+                      </>
+                    )}
                   </div>
                 ) : review && reviewCounts ? (
                   <div className="space-y-5" role="status">
@@ -263,13 +399,17 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                         {reviewCounts.people ? `${reviewCounts.people} of ${plural(people.length, "traveller")} matched` : "Nobody matched yet"}
                       </p>
                       {foundLine && <p className="mt-0.5 text-sm text-muted-foreground">{foundLine}</p>}
-                      {reviewCounts.replaced > 0 && <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">{reviewCounts.replaced === 1 ? "1 detail replaces" : `${reviewCounts.replaced} details replace`} what's already there.</p>}
+                      {reviewCounts.replaced + replacedPdfs > 0 && <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">{reviewCounts.replaced + replacedPdfs === 1 ? "1 detail replaces" : `${reviewCounts.replaced + replacedPdfs} details replace`} what's already there.</p>}
                     </div>
                     {review.unknown.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Who {review.unknown.length === 1 ? "is this" : "are these"}? Not on this trip under that name. Anyone you skip is left out.</p>
                         {review.unknown.map(name => {
-                          const pick = (id: string) => { if (review.rows) reviewRows(review.rows, { ...review.chosen, [name]: id }); };
+                          const pick = (id: string) => {
+                            const chosen = { ...review.chosen, [name]: id };
+                            if (review.rows) reviewRows(review.rows, chosen);
+                            else if (review.stays) reviewStays(review.stays, review.errors, chosen);
+                          };
                           const suggestion = suggestTraveller(name, travellers);
                           return (
                             <div key={name} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-3">
@@ -287,8 +427,8 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                     {review.problems.length > 0 && (
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{review.problems.length} left out</p>
-                        {review.problems.map(({ label, problem }, i) => (
-                          <p key={i} className="text-xs text-muted-foreground break-words"><span className="text-foreground">{label}</span>: {PROBLEMS[problem]}</p>
+                        {review.problems.map(({ label, reason }, i) => (
+                          <p key={i} className="text-xs text-muted-foreground break-words"><span className="text-foreground">{label}</span>: {reason}</p>
                         ))}
                       </div>
                     )}
@@ -299,20 +439,20 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-label="Upload a picture of your booking table"
+                        aria-label="Upload a picture of your booking table, or hotel confirmation PDFs"
                         onClick={() => pictureInput.current?.click()}
                         onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pictureInput.current?.click(); } }}
                         onDragOver={e => { e.preventDefault(); setDragging(true); }}
                         onDragLeave={() => setDragging(false)}
-                        onDrop={e => { e.preventDefault(); setDragging(false); void readPictures([...e.dataTransfer.files]); }}
+                        onDrop={e => { e.preventDefault(); setDragging(false); void droppedFiles(e.dataTransfer).then(readFiles).catch(() => setReadError("Couldn't open what was dropped. Try choosing the files instead.")); }}
                         className={`group cursor-pointer outline-none focus-visible:border-foreground/40 flex flex-col items-center justify-center gap-4 px-6 py-10 border border-dashed rounded-xl transition-colors ${dragging ? "border-foreground/40 bg-secondary" : "border-border bg-secondary/40 hover:bg-secondary/70 hover:border-foreground/25"}`}
                       >
                         <div className="h-12 w-12 rounded-full bg-card border border-border shadow-sm flex items-center justify-center transition-transform group-hover:-translate-y-0.5" aria-hidden="true">
                           <UploadSimple className="h-5 w-5 text-foreground" />
                         </div>
                         <div className="text-center">
-                          <p className="text-base font-semibold text-foreground tracking-tight">{dragging ? "Drop it here" : "Drop your booking table here"}</p>
-                          <p className="text-sm text-muted-foreground mt-1">or click to choose a picture, or paste a screenshot</p>
+                          <p className="text-base font-semibold text-foreground tracking-tight">{dragging ? "Drop it here" : "Drop a booking table or hotel PDFs here"}</p>
+                          <p className="text-sm text-muted-foreground mt-1">A picture of the table, or a whole folder of confirmation PDFs</p>
                         </div>
                       </div>
                     ) : (
@@ -452,6 +592,20 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                                     </Button>
                                   </div>
                                 )}
+                                {docs[e.id]?.[person.id] && (() => {
+                                  const doc = docs[e.id][person.id];
+                                  return (
+                                    <div className="mt-1.5 flex items-center gap-2 pl-6">
+                                      <FilePdf className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                      {doc instanceof File
+                                        ? <span className="min-w-0 truncate text-xs text-muted-foreground">{doc.name}, uploads when you save</span>
+                                        : <a href={doc.url} target="_blank" rel="noreferrer" className="min-w-0 truncate text-xs font-medium text-foreground underline-offset-4 hover:underline">Booking confirmation</a>}
+                                      <Button type="button" variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground" aria-label={`Remove ${person.name}'s confirmation PDF for ${e.title}`} onClick={() => setDoc(e.id, person.id, null)}>
+                                        <X />
+                                      </Button>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })}

@@ -38,6 +38,8 @@ const bookingRefs = (ev: PublishedSnapshot["events"][number]) => JSON.stringify(
 }));
 
 const seatsAndTickets = (ev: PublishedSnapshot["events"][number]) => JSON.stringify(stable({ seats: ev.travelerSeats ?? {}, tickets: ev.travelerTickets ?? {} }));
+/** Whose confirmation PDF is which, by document id: a new or replaced PDF is something to publish */
+const bookingDocs = (ev: PublishedSnapshot["events"][number]) => JSON.stringify(stable(Object.fromEntries(Object.entries(ev.travelerDocs ?? {}).map(([id, doc]) => [id, doc.id]))));
 
 const titleWords = (title: string) => new Set(title.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
   .filter(w => w.length > 2 && !["the", "and", "for", "with", "from"].includes(w)));
@@ -101,6 +103,7 @@ export function publishedChanges(old: Published, next: Published): string[] {
     }
     if (bookingRefs(prev) !== bookingRefs(ev)) changes.push(`${ev.title} booking reference updated`);
     if (seatsAndTickets(prev) !== seatsAndTickets(ev)) changes.push(`${ev.title} seats or tickets updated`);
+    if (bookingDocs(prev) !== bookingDocs(ev)) changes.push(`${ev.title} booking confirmations updated`);
   }
 
   if (old.start !== next.start || old.end !== next.end) changes.push(`Trip now ${shownDate(next.start)} to ${shownDate(next.end)}`);

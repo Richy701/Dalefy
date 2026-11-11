@@ -46,7 +46,7 @@ import { FocalPointPicker } from "@/components/shared/FocalPointPicker";
 import { CoverPhotoPicker, ImagePager } from "@/components/shared/CoverPhotoPicker";
 import { useSavedInfo } from "@/hooks/useSavedInfo";
 import { hasSavedInfo, infoFromSaved } from "@/services/savedInfo";
-import type { TravelEvent, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
+import type { EventDocument, TravelEvent, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
@@ -798,6 +798,21 @@ export function WorkspacePage() {
 
   const saveBookingRefs = async (changes: BookingRefChanges) => {
     const baseline = editBaseline.current || trip;
+    // New confirmation PDFs upload first, so nothing is saved pointing at a file that isn't there
+    const uploaded = new Map<File, EventDocument>();
+    try {
+      await Promise.all(Object.entries(changes).flatMap(([eventId, change]) => Object.entries(change.travelerDocs ?? {}).map(async ([personId, doc]) => {
+        if (!(doc instanceof File)) return;
+        const stamp = Date.now();
+        const sRef = storageRef(firebaseStorage(), `trips/${tripId}/booking-${eventId}-${personId}-${stamp}.pdf`);
+        await uploadBytes(sRef, doc, { contentType: "application/pdf" });
+        const url = await getDownloadURL(sRef);
+        uploaded.set(doc, { id: `booking-${personId}-${stamp}`, name: "Booking confirmation.pdf", mimeType: "application/pdf", url, size: doc.size, uploadedAt: new Date(stamp).toISOString() });
+      })));
+    } catch {
+      toast.error("Couldn't upload the confirmation PDFs. Nothing was saved, try again.");
+      return false;
+    }
     const events = baseline.events.map(ev => {
       if (!(ev.id in changes)) return ev;
       const next = { ...ev };
@@ -805,6 +820,9 @@ export function WorkspacePage() {
         const value = changes[ev.id][field];
         if (value) next[field] = value; else delete next[field];
       }
+      const docs = changes[ev.id].travelerDocs;
+      if (docs) next.travelerDocs = Object.fromEntries(Object.entries(docs).map(([id, doc]) => [id, doc instanceof File ? uploaded.get(doc)! : doc]));
+      else delete next.travelerDocs;
       return next;
     });
     if (!await commitChanges({ events }, baseline)) return false;

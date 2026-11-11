@@ -326,6 +326,34 @@ test('a leader gets everyone, under their names', () => {
   assert.equal(view.events[0].seatDetails, '14E');
 });
 
+const doc = (id, url) => ({ id, name: 'Booking confirmation.pdf', mimeType: 'application/pdf', url, size: 1, uploadedAt: '2026-11-11T00:00:00Z' });
+const stayTrip = { status: 'Published', published_snapshot: {
+  name: 'Stays', publishedAt: '2026-09-11T00:00:00Z',
+  travelers: [{ id: 'a', name: 'Amy' }, { id: 'b', name: 'Ben' }],
+  events: [
+    { id: 'h', type: 'hotel', title: 'Hotel', documents: [doc('shared', 'shared-map.pdf')], travelerDocs: { a: doc('amy', 'amy-qr.pdf'), b: doc('ben', 'SECRET_BEN_QR') } },
+    { id: 'h2', type: 'hotel', title: 'Ben only', assignedTo: ['b'], travelerDocs: { a: doc('stale', 'SECRET_NOT_ON_IT') } },
+  ],
+} };
+test('a traveller gets only their own confirmation PDF, beside the shared ones', () => {
+  const view = publishedTripView('t', stayTrip, false, true, 'a');
+  assert.deepEqual(view.events[0].documents.map(d => d.url), ['shared-map.pdf', 'amy-qr.pdf']);
+  assert.equal(JSON.stringify(view).includes('SECRET'), false);
+  assert.equal('travelerDocs' in view.events[0], false);
+  assert.deepEqual(view.events[1].documents, []);
+});
+test('nobody unlinked or public gets a confirmation PDF', () => {
+  for (const view of [publishedTripView('t', stayTrip), publishedTripView('t', stayTrip, false, true, null), publishedTripView('t', stayTrip, false, true, 'stranger')]) {
+    assert.equal(/SECRET|amy-qr/.test(JSON.stringify(view)), false);
+  }
+});
+test('a leader gets everyone\'s confirmation PDFs and their own in documents', () => {
+  const view = publishedTripView('t', stayTrip, true, true, 'a');
+  assert.deepEqual(Object.keys(view.events[0].travelerDocs), ['a', 'b']);
+  assert.equal(view.events[0].travelerDocs.b.url, 'SECRET_BEN_QR');
+  assert.deepEqual(view.events[0].documents.map(d => d.url), ['shared-map.pdf', 'amy-qr.pdf']);
+});
+
 const orgTrip = (published, working) => ({ status: 'Published', organizer: working, published_snapshot: { name: 'T', publishedAt: '2026-09-11T00:00:00Z', events: [], organizer: published } });
 test('organiser contact comes from the working copy when blank, only for the same person', () => {
   const blank = orgTrip({ name: 'Laura Davies', email: '' }, { name: 'laura davies', email: 'l@x.test', phone: '+44 1' }).published_snapshot.organizer;
