@@ -109,13 +109,20 @@ const LOGO_INK = "#111";
 
 function openInMaps(location: string, coords?: [number, number]) {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  if (coords) {
-    const [lng, lat] = coords;
-    const label = encodeURIComponent(location);
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${label}`);
-  } else {
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`);
-  }
+  const q = encodeURIComponent(location);
+  // The phone's own maps app: Apple Maps on iPhone, Google Maps (or the chosen maps app) on Android
+  const url = coords
+    ? Platform.select({
+      ios: `https://maps.apple.com/?ll=${coords[1]},${coords[0]}&q=${q}`,
+      android: `geo:${coords[1]},${coords[0]}?q=${coords[1]},${coords[0]}(${q})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`,
+    })
+    : Platform.select({
+      ios: `https://maps.apple.com/?q=${q}`,
+      android: `geo:0,0?q=${q}`,
+      default: `https://www.google.com/maps/search/?api=1&query=${q}`,
+    });
+  Linking.openURL(url).catch(() => {});
 }
 
 function formatLongDate(d: string): string {
