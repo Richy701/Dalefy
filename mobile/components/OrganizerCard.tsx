@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
 import * as Haptics from "@/services/haptics";
 import { Phone, Envelope, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, T, S } from "@/constants/theme";
 import { Avatar } from "@/components/ui/Avatar";
 import type { TripOrganizer } from "@/shared/types";
 
@@ -36,14 +36,20 @@ export function OrganizerCard({ organizer, C, isLeader = false, onPress, compact
     if (organizer.email) Linking.openURL(`mailto:${organizer.email}`);
   };
 
+  // Leaders get Call and Email as round icon buttons beside the name; tapping the row opens their details
+  const actions = isLeader && !compact ? [
+    organizer.phone ? { key: "call", Icon: Phone, label: `Call ${organizer.name}`, onPress: handleCall } : null,
+    organizer.email ? { key: "email", Icon: Envelope, label: `Email ${organizer.name}`, onPress: handleEmail } : null,
+  ].filter((a): a is NonNullable<typeof a> => !!a) : [];
+
   return (
-    <View style={s.card}>
+    <View style={[s.card, s.topRow]}>
       <Pressable
         onPress={onPress}
         disabled={!onPress}
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityHint={onPress ? "Shows their details" : undefined}
-        style={({ pressed }) => [s.topRow, { opacity: pressed ? 0.7 : 1 }]}
+        style={({ pressed }) => [s.topRow, { flex: 1, opacity: pressed ? 0.7 : 1 }]}
       >
         <Avatar size={compact ? 36 : 44} uri={organizer.avatar} initials={initials} />
 
@@ -54,36 +60,21 @@ export function OrganizerCard({ organizer, C, isLeader = false, onPress, compact
             {["Your organiser", organizer.role, organizer.company].filter(Boolean).join(", ")}
           </Text>
         </View>
-        {onPress ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
+        {onPress && !actions.length ? <CaretRight size={14} color={C.textTertiary} weight="regular" /> : null}
       </Pressable>
 
-      {/* Action buttons — leader only */}
-      {isLeader && !compact && (organizer.phone || organizer.email) && (
-        <View style={s.actions}>
-          {organizer.phone && (
-            <Pressable
-              style={({ pressed }) => [s.actionBtn, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={handleCall}
-              accessibilityRole="button"
-              accessibilityLabel={`Call ${organizer.name}`}
-            >
-              <Phone size={15} color={C.tealText} weight="fill" />
-              <Text style={s.actionText}>Call</Text>
-            </Pressable>
-          )}
-          {organizer.email && (
-            <Pressable
-              style={({ pressed }) => [s.actionBtn, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={handleEmail}
-              accessibilityRole="button"
-              accessibilityLabel={`Email ${organizer.name}`}
-            >
-              <Envelope size={15} color={C.tealText} weight="fill" />
-              <Text style={s.actionText}>Email</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
+      {actions.map(({ key, Icon, label, onPress: act }) => (
+        <Pressable
+          key={key}
+          onPress={act}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          style={({ pressed }) => [s.iconBtn, { opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Icon size={18} color={C.tealText} weight="fill" />
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -112,28 +103,14 @@ function makeStyles(C: ThemeColors) {
       color: C.textTertiary,
       marginTop: 2,
     },
-    actions: {
-      flexDirection: "row",
-      gap: S.xs,
-      marginTop: S.sm,
-      paddingTop: S.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: C.border,
-    },
-    actionBtn: {
-      flex: 1,
-      flexDirection: "row",
+    // Round, like the Call and Mail buttons in Contacts; 40pt plus hitSlop clears the 44pt touch target
+    iconBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: "center",
       justifyContent: "center",
-      gap: S.xs2,
-      paddingVertical: S.sm2,
-      borderRadius: R.md,
       backgroundColor: C.tealDim,
-    },
-    actionText: {
-      fontSize: T.sm,
-      fontWeight: T.semibold,
-      color: C.tealText,
     },
   });
 }
