@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowClockwise, Bed, AirplaneTilt, CaretRight, Check, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowClockwise, Bed, AirplaneTilt, CaretRight, Check, CheckCircle, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,8 @@ interface Review {
 }
 
 interface ReadError { key: string; label: string; reason: string }
+/** One PDF on the reading screen: waiting its turn, being read, read (with who and where it found), or failed */
+interface PdfRow { key: string; name: string; status: "waiting" | "reading" | "done" | "failed"; detail?: string }
 /** What went wrong reading a PDF, in words: a dropped or slow read is worth trying again, so it says so */
 const readReason = (message: string) =>
   /timed? ?out|TIMEOUT|deployment|Network error|temporarily unavailable|Request failed \(5\d\d\)/i.test(message) ? "The reader didn't answer in time"
@@ -122,6 +124,9 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const [docs, setDocs] = useState(savedDocs);
   const pdfFiles = useRef(new Map<string, File>());
   const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
+  // The PDFs being read right now, and a dropped folder still being opened, so the screen never sits still
+  const [pdfRows, setPdfRows] = useState<PdfRow[]>([]);
+  const [opening, setOpening] = useState(false);
   const [search, setSearch] = useState("");
   const [focused, setFocused] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "import">("list");
@@ -189,6 +194,8 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     let done = 0;
     setReading(entries.map(entry => entry.file.name));
     setPdfProgress({ done: 0, total: entries.length });
+    setPdfRows(entries.map(entry => ({ key: entry.key, name: entry.file.name, status: "waiting" })));
+    const setRow = (key: string, row: Partial<PdfRow>) => setPdfRows(prev => prev.map(r => (r.key === key ? { ...r, ...row } : r)));
     setReadError(null);
     try {
       const files = entries.map(entry => entry.file);
@@ -199,7 +206,10 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
         if ("read" in result) stays.push({ key, ...result.read });
         else errors.push({ key, label: file.name, reason: readReason(result.error) });
         setPdfProgress({ done: ++done, total: entries.length });
-      }, () => run !== readRun.current);
+        setRow(key, "read" in result
+          ? { status: "done", detail: [result.read.guests.join(" and "), result.read.hotel].filter(Boolean).join(", ") || "Read" }
+          : { status: "failed", detail: readReason(result.error) });
+      }, () => run !== readRun.current, file => { if (run === readRun.current) setRow(entries[files.indexOf(file)].key, { status: "reading" }); });
       if (run !== readRun.current) return;
       // Folder order, so the review reads like the folder
       stays.sort((a, b) => parseInt(a.key) - parseInt(b.key));
@@ -208,7 +218,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     } catch (error) {
       if (run === readRun.current) setReadError(error instanceof Error ? error.message : "Couldn't read those PDFs. Try again.");
     } finally {
-      if (run === readRun.current) { setReading(null); setPdfProgress(null); }
+      if (run === readRun.current) { setReading(null); setPdfProgress(null); setPdfRows([]); }
     }
   };
 
@@ -254,7 +264,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     }
   };
 
-  const cancelReading = () => { readRun.current++; setReading(null); setPdfProgress(null); };
+  const cancelReading = () => { readRun.current++; setReading(null); setPdfProgress(null); setPdfRows([]); };
 
   const readPaste = () => {
     setReadError(null);
@@ -403,18 +413,39 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
             <>
               <div className="min-h-0 overflow-y-auto px-5 py-5 max-sm:flex-1 sm:px-6">
                 {reading ? (
-                  <div role="status" aria-live="polite" className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                  <div role="status" aria-live="polite" className={pdfProgress ? "" : "rounded-xl border border-border bg-card p-5 shadow-sm"}>
                     {pdfProgress ? (
                       <>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reading {plural(pdfProgress.total, "PDF")}</p>
-                        <div className="mt-4 flex items-center gap-3">
-                          <SpinnerGap className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-                          <p className="text-sm text-foreground tabular-nums">{pdfProgress.done} of {pdfProgress.total} read</p>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p className="text-base font-semibold tracking-tight text-foreground">Reading {plural(pdfProgress.total, "PDF")}</p>
+                          <p className="text-sm text-muted-foreground tabular-nums">{pdfProgress.done} of {pdfProgress.total}</p>
                         </div>
+                        {/* Before the first PDF is back the bar still moves, so it never looks stuck at nothing */}
                         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
-                          <div className="h-full bg-foreground/60 transition-[width] duration-300" style={{ width: `${Math.round((pdfProgress.done / pdfProgress.total) * 100)}%` }} />
+                          <div
+                            className={`h-full rounded-full bg-primary transition-[width] duration-500 ${pdfProgress.done === 0 ? "animate-pulse" : ""}`}
+                            style={{ width: `${Math.max(6, Math.round((pdfProgress.done / pdfProgress.total) * 100))}%` }}
+                          />
                         </div>
-                        <p className="mt-3 text-xs text-muted-foreground">Finding each guest, hotel and confirmation number. Keep this window open.</p>
+                        <p className="mt-2 text-xs text-muted-foreground">Finding each guest, hotel and confirmation number. A few seconds a PDF, keep this window open.</p>
+                        {/* Every PDF on its own row, so you can watch each one go through */}
+                        <ul className="mt-4 max-h-[min(22rem,45dvh)] overflow-y-auto divide-y divide-border rounded-xl border border-border bg-background">
+                          {pdfRows.map(row => (
+                            <li key={row.key} className="flex items-center gap-3 px-3 py-2.5">
+                              {row.status === "reading" ? <SpinnerGap className="h-4 w-4 shrink-0 animate-spin text-foreground" aria-hidden="true" />
+                                : row.status === "done" ? <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" weight="fill" aria-hidden="true" />
+                                : row.status === "failed" ? <WarningCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" weight="fill" aria-hidden="true" />
+                                : <FilePdf className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                              <div className="min-w-0 flex-1">
+                                <p className={`truncate text-sm ${row.status === "waiting" ? "text-muted-foreground" : "text-foreground"}`}>{row.name}</p>
+                                {row.detail && <p className="truncate text-xs text-muted-foreground">{row.detail}</p>}
+                              </div>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {row.status === "waiting" ? "Waiting" : row.status === "reading" ? "Reading…" : row.status === "failed" ? "Couldn't read" : ""}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       </>
                     ) : (
                       <>
@@ -506,14 +537,14 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                         onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pictureInput.current?.click(); } }}
                         onDragOver={e => { e.preventDefault(); setDragging(true); }}
                         onDragLeave={() => setDragging(false)}
-                        onDrop={e => { e.preventDefault(); setDragging(false); void droppedFiles(e.dataTransfer).then(readFiles).catch(() => setReadError("Couldn't open what was dropped. Try choosing the files instead.")); }}
+                        onDrop={e => { e.preventDefault(); setDragging(false); setOpening(true); void droppedFiles(e.dataTransfer).then(readFiles).catch(() => setReadError("Couldn't open what was dropped. Try choosing the files instead.")).finally(() => setOpening(false)); }}
                         className={`group cursor-pointer outline-none focus-visible:border-foreground/40 flex flex-col items-center justify-center gap-4 px-6 py-10 border border-dashed rounded-xl transition-colors ${dragging ? "border-foreground/40 bg-secondary" : "border-border bg-secondary/40 hover:bg-secondary/70 hover:border-foreground/25"}`}
                       >
                         <div className="h-12 w-12 rounded-full bg-card border border-border shadow-sm flex items-center justify-center transition-transform group-hover:-translate-y-0.5" aria-hidden="true">
-                          <UploadSimple className="h-5 w-5 text-foreground" />
+                          {opening ? <SpinnerGap className="h-5 w-5 animate-spin text-foreground" /> : <UploadSimple className="h-5 w-5 text-foreground" />}
                         </div>
-                        <div className="text-center">
-                          <p className="text-base font-semibold text-foreground tracking-tight">{dragging ? "Drop it here" : "Drop a booking table or hotel PDFs here"}</p>
+                        <div className="text-center" aria-live="polite">
+                          <p className="text-base font-semibold text-foreground tracking-tight">{opening ? "Opening your files…" : dragging ? "Drop it here" : "Drop a booking table or hotel PDFs here"}</p>
                           <p className="text-sm text-muted-foreground mt-1">A picture of the table, or a whole folder of confirmation PDFs</p>
                         </div>
                       </div>

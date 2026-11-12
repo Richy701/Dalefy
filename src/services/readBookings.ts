@@ -51,11 +51,14 @@ export async function readStayPdfs(
   files: File[],
   onRead: (file: File, result: { read: StayRead } | { error: string }) => void,
   cancelled: () => boolean,
+  /** Called as each PDF starts, so the screen can say what it's reading while the first ones take their few seconds */
+  onStart?: (file: File) => void,
 ): Promise<void> {
   const auth = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
   if (!auth) throw new Error("Sign in to read PDFs");
   const queue = [...files];
   const readOne = async (file: File) => {
+    onStart?.(file);
     try {
       const pdf = await fileToDataUrl(file);
       if (pdf.length > MAX_BASE64_CHARS) { onRead(file, { error: "Too large to read (over 3MB)" }); return; }
