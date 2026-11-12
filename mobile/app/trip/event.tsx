@@ -456,7 +456,6 @@ export default function EventDetailScreen() {
 
   // ── Non-flight unified detail ──
 
-  const typeLabel = ev.type === "transfer" ? (TRANSFER_LABELS[ev.transferType || "car"] || "Transfer") : (TYPE_LABELS[ev.type] ?? "Event");
   const title = cleanEventTitle(ev.title, ev.type, ev.transferType);
   const isHotel = ev.type === "hotel";
 
@@ -558,6 +557,9 @@ export default function EventDetailScreen() {
     { label: "Up next", e: dayIdx >= 0 && dayIdx < dayEvents.length - 1 ? dayEvents[dayIdx + 1] : null },
   ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
   const upNextEvent = neighbours.some(n => n.label === "Up next");
+  // An event with only a title and a time: a shorter photo and the time as a line, so the page reads as a summary
+  const thin = !isHotel && !ev.location && !ev.description && !ev.notes && !hasDocs && detailRows.length === 0;
+  const photoH = Math.round((photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) * (thin ? 0.6 : 1));
   const goToEvent = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace({ pathname: "/trip/event", params: { tripId: trip.id, eventId: id } });
@@ -568,8 +570,8 @@ export default function EventDetailScreen() {
       {photoPage && <PhotoBackdrop uri={backdropImage!} shade={EV_SHADE} />}
       <Stack.Screen options={{
         headerShown: true,
-        // A hotel's name sits right under the photo, so the bar doesn't repeat a generic "Hotel"
-        title: isHotel ? "" : typeLabel,
+        // The event's own title sits right under the photo, so the bar doesn't repeat a generic "Hotel" or "Activity"
+        title: "",
         headerTitleStyle: { color: showPhoto ? "#fff" : C.textPrimary, fontWeight: "600" },
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
@@ -599,7 +601,7 @@ export default function EventDetailScreen() {
       >
         {/* Cover: only the event's own photo, with nothing written over it */}
         {showPhoto ? (
-          <View style={{ height: (photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) + insets.top }}>
+          <View style={{ height: photoH + insets.top }}>
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
               {photoPage ? (
                 // The dissolve alone carries the photo into the blur; PhotoBlend's own fade and dark band would fight it
@@ -632,7 +634,21 @@ export default function EventDetailScreen() {
           {nightLine ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{nightLine}</Text> : null}
           {isHotel && liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
           {/* When, on its own card: the first thing someone opening this on the day is looking for */}
-          {!isHotel && (
+          {!isHotel && thin && (
+            <View style={{ gap: 2, marginTop: 2 }} accessible accessibilityLabel={[whenText, ev.date ? formatLongDate(ev.date) : null, durationText(ev.duration), liveLine].filter(Boolean).join(", ")}>
+              <Text style={[styles.heroFact, { color: C.textSecondary }]}>
+                {[
+                  whenText,
+                  ev.date ? formatLongDate(ev.date) : null,
+                  ev.date ? daysAgoText(ev.date) : null,
+                  whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
+                  durationText(ev.duration),
+                ].filter(Boolean).join(", ")}
+              </Text>
+              {liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
+            </View>
+          )}
+          {!isHotel && !thin && (
             <View style={[styles.whenCard, { backgroundColor: C.elevated }]} accessible accessibilityLabel={[whenText, ev.date ? formatLongDate(ev.date) : null, durationText(ev.duration), liveLine].filter(Boolean).join(", ")}>
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 {whenText ? <Text style={[styles.timeBig, { color: C.textPrimary }]}>{whenText}</Text> : null}
@@ -871,7 +887,7 @@ export default function EventDetailScreen() {
           </Animated.View>
         )}
       </Animated.ScrollView>
-      <AndroidTopBar scrollY={scrollY} from={showPhoto ? (photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) - ANDROID_BAR_H - 24 : 0} color={C.bg} borderColor={C.border} />
+      <AndroidTopBar scrollY={scrollY} from={showPhoto ? photoH - ANDROID_BAR_H - 24 : 0} color={C.bg} borderColor={C.border} />
 
 
       </View>

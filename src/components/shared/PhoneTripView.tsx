@@ -376,13 +376,16 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
     ev.contactName && ["Contact", ev.contactName],
   ].filter(row => row && row[1]) as [string, string][]);
   const title = ev.type === "hotel" ? tidyTitle(ev.title).split(" – ")[0] : tidyTitle(ev.title);
-  const label = ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Meal" : ev.type[0].toUpperCase() + ev.type.slice(1);
+  // An event with only a title and a time: a shorter photo and the time as a line, so the page reads as a summary
+  const thin = ev.type !== "hotel" && ev.type !== "flight" && !ev.location && !ev.description && !ev.notes && !docs.length && !rows.length;
+  const hasTime = !isPlaceholderTime(ev.time);
   return (
     <>
       {!photo && <div ref={marker} aria-hidden="true" />}
-      <ScreenBar label={label} onBack={onBack} onPhoto={!!photo} solid={passed} />
+      {/* The event's own title sits right under the photo, so the bar doesn't repeat a generic "Stay" or "Activity" */}
+      <ScreenBar label="" onBack={onBack} onPhoto={!!photo} solid={passed} />
       {photo ? (
-        <div className="relative h-[min(400px,55dvh)] [mask-image:linear-gradient(#000_70%,transparent)]">
+        <div className={`relative ${thin ? "h-[min(240px,33dvh)]" : "h-[min(400px,55dvh)]"} [mask-image:linear-gradient(#000_70%,transparent)]`}>
           <img src={photo} alt="" style={{ objectPosition: objectPosition(ev.imagePosition) }} className="h-full w-full object-cover" />
           <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/35 to-transparent" />
         </div>
@@ -392,9 +395,9 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
         <div>
           {ev.type === "flight" && <div className="mb-3"><EventMark ev={ev} size="lg" /></div>}
           <h1 className="text-[28px] font-bold leading-[33px] tracking-[-0.014em] text-foreground">{title}</h1>
-          <p className={`mt-1 text-[15px] ${QUIET}`}>{fmtLong(ev.date)}</p>
+          <p className={`mt-1 text-[15px] ${QUIET}`}>{thin && hasTime ? `${clockTime(ev.time)}, ${fmtLong(ev.date)}` : fmtLong(ev.date)}</p>
           {nightLine && <p className={`text-[15px] ${QUIET}`}>{nightLine}</p>}
-          {ev.type !== "hotel" && !isPlaceholderTime(ev.time) && <p className="mt-1 text-[32px] font-bold tabular-nums leading-tight tracking-tight text-foreground">{clockTime(ev.time)}</p>}
+          {ev.type !== "hotel" && !thin && hasTime && <p className="mt-1 text-[32px] font-bold tabular-nums leading-tight tracking-tight text-foreground">{clockTime(ev.time)}</p>}
           {notice && <p className={`mt-1 text-[15px] ${notice.className}`}>{notice.text}</p>}
         </div>
 
