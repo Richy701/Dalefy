@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bed, AirplaneTilt, CaretRight, Check, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowClockwise, Bed, AirplaneTilt, CaretRight, Check, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,14 +65,21 @@ const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(
 interface Review {
   rows: BookingRow[] | null;
   stays: StayFile[] | null;
-  /** PDFs that couldn't be read at all, kept when the organiser picks who someone is */
-  errors: { label: string; reason: string }[];
+  /** PDFs that couldn't be read at all, kept when the organiser picks who someone is, and tried again on request */
+  errors: ReadError[];
   chosen: Record<string, string>;
   filled: BookingFill[];
   docs: { eventId: string; travellerId: string; key: string }[];
   unknown: string[];
   problems: { label: string; reason: string }[];
 }
+
+interface ReadError { key: string; label: string; reason: string }
+/** What went wrong reading a PDF, in words: a dropped or slow read is worth trying again, so it says so */
+const readReason = (message: string) =>
+  /timed? ?out|TIMEOUT|deployment|Network error|temporarily unavailable|Request failed \(5\d\d\)/i.test(message) ? "The reader didn't answer in time"
+  : /too many requests|busy/i.test(message) ? "The reader was busy"
+  : message;
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 const shortDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -81,6 +88,23 @@ const EventIcon = ({ type }: { type: TravelEvent["type"] }) => {
   const Icon = type === "flight" ? AirplaneTilt : type === "hotel" ? Bed : Hash;
   return <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />;
 };
+
+/** Files or table rows the import couldn't use, one card each with the reason in plain words */
+function FileRows({ items, pdf }: { items: { label: string; reason: string }[]; pdf?: boolean }) {
+  return (
+    <ul className="divide-y divide-border rounded-xl border border-border bg-background">
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-3 px-3 py-2.5">
+          {pdf ? <FilePdf className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : <Hash className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+          <div className="min-w-0">
+            <p className="truncate text-sm text-foreground">{item.label}</p>
+            <p className="text-xs text-muted-foreground">{item.reason}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Everyone's booking references on one screen, grouped by person, instead of one event dialog at a time */
 export function BookingRefsDialog({ events, travellers, saving, onClose, onSave }: {
@@ -141,7 +165,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     });
   };
 
-  const reviewStays = (stays: StayFile[], errors: { label: string; reason: string }[], chosen: Record<string, string> = {}) => {
+  const reviewStays = (stays: StayFile[], errors: ReadError[], chosen: Record<string, string> = {}) => {
     const match = matchStays(stays, bookable, travellers, chosen);
     const fileName = (key: string) => pdfFiles.current.get(key)?.name ?? "PDF";
     setReview({
@@ -149,39 +173,38 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
       filled: match.filled.filter(fill => fill.ref).map(fill => ({ eventId: fill.eventId, travellerId: fill.travellerId, ref: fill.ref, seat: "", ticket: "" })),
       docs: match.filled,
       unknown: [...new Set(match.skipped.filter(s => s.problem === "person").map(s => s.file.guests[0]))],
-      problems: [
-        ...errors,
-        ...match.skipped.filter(s => s.problem !== "person").map(({ file, problem }) => ({
-          label: [fileName(file.key), file.guests.join(" and ")].filter(Boolean).join(", "),
-          reason: STAY_PROBLEMS[problem] ?? PROBLEMS[problem],
-        })),
-      ],
+      // Read failures show on their own, with Try again; these are PDFs read fine that fit no stay
+      problems: match.skipped.filter(s => s.problem !== "person").map(({ file, problem }) => ({
+        label: [fileName(file.key), file.guests.join(" and ")].filter(Boolean).join(", "),
+        reason: STAY_PROBLEMS[problem] ?? PROBLEMS[problem],
+      })),
     });
   };
 
-  const readPdfs = async (files: File[]) => {
-    if (files.length > MAX_PDFS) { setReadError(`Add up to ${MAX_PDFS} PDFs at a time.`); return; }
+  // Reads these PDFs and reviews them along with any read before (Try again re-reads only the ones that failed)
+  const readPdfEntries = async (entries: { key: string; file: File }[], before: { stays: StayFile[]; chosen: Record<string, string> }) => {
     const run = ++readRun.current;
-    pdfFiles.current = new Map();
-    const stays: StayFile[] = [];
-    const errors: { label: string; reason: string }[] = [];
+    const stays = [...before.stays];
+    const errors: ReadError[] = [];
     let done = 0;
-    setReading(files.map(file => file.name));
-    setPdfProgress({ done: 0, total: files.length });
+    setReading(entries.map(entry => entry.file.name));
+    setPdfProgress({ done: 0, total: entries.length });
     setReadError(null);
     try {
+      const files = entries.map(entry => entry.file);
       await readStayPdfs(files, (file, result) => {
         if (run !== readRun.current) return;
-        const key = `${files.indexOf(file)}:${file.name}`;
+        const { key } = entries[files.indexOf(file)];
         pdfFiles.current.set(key, file);
         if ("read" in result) stays.push({ key, ...result.read });
-        else errors.push({ label: file.name, reason: result.error });
-        setPdfProgress({ done: ++done, total: files.length });
+        else errors.push({ key, label: file.name, reason: readReason(result.error) });
+        setPdfProgress({ done: ++done, total: entries.length });
       }, () => run !== readRun.current);
       if (run !== readRun.current) return;
       // Folder order, so the review reads like the folder
       stays.sort((a, b) => parseInt(a.key) - parseInt(b.key));
-      reviewStays(stays, errors);
+      errors.sort((a, b) => parseInt(a.key) - parseInt(b.key));
+      reviewStays(stays, errors, before.chosen);
     } catch (error) {
       if (run === readRun.current) setReadError(error instanceof Error ? error.message : "Couldn't read those PDFs. Try again.");
     } finally {
@@ -189,12 +212,24 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     }
   };
 
+  const readPdfs = (files: File[]) => {
+    if (files.length > MAX_PDFS) { setReadError(`Add up to ${MAX_PDFS} PDFs at a time.`); return; }
+    pdfFiles.current = new Map();
+    void readPdfEntries(files.map((file, i) => ({ key: `${i}:${file.name}`, file })), { stays: [], chosen: {} });
+  };
+
+  const retryFailed = () => {
+    if (!review?.stays || reading) return;
+    const entries = review.errors.flatMap(error => { const file = pdfFiles.current.get(error.key); return file ? [{ key: error.key, file }] : []; });
+    if (entries.length) void readPdfEntries(entries, { stays: review.stays, chosen: review.chosen });
+  };
+
   const readFiles = (files: File[]) => {
     if (reading) return;
     setView("import");
     setReview(null);
     const pdfs = files.filter(isPdf);
-    if (pdfs.length) void readPdfs(pdfs);
+    if (pdfs.length) readPdfs(pdfs);
     else void readPictures(files);
   };
 
@@ -393,17 +428,39 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                     )}
                   </div>
                 ) : review && reviewCounts ? (
-                  <div className="space-y-5" role="status">
+                  <div className="space-y-6" role="status">
+                    {/* What's ready, in one line, then only what needs the organiser */}
                     <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {reviewCounts.people ? `${reviewCounts.people} of ${plural(people.length, "traveller")} matched` : "Nobody matched yet"}
+                      <p className="text-base font-semibold tracking-tight text-foreground">
+                        {review.stays
+                          ? `${review.docs.length} of ${plural(review.stays.length + review.errors.length, "PDF")} ready to add`
+                          : reviewCounts.people ? `${reviewCounts.people} of ${plural(people.length, "traveller")} matched` : "Nobody matched yet"}
                       </p>
-                      {foundLine && <p className="mt-0.5 text-sm text-muted-foreground">{foundLine}</p>}
-                      {reviewCounts.replaced + replacedPdfs > 0 && <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">{reviewCounts.replaced + replacedPdfs === 1 ? "1 detail replaces" : `${reviewCounts.replaced + replacedPdfs} details replace`} what's already there.</p>}
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {review.stays
+                          ? [plural(reviewCounts.people, "traveller"), plural(new Set(review.docs.map(doc => doc.eventId)).size, "hotel")].join(", ")
+                          : foundLine}
+                      </p>
                     </div>
+
+                    {review.errors.length > 0 && (
+                      <section className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-semibold text-foreground">Couldn't read {review.errors.length}</h3>
+                          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={retryFailed}>
+                            <ArrowClockwise /> Try {review.errors.length === 1 ? "it" : `these ${review.errors.length}`} again
+                          </Button>
+                        </div>
+                        <FileRows pdf items={review.errors} />
+                      </section>
+                    )}
+
                     {review.unknown.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Who {review.unknown.length === 1 ? "is this" : "are these"}? Not on this trip under that name. Anyone you skip is left out.</p>
+                      <section className="space-y-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">Who {review.unknown.length === 1 ? "is this" : "are these"}?</h3>
+                          <p className="text-xs text-muted-foreground">Not on this trip under that name. Anyone you skip is left out.</p>
+                        </div>
                         {review.unknown.map(name => {
                           const pick = (id: string) => {
                             const chosen = { ...review.chosen, [name]: id };
@@ -422,15 +479,20 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                             </div>
                           );
                         })}
-                      </div>
+                      </section>
                     )}
+
                     {review.problems.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{review.problems.length} left out</p>
-                        {review.problems.map(({ label, reason }, i) => (
-                          <p key={i} className="text-xs text-muted-foreground break-words"><span className="text-foreground">{label}</span>: {reason}</p>
-                        ))}
-                      </div>
+                      <section className="space-y-2">
+                        <h3 className="text-sm font-semibold text-foreground">Left out {review.problems.length}</h3>
+                        <FileRows pdf={!!review.stays} items={review.problems} />
+                      </section>
+                    )}
+
+                    {reviewCounts.replaced + replacedPdfs > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {reviewCounts.replaced + replacedPdfs === 1 ? "1 replaces" : `${reviewCounts.replaced + replacedPdfs} replace`} what's already saved. You can check them in the list before saving.
+                      </p>
                     )}
                   </div>
                 ) : (
@@ -474,7 +536,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                 ) : review ? (
                   <>
                     <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setReview(null)}>Back</button>
-                    <Button type="button" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs" disabled={!review.filled.length} onClick={addToList}>Add to list</Button>
+                    <Button type="button" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs" disabled={!review.filled.length && !review.docs.length} onClick={addToList}>{(() => { const n = review.stays ? review.docs.length : review.filled.length; return n ? `Add ${n} to list` : "Add to list"; })()}</Button>
                   </>
                 ) : (
                   <>
@@ -618,7 +680,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
 
               <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
                 <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={close}>Cancel</button>
-                <Button type="button" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs" disabled={!dirty || saving} onClick={async () => { if (await onSave(changes)) onClose(); }}>Save</Button>
+                <Button type="button" className="h-10 px-8 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs" disabled={!dirty || saving} onClick={async () => { if (await onSave(changes)) onClose(); }}>{saving ? <><SpinnerGap className="h-4 w-4 animate-spin" aria-hidden="true" /> Saving…</> : "Save"}</Button>
               </div>
             </>
           )}

@@ -55,8 +55,10 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({})) as { error?: string };
-    throw new ApiError(res.status, data.error || `Request failed (${res.status})`);
+    // Our routes send { error: "text" }; Vercel's own rejections (a timeout, a crash) send { error: { code, message } }
+    const data = await res.json().catch(() => ({})) as { error?: string | { message?: string } };
+    const message = typeof data.error === "string" ? data.error : data.error?.message?.split("\n").find(line => line.trim());
+    throw new ApiError(res.status, message || `Request failed (${res.status})`);
   }
   return res.json() as Promise<T>;
 }

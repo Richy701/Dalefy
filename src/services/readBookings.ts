@@ -65,10 +65,13 @@ export async function readStayPdfs(
           onRead(file, { read });
           return;
         } catch (error) {
-          // A busy minute is worth waiting out; anything else is this file's problem
-          const busy = error instanceof ApiError && error.status === 429;
-          if (!busy || attempt >= 2 || cancelled()) throw error;
-          await wait(20_000);
+          // A busy minute is worth waiting out, and a dropped or timed-out read is worth another go; a PDF the
+          // reader turned down (unreadable, too large, not signed in) fails the same way every time
+          const status = error instanceof ApiError ? error.status : 0;
+          const busy = status === 429;
+          const passing = status === 0 || status >= 500;
+          if ((!busy && !passing) || attempt >= 2 || cancelled()) throw error;
+          await wait(busy ? 20_000 : 3_000);
         }
       }
     } catch (error) {

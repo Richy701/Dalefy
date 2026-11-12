@@ -294,6 +294,7 @@ export function WorkspacePage() {
   const [clearing, setClearing] = useState<string[]>([]);
   const saveBusy = useRef(false);
   const [savingChanges, setSavingChanges] = useState(false);
+  const bookingUploadBusy = useRef(false);
   const editingOriginalRef = useRef<string | null>(null);
   const [discardPromptOpen, setDiscardPromptOpen] = useState(false);
   const [imageSeed, setImageSeed] = useState(0);
@@ -833,9 +834,15 @@ export function WorkspacePage() {
   };
 
   const saveBookingRefs = async (changes: BookingRefChanges) => {
+    if (bookingUploadBusy.current) return false;
     const baseline = editBaseline.current || trip;
     // New confirmation PDFs upload first, so nothing is saved pointing at a file that isn't there
     const uploaded = new Map<File, EventDocument>();
+    const toUpload = Object.values(changes).flatMap(change => Object.values(change.travelerDocs ?? {})).filter(doc => doc instanceof File).length;
+    // Uploading takes a few seconds with many PDFs: say so straight away, and keep Save from running twice
+    const progress = toUpload ? toast.loading(`Uploading ${toUpload} PDF${toUpload === 1 ? "" : "s"}…`) : undefined;
+    let done = 0;
+    bookingUploadBusy.current = true; setSavingChanges(true);
     try {
       await Promise.all(Object.entries(changes).flatMap(([eventId, change]) => Object.entries(change.travelerDocs ?? {}).map(async ([personId, doc]) => {
         if (!(doc instanceof File)) return;
@@ -844,11 +851,16 @@ export function WorkspacePage() {
         await uploadBytes(sRef, doc, { contentType: "application/pdf" });
         const url = await getDownloadURL(sRef);
         uploaded.set(doc, { id: `booking-${personId}-${stamp}`, name: "Booking confirmation.pdf", mimeType: "application/pdf", url, size: doc.size, uploadedAt: new Date(stamp).toISOString() });
+        done++;
+        if (progress !== undefined) toast.loading(`Uploading PDFs, ${done} of ${toUpload}…`, { id: progress });
       })));
     } catch {
-      toast.error("Couldn't upload the confirmation PDFs. Nothing was saved, try again.");
+      toast.error("Couldn't upload the confirmation PDFs. Nothing was saved, try again.", progress !== undefined ? { id: progress } : undefined);
       return false;
+    } finally {
+      bookingUploadBusy.current = false; setSavingChanges(false);
     }
+    if (progress !== undefined) toast.dismiss(progress);
     const events = baseline.events.map(ev => {
       if (!(ev.id in changes)) return ev;
       const next = { ...ev };
