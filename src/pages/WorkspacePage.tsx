@@ -2801,6 +2801,84 @@ export function WorkspacePage() {
 
                 </div>
 
+                {/* Who's going: everyone, or only some people; travellers only see the events they're on */}
+                <div className="px-4 sm:px-6 py-3.5 border-t border-border space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-semibold text-foreground">Who's going</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {editingEvent?.assignedTo === undefined ? "Everyone" : `${editingEvent.assignedTo.length} of ${tripTravelers.length}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
+                        aria-pressed={!editingEvent?.assignedTo}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                          !editingEvent?.assignedTo
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Everyone
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: prev.assignedTo?.length ? prev.assignedTo : [] } : null)}
+                        aria-pressed={Array.isArray(editingEvent?.assignedTo)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                          Array.isArray(editingEvent?.assignedTo)
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Only some
+                      </button>
+                    </div>
+                  </div>
+                  {editingEvent?.assignedTo !== undefined && (
+                    <div className="space-y-1.5">
+                      {tripTravelers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {tripTravelers.map(t => {
+                            const isAssigned = editingEvent.assignedTo?.includes(t.id);
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => {
+                                  setEditingEvent(prev => {
+                                    if (!prev) return null;
+                                    const current = prev.assignedTo || [];
+                                    const next = isAssigned
+                                      ? current.filter(id => id !== t.id)
+                                      : [...current, t.id];
+                                    return { ...prev, assignedTo: next };
+                                  });
+                                }}
+                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium border transition-all ${
+                                  isAssigned
+                                    ? "bg-brand/10 border-brand/30 text-brand"
+                                    : "bg-background border-border text-muted-foreground hover:border-brand/30"
+                                }`}
+                              >
+                                <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-5 w-5" fallbackClassName="text-[8px] font-black" />
+                                {t.name.split(" ")[0]}
+                                {isAssigned && <Check className="h-3 w-3" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                          Add travelers in the People tab first to assign them to events.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Details: everything optional, collapsed by default ── */}
                 <Collapsible className="border-t border-border">
                   <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
@@ -3166,79 +3244,6 @@ export function WorkspacePage() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* People Assignment */}
-                <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground">People</label>
-                    <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
-                        aria-pressed={!editingEvent?.assignedTo}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                          !editingEvent?.assignedTo
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        Everyone
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: prev.assignedTo?.length ? prev.assignedTo : [] } : null)}
-                        aria-pressed={Array.isArray(editingEvent?.assignedTo)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                          Array.isArray(editingEvent?.assignedTo)
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        Specific
-                      </button>
-                    </div>
-                  </div>
-                  {editingEvent?.assignedTo !== undefined && (
-                    <div className="space-y-1.5">
-                      {tripTravelers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {tripTravelers.map(t => {
-                            const isAssigned = editingEvent.assignedTo?.includes(t.id);
-                            return (
-                              <button
-                                key={t.id}
-                                type="button"
-                                onClick={() => {
-                                  setEditingEvent(prev => {
-                                    if (!prev) return null;
-                                    const current = prev.assignedTo || [];
-                                    const next = isAssigned
-                                      ? current.filter(id => id !== t.id)
-                                      : [...current, t.id];
-                                    return { ...prev, assignedTo: next };
-                                  });
-                                }}
-                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                                  isAssigned
-                                    ? "bg-brand/10 border-brand/30 text-brand"
-                                    : "bg-background border-border text-muted-foreground hover:border-brand/30"
-                                }`}
-                              >
-                                <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-5 w-5" fallbackClassName="text-[8px] font-black" />
-                                {t.name.split(" ")[0]}
-                                {isAssigned && <Check className="h-3 w-3" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                          Add travelers in the People tab first to assign them to events.
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
