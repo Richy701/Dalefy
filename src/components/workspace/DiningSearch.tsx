@@ -43,11 +43,11 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-card border border-border text-base sm:text-sm font-semibold text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-card border border-border text-base sm:text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand transition-colors";
 
   return (
-    <div className="border-b border-border">
-      <div className="px-3 sm:px-4 pt-3 pb-2">
+    <div className="mx-4 mt-3 overflow-hidden rounded-xl border border-border bg-secondary/50 sm:mx-6">
+      <div className="px-3 sm:px-4 pt-3 pb-3">
         <p className="text-sm font-semibold text-foreground mb-2">Restaurant Search</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">

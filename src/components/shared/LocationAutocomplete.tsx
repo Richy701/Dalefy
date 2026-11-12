@@ -40,7 +40,9 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
     let cancelled = false;
     tripArea(destination).then(area => {
       if (cancelled) return;
-      nearRef.current = area ? `${area.anchors[0][1]},${area.anchors[0][0]}` : "";
+      // A destination that geocodes to no point leaves suggestions unranked rather than throwing
+      const first = area?.anchors?.[0];
+      nearRef.current = first ? `${first[1]},${first[0]}` : "";
       countriesRef.current = area?.countries ?? [];
     });
     return () => { cancelled = true; };

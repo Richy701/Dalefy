@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Files, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
+  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Files, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EventPhonePreview } from "@/components/shared/PhoneTripView";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { TripHistorySheet } from "@/components/workspace/TripHistorySheet";
 import { Calendar } from "@/components/ui/calendar";
@@ -37,7 +39,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -101,7 +102,7 @@ import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
 import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
-import { CategoryDot } from "@/components/ui/category-dot";
+import { CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { sortEvents, inDayOrder, hasClockTime } from "@/lib/sortEvents";
 import { IMAGE_BANK, getEventImageCategory, generateEventImage } from "@/data/images";
@@ -525,9 +526,13 @@ export function WorkspacePage() {
     const shown = inDayOrder(trip.events.filter(e => e.date === activeEvent.date));
     const movingDown = sameDay && shown.findIndex(e => e.id === activeId) < shown.findIndex(e => e.id === overId);
     const untimed = !hasClockTime(activeEvent.time);
-    // An untimed event keeps no time and holds the place it was dropped in, as untimed events sit where the
-    // organiser put them. A timed one takes the time (and day) of the one it was dropped on, as days list by time.
-    const moved = untimed ? { ...activeEvent, date: overEvent.date } : { ...activeEvent, date: overEvent.date, time: overEvent.time };
+    // An event keeps its own time and only takes the day it was dropped on. Days list by time, so a timed event
+    // can't be reordered within its day by dragging: say so rather than quietly change a time someone typed.
+    if (!untimed && sameDay) {
+      toast("Days run in time order. Change its time to move it.");
+      return;
+    }
+    const moved = { ...activeEvent, date: overEvent.date };
     if (untimed) {
       const dayStored = rest.filter(e => e.date === overEvent.date);
       const dayShown = inDayOrder(dayStored);
@@ -2664,7 +2669,7 @@ export function WorkspacePage() {
       />
       <Dialog open={isEditPanelOpen} onOpenChange={handleEventDialogOpenChange}>
         {/* Opening focuses the title, not the first status pill (whose focus ring read as a selection) */}
-        <DialogContent initialFocus={() => document.getElementById("event-title")} className="max-w-2xl w-[95vw] p-0 bg-card border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        <DialogContent initialFocus={() => document.getElementById("event-title")} className="max-w-2xl lg:max-w-5xl w-[95vw] p-0 bg-card border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
@@ -2674,7 +2679,7 @@ export function WorkspacePage() {
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">Anything left blank can be filled in later.</p>
               </div>
-              {/* Status: a quiet switch beside the title, its colour on a dot, so it doesn't outshout the event */}
+              {/* Status: a quiet switch beside the title, so it doesn't outshout the event */}
               <div role="radiogroup" aria-label="Status" className="flex w-fit items-center gap-0.5 rounded-lg bg-secondary p-0.5 sm:shrink-0">
                 {(["Proposed", "Confirmed", "Cancelled"] as const).map(s => (
                   <button key={s} type="button" role="radio" aria-checked={editingEvent?.status === s}
@@ -2683,18 +2688,20 @@ export function WorkspacePage() {
                       editingEvent?.status === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${s === "Confirmed" ? "bg-emerald-500" : s === "Cancelled" ? "bg-red-500" : "bg-amber-500"}`} />
                     {s}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Body - one column, essentials open and the rest behind sections */}
+            {/* Body: the form, with the traveller's view of the event beside it on wide screens */}
+            <div className="flex-1 min-h-0 flex">
             <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
               <div>
                 {/* Category tabs */}
-                <div className="flex flex-wrap gap-2 px-4 sm:px-6 pt-4 pb-1">
+                {/* What kind of event: one compact switch rather than five big pills */}
+                <div className="px-4 sm:px-6 pt-4 pb-1">
+                <div role="radiogroup" aria-label="Event type" className="flex w-full flex-wrap gap-0.5 rounded-lg bg-secondary p-0.5 sm:w-fit">
                   {([
                     { id: "flight", label: "Flight", icon: AirplaneTilt },
                     { id: "hotel", label: "Hotel", icon: Bed },
@@ -2702,13 +2709,14 @@ export function WorkspacePage() {
                     { id: "dining", label: "Dining", icon: ForkKnife },
                     { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
-                    <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      aria-pressed={editingEvent?.type === cat.id}
-                      className={`flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-lg border transition-colors ${editingEvent?.type === cat.id ? "border-foreground/30 bg-secondary text-foreground" : "border-border text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>
-                      <CategoryDot type={cat.id} size="sm" />
-                      <span className="text-sm font-medium">{cat.label}</span>
+                    <button key={cat.id} type="button" role="radio" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
+                      aria-checked={editingEvent?.type === cat.id}
+                      className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors sm:flex-none ${editingEvent?.type === cat.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                      <cat.icon className={`h-4 w-4 ${editingEvent?.type === cat.id ? CATEGORY_CLASS[cat.id].fg : ""}`} weight={editingEvent?.type === cat.id ? "fill" : "regular"} aria-hidden="true" />
+                      {cat.label}
                     </button>
                   ))}
+                </div>
                 </div>
 
                 {/* Live search - flight */}
@@ -2754,6 +2762,7 @@ export function WorkspacePage() {
                     <Label htmlFor="event-title" className="sr-only">Event title</Label>
                     <Input
                       id="event-title"
+                      spellCheck
                       value={editingEvent?.title || ""}
                       onChange={e => { setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null); if (eventErrors.title) setEventErrors(prev => ({ ...prev, title: undefined })); }}
                       placeholder="What's happening? e.g. Transfer to hotel"
@@ -2769,7 +2778,7 @@ export function WorkspacePage() {
                       <Label className="text-xs font-medium text-muted-foreground">Date</Label>
                       <Popover>
                         <PopoverTrigger className={cn(
-                          "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-background border border-border hover:border-brand/50 transition-colors text-left",
+                          "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm font-medium bg-card border border-border hover:border-brand/50 transition-colors text-left",
                           editingEvent?.date ? "text-foreground" : "text-muted-foreground"
                         )}>
                           <CalendarDots className="h-3.5 w-3.5 text-brand shrink-0" />
@@ -2791,7 +2800,7 @@ export function WorkspacePage() {
                     {/* An overnight is a night in a stay already checked into: no time of its own */}
                     {!(editingEvent?.type === "hotel" && editingEvent?.isOvernight) && <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in time" : "Start time"}</Label>
-                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
+                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-9 text-sm font-medium bg-card text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>}
                   </div>
@@ -2884,16 +2893,16 @@ export function WorkspacePage() {
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Meeting point</Label>
-                        <Input value={editingEvent?.meetingPoint || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, meetingPoint: e.target.value } : null)} placeholder="e.g., Exit B, Arrivals hall" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.meetingPoint || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, meetingPoint: e.target.value } : null)} spellCheck placeholder="e.g., Exit B, Arrivals hall" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-medium text-muted-foreground">Driver or guide</Label>
-                          <Input value={editingEvent?.contactName || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactName: e.target.value } : null)} placeholder="e.g., Somchai" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                          <Input value={editingEvent?.contactName || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactName: e.target.value } : null)} placeholder="e.g., Somchai" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-medium text-muted-foreground">Their phone</Label>
-                          <Input type="tel" value={editingEvent?.contactPhone || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactPhone: e.target.value } : null)} placeholder="e.g., +66 81 234 5678" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                          <Input type="tel" value={editingEvent?.contactPhone || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, contactPhone: e.target.value } : null)} placeholder="e.g., +66 81 234 5678" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                         </div>
                       </div>
                       <p className="text-[11px] text-muted-foreground">Travellers see these in the app, unlike notes and supplier.</p>
@@ -2905,7 +2914,7 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Check-out time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="11:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="11:00" aria-invalid={!!eventErrors.endTime} className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                         {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
                     </div>
@@ -2916,7 +2925,7 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">End time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="14:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="14:00" aria-invalid={!!eventErrors.endTime} className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                         {(() => {
                           // A same-day end before the start is almost always a typo or a misread document
                           const start = parseTimeInput(editingEvent?.time), end = parseTimeInput(editingEvent?.endTime);
@@ -2928,7 +2937,7 @@ export function WorkspacePage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
-                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
                   )}
@@ -2943,7 +2952,7 @@ export function WorkspacePage() {
                       value={editingEvent?.location || ""}
                       onChange={(val, coords) => setEditingEvent(prev => prev ? { ...prev, location: val, locationCoords: coords ?? prev.locationCoords } : null)}
                       placeholder="Search for a place..."
-                      className="h-10 w-full text-sm font-semibold bg-background border border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
+                      className="h-9 w-full text-sm font-medium bg-card border border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
                     />
                   </div>
 
@@ -3102,32 +3111,46 @@ export function WorkspacePage() {
                   )}
                 </div>
 
-                {/* ── Details: everything optional, collapsed by default ── */}
-                <Collapsible className="border-t border-border">
-                  <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                    <span className="text-sm font-semibold text-foreground">Details</span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">
-                        {[editingEvent?.supplier, editingEvent && hasBookingRef(editingEvent), editingEvent?.price].filter(Boolean).length || "Optional"}
-                        {[editingEvent?.supplier, editingEvent && hasBookingRef(editingEvent), editingEvent?.price].filter(Boolean).length ? " set" : ""}
+              </div>
+
+              {/* Details, media and notes as tabs: one open at a time, each saying what's in it */}
+              <Tabs defaultValue="details" className="flex-col gap-0 border-t border-border">
+                <div className="px-4 pt-4 sm:px-6">
+                  <TabsList aria-label="More about this event" className="w-full">
+                    <TabsTrigger value="details" className="flex-1 gap-1.5">
+                      Details
+                      <span className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                        {[editingEvent?.supplier, editingEvent && hasBookingRef(editingEvent), editingEvent?.price].filter(Boolean).length || ""}
                       </span>
-                      <CaretDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
+                    </TabsTrigger>
+                    <TabsTrigger value="media" className="flex-1 gap-1.5">
+                      Media &amp; documents
+                      <span className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                        {(editingEvent?.media?.length ?? 0) + (editingEvent?.documents?.length ?? 0) + (editingEvent?.image ? 1 : 0) || ""}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="notes" className="flex-1 gap-1.5">
+                      Notes
+                      <span className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                        {[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length || ""}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                  <TabsContent value="details">
                     <div className="p-4 sm:p-6 pt-1 space-y-5">
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">Supplier</Label>
-                      <Input list="known-suppliers" value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Input list="known-suppliers" value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       <datalist id="known-suppliers">
                         {knownSuppliers.map(name => <option key={name} value={name} />)}
                       </datalist>
                     </div>
                     {!(editingEvent?.type === "hotel" && editingEvent?.isOvernight) && <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">Booking reference</Label>
-                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC123" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC123" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>}
                   </div>
 
@@ -3143,7 +3166,7 @@ export function WorkspacePage() {
                   {/* Price */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">Price</Label>
-                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-9 text-sm font-medium bg-card border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
                   {/* Type-specific fields */}
@@ -3166,21 +3189,21 @@ export function WorkspacePage() {
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
-                                <Input value={((editingEvent as unknown as Record<string, string | undefined>)[f.key] ?? "") || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                                <Input value={((editingEvent as unknown as Record<string, string | undefined>)[f.key] ?? "") || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-card border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Arrival time</Label>
-                              <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="e.g., 14:30" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="e.g., 14:30" aria-invalid={!!eventErrors.endTime} className="h-9 text-sm bg-card border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
-                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-9 text-sm bg-card border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="col-span-2 space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Seat or ticket details</Label>
-                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-9 text-sm bg-card border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         ) : (
@@ -3216,7 +3239,7 @@ export function WorkspacePage() {
                             })}
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Room type</Label>
-                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-9 text-sm bg-card border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         )}
@@ -3224,25 +3247,9 @@ export function WorkspacePage() {
                     </div>
                   )}
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
+                  </TabsContent>
 
-              {/* ── Media: image, photos and documents, collapsed by default ── */}
-              <Collapsible className="border-t border-border">
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                  <span className="text-sm font-semibold text-foreground">Media &amp; documents</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      {(() => {
-                        const n = (editingEvent?.media?.length ?? 0) + (editingEvent?.documents?.length ?? 0) + (editingEvent?.image ? 1 : 0);
-                        return n === 0 ? "None" : `${n} attached`;
-                      })()}
-                    </span>
-                    <CaretDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
+              <TabsContent value="media">
               <div className="flex flex-col bg-slate-50/40 dark:bg-background">
                 {/* Search bar */}
                 <div className="p-3 sm:p-4 border-b border-border shrink-0 bg-card">
@@ -3472,23 +3479,9 @@ export function WorkspacePage() {
 
                 </div>{/* end media scroll area */}
               </div>
-                </CollapsibleContent>
-              </Collapsible>
+                </TabsContent>
 
-              {/* ── Description & notes: traveler-facing copy and internal notes ── */}
-              <Collapsible className="border-t border-border">
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                  <span className="text-xs font-medium text-muted-foreground">Description &amp; notes</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      {[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length
-                        ? `${[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length} written`
-                        : "Empty"}
-                    </span>
-                    <CaretDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
+              <TabsContent value="notes">
               <div>
                 {/* AI Assist */}
                 <div className="p-3 sm:p-4 bg-card">
@@ -3515,8 +3508,19 @@ export function WorkspacePage() {
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
               </div>
-                </CollapsibleContent>
-              </Collapsible>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* What travellers will see, updating as the form changes; wide screens only */}
+            <aside aria-label="What travellers see" className="hidden w-[360px] shrink-0 flex-col border-l border-border bg-secondary/50 px-6 py-5 lg:flex">
+              <p className="text-xs font-medium text-muted-foreground">What travellers see</p>
+              <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-xl border-[6px] border-foreground/10 bg-background shadow-sm">
+                <div className="h-full overflow-y-auto">
+                  {editingEvent && <EventPhonePreview ev={{ ...editingEvent, title: editingEvent.title || "Untitled event" }} trip={trip} />}
+                </div>
+              </div>
+            </aside>
             </div>
 
             {/* Footer */}
@@ -3658,7 +3662,7 @@ export function WorkspacePage() {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">Trip Name</Label>
-                    <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-background border-border text-foreground rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                    <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} spellCheck placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-background border-border text-foreground rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -3820,6 +3824,7 @@ export function WorkspacePage() {
                               <span className="text-[11px] font-black text-brand">{idx + 1}</span>
                             </div>
                             <Input
+                              spellCheck
                               value={item.title}
                               onChange={e => {
                                 const updated = [...(editingTrip.info ?? [])];
@@ -4010,6 +4015,7 @@ export function WorkspacePage() {
                       <div data-info-page={item.id} className="rounded-xl border border-border bg-background scroll-mt-4">
                         <div className="flex items-center gap-3 pl-8 pr-3 pt-3">
                           <Input
+                            spellCheck
                             value={item.title}
                             onChange={e => {
                               const updated = [...editInfoData];

@@ -185,7 +185,7 @@ export function SavedInfoManager() {
               </DialogHeader>
               <div className="space-y-1.5">
                 <Label htmlFor="saved-info-title">Title</Label>
-                <Input id="saved-info-title" value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="e.g. Travel insurance" required />
+                <Input id="saved-info-title" spellCheck value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="e.g. Travel insurance" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="saved-info-body">What travellers should know</Label>

@@ -8,6 +8,8 @@ import {
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { useTrips } from "@/context/TripsContext";
 import { generateUniqueShortCode } from "@/services/firebaseTrips";
+import { tripDatesLine } from "@/lib/tripSummary";
+import { objectPosition } from "@/lib/imagePosition";
 
 interface ShareTripDialogProps {
   open: boolean;
@@ -85,7 +87,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="p-0 overflow-x-hidden overflow-y-auto grid-cols-[minmax(0,1fr)] w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl bg-card border border-border shadow-2xl"
+        className="p-0 overflow-x-hidden overflow-y-auto grid-cols-[minmax(0,1fr)] w-[calc(100vw-2rem)] max-w-xl max-h-[calc(100vh-2rem)] rounded-xl bg-card border border-border shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -97,7 +99,6 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
         <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-border">
           <div className="min-w-0">
             <p className="text-base font-semibold tracking-tight text-foreground">Share itinerary</p>
-            <p className="mt-0.5 text-sm text-muted-foreground truncate">{tripName}</p>
           </div>
           <button
             type="button"
@@ -129,68 +130,69 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
           </div>
         )}
 
-        {/* One card for getting it onto phones: scan the code, or type the PIN in the app; the link sits underneath */}
+        {/* The invite itself, shaped like what travellers get: the trip on its photo, then the PIN and code to join */}
         <section className="px-6 pt-5">
-          <div className="rounded-xl border border-border bg-background">
-            <div className="flex items-center gap-4 p-4">
-              <div className="shrink-0 text-center">
-                <div className="rounded-lg border border-border bg-white p-2">
-                  <QRCodeSVG value={webUrl} size={112} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
-                </div>
-                <p className="mt-1.5 text-[11px] text-muted-foreground">Scan to open</p>
+          <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+            <div className="relative h-44 bg-secondary">
+              {trip?.image && <img src={trip.image} alt="" style={{ objectPosition: objectPosition(trip.imagePosition) }} className="absolute inset-0 h-full w-full object-cover" />}
+              <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" aria-hidden="true" />
+              <div className="absolute inset-x-4 bottom-3">
+                <p className="truncate text-lg font-semibold tracking-tight text-white">{tripName}</p>
+                <p className="truncate text-sm text-white/85">
+                  {[trip ? tripDatesLine({ start: trip.start, end: trip.end }) : "", travellerCount ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"}` : ""].filter(Boolean).join(", ")}
+                </p>
               </div>
+            </div>
+            <div className="flex items-center gap-4 border-t border-dashed border-border px-5 py-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-muted-foreground">Trip PIN</p>
+                <p className="text-xs font-medium text-muted-foreground">Join in the {brand.platformName} app with PIN</p>
                 <button
                   type="button"
                   onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
                   disabled={!shortCode}
                   aria-label={shortCode ? `Copy trip PIN ${shortCode}` : "No trip PIN yet"}
-                  className="mt-1 block text-[30px] font-semibold leading-none tracking-[0.22em] tabular-nums text-foreground hover:opacity-80 disabled:cursor-default"
+                  className="mt-1.5 block text-[32px] font-semibold leading-none tracking-[0.2em] tabular-nums text-foreground hover:opacity-80 disabled:cursor-default"
                 >
                   {pinChars.length ? pinChars.join("") : "······"}
                 </button>
-                <p className="mt-2 text-xs text-muted-foreground">Typed on the {brand.platformName} app's Home screen</p>
-                <div className="mt-3">
-                  <ActionButton
-                    onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
-                    disabled={!shortCode}
-                    icon={copiedKey === "pin" ? Check : Copy}
-                    label={copiedKey === "pin" ? "Copied" : "Copy PIN"}
-                  />
-                </div>
+                <p className="mt-2 text-xs text-muted-foreground">Or scan the code to open it in any browser</p>
               </div>
-            </div>
-            {/* The browser link: opens the itinerary anywhere, no app needed */}
-            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-              <div className="min-w-0 flex-1 basis-40">
-                <p className="text-xs font-medium text-muted-foreground">Link, no app needed</p>
-                <p className="truncate text-sm text-foreground" title={webUrl}>{displayUrl}</p>
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <ActionButton
-                  primary
-                  onClick={() => copy("web", webUrl, "Link")}
-                  icon={copiedKey === "web" ? Check : Copy}
-                  label={copiedKey === "web" ? "Copied" : "Copy link"}
-                />
-                <IconAction onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open the link" />
-                <IconAction onClick={downloadQr} icon={DownloadSimple} label="Save the QR code" />
+              <div className="shrink-0 rounded-lg border border-border bg-white p-2">
+                <QRCodeSVG value={webUrl} size={112} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
               </div>
             </div>
           </div>
+
+          {/* What you do with it */}
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <ActionButton
+              primary
+              onClick={() => copy("web", webUrl, "Link")}
+              icon={copiedKey === "web" ? Check : Copy}
+              label={copiedKey === "web" ? "Copied" : "Copy link"}
+            />
+            <ActionButton
+              onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
+              disabled={!shortCode}
+              icon={copiedKey === "pin" ? Check : Copy}
+              label={copiedKey === "pin" ? "Copied" : "Copy PIN"}
+            />
+            <ActionButton onClick={downloadQr} icon={DownloadSimple} label="Save QR" />
+            <ActionButton onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open" />
+          </div>
+          <p className="mt-2 truncate text-xs text-muted-foreground" title={webUrl}>{displayUrl}, opens in any browser</p>
         </section>
 
         {/* Who's had it by email: the one step that actually reaches people who haven't joined */}
         {isPublished && travellerCount > 0 && (
-          <section className="px-6 pt-4 pb-5">
+          <section className="px-6 pt-5 pb-5">
             <div className="flex items-center gap-3">
-              <EnvelopeSimple className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary" aria-hidden="true">
+                <EnvelopeSimple className="h-4 w-4 text-foreground" />
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground tabular-nums">{travellerCount - notInvited} of {travellerCount} emailed the itinerary</p>
-                <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
-                  <span className={`block h-full rounded-full ${notInvited ? "bg-primary" : "bg-emerald-500"}`} style={{ width: `${Math.round(((travellerCount - notInvited) / travellerCount) * 100)}%` }} />
-                </span>
+                <p className="text-sm font-medium text-foreground tabular-nums">Emailed to {travellerCount - notInvited} of {travellerCount}</p>
+                <p className="text-xs text-muted-foreground">{notInvited ? `${notInvited} still to send` : "Everyone has the itinerary"}</p>
               </div>
               {notInvited > 0 && onEmailTravellers && (
                 <ActionButton onClick={onEmailTravellers} icon={EnvelopeSimple} label={notInvited === 1 ? "Email 1" : `Email ${notInvited}`} />
@@ -226,14 +228,6 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
   );
 }
 
-function IconAction({ onClick, icon: Icon, label }: { onClick: () => void; icon: React.ComponentType<{ className?: string; weight?: "regular" | "bold" }>; label: string }) {
-  return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-secondary">
-      <Icon className="h-3.5 w-3.5" weight="bold" />
-    </button>
-  );
-}
-
 function ActionButton({ onClick, icon: Icon, label, primary, disabled, style }: {
   onClick: () => void;
   style?: React.CSSProperties;
@@ -249,7 +243,7 @@ function ActionButton({ onClick, icon: Icon, label, primary, disabled, style }: 
       disabled={disabled}
       style={style}
       className={[
-        "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shrink-0",
+        "inline-flex items-center justify-center gap-1.5 h-9 px-3 whitespace-nowrap rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shrink-0",
         primary
           ? "bg-primary text-primary-foreground hover:opacity-90"
           : "border border-border bg-card text-foreground hover:bg-secondary",

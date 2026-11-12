@@ -479,6 +479,15 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
   );
 }
 
+/** One event exactly as a traveller's phone shows it, for the workspace's event editor */
+export function EventPhonePreview({ ev, trip }: { ev: TravelEvent; trip: Trip }) {
+  return (
+    <div data-phone-itinerary className="relative isolate w-full bg-background text-foreground">
+      <EventScreen ev={ev} trip={trip} events={trip.events.map(e => (e.id === ev.id ? ev : e))} onOpen={() => {}} onBack={() => {}} />
+    </div>
+  );
+}
+
 function FlightStop({ icon, code, extra, date, time }: { icon: ReactNode; code?: string; extra: Array<string | undefined | false>; date: string; time?: string }) {
   const line = extra.filter(Boolean).join(", ");
   return (

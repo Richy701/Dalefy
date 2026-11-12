@@ -77,7 +77,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-card border border-border text-base sm:text-sm font-semibold text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-card border border-border text-base sm:text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
 
   const tabCls = (active: boolean) =>
     `px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 ${
@@ -87,8 +87,8 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
     }`;
 
   return (
-    <div className="border-b border-border">
-      <div className="px-3 sm:px-4 pt-3 pb-2">
+    <div className="mx-4 mt-3 overflow-hidden rounded-xl border border-border bg-secondary/50 sm:mx-6">
+      <div className="px-3 sm:px-4 pt-3 pb-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-semibold text-foreground">Look up a flight</p>
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">

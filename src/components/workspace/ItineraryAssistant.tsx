@@ -656,6 +656,7 @@ export function ItineraryAssistant({
         >
           <textarea
             ref={inputRef}
+            spellCheck
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
