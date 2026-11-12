@@ -539,7 +539,11 @@ export default function EventDetailScreen() {
     const i = title.indexOf(" – ");
     return i > 0 ? [title.slice(0, i), title.slice(i + 3)] : [title, ""];
   })();
-  const nights = isHotel && ev.date && ev.endDate ? Math.round((new Date(ev.endDate + "T12:00:00").getTime() - new Date(ev.date + "T12:00:00").getTime()) / 86400000) : null;
+  // The stay's dates: an overnight shows the stay it is part of, and check-out falls back to the stay's check-out date
+  const stay = isHotel ? stayDates(ev, trip.events) : null;
+  const checkInDate = overnight ? stay?.from || ev.date : ev.date;
+  const checkOutDate = ev.endDate || stay?.to || "";
+  const nights = isHotel && checkInDate && checkOutDate ? Math.round((new Date(checkOutDate + "T12:00:00").getTime() - new Date(checkInDate + "T12:00:00").getTime()) / 86400000) : null;
   // Dinner or activity at the hotel you're staying in: no transfer needed
   const atYourHotel = !isHotel && !isTransfer && !!ev.location && trip.events.some(e => e.type === "hotel" && ev.location!.toLowerCase().includes(cleanEventTitle(e.title, e.type).split(" – ")[0].toLowerCase().split(" ").slice(0, 2).join(" ")));
   const neighbours = [
@@ -647,14 +651,15 @@ export default function EventDetailScreen() {
           <View style={[styles.stayRow, { borderColor: C.border }]}>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check in</Text>
-              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{ev.date ? formatShortDate(ev.date) : "TBC"}</Text>
-              <Text style={[styles.heroFact, { color: ev.time && !/^tb[acd]$/i.test(ev.time) ? C.tealText : C.textTertiary }]}>{ev.time && !/^tb[acd]$/i.test(ev.time) ? ev.time : "Time TBC"}</Text>
+              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{checkInDate ? formatShortDate(checkInDate) : "TBC"}</Text>
+              {/* An overnight has no times of its own; they belong to the check-in */}
+              {!overnight && <Text style={[styles.heroFact, { color: ev.time && !/^tb[acd]$/i.test(ev.time) ? C.tealText : C.textTertiary }]}>{ev.time && !/^tb[acd]$/i.test(ev.time) ? ev.time : "Time TBC"}</Text>}
             </View>
             <View style={[styles.stayDivider, { backgroundColor: C.border }]} />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check out</Text>
-              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{ev.endDate ? formatShortDate(ev.endDate) : "TBC"}</Text>
-              <Text style={[styles.heroFact, { color: ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? C.tealText : C.textTertiary }]}>{ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? ev.endTime : "Time TBC"}</Text>
+              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{checkOutDate ? formatShortDate(checkOutDate) : "TBC"}</Text>
+              {!overnight && <Text style={[styles.heroFact, { color: ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? C.tealText : C.textTertiary }]}>{ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? ev.endTime : "Time TBC"}</Text>}
             </View>
             {nights && nights > 0 ? <Text style={[styles.stayNights, { color: C.textSecondary }]}>{nights} night{nights === 1 ? "" : "s"}</Text> : null}
           </View>

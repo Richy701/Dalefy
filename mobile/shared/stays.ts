@@ -48,9 +48,9 @@ export function withAccommodation(info: TripInfo[], events: TravelEvent[], tripS
 
 /**
  * The check-in and check-out dates of the stay a hotel night belongs to: its own, else those of the
- * stay at the same hotel that covers its night. "14 Nov", "18 Nov", and together "14 to 18 Nov".
+ * stay at the same hotel that covers its night. "14 Nov", "18 Nov", together "14 to 18 Nov", and as YYYY-MM-DD.
  */
-export function stayDates(ev: TravelEvent, events: TravelEvent[] = []): { checkin: string; checkout: string; range: string } {
+export function stayDates(ev: TravelEvent, events: TravelEvent[] = []): { checkin: string; checkout: string; range: string; from: string; to: string } {
   let from = dayOf(ev.checkin);
   let to = dayOf(ev.checkout);
   const night = dayOf(ev.date);
@@ -72,5 +72,6 @@ export function stayDates(ev: TravelEvent, events: TravelEvent[] = []): { checki
   const range = from && to
     ? from.getUTCMonth() === to.getUTCMonth() && from.getUTCFullYear() === to.getUTCFullYear() ? `${from.getUTCDate()} to ${checkout}` : `${checkin} to ${checkout}`
     : checkout ? `until ${checkout}` : checkin ? `from ${checkin}` : "";
-  return { checkin, checkout, range };
+  const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+  return { checkin, checkout, range, from: iso(from), to: iso(to) };
 }
