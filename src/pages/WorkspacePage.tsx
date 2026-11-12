@@ -1928,6 +1928,7 @@ export function WorkspacePage() {
                                         : undefined
                                     }
                                     tripTz={tripTz}
+                                    tripEvents={trip.events}
                                   />
                                 ))}
                               </div>

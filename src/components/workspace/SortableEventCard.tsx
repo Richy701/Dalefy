@@ -11,9 +11,10 @@ interface SortableEventCardProps {
   onDelete: () => void;
   assignedPeople?: Array<{ initials: string; name: string; avatar?: string }>;
   tripTz?: string;
+  tripEvents?: TravelEvent[];
 }
 
-export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: SortableEventCardProps) {
+export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz, tripEvents }: SortableEventCardProps) {
   const {
     attributes,
     listeners,
@@ -44,7 +45,7 @@ export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assig
       >
         <DotsSixVertical className="h-4 w-4" />
       </button>
-      <EventCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} tripTz={tripTz} />
+      <EventCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} tripTz={tripTz} tripEvents={tripEvents} />
     </div>
   );
 }

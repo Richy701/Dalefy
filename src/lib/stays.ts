@@ -45,3 +45,32 @@ export function withAccommodation(info: TripInfo[], events: TravelEvent[], tripS
   const card = accommodationFromEvents(events, tripStart);
   return card ? [...info, card] : info;
 }
+
+/**
+ * The check-in and check-out dates of the stay a hotel night belongs to: its own, else those of the
+ * stay at the same hotel that covers its night. "14 Nov", "18 Nov", and together "14 to 18 Nov".
+ */
+export function stayDates(ev: TravelEvent, events: TravelEvent[] = []): { checkin: string; checkout: string; range: string } {
+  let from = dayOf(ev.checkin);
+  let to = dayOf(ev.checkout);
+  const night = dayOf(ev.date);
+  if ((!from || !to) && night) {
+    const name = ev.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const stay = events.find(e => {
+      if (e.id === ev.id || e.type !== "hotel" || e.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() !== name) return false;
+      const f = dayOf(e.checkin) ?? dayOf(e.date);
+      const t = dayOf(e.checkout);
+      return !!f && !!t && f <= night && night <= t;
+    });
+    if (stay) {
+      from = from ?? dayOf(stay.checkin) ?? dayOf(stay.date);
+      to = to ?? dayOf(stay.checkout);
+    }
+  }
+  const checkin = from ? shortDate(from) : "";
+  const checkout = to ? shortDate(to) : "";
+  const range = from && to
+    ? from.getUTCMonth() === to.getUTCMonth() && from.getUTCFullYear() === to.getUTCFullYear() ? `${from.getUTCDate()} to ${checkout}` : `${checkin} to ${checkout}`
+    : checkout ? `until ${checkout}` : checkin ? `from ${checkin}` : "";
+  return { checkin, checkout, range };
+}

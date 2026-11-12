@@ -6,6 +6,7 @@ import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import type { TravelEvent } from "@/types";
 import { tzAbbr, eventTz } from "@/lib/timezone";
 import { stayValue } from "@/lib/tripSummary";
+import { stayDates } from "@/lib/stays";
 import { PersonAvatar } from "@/components/shared/PersonAvatar";
 
 interface AssignedPerson { initials: string; name: string; avatar?: string }
@@ -115,11 +116,11 @@ function subtitleFor(event: TravelEvent): string {
 }
 
 /** Up to three of the event's own details for the row's middle on wide screens; only what the event has */
-function rowFacts(event: TravelEvent, arrTz: string): { label: string; value: string }[] {
+function rowFacts(event: TravelEvent, arrTz: string, tripEvents?: TravelEvent[]): { label: string; value: string }[] {
   const t = (v?: string) => (v && !isPlaceholderTime(v) ? v.split(" ")[0] : "");
   const facts: [string, string | undefined][] =
     event.type === "flight" ? [["Arrives", [t(event.endTime), t(event.endTime) && arrTz].filter(Boolean).join(" ")], ["Duration", event.duration], ["Ref", event.confNumber]]
-    : event.type === "hotel" && event.isOvernight ? [["Room", event.roomType]]
+    : event.type === "hotel" && event.isOvernight ? (() => { const stay = stayDates(event, tripEvents); return [["Check-in", stay.checkin], ["Check-out", stay.checkout], ["Room", event.roomType]] as [string, string][]; })()
     : event.type === "hotel" ? [["Check-in", stayValue(event.checkin) || t(event.time)], ["Check-out", stayValue(event.checkout) || t(event.endTime)], ["Room", event.roomType]]
     : event.type === "transfer" ? [["Meet at", event.meetingPoint], ["Driver", event.contactName], ["Ref", event.confNumber]]
     : [["Until", t(event.endTime)], ["With", event.supplier], ["Ref", event.confNumber]];
@@ -131,13 +132,14 @@ function rowFacts(event: TravelEvent, arrTz: string): { label: string; value: st
  * right. Flights add departure and arrival legs underneath. Same shape the
  * traveller sees on their phone, so what is built here is what they get.
  */
-export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: {
+export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz, tripEvents }: {
   event: TravelEvent;
   onClick: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   assignedPeople?: AssignedPerson[];
   tripTz?: string;
+  tripEvents?: TravelEvent[];
 }) {
   const isFlight = event.type === "flight";
   const depTz = isFlight ? tzAbbr(eventTz(event, tripTz, "dep") ?? "", event.date) : "";
@@ -168,7 +170,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
         </div>
         {/* Wide rows: the middle carries its details, in fixed columns so they line up down the day */}
         {(() => {
-          const facts = rowFacts(event, arrTz);
+          const facts = rowFacts(event, arrTz, tripEvents);
           return facts.length > 0 && (
             <dl className="hidden @4xl:grid grid-cols-3 gap-x-6 w-[27rem] shrink-0">
               {facts.map(f => (

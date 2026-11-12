@@ -1,5 +1,6 @@
 import type { TravelEvent } from "./types";
 import { tidyLocation } from "./eventTitle";
+import { stayDates } from "./stays";
 
 // Display-only tidying for timeline rows. The organiser's data is never changed.
 
@@ -29,9 +30,9 @@ export function areaOf(address: string): string {
 }
 
 /** The line under a row's title: transfers say where from (the title says where to), hotels give the area and check-in */
-export function rowSub(ev: TravelEvent): string {
-  // A night in a stay already checked into: just say so, the check-in row has the details
-  if (ev.type === "hotel" && ev.isOvernight) return ["Overnight", ev.location ? areaOf(tidyLocation(ev.location)) : ""].filter(Boolean).join(", ");
+export function rowSub(ev: TravelEvent, events: TravelEvent[] = []): string {
+  // A night in a stay: say so with the stay's dates, the check-in row has the rest
+  if (ev.type === "hotel" && ev.isOvernight) return ["Overnight", stayDates(ev, events).range, ev.location ? areaOf(tidyLocation(ev.location)) : ""].filter(Boolean).join(", ");
   if (!ev.location) return "";
   const loc = tidyLocation(ev.location);
   if (ev.type === "transfer") {

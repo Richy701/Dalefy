@@ -691,8 +691,8 @@ export default function TripScreen() {
                             <Text style={styles.tlTitle} numberOfLines={2}>{ev.type === "hotel" ? cleanTitle(ev.title).split(" – ")[0] : rowTitle(cleanTitle(ev.title), rowSub(ev))}</Text>
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
                               <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
-                            ) : rowSub(ev) ? (
-                              <Text style={styles.tlSub} numberOfLines={1}>{rowSub(ev)}</Text>
+                            ) : rowSub(ev, trip.events) ? (
+                              <Text style={styles.tlSub} numberOfLines={1}>{rowSub(ev, trip.events)}</Text>
                             ) : null}
                           </View>
                           {ev.time && !isPlaceholderTime(ev.time) && !(ev.type === "hotel" && ev.isOvernight) ? (

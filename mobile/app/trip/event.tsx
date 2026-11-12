@@ -14,6 +14,7 @@ import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
 import { travellerRefRows, travellerBookingRows, terminalLabel, minutesBetween, gapText } from "@/shared/eventDisplay";
+import { stayDates } from "@/shared/stays";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -480,7 +481,7 @@ export default function EventDetailScreen() {
   const liveLine = endsIn ? `Ends in ${endsIn}` : startsIn ? `Starts in ${startsIn}` : null;
   const knownTime = (t?: string) => !!t && !/^tb[acd]$/i.test(t);
   const whenText = isHotel
-    ? (ev.isOvernight ? "Overnight" : [knownTime(ev.time) ? `Check in ${ev.time}` : null, knownTime(ev.endTime) ? `check out ${ev.endTime}` : null].filter(Boolean).join(", ") || null)
+    ? (ev.isOvernight ? ["Overnight", stayDates(ev, trip.events).range].filter(Boolean).join(", ") : [knownTime(ev.time) ? `Check in ${ev.time}` : null, knownTime(ev.endTime) ? `check out ${ev.endTime}` : null].filter(Boolean).join(", ") || null)
     : knownTime(ev.time) ? `${ev.time}${knownTime(ev.endTime) ? ` – ${ev.endTime}` : ""}` : null;
 
   const copyRef = (ref: string) => {

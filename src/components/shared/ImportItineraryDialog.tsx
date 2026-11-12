@@ -1152,11 +1152,13 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     const isHotel = ev.type === "hotel";
     const checkin = ev.checkin ?? "";
     const checkout = ev.checkout ?? "";
-    const hasMultiDay = isHotel && checkin && checkout && checkin !== checkout;
+    const date = ev.date ?? checkin ?? "";
+    // The check-in row carries the stay and its booking; only the nights after it are overnights
+    const isOvernight = !!(isHotel && checkin && checkout && checkin !== checkout && date && date !== checkin);
     return {
       id: `imp-ai-${Date.now()}-${i}`,
       type: ev.type as EventType,
-      date: ev.date ?? checkin ?? "",
+      date,
       // Saved 24-hour, like times typed in the workspace; "TBD" and anything unreadable stay as written
       time: parseTimeInput(ev.time) || ev.time || "TBD",
       endTime: parseTimeInput(ev.endTime) || ev.endTime || "",
@@ -1165,7 +1167,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
       description: ev.description ?? "",
       notes: ev.notes ?? "",
       ...(typeof ev.confNumber === "string" && ev.confNumber.trim() ? { confNumber: ev.confNumber.trim() } : {}),
-      ...(isHotel ? { checkin, checkout, isOvernight: hasMultiDay } : {}),
+      ...(isHotel ? { checkin, checkout, isOvernight } : {}),
       // Who meets them and where, for transfers, when the document says
       ...(ev.type === "transfer" ? Object.fromEntries((["meetingPoint", "contactName", "contactPhone"] as const)
         .map(k => [k, typeof ev[k] === "string" ? ev[k].trim() : ""]).filter(([, v]) => v)) : {}),
