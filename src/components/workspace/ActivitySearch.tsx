@@ -52,7 +52,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>
-            <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Dubai" autoComplete="off" className={inputCls} />
+            <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="City or area" autoComplete="off" className={inputCls} />
           </div>
           <button
             type="button"

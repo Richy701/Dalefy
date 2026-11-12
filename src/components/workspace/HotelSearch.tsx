@@ -61,7 +61,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           <div className="col-span-2 sm:flex-[1.5] sm:min-w-[120px]">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>
-            <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Hotels in Dubai" autoComplete="off" className={inputCls} />
+            <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Hotel name, city or area" autoComplete="off" className={inputCls} />
           </div>
           <div className="sm:flex-1 sm:min-w-[115px]">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Check-in</label>

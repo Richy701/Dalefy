@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowClockwise, Bed, AirplaneTilt, CaretRight, Check, CheckCircle, FilePdf, Hash, MagnifyingGlass, SpinnerGap, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
+import { ArrowClockwise, Armchair, Bed, AirplaneTilt, CaretRight, CheckCircle, FilePdf, Hash, MagnifyingGlass, SpinnerGap, Ticket, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,8 +126,13 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
   // The PDFs being read right now, and a dropped folder still being opened, so the screen never sits still
   const [pdfRows, setPdfRows] = useState<PdfRow[]>([]);
+  // What's been read so far, matched as it comes in, so the list fills in while the rest are still being read
+  // Each PDF's file name by its key, for the screen (the Files themselves stay in pdfFiles)
+  const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const [live, setLive] = useState<{ stays: StayFile[]; errors: ReadError[]; chosen: Record<string, string> } | null>(null);
   const [opening, setOpening] = useState(false);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "missing" | "complete">("all");
   const [focused, setFocused] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "import">("list");
   const [importFrom, setImportFrom] = useState<"picture" | "paste">("picture");
@@ -170,10 +175,10 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     });
   };
 
-  const reviewStays = (stays: StayFile[], errors: ReadError[], chosen: Record<string, string> = {}) => {
+  const buildStayReview = (stays: StayFile[], errors: ReadError[], chosen: Record<string, string> = {}): Review => {
     const match = matchStays(stays, bookable, travellers, chosen);
-    const fileName = (key: string) => pdfFiles.current.get(key)?.name ?? "PDF";
-    setReview({
+    const fileName = (key: string) => fileNames[key] ?? "PDF";
+    return {
       rows: null, stays, errors, chosen,
       filled: match.filled.filter(fill => fill.ref).map(fill => ({ eventId: fill.eventId, travellerId: fill.travellerId, ref: fill.ref, seat: "", ticket: "" })),
       docs: match.filled,
@@ -183,8 +188,9 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
         label: [fileName(file.key), file.guests.join(" and ")].filter(Boolean).join(", "),
         reason: STAY_PROBLEMS[problem] ?? PROBLEMS[problem],
       })),
-    });
+    };
   };
+  const reviewStays = (stays: StayFile[], errors: ReadError[], chosen: Record<string, string> = {}) => setReview(buildStayReview(stays, errors, chosen));
 
   // Reads these PDFs and reviews them along with any read before (Try again re-reads only the ones that failed)
   const readPdfEntries = async (entries: { key: string; file: File }[], before: { stays: StayFile[]; chosen: Record<string, string> }) => {
@@ -195,6 +201,8 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     setReading(entries.map(entry => entry.file.name));
     setPdfProgress({ done: 0, total: entries.length });
     setPdfRows(entries.map(entry => ({ key: entry.key, name: entry.file.name, status: "waiting" })));
+    setLive({ stays: [...stays], errors: [], chosen: before.chosen });
+    setFileNames(prev => ({ ...prev, ...Object.fromEntries(entries.map(entry => [entry.key, entry.file.name])) }));
     const setRow = (key: string, row: Partial<PdfRow>) => setPdfRows(prev => prev.map(r => (r.key === key ? { ...r, ...row } : r)));
     setReadError(null);
     try {
@@ -206,6 +214,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
         if ("read" in result) stays.push({ key, ...result.read });
         else errors.push({ key, label: file.name, reason: readReason(result.error) });
         setPdfProgress({ done: ++done, total: entries.length });
+        setLive({ stays: [...stays], errors: [...errors], chosen: before.chosen });
         setRow(key, "read" in result
           ? { status: "done", detail: [result.read.guests.join(" and "), result.read.hotel].filter(Boolean).join(", ") || "Read" }
           : { status: "failed", detail: readReason(result.error) });
@@ -218,7 +227,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     } catch (error) {
       if (run === readRun.current) setReadError(error instanceof Error ? error.message : "Couldn't read those PDFs. Try again.");
     } finally {
-      if (run === readRun.current) { setReading(null); setPdfProgress(null); setPdfRows([]); }
+      if (run === readRun.current) { setReading(null); setPdfProgress(null); setPdfRows([]); setLive(null); }
     }
   };
 
@@ -264,7 +273,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
     }
   };
 
-  const cancelReading = () => { readRun.current++; setReading(null); setPdfProgress(null); setPdfRows([]); };
+  const cancelReading = () => { readRun.current++; setReading(null); setPdfProgress(null); setPdfRows([]); setLive(null); };
 
   const readPaste = () => {
     setReadError(null);
@@ -330,21 +339,29 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const dirty = Object.keys(changes).length > 0;
 
   const own = (e: TravelEvent, personId: string) => drafts[e.id]?.[personId]?.trim() || "";
-  // Seats and tickets only count as missing once the trip is using them: plenty of trips never record either
-  const inUse = (field: Field) => bookable.some(e => Object.values(allDrafts[field][e.id] ?? {}).some(value => value.trim()));
-  const usesSeats = inUse("travelerSeats"), usesTickets = inUse("travelerTickets");
-  const gapsFor = (items: TravelEvent[], personId: string) => {
-    const flights = items.filter(e => e.type === "flight");
-    const empty = (field: Field) => flights.filter(e => !allDrafts[field][e.id]?.[personId]?.trim()).length;
-    return {
-      references: items.filter(e => !own(e, personId) && !e.confNumber?.trim()).length,
-      seats: usesSeats ? empty("travelerSeats") : 0,
-      tickets: usesTickets ? empty("travelerTickets") : 0,
-    };
-  };
-  const complete = people.filter(row => { const gap = gapsFor(row.items, row.person.id); return !gap.references && !gap.seats && !gap.tickets; }).length;
+  const hasRef = (e: TravelEvent, personId: string) => !!own(e, personId) || !!e.confNumber?.trim();
+  const hasPdf = (e: TravelEvent, personId: string) => !!docs[e.id]?.[personId];
+  // Hotel PDFs count once the trip is using them; seats and tickets are optional and never make anyone incomplete
+  const usesPdfs = bookable.some(e => e.type === "hotel" && Object.keys(docs[e.id] ?? {}).length > 0);
+  const gapsFor = (items: TravelEvent[], personId: string) => ({
+    references: items.filter(e => !hasRef(e, personId)).length,
+    pdfs: usesPdfs ? items.filter(e => e.type === "hotel" && !hasPdf(e, personId)).length : 0,
+  });
+  const isComplete = (row: { person: Person; items: TravelEvent[] }) => { const gap = gapsFor(row.items, row.person.id); return !gap.references && !gap.pdfs; };
+  const complete = people.filter(isComplete).length;
+  const totals = (() => {
+    let refs = 0, refsNeeded = 0, pdfs = 0, pdfsNeeded = 0, seats = 0, tickets = 0, legs = 0;
+    for (const { person, items } of people) for (const e of items) {
+      refsNeeded++; if (hasRef(e, person.id)) refs++;
+      if (e.type === "hotel") { pdfsNeeded++; if (hasPdf(e, person.id)) pdfs++; }
+      if (e.type === "flight") { legs++; if (allDrafts.travelerSeats[e.id]?.[person.id]?.trim()) seats++; if (allDrafts.travelerTickets[e.id]?.[person.id]?.trim()) tickets++; }
+    }
+    return { refs, refsNeeded, pdfs, pdfsNeeded, seats, tickets, legs };
+  })();
   const query = search.trim().toLowerCase();
-  const shown = query ? people.filter(row => row.person.name.toLowerCase().includes(query)) : people;
+  const shown = people
+    .filter(row => !query || row.person.name.toLowerCase().includes(query))
+    .filter(row => filter === "all" || (filter === "complete") === isComplete(row));
 
   const close = () => { if (dirty || review) setDiscardOpen(true); else onClose(); };
   const toggle = (id: string, open: boolean) => setExpanded(prev => {
@@ -370,6 +387,143 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   ].filter(part => !part.startsWith("0 ")).join(", ");
   const replacedPdfs = review ? review.docs.filter(doc => docs[doc.eventId]?.[doc.travellerId]).length : 0;
 
+  // The PDF import as one list: hotel cards filling in as PDFs are read, then whatever needs the organiser
+  const liveReview = useMemo(() => (live ? buildStayReview(live.stays, live.errors, live.chosen) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt as reads land; the matcher's inputs are fixed while reading
+    [live, fileNames]);
+  const stayView = pdfProgress && liveReview ? liveReview : review?.stays ? review : null;
+  const renderStays = (view: Review) => {
+    const readingPdfs = !!pdfProgress;
+    const total = (view.stays?.length ?? 0) + view.errors.length;
+    const byHotel = sortEvents(bookable.filter(e => view.docs.some(doc => doc.eventId === e.id)));
+    const pending = readingPdfs ? pdfRows.filter(row => row.status === "waiting" || row.status === "reading") : [];
+    const person = (id: string) => travellers.find(t => t.id === id);
+    const stayDates = (e: TravelEvent) => e.checkin && e.checkout && /^\d{4}-\d{2}-\d{2}$/.test(e.checkout)
+      ? `${shortDate(e.checkin)} to ${shortDate(e.checkout)}` : shortDate(e.date);
+    return (
+      <div className="space-y-5" role="status" aria-live="polite">
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-base font-semibold tracking-tight text-foreground">
+              {readingPdfs ? `Reading ${plural(pdfProgress.total, "PDF")}` : `${view.docs.length} of ${plural(total, "PDF")} ready to add`}
+            </p>
+            {readingPdfs && <p className="text-sm text-muted-foreground tabular-nums">{pdfProgress.done} of {pdfProgress.total}</p>}
+          </div>
+          {readingPdfs ? (
+            <>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+                <div className={`h-full rounded-full bg-primary transition-[width] duration-500 ${pdfProgress.done === 0 ? "animate-pulse" : ""}`} style={{ width: `${Math.max(6, Math.round((pdfProgress.done / pdfProgress.total) * 100))}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">Each one fills in below as it's read. A few seconds a PDF, keep this window open.</p>
+            </>
+          ) : (
+            <p className="mt-0.5 text-sm text-muted-foreground">{[plural(new Set(view.docs.map(doc => doc.travellerId)).size, "traveller"), plural(byHotel.length, "hotel")].join(", ")}</p>
+          )}
+        </div>
+
+        {byHotel.map(e => {
+          const rows = view.docs.filter(doc => doc.eventId === e.id);
+          return (
+            <section key={e.id} className="overflow-hidden rounded-xl border border-border bg-background">
+              <header className="flex items-center gap-3 border-b border-border px-3 py-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary" aria-hidden="true"><Bed className="h-4 w-4 text-foreground" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">{e.title.split(" – ")[0]}</p>
+                  <p className="text-xs text-muted-foreground">{stayDates(e)}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{plural(rows.length, "PDF")}</span>
+              </header>
+              <ul className="divide-y divide-border">
+                {rows.map(doc => {
+                  const who = person(doc.travellerId);
+                  const ref = view.filled.find(fill => fill.eventId === doc.eventId && fill.travellerId === doc.travellerId)?.ref ?? "";
+                  const before = allDrafts.travelerRefs[doc.eventId]?.[doc.travellerId]?.trim();
+                  const replacesRef = !!ref && !!before && before !== ref;
+                  const replacesPdf = !replacesRef && !!docs[doc.eventId]?.[doc.travellerId];
+                  return (
+                    <li key={`${doc.eventId}:${doc.travellerId}`} className="flex items-center gap-3 px-3 py-2.5">
+                      <PersonAvatar avatar={who?.avatar} initials={who?.initials ?? "?"} name={who?.name ?? ""} className="h-8 w-8" fallbackClassName="text-[10px] font-semibold" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-foreground">{who?.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{fileNames[doc.key]}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-medium text-foreground tabular-nums">{ref || "No reference"}</p>
+                        {replacesRef && <p className="text-xs text-muted-foreground">replaces <span className="line-through tabular-nums">{before}</span></p>}
+                        {replacesPdf && <p className="text-xs text-muted-foreground">replaces saved PDF</p>}
+                      </div>
+                      <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" weight="fill" aria-hidden="true" />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
+
+        {pending.length > 0 && (
+          <section className="overflow-hidden rounded-xl border border-dashed border-border">
+            <p className="border-b border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground">Still reading {pending.length}</p>
+            <ul className="max-h-[min(16rem,35dvh)] divide-y divide-border overflow-y-auto">
+              {pending.map(row => (
+                <li key={row.key} className="flex items-center gap-3 px-3 py-2">
+                  {row.status === "reading" ? <SpinnerGap className="h-4 w-4 shrink-0 animate-spin text-foreground" aria-hidden="true" /> : <FilePdf className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                  <p className={`min-w-0 flex-1 truncate text-sm ${row.status === "reading" ? "text-foreground" : "text-muted-foreground"}`}>{row.name}</p>
+                  <span className="shrink-0 text-xs text-muted-foreground">{row.status === "reading" ? "Reading…" : "Waiting"}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {view.errors.length > 0 && (
+          <section className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><WarningCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" weight="fill" aria-hidden="true" /> Couldn't read {view.errors.length}</h3>
+              {!readingPdfs && (
+                <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={retryFailed}>
+                  <ArrowClockwise /> Try {view.errors.length === 1 ? "it" : `these ${view.errors.length}`} again
+                </Button>
+              )}
+            </div>
+            <FileRows pdf items={view.errors} />
+          </section>
+        )}
+
+        {!readingPdfs && view.unknown.length > 0 && (
+          <section className="space-y-2">
+            <div>
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><WarningCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" weight="fill" aria-hidden="true" /> Who {view.unknown.length === 1 ? "is this" : "are these"}?</h3>
+              <p className="text-xs text-muted-foreground">Not on this trip under that name. Anyone you skip is left out.</p>
+            </div>
+            {view.unknown.map(name => {
+              const pick = (id: string) => reviewStays(view.stays ?? [], view.errors, { ...view.chosen, [name]: id });
+              const suggestion = suggestTraveller(name, travellers);
+              return (
+                <div key={name} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-3">
+                  <FilePdf className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="flex-1 min-w-40 break-words text-sm text-foreground">{name}</span>
+                  {suggestion && <Button type="button" variant="outline" className="h-9 rounded-xl px-3 text-xs font-medium" onClick={() => pick(suggestion.id)}>{suggestion.name}?</Button>}
+                  <Select value="" items={travellers.map(t => ({ value: t.id, label: t.name }))} onValueChange={id => { if (typeof id === "string" && id) pick(id); }}>
+                    <SelectTrigger aria-label={`Who is ${name}?`} className="h-9 w-40 shrink-0 rounded-xl text-xs"><SelectValue placeholder={suggestion ? "Someone else" : "Choose traveller"} /></SelectTrigger>
+                    <SelectContent>{travellers.map(t => <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+          </section>
+        )}
+
+        {!readingPdfs && view.problems.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><WarningCircle className="h-4 w-4 text-muted-foreground" weight="fill" aria-hidden="true" /> Left out {view.problems.length}</h3>
+            <FileRows pdf items={view.problems} />
+          </section>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <Dialog open onOpenChange={open => { if (!open) close(); }}>
@@ -381,16 +535,56 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
         >
           <DialogHeader className="shrink-0 border-b border-border px-5 pt-5 pb-4 text-left sm:px-6 sm:pt-6">
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
-              {view === "import" ? "Import bookings" : "Booking references, seats and tickets"}
+              {view === "import" ? "Import bookings" : "Booking references"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              {view === "import"
-                ? "Nothing changes until you've checked what was found."
-                : `${people.length ? `${complete} of ${plural(people.length, "traveller")} complete. ` : ""}Each traveller only ever sees their own.`}
+              {view === "import" ? "Nothing changes until you've checked what was found." : "Each traveller only ever sees their own."}
             </DialogDescription>
+            {view === "list" && people.length > 0 && (
+              // Where the trip stands at a glance; seats and tickets are counts, not gaps
+              <dl className="grid grid-cols-2 gap-2 pt-3 sm:grid-cols-4">
+                {[
+                  { label: "References", Icon: Hash, have: totals.refs, of: totals.refsNeeded, optional: false },
+                  ...(totals.pdfsNeeded ? [{ label: "Hotel PDFs", Icon: FilePdf, have: totals.pdfs, of: totals.pdfsNeeded, optional: false }] : []),
+                  ...(totals.legs ? [{ label: "Seats", Icon: Armchair, have: totals.seats, of: totals.legs, optional: true }, { label: "Tickets", Icon: Ticket, have: totals.tickets, of: totals.legs, optional: true }] : []),
+                ].map(({ label, Icon, have, of, optional }) => {
+                  const done = have === of;
+                  return (
+                    <div key={label} className="rounded-xl border border-border bg-background px-3 py-2.5">
+                      <dt className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <Icon className="h-3.5 w-3.5" aria-hidden="true" /> <span>{label}{optional && <span className="font-normal">, optional</span>}</span>
+                      </dt>
+                      <dd className="mt-1">
+                        <span className="text-lg font-semibold tracking-tight text-foreground tabular-nums">{have}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums"> of {of}</span>
+                        {/* Fills as the trip gets there; green once everyone has theirs */}
+                        <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+                          <span className={`block h-full rounded-full transition-[width] ${done ? "bg-emerald-500" : optional ? "bg-muted-foreground/40" : "bg-primary"}`} style={{ width: `${of ? Math.round((have / of) * 100) : 0}%` }} />
+                        </span>
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            )}
             {view === "list" && (
-              <div className="flex items-center gap-2 pt-2">
-                <div className="relative flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 pt-3">
+                {/* Who still needs something, or who's done */}
+                <div role="radiogroup" aria-label="Show" className="flex shrink-0 items-center gap-0.5 rounded-xl bg-secondary p-0.5">
+                  {([["all", `All ${people.length}`], ["missing", `Missing ${people.length - complete}`], ["complete", `Complete ${complete}`]] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={filter === value}
+                      onClick={() => setFilter(value)}
+                      className={`h-8 rounded-lg px-3 text-xs font-medium tabular-nums transition-colors ${filter === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex-1 min-w-40">
                   <MagnifyingGlass className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a traveller" aria-label="Find a traveller" className="h-9 rounded-xl pl-8 text-sm bg-background border-border" />
                 </div>
@@ -412,42 +606,9 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
           {view === "import" && (
             <>
               <div className="min-h-0 overflow-y-auto px-5 py-5 max-sm:flex-1 sm:px-6">
-                {reading ? (
-                  <div role="status" aria-live="polite" className={pdfProgress ? "" : "rounded-xl border border-border bg-card p-5 shadow-sm"}>
-                    {pdfProgress ? (
-                      <>
-                        <div className="flex items-baseline justify-between gap-3">
-                          <p className="text-base font-semibold tracking-tight text-foreground">Reading {plural(pdfProgress.total, "PDF")}</p>
-                          <p className="text-sm text-muted-foreground tabular-nums">{pdfProgress.done} of {pdfProgress.total}</p>
-                        </div>
-                        {/* Before the first PDF is back the bar still moves, so it never looks stuck at nothing */}
-                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
-                          <div
-                            className={`h-full rounded-full bg-primary transition-[width] duration-500 ${pdfProgress.done === 0 ? "animate-pulse" : ""}`}
-                            style={{ width: `${Math.max(6, Math.round((pdfProgress.done / pdfProgress.total) * 100))}%` }}
-                          />
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">Finding each guest, hotel and confirmation number. A few seconds a PDF, keep this window open.</p>
-                        {/* Every PDF on its own row, so you can watch each one go through */}
-                        <ul className="mt-4 max-h-[min(22rem,45dvh)] overflow-y-auto divide-y divide-border rounded-xl border border-border bg-background">
-                          {pdfRows.map(row => (
-                            <li key={row.key} className="flex items-center gap-3 px-3 py-2.5">
-                              {row.status === "reading" ? <SpinnerGap className="h-4 w-4 shrink-0 animate-spin text-foreground" aria-hidden="true" />
-                                : row.status === "done" ? <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" weight="fill" aria-hidden="true" />
-                                : row.status === "failed" ? <WarningCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" weight="fill" aria-hidden="true" />
-                                : <FilePdf className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-                              <div className="min-w-0 flex-1">
-                                <p className={`truncate text-sm ${row.status === "waiting" ? "text-muted-foreground" : "text-foreground"}`}>{row.name}</p>
-                                {row.detail && <p className="truncate text-xs text-muted-foreground">{row.detail}</p>}
-                              </div>
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                {row.status === "waiting" ? "Waiting" : row.status === "reading" ? "Reading…" : row.status === "failed" ? "Couldn't read" : ""}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
+                {stayView ? renderStays(stayView) : reading ? (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    {(
                       <>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reading your {reading.length === 1 ? "picture" : `${reading.length} pictures`}</p>
                         <div className="mt-4 flex items-center gap-3">
@@ -589,26 +750,42 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
                 )}
                 {shown.length === 0 && (
                   <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {query ? "No traveller by that name" : "Add travellers and flights or hotels first"}
+                    {query ? "No traveller by that name" : filter === "missing" ? "Nobody is missing anything" : filter === "complete" ? "Nobody is complete yet" : "Add travellers and flights or hotels first"}
                   </p>
                 )}
 
                 {shown.map(({ person, items }) => {
                   const flights = items.filter(e => e.type === "flight");
-                  const gap = gapsFor(items, person.id);
-                  const gaps = [plural(gap.references, "reference"), plural(gap.seats, "seat"), plural(gap.tickets, "ticket")].filter(part => !part.startsWith("0 "));
+                  // Bookings with something still missing, one per chip below
+                  const toAdd = items.filter(e => !hasRef(e, person.id) || (usesPdfs && e.type === "hotel" && !hasPdf(e, person.id))).length;
                   const open = !!query || expanded.has(person.id);
                   return (
                     <Collapsible key={person.id} open={open} onOpenChange={next => toggle(person.id, next)} className="border-b border-border last:border-b-0">
                       <CollapsibleTrigger className="flex w-full items-center gap-2.5 px-5 py-3 text-left sm:px-6 hover:bg-secondary/60 focus-visible:outline-none focus-visible:bg-secondary">
-                        <PersonAvatar avatar={person.avatar} initials={person.initials} name={person.name} className="h-7 w-7 shrink-0" fallbackClassName="text-[9px] font-black" />
-                        {/* The status drops under the name on a phone, so a long one can't squeeze the name away */}
-                        <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2.5">
-                          <span className="min-w-0 truncate text-sm font-semibold text-foreground sm:flex-1">{person.name}</span>
-                          {gaps.length > 0
-                            ? <span className="text-xs font-medium text-amber-700 sm:order-1 sm:shrink-0 dark:text-amber-400">{gaps.join(", ")} missing</span>
-                            : <span className="flex items-center gap-1 text-xs text-muted-foreground sm:order-1 sm:shrink-0"><Check className="h-3.5 w-3.5" aria-hidden="true" /> All done</span>}
+                        <PersonAvatar avatar={person.avatar} initials={person.initials} name={person.name} className="h-9 w-9 shrink-0" fallbackClassName="text-[10px] font-semibold" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-foreground">{person.name}</span>
+                          {/* Only what's still missing, so a finished row is quiet and a gap stands out */}
+                          {toAdd > 0 && (
+                            <span className="mt-1 flex flex-wrap gap-1">
+                              {items.flatMap(e => {
+                                const noRef = !hasRef(e, person.id);
+                                const noPdf = usesPdfs && e.type === "hotel" && !hasPdf(e, person.id);
+                                if (!noRef && !noPdf) return [];
+                                const name = e.type === "flight" ? flightNumberOf(e) || e.title : e.title.split(" – ")[0].replace(/^(sun siyam|hotel stay —|hotel)\s+/i, "");
+                                return [(
+                                  <span key={e.id} className="inline-flex max-w-[12rem] items-center gap-1 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                    {e.type === "flight" ? <AirplaneTilt className="h-3 w-3 shrink-0" aria-hidden="true" /> : <Bed className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                                    <span className="truncate">{noRef ? name : `${name} PDF`}</span>
+                                  </span>
+                                )];
+                              })}
+                            </span>
+                          )}
                         </span>
+                        {toAdd
+                          ? <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">{toAdd} to add</span>
+                          : <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"><CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" weight="fill" aria-hidden="true" /> All set</span>}
                         {updated.has(person.id) && <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Updated</span>}
                         <CaretRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} aria-hidden="true" />
                       </CollapsibleTrigger>

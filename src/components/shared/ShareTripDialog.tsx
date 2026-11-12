@@ -19,13 +19,15 @@ interface ShareTripDialogProps {
   publishing?: boolean;
   /** Travellers on the trip who haven't been emailed the itinerary yet */
   notInvited?: number;
+  /** Everyone on the trip, so the email row can say how many have it */
+  travellerCount?: number;
   onEmailTravellers?: () => void;
 }
 
 /** Scheme registered by the Expo app (mobile/app.json). */
 const APP_SCHEME = "dafadventures";
 
-export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing, notInvited = 0, onEmailTravellers }: ShareTripDialogProps) {
+export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing, notInvited = 0, travellerCount = 0, onEmailTravellers }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const { brand } = useBrand();
   const { trips, updateTrip } = useTrips();
@@ -127,71 +129,76 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
           </div>
         )}
 
-        {/* Published, but some travellers have never been told: the one step that actually reaches them */}
-        {isPublished && notInvited > 0 && onEmailTravellers && (
-          <div className="mx-6 mt-5 rounded-xl border border-border bg-secondary/60 px-4 py-3 flex items-center gap-3">
-            <EnvelopeSimple className="h-5 w-5 text-muted-foreground shrink-0" />
-            <p className="flex-1 min-w-0 text-sm text-foreground">
-              {notInvited === 1 ? "1 traveller hasn't" : `${notInvited} travellers haven't`} been emailed the itinerary yet.
-            </p>
-            <button type="button" onClick={onEmailTravellers} className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 shrink-0">
-              Email them
-            </button>
-          </div>
-        )}
-
-        {/* PIN first: it's what travellers type in the app */}
+        {/* One card for getting it onto phones: scan the code, or type the PIN in the app; the link sits underneath */}
         <section className="px-6 pt-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm font-medium text-foreground">Trip PIN</p>
-            <p className="text-xs text-muted-foreground">Typed on the {brand.platformName} app's Home screen</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
-            disabled={!shortCode}
-            aria-label={shortCode ? `Copy trip PIN ${shortCode}` : "No trip PIN yet"}
-            className="group mt-3 w-full flex justify-center gap-2 disabled:cursor-default"
-          >
-            {(pinChars.length ? pinChars : Array(6).fill("")).map((ch, i) => (
-              <span key={i} className="h-14 w-11 rounded-xl border border-border bg-secondary flex items-center justify-center text-2xl font-semibold text-foreground tabular-nums group-hover:border-foreground/25 transition-colors">
-                {ch || <span className="h-0.5 w-3 rounded-full bg-muted-foreground/40" />}
-              </span>
-            ))}
-          </button>
-          <div className="mt-3 flex justify-center">
-            <ActionButton
-              onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
-              disabled={!shortCode}
-              icon={copiedKey === "pin" ? Check : Copy}
-              label={copiedKey === "pin" ? "Copied" : "Copy PIN"}
-            />
-          </div>
-        </section>
-
-        {/* Link and QR: opens in any browser, no app needed */}
-        <section className="px-6 pt-6 pb-5">
-          <p className="text-sm font-medium text-foreground">Link</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Opens the itinerary in any browser. No app needed.</p>
-          <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3 items-center">
-            <div className="shrink-0 rounded-lg border border-border bg-white p-1.5">
-              <QRCodeSVG value={webUrl} size={76} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
+          <div className="rounded-xl border border-border bg-background">
+            <div className="flex items-center gap-4 p-4">
+              <div className="shrink-0 text-center">
+                <div className="rounded-lg border border-border bg-white p-2">
+                  <QRCodeSVG value={webUrl} size={112} bgColor="#ffffff" fgColor="#111111" level="M" marginSize={0} />
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">Scan to open</p>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-muted-foreground">Trip PIN</p>
+                <button
+                  type="button"
+                  onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
+                  disabled={!shortCode}
+                  aria-label={shortCode ? `Copy trip PIN ${shortCode}` : "No trip PIN yet"}
+                  className="mt-1 block text-[30px] font-semibold leading-none tracking-[0.22em] tabular-nums text-foreground hover:opacity-80 disabled:cursor-default"
+                >
+                  {pinChars.length ? pinChars.join("") : "······"}
+                </button>
+                <p className="mt-2 text-xs text-muted-foreground">Typed on the {brand.platformName} app's Home screen</p>
+                <div className="mt-3">
+                  <ActionButton
+                    onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
+                    disabled={!shortCode}
+                    icon={copiedKey === "pin" ? Check : Copy}
+                    label={copiedKey === "pin" ? "Copied" : "Copy PIN"}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground truncate" title={webUrl}>{displayUrl}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* The browser link: opens the itinerary anywhere, no app needed */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+              <div className="min-w-0 flex-1 basis-40">
+                <p className="text-xs font-medium text-muted-foreground">Link, no app needed</p>
+                <p className="truncate text-sm text-foreground" title={webUrl}>{displayUrl}</p>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
                 <ActionButton
                   primary
                   onClick={() => copy("web", webUrl, "Link")}
                   icon={copiedKey === "web" ? Check : Copy}
                   label={copiedKey === "web" ? "Copied" : "Copy link"}
                 />
-                <ActionButton onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open" />
-                <ActionButton onClick={downloadQr} icon={DownloadSimple} label="Save QR" />
+                <IconAction onClick={() => window.open(webUrl, "_blank", "noopener")} icon={ArrowSquareOut} label="Open the link" />
+                <IconAction onClick={downloadQr} icon={DownloadSimple} label="Save the QR code" />
               </div>
             </div>
           </div>
         </section>
+
+        {/* Who's had it by email: the one step that actually reaches people who haven't joined */}
+        {isPublished && travellerCount > 0 && (
+          <section className="px-6 pt-4 pb-5">
+            <div className="flex items-center gap-3">
+              <EnvelopeSimple className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground tabular-nums">{travellerCount - notInvited} of {travellerCount} emailed the itinerary</p>
+                <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+                  <span className={`block h-full rounded-full ${notInvited ? "bg-primary" : "bg-emerald-500"}`} style={{ width: `${Math.round(((travellerCount - notInvited) / travellerCount) * 100)}%` }} />
+                </span>
+              </div>
+              {notInvited > 0 && onEmailTravellers && (
+                <ActionButton onClick={onEmailTravellers} icon={EnvelopeSimple} label={notInvited === 1 ? "Email 1" : `Email ${notInvited}`} />
+              )}
+            </div>
+          </section>
+        )}
+        {!(isPublished && travellerCount > 0) && <div className="pb-5" />}
 
         <div className="mx-6 border-t border-border" />
 
@@ -216,6 +223,14 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function IconAction({ onClick, icon: Icon, label }: { onClick: () => void; icon: React.ComponentType<{ className?: string; weight?: "regular" | "bold" }>; label: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} title={label} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-secondary">
+      <Icon className="h-3.5 w-3.5" weight="bold" />
+    </button>
   );
 }
 

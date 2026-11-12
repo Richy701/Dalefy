@@ -2674,18 +2674,16 @@ export function WorkspacePage() {
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">Anything left blank can be filled in later.</p>
               </div>
-              <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
+              {/* Status: a quiet switch beside the title, its colour on a dot, so it doesn't outshout the event */}
+              <div role="radiogroup" aria-label="Status" className="flex w-fit items-center gap-0.5 rounded-lg bg-secondary p-0.5 sm:shrink-0">
                 {(["Proposed", "Confirmed", "Cancelled"] as const).map(s => (
-                  <button key={s} type="button"
+                  <button key={s} type="button" role="radio" aria-checked={editingEvent?.status === s}
                     onClick={() => setEditingEvent(prev => prev ? { ...prev, status: s } : null)}
-                    className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                      editingEvent?.status === s
-                        ? s === "Confirmed" ? "bg-emerald-400 text-black shadow-lg shadow-emerald-400/20"
-                          : s === "Cancelled" ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
-                          : "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground hover:bg-slate-200 dark:hover:bg-secondary"
+                    className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
+                      editingEvent?.status === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
+                    <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${s === "Confirmed" ? "bg-emerald-500" : s === "Cancelled" ? "bg-red-500" : "bg-amber-500"}`} />
                     {s}
                   </button>
                 ))}
@@ -2737,6 +2735,7 @@ export function WorkspacePage() {
                 {/* Live search - activity */}
                 {editingEvent?.type === "activity" && (
                   <ActivitySearch
+                    defaultLocation={trip.destination}
                     onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
                   />
                 )}
@@ -2744,24 +2743,22 @@ export function WorkspacePage() {
                 {/* Live search - dining */}
                 {editingEvent?.type === "dining" && (
                   <DiningSearch
+                    defaultLocation={trip.destination}
                     onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
                   />
                 )}
 
-                <div className="px-4 sm:px-6 pt-4 pb-1">
-                  <span className="text-sm font-semibold text-foreground">Essentials</span>
-                </div>
-                <div className="px-4 sm:px-6 pb-5 pt-1 space-y-5">
-                  {/* Title - large underline style */}
+                <div className="px-4 sm:px-6 pb-5 pt-4 space-y-5">
+                  {/* The title leads, large, so the form reads as this event rather than a stack of boxes */}
                   <div className="space-y-1">
-                    <Label htmlFor="event-title" className="text-xs font-medium text-muted-foreground">Event title</Label>
+                    <Label htmlFor="event-title" className="sr-only">Event title</Label>
                     <Input
                       id="event-title"
                       value={editingEvent?.title || ""}
                       onChange={e => { setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null); if (eventErrors.title) setEventErrors(prev => ({ ...prev, title: undefined })); }}
                       placeholder="What's happening? e.g. Transfer to hotel"
                       aria-invalid={!!eventErrors.title}
-                      className="w-full h-11 text-lg font-semibold tracking-tight bg-background border-border rounded-lg focus-visible:border-brand focus-visible:ring-0"
+                      className="w-full h-12 px-3.5 text-xl font-semibold tracking-tight bg-background border-border rounded-lg focus-visible:border-brand focus-visible:ring-0 md:text-xl"
                     />
                     {eventErrors.title && <p className="text-[11px] font-semibold text-red-500">{eventErrors.title}</p>}
                   </div>
@@ -2795,7 +2792,6 @@ export function WorkspacePage() {
                     {!(editingEvent?.type === "hotel" && editingEvent?.isOvernight) && <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in time" : "Start time"}</Label>
                       <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
-                      <p className="text-[11px] text-muted-foreground">Leave blank if the time is not confirmed.</p>
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>}
                   </div>
@@ -2910,7 +2906,6 @@ export function WorkspacePage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Check-out time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="11:00" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
-                        <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
                         {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
                     </div>
@@ -2927,7 +2922,7 @@ export function WorkspacePage() {
                           const start = parseTimeInput(editingEvent?.time), end = parseTimeInput(editingEvent?.endTime);
                           return start && end && end < start
                             ? <p className="text-[11px] text-amber-600 dark:text-amber-400">Ends before it starts ({start}). Check the times.</p>
-                            : <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>;
+                            : null;
                         })()}
                         {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                       </div>
@@ -3177,7 +3172,6 @@ export function WorkspacePage() {
                             <div className="space-y-1.5">
                               <Label className="text-xs font-medium text-muted-foreground">Arrival time</Label>
                               <Input value={editingEvent?.endTime || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null); setEventErrors(prev => ({ ...prev, endTime: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); setEventErrors(prev => ({ ...prev, endTime: isValidTimeInput(e.target.value) ? undefined : TIME_INPUT_ERROR })); }} placeholder="e.g., 14:30" aria-invalid={!!eventErrors.endTime} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
-                              <p className="text-[11px] text-muted-foreground">Leave blank if not confirmed.</p>
                               {eventErrors.endTime && <p className="text-[11px] font-semibold text-red-500">{eventErrors.endTime}</p>}
                             </div>
                             <div className="space-y-1.5">
@@ -3579,6 +3573,7 @@ export function WorkspacePage() {
         onPublish={handlePublish}
         publishing={publishing}
         notInvited={(trip.travelers ?? []).filter(t => !t.invitedAt).length}
+        travellerCount={(trip.travelers ?? []).length}
         onEmailTravellers={() => { setShareOpen(false); handleSendEmail(); }}
       />
 
