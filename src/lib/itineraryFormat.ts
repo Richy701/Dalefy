@@ -1,6 +1,5 @@
 import { parseTripDate } from "@/lib/dates";
 import type { TravelEvent } from "@/types";
-import { stayDates } from "@/lib/stays";
 
 export const DAY_MS = 86400000;
 
@@ -55,9 +54,9 @@ function areaOf(address: string): string {
   return unique.length ? unique.slice(0, 2).join(", ") : address;
 }
 
-export function rowSub(ev: TravelEvent, events: TravelEvent[] = []): string {
-  // A night in a stay: say so with the stay's dates, the check-in row has the rest
-  if (ev.type === "hotel" && ev.isOvernight) return ["Overnight", stayDates(ev, events).range, ev.location ? areaOf(tidyLocation(ev.location)) : ""].filter(Boolean).join(", ");
+export function rowSub(ev: TravelEvent): string {
+  // A night in a stay just says so, the check-in row has the details
+  if (ev.type === "hotel" && ev.isOvernight) return "Overnight";
   if (!ev.location) return "";
   const loc = tidyLocation(ev.location);
   if (ev.type === "transfer") {

@@ -250,7 +250,7 @@ function ListScreen({ trip, events, today, now, onOpen, picker, tiles }: { trip:
             {dayEvents.map((ev, i) => {
               const next = dayEvents[i + 1];
               const hasLegs = ev.type === "flight" && (ev.depAirport || ev.arrAirport);
-              const sub = ev.type === "flight" && (ev.airline || ev.flightNum) ? [ev.airline, ev.flightNum].filter(Boolean).join(" ") : rowSub(ev, trip.events);
+              const sub = ev.type === "flight" && (ev.airline || ev.flightNum) ? [ev.airline, ev.flightNum].filter(Boolean).join(" ") : rowSub(ev);
               return (
                 <button key={ev.id} type="button" onClick={() => onOpen({ kind: "event", id: ev.id })} className="grid w-full grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 px-4 text-left active:bg-foreground/5">
                   <span className="flex flex-col items-center pt-3">

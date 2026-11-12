@@ -12,6 +12,11 @@ function minutesOf(time: string): number | null {
   return hours * 60 + mins;
 }
 
+/** Whether the event has a clock time; TBD and blank do not */
+export function hasClockTime(time?: string): boolean {
+  return minutesOf(time || "") !== null;
+}
+
 /**
  * One day's events as travellers see them in the app: timed events in time order, while an event with no
  * time (a hotel check-in, "lunch at leisure") keeps the place the organiser gave it in the day, instead of

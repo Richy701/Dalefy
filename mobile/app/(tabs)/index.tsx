@@ -740,7 +740,7 @@ export default function HomeScreen() {
                         <CategoryDot palette={C} type={ev.type} transferType={ev.transferType} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.evTitle} numberOfLines={1}>{rowTitle(eventTitle(ev), rowSub(ev))}</Text>
-                          {rowSub(ev, heroTrip.events) ? <Text style={styles.evSub} numberOfLines={1}>{rowSub(ev, heroTrip.events)}</Text> : null}
+                          {rowSub(ev) ? <Text style={styles.evSub} numberOfLines={1}>{rowSub(ev)}</Text> : null}
                         </View>
                         {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
                         <CaretRight size={14} color={C.textTertiary} weight="regular" />

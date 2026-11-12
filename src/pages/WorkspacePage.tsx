@@ -103,7 +103,7 @@ import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
 import { CategoryDot } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
-import { sortEvents, inDayOrder } from "@/lib/sortEvents";
+import { sortEvents, inDayOrder, hasClockTime } from "@/lib/sortEvents";
 import { IMAGE_BANK, getEventImageCategory, generateEventImage } from "@/data/images";
 // The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
 
@@ -509,19 +509,44 @@ export function WorkspacePage() {
     const overEvent = trip.events.find(e => e.id === overId);
     if (!activeEvent || !overEvent) return;
 
-    // Days list by time, so the moved event takes the time (and day) of the one it was dropped on and sits
-    // next to it; ties keep the stored order. Only the moved event changes, every other time stays as it was.
-    const moved = { ...activeEvent, date: overEvent.date, time: overEvent.time };
     const rest = trip.events.filter(e => e.id !== activeId);
     const overIdx = rest.findIndex(e => e.id === overId);
     const sameDay = activeEvent.date === overEvent.date;
     const shown = inDayOrder(trip.events.filter(e => e.date === activeEvent.date));
     const movingDown = sameDay && shown.findIndex(e => e.id === activeId) < shown.findIndex(e => e.id === overId);
-    rest.splice(movingDown ? overIdx + 1 : overIdx, 0, moved);
+    const untimed = !hasClockTime(activeEvent.time);
+    // An untimed event keeps no time and holds the place it was dropped in, as untimed events sit where the
+    // organiser put them. A timed one takes the time (and day) of the one it was dropped on, as days list by time.
+    const moved = untimed ? { ...activeEvent, date: overEvent.date } : { ...activeEvent, date: overEvent.date, time: overEvent.time };
+    if (untimed) {
+      const dayStored = rest.filter(e => e.date === overEvent.date);
+      const dayShown = inDayOrder(dayStored);
+      const k = dayShown.findIndex(e => e.id === overId) + (movingDown ? 1 : 0);
+      const anchor = dayStored[k];
+      const at = anchor ? rest.findIndex(e => e.id === anchor.id) : rest.findIndex(e => e.id === dayStored[dayStored.length - 1].id) + 1;
+      rest.splice(at, 0, moved);
+    } else {
+      rest.splice(movingDown ? overIdx + 1 : overIdx, 0, moved);
+    }
 
     updateTrip(trip.id, { events: rest });
     const when = [!sameDay && parseTripDate(overEvent.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), moved.time !== activeEvent.time && (moved.time || "no time")].filter(Boolean).join(", ");
-    toast.success(when ? `Moved ${activeEvent.title || "event"} to ${when}` : "Events reordered");
+    // Undo puts back only the moved event's day, time and place, so anything edited since stays
+    const origIdx = trip.events.findIndex(e => e.id === activeId);
+    const beforeId = trip.events[origIdx - 1]?.id;
+    const afterId = trip.events[origIdx + 1]?.id;
+    const undo = () => {
+      const latest = latestTripRef.current;
+      const current = latest?.events.find(e => e.id === activeId);
+      if (!latest || !current) return;
+      const others = latest.events.filter(e => e.id !== activeId);
+      const afterIdx = others.findIndex(e => e.id === afterId);
+      const beforeIdx = others.findIndex(e => e.id === beforeId);
+      const at = afterIdx >= 0 ? afterIdx : beforeIdx >= 0 ? beforeIdx + 1 : Math.min(origIdx, others.length);
+      others.splice(at, 0, { ...current, date: activeEvent.date, time: activeEvent.time });
+      updateTrip(latest.id, { events: others });
+    };
+    toast.success(when ? `Moved ${activeEvent.title || "event"} to ${when}` : "Events reordered", { duration: 8000, action: { label: "Undo", onClick: undo }, actionButtonStyle: { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" } });
   }, [trip, updateTrip]);
 
   const runImageSearch = async (query: string, page = 1, sourceOverride?: "auto" | "google" | "unsplash" | "pexels") => {
@@ -2653,33 +2678,24 @@ export function WorkspacePage() {
 
                   {/* Overnight toggle for hotel */}
                   {editingEvent?.type === "hotel" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingEvent(prev => {
-                          if (!prev) return null;
-                          if (prev.isOvernight) return { ...prev, isOvernight: false };
-                          // The check-in item already carries the time, reference and confirmations; a duplicate's copies go
-                          const { travelerRefs: _refs, travelerDocs: _docs, ...rest } = prev;
-                          return { ...rest, isOvernight: true, time: "", endTime: "", confNumber: "", checkin: "", checkout: "" };
-                        });
-                        setEventErrors(prev => ({ ...prev, time: undefined }));
-                      }}
-                      aria-pressed={!!editingEvent.isOvernight}
-                      className="flex items-center gap-2.5 group/toggle"
-                    >
-                      <div className={cn(
-                        "h-5 w-9 rounded-full relative transition-colors duration-200",
-                        editingEvent.isOvernight ? "bg-brand" : "bg-secondary"
-                      )}>
-                        <div className={cn(
-                          "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200",
-                          editingEvent.isOvernight ? "translate-x-4" : "translate-x-0.5"
-                        )} />
-                      </div>
-                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-muted-foreground")} />
-                      <span className="text-xs font-medium text-muted-foreground">Overnight</span>
-                    </button>
+                    <label className="flex w-fit items-center gap-2.5 cursor-pointer select-none">
+                      <Switch
+                        className="data-unchecked:bg-muted-foreground/80 dark:data-unchecked:bg-muted-foreground/80"
+                        checked={!!editingEvent.isOvernight}
+                        onCheckedChange={() => {
+                          setEditingEvent(prev => {
+                            if (!prev) return null;
+                            if (prev.isOvernight) return { ...prev, isOvernight: false };
+                            // The check-in item already carries the time, reference and confirmations; a duplicate's copies go
+                            const { travelerRefs: _refs, travelerDocs: _docs, ...rest } = prev;
+                            return { ...rest, isOvernight: true, time: "", endTime: "", confNumber: "", checkin: "", checkout: "" };
+                          });
+                          setEventErrors(prev => ({ ...prev, time: undefined }));
+                        }}
+                      />
+                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-foreground" : "text-muted-foreground")} />
+                      <span className="text-xs font-medium text-foreground">Overnight</span>
+                    </label>
                   )}
 
                   {/* Transfer type selector */}

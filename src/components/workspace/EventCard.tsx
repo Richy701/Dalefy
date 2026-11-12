@@ -107,9 +107,9 @@ function subtitleFor(event: TravelEvent): string {
     return [[event.airline, event.flightNum].filter(Boolean).join(" "), route].filter(Boolean).join(" · ");
   }
   if (event.type === "hotel") {
-    const stay = event.isOvernight
-      ? "Overnight"
-      : [event.time ? `In ${event.time}` : null, event.endTime ? `Out ${event.endTime}` : null].filter(Boolean).join(" · ");
+    // A night in a stay just says so; its dates sit in the row's Check-in and Check-out columns
+    if (event.isOvernight) return "Overnight";
+    const stay = [event.time ? `In ${event.time}` : null, event.endTime ? `Out ${event.endTime}` : null].filter(Boolean).join(" · ");
     return [event.location, event.roomType, stay].filter(Boolean).join(" · ");
   }
   return [event.location, event.endTime && !isPlaceholderTime(event.endTime) ? `until ${event.endTime}` : null].filter(Boolean).join(" · ");
