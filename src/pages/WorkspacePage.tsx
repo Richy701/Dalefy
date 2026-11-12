@@ -402,6 +402,11 @@ export function WorkspacePage() {
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   // The group being edited on the People tab, saved to the trip on Done
   const [groupDraft, setGroupDraft] = useState<TravellerGroup | null>(null);
+  // Naming the people ticked in Who's going as a new group, from inside the event editor
+  const [newGroupName, setNewGroupName] = useState<string | null>(null);
+  // A half-typed group name belongs to the event it was started on
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when a different event opens
+  useEffect(() => { setNewGroupName(null); }, [editingEvent?.id, isEditPanelOpen]);
   const [editingEmailValue, setEditingEmailValue] = useState("");
   const [bulkEmailMode, setBulkEmailMode] = useState(false);
   const [bulkEmails, setBulkEmails] = useState<Record<string, string>>({});
@@ -3017,6 +3022,39 @@ export function WorkspacePage() {
                           Add travelers in the People tab first to assign them to events.
                         </p>
                       )}
+                      {/* The people ticked here can be saved as a group, for the next event they share */}
+                      {(() => {
+                        const picked = (editingEvent.assignedTo ?? []).filter(id => tripTravelers.some(t => t.id === id));
+                        const groups = trip?.groups ?? [];
+                        const matches = groups.some(g => g.memberIds.length === picked.length && picked.every(id => g.memberIds.includes(id)));
+                        if (!trip || picked.length < 2 || matches || isViewer) return null;
+                        const save = () => {
+                          const name = (newGroupName ?? "").trim();
+                          if (!name) { toast.error("Give the group a name"); return; }
+                          updateTrip(trip.id, { groups: [...groups, { id: crypto.randomUUID(), name, memberIds: picked }] });
+                          setNewGroupName(null);
+                          toast.success(`Saved ${name}, ${picked.length} people`);
+                        };
+                        return newGroupName === null ? (
+                          <button type="button" onClick={() => setNewGroupName("")} className="flex items-center gap-1.5 text-xs font-medium text-brand hover:underline underline-offset-2">
+                            <UsersThree className="h-3.5 w-3.5" aria-hidden="true" /> Save these {picked.length} as a group
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              autoFocus
+                              value={newGroupName}
+                              onChange={e => setNewGroupName(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); save(); } if (e.key === "Escape") { e.stopPropagation(); setNewGroupName(null); } }}
+                              placeholder="Group name, e.g. Early departures"
+                              aria-label="Group name"
+                              className="h-8 flex-1"
+                            />
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setNewGroupName(null)}>Cancel</Button>
+                            <Button type="button" size="sm" onClick={save}>Save group</Button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
