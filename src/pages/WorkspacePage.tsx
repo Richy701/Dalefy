@@ -404,9 +404,11 @@ export function WorkspacePage() {
   const [groupDraft, setGroupDraft] = useState<TravellerGroup | null>(null);
   // Naming the people ticked in Who's going as a new group, from inside the event editor
   const [newGroupName, setNewGroupName] = useState<string | null>(null);
-  // A half-typed group name belongs to the event it was started on
+  // Turning Overnight on for a row that holds booking references or PDFs asks first, as it removes them
+  const [overnightAsk, setOvernightAsk] = useState(false);
+  // A half-typed group name, or a pending question, belongs to the event it was started on
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when a different event opens
-  useEffect(() => { setNewGroupName(null); }, [editingEvent?.id, isEditPanelOpen]);
+  useEffect(() => { setNewGroupName(null); setOvernightAsk(false); }, [editingEvent?.id, isEditPanelOpen]);
   const [editingEmailValue, setEditingEmailValue] = useState("");
   const [bulkEmailMode, setBulkEmailMode] = useState(false);
   const [bulkEmails, setBulkEmails] = useState<Record<string, string>>({});
@@ -857,6 +859,11 @@ export function WorkspacePage() {
       const docs = changes[ev.id].travelerDocs;
       if (docs) next.travelerDocs = Object.fromEntries(Object.entries(docs).map(([id, doc]) => [id, doc instanceof File ? uploaded.get(doc)! : doc]));
       else delete next.travelerDocs;
+      // A first night marked Overnight that now holds bookings is the stay's check-in, so it stops being an overnight
+      if (next.type === "hotel" && next.isOvernight && (next.travelerRefs || next.travelerDocs)) {
+        next.isOvernight = false;
+        if (!next.checkin) next.checkin = next.date;
+      }
       return next;
     });
     if (!await commitChanges({ events }, baseline)) return false;
@@ -2788,6 +2795,11 @@ export function WorkspacePage() {
                         className="data-unchecked:bg-muted-foreground/80 dark:data-unchecked:bg-muted-foreground/80"
                         checked={!!editingEvent.isOvernight}
                         onCheckedChange={() => {
+                          // A row with someone's booking: never wipe it on one click, ask first
+                          if (!editingEvent.isOvernight && (editingEvent.confNumber?.trim() || Object.values(editingEvent.travelerRefs ?? {}).some(v => v?.trim()) || Object.keys(editingEvent.travelerDocs ?? {}).length)) {
+                            setOvernightAsk(true);
+                            return;
+                          }
                           setEditingEvent(prev => {
                             if (!prev) return null;
                             if (prev.isOvernight) return { ...prev, isOvernight: false };
@@ -2802,6 +2814,30 @@ export function WorkspacePage() {
                       <span className="text-xs font-medium text-foreground">Overnight</span>
                     </label>
                   )}
+                  {overnightAsk && editingEvent?.type === "hotel" && !editingEvent.isOvernight && (() => {
+                    const refs = Object.values(editingEvent.travelerRefs ?? {}).filter(v => v?.trim()).length + (editingEvent.confNumber?.trim() ? 1 : 0);
+                    const pdfs = Object.keys(editingEvent.travelerDocs ?? {}).length;
+                    const held = [refs && `${refs} booking reference${refs === 1 ? "" : "s"}`, pdfs && `${pdfs} hotel PDF${pdfs === 1 ? "" : "s"}`].filter(Boolean).join(" and ");
+                    return (
+                      <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+                        <p className="text-xs text-foreground">
+                          This is the stay's check-in, with {held}. Overnight is for the nights after check-in, and switching it on removes them.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" size="sm" onClick={() => setOvernightAsk(false)}>Keep as check-in</Button>
+                          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => {
+                            setOvernightAsk(false);
+                            setEditingEvent(prev => {
+                              if (!prev) return null;
+                              const { travelerRefs: _refs, travelerDocs: _docs, ...rest } = prev;
+                              return { ...rest, isOvernight: true, time: "", endTime: "", confNumber: "", checkin: "", checkout: "" };
+                            });
+                            setEventErrors(prev => ({ ...prev, time: undefined }));
+                          }}>Remove them and mark Overnight</Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Transfer type selector */}
                   {editingEvent?.type === "transfer" && (

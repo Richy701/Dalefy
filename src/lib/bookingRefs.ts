@@ -34,12 +34,28 @@ export function namedRefs(event: Pick<TravelEvent, "travelerRefs">, travellers: 
 
 type Leg = Pick<TravelEvent, "id" | "type" | "date" | "endDate" | "depAirport" | "arrAirport">;
 
+type StayRow = Pick<TravelEvent, "type" | "title" | "date" | "isOvernight" | "checkin" | "checkout">;
+const stayName = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const dayBefore = (date: string) => new Date(new Date(`${date}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
+
+/**
+ * An Overnight row that starts its stay: no night at the same hotel the day before and no check-in covering it.
+ * It's really the check-in (an import or a click marked the first night Overnight), so it takes the booking.
+ */
+export function startsStay<T extends StayRow>(e: T, events: T[]): boolean {
+  if (e.type !== "hotel" || !e.isOvernight || !/^\d{4}-\d{2}-\d{2}$/.test(e.date ?? "")) return false;
+  const name = stayName(e.title), prev = dayBefore(e.date);
+  return !events.some(o => o !== e && o.type === "hotel" && stayName(o.title) === name
+    && (o.date === prev || (!o.isOvernight && !!o.checkin && !!o.checkout && o.checkin <= e.date && e.date < o.checkout)));
+}
+
 /**
  * The events the references list shows: flights and hotels, plus anything else that already has a reference.
- * A hotel's overnight is a night in a stay booked on its check-in, so it has no reference of its own to fill.
+ * A hotel's overnight is a night in a stay booked on its check-in, so it has no reference of its own to fill,
+ * unless it's the stay's first night, which is the check-in whatever it's marked.
  */
-export function bookableEvents<T extends Pick<TravelEvent, "type" | "confNumber" | "travelerRefs" | "isOvernight">>(events: T[]): T[] {
-  return events.filter(e => hasBookingRef(e) || e.type === "flight" || (e.type === "hotel" && !e.isOvernight));
+export function bookableEvents<T extends Pick<TravelEvent, "type" | "confNumber" | "travelerRefs"> & StayRow>(events: T[]): T[] {
+  return events.filter(e => hasBookingRef(e) || e.type === "flight" || (e.type === "hotel" && (!e.isOvernight || startsStay(e, events))));
 }
 
 const airport = (code?: string) => code?.trim().toUpperCase() || "";
@@ -196,6 +212,22 @@ export function guestKey(name: string): string {
   return nameKey(n.replace(/[.,]/g, " ")).split(" ").filter(w => w && !TITLE_WORD.test(w)).join(" ");
 }
 
+/**
+ * The same person with middle names on only one side: first and last names equal, and one side's middle names all
+ * among the other's, an initial standing for a name. "Sajid Yousuf Dudhia" is "Sajid Dudhia"; "Zabir Patel" is "Zabir M H Patel".
+ */
+function sameBesidesMiddle(a: string, b: string): boolean {
+  const x = a.split(" "), y = b.split(" ");
+  if (x.length < 2 || y.length < 2 || x[0] !== y[0] || x[x.length - 1] !== y[y.length - 1]) return false;
+  const [short, long] = x.length <= y.length ? [x.slice(1, -1), y.slice(1, -1)] : [y.slice(1, -1), x.slice(1, -1)];
+  // An initial stands for any name starting with it ("A" for "Ali"), so it can't tell two people apart
+  const same = (w: string, v: string) => w === v || (w.length === 1 && v.startsWith(w)) || (v.length === 1 && w.startsWith(v));
+  return short.every(w => long.some(v => same(w, v)));
+}
+
+/** A reference as printed, without the comma or full stop a confirmation sometimes leaves after it ("4399419,") */
+const cleanRef = (ref: string) => ref.trim().replace(/^[\s,.;:]+|[\s,.;:]+$/g, "");
+
 const HOTEL_FILLER = new Set(["hotel", "hotels", "the", "and", "resort", "spa", "suites", "by", "at", "de", "la", "le", "&"]);
 const hotelWords = (text: string) => new Set(nameKey(text).replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 1 && !HOTEL_FILLER.has(w)));
 /** How many real words a hotel event's title or address shares with the hotel's name on the confirmation */
@@ -220,19 +252,20 @@ export interface StayMatch { filled: StayFill[]; skipped: { file: StayFile; prob
 
 /**
  * Which traveller and which hotel stay each confirmation belongs to. The person is an exact name (titles and
- * surname-first order aside) or, failing that, an exact email; the stay is the hotel on that check-in date, with the
- * hotel's name to settle a tie. Never a guess: the PDF carries a QR that checks someone in. `chosen` is the organiser
- * saying who a guest name is.
+ * surname-first order aside) or, failing that, an exact email; the stay is the hotel checked into on the PDF's
+ * check-in date, with the hotel's name to settle a tie, and never a hotel on another date. Only a PDF with no
+ * readable date is matched on the hotel's name alone. Never a guess: the PDF carries a QR that checks someone in.
+ * `chosen` is the organiser saying who a guest name is.
  */
 export function matchStays(
   files: StayFile[],
-  events: Pick<TravelEvent, "id" | "type" | "title" | "location" | "date" | "assignedTo" | "isOvernight">[],
+  events: Pick<TravelEvent, "id" | "type" | "title" | "location" | "date" | "assignedTo" | "isOvernight" | "checkin" | "checkout">[],
   travellers: (Pick<User, "id" | "name"> & { email?: string })[],
   chosen: Record<string, string> = {},
 ): StayMatch {
   const result: StayMatch = { filled: [], skipped: [] };
-  // A confirmation belongs to the check-in, never to the overnights after it
-  const hotels = events.filter(e => e.type === "hotel" && !e.isOvernight);
+  // A confirmation belongs to the check-in, never to the overnights after it; a first night marked Overnight is the check-in
+  const hotels = events.filter(e => e.type === "hotel" && (!e.isOvernight || startsStay(e, events)));
   const taken = new Set<string>();
   const byEmail = (email: string) => {
     const wanted = email.trim().toLowerCase();
@@ -245,6 +278,8 @@ export function matchStays(
     if (guests.length > 1) { skip("guests"); continue; }
     const guest = guests[0];
     let people = chosen[guest] ? travellers.filter(t => t.id === chosen[guest]) : travellers.filter(t => guestKey(t.name) === guestKey(guest));
+    // No exact name: the same first and last name with a middle name on one side, when that's one person only
+    if (!people.length && !chosen[guest]) people = travellers.filter(t => sameBesidesMiddle(guestKey(t.name), guestKey(guest)));
     if (!people.length && !chosen[guest]) people = byEmail(file.email);
     if (people.length === 0) { skip("person"); continue; }
     if (people.length > 1) { skip("ambiguous"); continue; }
@@ -253,8 +288,10 @@ export function matchStays(
     const emailed = byEmail(file.email);
     if (!chosen[guest] && emailed.length && !emailed.some(t => t.id === person.id)) { skip("ambiguous"); continue; }
 
-    const byDate = /^\d{4}-\d{2}-\d{2}$/.test(file.checkIn) ? hotels.filter(e => e.date === file.checkIn) : [];
-    let pool = byDate.length ? byDate : bestHotels(hotels, file.hotel);
+    // A dated PDF only ever goes to the stay checked into that day: a hotel on another date that shares a word
+    // with its name ("Sun Siyam Iru Fushi", "Siyam World") is a different booking with a different QR
+    const dated = /^\d{4}-\d{2}-\d{2}$/.test(file.checkIn);
+    let pool = dated ? hotels.filter(e => e.date === file.checkIn) : bestHotels(hotels, file.hotel);
     if (pool.length > 1) { const named = bestHotels(pool, file.hotel); if (named.length) pool = named; }
     if (!pool.length) { skip("event"); continue; }
     const theirs = pool.filter(e => !e.assignedTo?.length || e.assignedTo.includes(person.id));
@@ -263,7 +300,7 @@ export function matchStays(
     const at = `${theirs[0].id}:${person.id}`;
     if (taken.has(at)) { skip("duplicate"); continue; }
     taken.add(at);
-    result.filled.push({ eventId: theirs[0].id, travellerId: person.id, ref: file.confirmationNumber.trim(), key: file.key });
+    result.filled.push({ eventId: theirs[0].id, travellerId: person.id, ref: cleanRef(file.confirmationNumber), key: file.key });
   }
   return result;
 }

@@ -36,7 +36,7 @@ const PROBLEMS: Record<StayProblem, string> = {
   unread: "No guest name found",
 };
 const STAY_PROBLEMS: Partial<Record<StayProblem, string>> = {
-  event: "No hotel on the trip for that date or name",
+  event: "No hotel checked into on that date",
   "not-on-event": "This traveller isn't on that hotel stay",
 };
 const MAX_PDFS = 100;

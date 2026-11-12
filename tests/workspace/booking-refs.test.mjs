@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookableEvents, connectingLegs, flightNumberOf, matchBookingRows, parseBookingTable, parseRefsPaste, suggestTraveller } from '../../src/lib/bookingRefs.ts';
+import { bookableEvents, connectingLegs, flightNumberOf, matchBookingRows, matchStays, parseBookingTable, parseRefsPaste, suggestTraveller } from '../../src/lib/bookingRefs.ts';
 
 const flight = (id, date, depAirport, arrAirport, extra = {}) => ({ id, type: 'flight', date, depAirport, arrAirport, ...extra });
 const ids = list => list.map(item => item.id);
@@ -138,4 +138,66 @@ test('a suggestion needs exactly one traveller with that surname', () => {
   assert.equal(suggestTraveller('Michael Lee', people), null);
   assert.equal(suggestTraveller('Nobody Known', people), null);
   assert.equal(suggestTraveller('', people), null);
+});
+
+// The Maldives trip: three resorts whose names share "Siyam", one PDF per guest per resort
+const stays = [
+  { id: 'world', type: 'hotel', title: 'Siyam World', location: 'Dhigurah, Maldives', date: '2026-11-14' },
+  { id: 'world-2', type: 'hotel', title: 'Siyam World', location: 'Dhigurah, Maldives', date: '2026-11-15', isOvernight: true },
+  { id: 'iru', type: 'hotel', title: 'Sun Siyam Iru Fushi', location: 'Medhafushi, Maldives', date: '2026-11-16' },
+  { id: 'olhu', type: 'hotel', title: 'Sun Siyam Olhuveli', location: 'Maldives', date: '2026-11-18' },
+];
+const sajid = { id: 's', name: 'Sajid Dudhia' };
+const pdf = (key, hotel, checkIn, ref) => ({ key, guests: ['DUDHIA/SAJID MR'], hotel, checkIn, confirmationNumber: ref, email: '' });
+
+test('each hotel PDF goes to the stay checked into on its date', () => {
+  const { filled, skipped } = matchStays([pdf('a', 'Siyam World', '2026-11-14', '617546'), pdf('b', 'Sun Siyam Iru Fushi', '2026-11-16', '1566005'), pdf('c', 'Sun Siyam Olhuveli', '2026-11-18', '4399412')], stays, [sajid]);
+  assert.deepEqual(filled.map(f => [f.eventId, f.ref]), [['world', '617546'], ['iru', '1566005'], ['olhu', '4399412']]);
+  assert.equal(skipped.length, 0);
+});
+
+test('a PDF never moves to a hotel on another date that shares a word with its name', () => {
+  // No Iru Fushi row at all: left out, not filed under Siyam World or Olhuveli by name
+  const gone = stays.filter(e => e.id !== 'iru');
+  const { filled, skipped } = matchStays([pdf('b', 'Sun Siyam Iru Fushi', '2026-11-16', '1566005')], gone, [sajid]);
+  assert.deepEqual(filled, []);
+  assert.deepEqual(skipped.map(s => s.problem), ['event']);
+});
+
+test('a first night marked Overnight is the check-in, and takes its PDF', () => {
+  // Iru Fushi's first night marked Overnight, with a real overnight after it
+  const marked = [...stays.map(e => (e.id === 'iru' ? { ...e, isOvernight: true } : e)), { id: 'iru-2', type: 'hotel', title: 'Sun Siyam Iru Fushi', date: '2026-11-17', isOvernight: true }];
+  const { filled } = matchStays([pdf('b', 'Sun Siyam Iru Fushi', '2026-11-16', '1566005')], bookableEvents(marked), [sajid]);
+  assert.deepEqual(filled.map(f => f.eventId), ['iru']);
+  // It's listed for references; the nights after it, and Siyam World's second night, are not
+  assert.deepEqual(ids(bookableEvents(marked)).filter(id => id !== 'olhu'), ['world', 'iru']);
+});
+
+test('a PDF dated on a night in the middle of a stay is left out', () => {
+  const { filled, skipped } = matchStays([pdf('a', 'Siyam World', '2026-11-15', '617546')], bookableEvents(stays), [sajid]);
+  assert.deepEqual(filled, []);
+  assert.deepEqual(skipped.map(s => s.problem), ['event']);
+});
+
+test('a PDF with no readable date is matched on the hotel name alone', () => {
+  const { filled } = matchStays([pdf('a', 'Sun Siyam Olhuveli', '', '4399412')], stays, [sajid]);
+  assert.deepEqual(filled.map(f => f.eventId), ['olhu']);
+});
+
+test('a middle name on one side still finds the one traveller it can be', () => {
+  const people = [sajid, { id: 'z', name: 'Zabir M H Patel' }, { id: 'f', name: 'Fazel Patel' }];
+  const files = [
+    { key: 'a', guests: ['Mr. Sajid Yousuf Dudhia'], hotel: 'Sun Siyam Olhuveli', checkIn: '2026-11-18', confirmationNumber: '4399419,', email: '' },
+    { key: 'b', guests: ['Mr Zabir Patel'], hotel: 'Siyam World', checkIn: '2026-11-14', confirmationNumber: '617542', email: '' },
+  ];
+  const { filled } = matchStays(files, stays, people);
+  assert.deepEqual(filled.map(f => [f.travellerId, f.eventId, f.ref]), [['s', 'olhu', '4399419'], ['z', 'world', '617542']]);
+});
+
+test('a middle name that fits two travellers is left for the organiser', () => {
+  const twins = [{ id: 'a', name: 'Sajid Dudhia' }, { id: 'b', name: 'Sajid A Dudhia' }];
+  const file = { key: 'a', guests: ['Sajid Ali Dudhia'], hotel: 'Siyam World', checkIn: '2026-11-14', confirmationNumber: '1', email: '' };
+  const { filled, skipped } = matchStays([file], stays, twins);
+  assert.deepEqual(filled, []);
+  assert.deepEqual(skipped.map(s => s.problem), ['ambiguous']);
 });
