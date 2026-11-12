@@ -8,6 +8,7 @@ import { PersonAvatar } from "@/components/shared/PersonAvatar";
 import { objectPosition } from "@/lib/imagePosition";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
+import { stayCheckIn, stayDates } from "@/lib/stays";
 import { clockTime, stayTime } from "@/lib/timeInput";
 import { topicIcon, factRows } from "@/lib/infoTopics";
 import { destinationFlag, shortDay, tripDatesLine, tripLengthDays, tripTimingLine, daysUntil } from "@/lib/tripSummary";
@@ -350,13 +351,25 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
   const neighbours = [at > 0 && { label: "Before", e: sameDay[at - 1] }, at >= 0 && at < sameDay.length - 1 && { label: "Up next", e: sameDay[at + 1] }].filter(Boolean) as { label: string; e: TravelEvent }[];
   const checkin = stayTime(ev.checkin) || (isPlaceholderTime(ev.time) ? "" : clockTime(ev.time));
   const checkout = stayTime(ev.checkout);
+  // A hotel row shows its stay's dates; an overnight borrows them, and its stay's confirmations, from the check-in
+  const overnight = ev.type === "hotel" && !!ev.isOvernight;
+  const stay = ev.type === "hotel" ? stayDates(ev, trip.events) : null;
+  const checkInDate = overnight ? stay?.from || ev.date : ev.date;
+  const checkOutDate = ev.endDate || stay?.to || "";
+  const dayGap = (a: string, b: string) => Math.round((parseTripDate(b).getTime() - parseTripDate(a).getTime()) / 86400000);
+  const nights = ev.type === "hotel" && checkInDate && checkOutDate ? dayGap(checkInDate, checkOutDate) : 0;
+  const nightNo = nights > 1 && checkInDate ? dayGap(checkInDate, ev.date) + 1 : 0;
+  const nightLine = nightNo >= 1 && nightNo <= nights ? `Night ${nightNo} of ${nights}` : "";
+  const stayDocs = overnight ? stayCheckIn(ev, trip.events)?.documents ?? [] : [];
+  const docs = [...(ev.documents ?? []), ...stayDocs.filter(d => !(ev.documents ?? []).some(o => o.id === d.id || o.url === d.url))];
   const rows = ([
     ev.type === "flight" && ["Airline", [ev.airline, ev.flightNum].filter(Boolean).join(" ")],
     ev.type === "flight" && ["Aircraft", ev.aircraft],
     ev.type === "flight" && ["Duration", ev.duration],
     ev.type === "hotel" && ["Room", ev.roomType],
-    ev.type === "hotel" && ["Check in", `${fmtShort(ev.date)}${checkin ? `, ${checkin}` : ""}`],
-    ev.type === "hotel" && ev.endDate && ["Check out", `${fmtShort(ev.endDate)}${checkout ? `, ${checkout}` : ""}`],
+    ev.type === "hotel" && ["Check in", `${fmtShort(checkInDate)}${checkin && !overnight ? `, ${checkin}` : ""}`],
+    ev.type === "hotel" && checkOutDate && ["Check out", `${fmtShort(checkOutDate)}${checkout && !overnight ? `, ${checkout}` : ""}`],
+    ev.type === "hotel" && nights > 0 && ["Nights", String(nights)],
     ev.type !== "flight" && ev.type !== "hotel" && !isPlaceholderTime(ev.endTime) && ["Until", clockTime(ev.endTime)],
     ev.type !== "flight" && ev.type !== "hotel" && ["Duration", ev.duration],
     ev.meetingPoint && ["Meet at", ev.meetingPoint],
@@ -380,6 +393,7 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
           {ev.type === "flight" && <div className="mb-3"><EventMark ev={ev} size="lg" /></div>}
           <h1 className="text-[28px] font-bold leading-[33px] tracking-[-0.014em] text-foreground">{title}</h1>
           <p className={`mt-1 text-[15px] ${QUIET}`}>{fmtLong(ev.date)}</p>
+          {nightLine && <p className={`text-[15px] ${QUIET}`}>{nightLine}</p>}
           {ev.type !== "hotel" && !isPlaceholderTime(ev.time) && <p className="mt-1 text-[32px] font-bold tabular-nums leading-tight tracking-tight text-foreground">{clockTime(ev.time)}</p>}
           {notice && <p className={`mt-1 text-[15px] ${notice.className}`}>{notice.text}</p>}
         </div>
@@ -432,10 +446,10 @@ function EventScreen({ ev, trip, events, avatar, onOpen, onBack }: { ev: TravelE
           </section>
         )}
 
-        {!!ev.documents?.length && (
+        {docs.length > 0 && (
           <section>
             <SectionLabel>Documents</SectionLabel>
-            {ev.documents.map((doc, i) => <DocRow key={doc.id} doc={doc} first={i === 0} />)}
+            {docs.map((doc, i) => <DocRow key={doc.id} doc={doc} first={i === 0} />)}
           </section>
         )}
 

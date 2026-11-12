@@ -75,3 +75,16 @@ export function stayDates(ev: TravelEvent, events: TravelEvent[] = []): { checki
   const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
   return { checkin, checkout, range, from: iso(from), to: iso(to) };
 }
+
+/** The check-in row of the stay a hotel night belongs to, which holds the stay's booking reference and confirmations */
+export function stayCheckIn(ev: TravelEvent, events: TravelEvent[]): TravelEvent | null {
+  const night = dayOf(ev.date);
+  if (!night) return null;
+  const name = ev.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return events.find(e => {
+    if (e.id === ev.id || e.type !== "hotel" || e.isOvernight || e.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() !== name) return false;
+    const f = dayOf(e.checkin) ?? dayOf(e.date);
+    const t = dayOf(e.checkout);
+    return !!f && !!t && f <= night && night <= t;
+  }) ?? null;
+}

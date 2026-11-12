@@ -14,7 +14,7 @@ import { MaskedView } from "@/components/native/MaskedView";
 import { CachedImage } from "@/components/CachedImage";
 import { airlineLogo } from "@/shared/airlineLogos";
 import { travellerRefRows, travellerBookingRows, terminalLabel, minutesBetween, gapText } from "@/shared/eventDisplay";
-import { stayDates } from "@/shared/stays";
+import { stayDates, stayCheckIn } from "@/shared/stays";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -475,7 +475,10 @@ export default function EventDetailScreen() {
   const startsIn = !isNaN(startAt) && startAt > nowMs && startAt - nowMs < 24 * 3600000 ? formatGap(startAt - nowMs) : null;
   const endsIn = !isNaN(startAt) && !isNaN(endAt) && nowMs >= startAt && nowMs < endAt ? formatGap(endAt - nowMs) : null;
 
-  const hasDocs = (ev.documents?.length ?? 0) > 0;
+  // An overnight also lists its stay's confirmations, the traveller's hotel PDF among them
+  const stayDocs = isHotel && ev.isOvernight ? stayCheckIn(ev, trip.events)?.documents ?? [] : [];
+  const docs = [...(ev.documents ?? []), ...stayDocs.filter(d => !(ev.documents ?? []).some(o => o.id === d.id || o.url === d.url))];
+  const hasDocs = docs.length > 0;
   // Only the event's own photo earns a cover; a transfer or a borrowed trip photo just adds noise
   const showPhoto = !!ev.image && ev.type !== "transfer";
   const liveLine = endsIn ? `Ends in ${endsIn}` : startsIn ? `Starts in ${startsIn}` : null;
@@ -508,10 +511,11 @@ export default function EventDetailScreen() {
   if (ev.price) detailRows.push({ icon: Hash, label: "Price", value: ev.price });
   if (isLeader && ev.supplier) detailRows.push({ icon: Users, label: "Supplier", value: ev.supplier });
   // The server sends a traveller only their own reference; leaders also get everyone's, by name
-  // An overnight is a night in a stay already shown on its check-in, so its booking isn't repeated
+  // An overnight is a night in a stay: the booking and confirmations are the check-in's, so they show here too
   const overnight = isHotel && !!ev.isOvernight;
-  if (ev.confNumber && !overnight) detailRows.push({ icon: Hash, label: isLeader ? "Group booking ref" : "Your booking ref", value: ev.confNumber, onPress: () => copyRef(ev.confNumber!) });
-  if (isLeader && !overnight) for (const { name, ref } of travellerRefRows(ev, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
+  const bookingEv = overnight ? stayCheckIn(ev, trip.events) : ev;
+  if (bookingEv?.confNumber) detailRows.push({ icon: Hash, label: isLeader ? "Group booking ref" : "Your booking ref", value: bookingEv.confNumber, onPress: () => copyRef(bookingEv.confNumber!) });
+  if (isLeader && bookingEv) for (const { name, ref } of travellerRefRows(bookingEv, trip?.travelers)) detailRows.push({ icon: Hash, label: name, value: ref, onPress: () => copyRef(ref) });
 
   // Neighbouring events on the same day
   const dayEvents = trip.events
@@ -544,6 +548,9 @@ export default function EventDetailScreen() {
   const checkInDate = overnight ? stay?.from || ev.date : ev.date;
   const checkOutDate = ev.endDate || stay?.to || "";
   const nights = isHotel && checkInDate && checkOutDate ? Math.round((new Date(checkOutDate + "T12:00:00").getTime() - new Date(checkInDate + "T12:00:00").getTime()) / 86400000) : null;
+  // Which night of the stay this row is, so an overnight says it is tonight's stay
+  const nightNo = isHotel && nights && nights > 1 && checkInDate && ev.date ? Math.round((new Date(ev.date + "T12:00:00").getTime() - new Date(checkInDate + "T12:00:00").getTime()) / 86400000) + 1 : null;
+  const nightLine = nightNo && nights && nightNo >= 1 && nightNo <= nights ? `Night ${nightNo} of ${nights}` : null;
   // Dinner or activity at the hotel you're staying in: no transfer needed
   const atYourHotel = !isHotel && !isTransfer && !!ev.location && trip.events.some(e => e.type === "hotel" && ev.location!.toLowerCase().includes(cleanEventTitle(e.title, e.type).split(" – ")[0].toLowerCase().split(" ").slice(0, 2).join(" ")));
   const neighbours = [
@@ -561,7 +568,8 @@ export default function EventDetailScreen() {
       {photoPage && <PhotoBackdrop uri={backdropImage!} shade={EV_SHADE} />}
       <Stack.Screen options={{
         headerShown: true,
-        title: typeLabel,
+        // A hotel's name sits right under the photo, so the bar doesn't repeat a generic "Hotel"
+        title: isHotel ? "" : typeLabel,
         headerTitleStyle: { color: showPhoto ? "#fff" : C.textPrimary, fontWeight: "600" },
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
@@ -621,6 +629,7 @@ export default function EventDetailScreen() {
           {/* The title leads; when it happens sits under it as one line */}
           <Text style={[styles.heroTitle, titleSize(isHotel ? stayName : title), { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
           {isHotel && stayDetail ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{stayDetail}</Text> : null}
+          {nightLine ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{nightLine}</Text> : null}
           {isHotel && liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
           {/* When, on its own card: the first thing someone opening this on the day is looking for */}
           {!isHotel && (
@@ -661,7 +670,15 @@ export default function EventDetailScreen() {
               <Text style={[styles.stayDate, { color: C.textPrimary }]}>{checkOutDate ? formatShortDate(checkOutDate) : "TBC"}</Text>
               {!overnight && <Text style={[styles.heroFact, { color: ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? C.tealText : C.textTertiary }]}>{ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? ev.endTime : "Time TBC"}</Text>}
             </View>
-            {nights && nights > 0 ? <Text style={[styles.stayNights, { color: C.textSecondary }]}>{nights} night{nights === 1 ? "" : "s"}</Text> : null}
+            {nights && nights > 0 ? (
+              <>
+                <View style={[styles.stayDivider, { backgroundColor: C.border }]} />
+                <View style={{ gap: 2 }}>
+                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Nights</Text>
+                  <Text style={[styles.stayDate, { color: C.textPrimary }]}>{nights}</Text>
+                </View>
+              </>
+            ) : null}
           </View>
         )}
 
@@ -713,9 +730,10 @@ export default function EventDetailScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={styles.sectionLabel}>{isHotel ? "Address" : "Where"}</Text>
-                  <View style={styles.locationRow}>
+                  {isHotel ? null : <Text style={styles.sectionLabel}>Where</Text>}
+                  <View style={[styles.locationRow, isHotel && { alignItems: "center" }]}>
                     <View style={{ flex: 1, gap: 2 }}>
+                      {isHotel ? <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Address</Text> : null}
                       <Text style={[styles.locationValue, { color: C.textPrimary }]}>{tidyLocation(ev.location)}</Text>
                       {atYourHotel ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>At your hotel, no transfer needed</Text> : null}
                     </View>
@@ -778,7 +796,7 @@ export default function EventDetailScreen() {
             <View style={{ paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs }}>
               <MicroLabel color={C.textPrimary}>Documents</MicroLabel>
             </View>
-            {ev.documents!.map((doc, i) => {
+            {docs.map((doc, i) => {
               const parsed = parseDocFilename(doc.name, doc.size);
               return (
                 <Pressable
@@ -789,7 +807,7 @@ export default function EventDetailScreen() {
                   style={({ pressed }) => [
                     styles.detailListRow,
                     { backgroundColor: pressed ? C.elevated : "transparent" },
-                    i < ev.documents!.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
+                    i < docs.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
                   {/* A tile that says what it is, like Files */}
@@ -849,7 +867,7 @@ export default function EventDetailScreen() {
         {/* Organiser contact */}
         {trip.organizer && (
           <Animated.View style={{ marginTop: -S.sm, marginBottom: S.md }}>
-            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} />
+            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} compact={isHotel} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} />
           </Animated.View>
         )}
       </Animated.ScrollView>
@@ -1397,11 +1415,10 @@ function makeStyles(C: ThemeColors) {
     whenLine: { fontSize: T.sm, lineHeight: 20 },
     whenCountdown: { fontSize: T.md, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
     timeBig: { fontSize: 30, lineHeight: 36, fontWeight: T.bold, letterSpacing: -0.6, fontVariant: ["tabular-nums"] },
-    stayRow: { flexDirection: "row", alignItems: "center", marginHorizontal: S.md, marginBottom: S.lg, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
+    stayRow: { flexDirection: "row", alignItems: "flex-start", marginHorizontal: S.md, marginBottom: S.lg, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
     stayDivider: { width: StyleSheet.hairlineWidth, alignSelf: "stretch", marginHorizontal: S.md },
     stayLabel: { fontSize: T.sm },
     stayDate: { fontSize: T.lg, fontWeight: T.semibold },
-    stayNights: { fontSize: T.sm, fontWeight: T.semibold, paddingLeft: S.sm },
     routeBlock: { paddingHorizontal: S.md, marginBottom: S.sm },
     routeStop: { flexDirection: "row", gap: S.sm2 },
     routeRail: { width: 14, alignItems: "center", paddingTop: 5 },

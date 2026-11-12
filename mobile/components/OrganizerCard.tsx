@@ -11,9 +11,11 @@ interface OrganizerCardProps {
   isLeader?: boolean;
   /** Opens their details; leave out where there's no trip to open them from */
   onPress?: () => void;
+  /** A smaller row with no Call or Email buttons; tapping it still opens their details */
+  compact?: boolean;
 }
 
-export function OrganizerCard({ organizer, C, isLeader = false, onPress }: OrganizerCardProps) {
+export function OrganizerCard({ organizer, C, isLeader = false, onPress, compact = false }: OrganizerCardProps) {
   const s = makeStyles(C);
 
   if (!organizer?.name?.trim()) return null;
@@ -43,7 +45,7 @@ export function OrganizerCard({ organizer, C, isLeader = false, onPress }: Organ
         accessibilityHint={onPress ? "Shows their details" : undefined}
         style={({ pressed }) => [s.topRow, { opacity: pressed ? 0.7 : 1 }]}
       >
-        <Avatar size={44} uri={organizer.avatar} initials={initials} />
+        <Avatar size={compact ? 36 : 44} uri={organizer.avatar} initials={initials} />
 
         {/* Info */}
         <View style={s.info}>
@@ -56,7 +58,7 @@ export function OrganizerCard({ organizer, C, isLeader = false, onPress }: Organ
       </Pressable>
 
       {/* Action buttons — leader only */}
-      {isLeader && (organizer.phone || organizer.email) && (
+      {isLeader && !compact && (organizer.phone || organizer.email) && (
         <View style={s.actions}>
           {organizer.phone && (
             <Pressable
