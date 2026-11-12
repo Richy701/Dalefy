@@ -1,17 +1,21 @@
 import type { TravelEvent, Trip, TripInfo } from "@/types";
+import { parseTimeInput } from "@/lib/timeInput";
 
 export type AssistantFieldKey =
   | "type" | "date" | "time" | "endTime" | "endDate" | "title"
   | "location" | "description" | "notes" | "checkin" | "checkout"
   | "body" | "assignedTo" | "airline" | "flightNum" | "depAirport" | "arrAirport" | "transferType" | "supplier"
-  | "meetingPoint" | "contactName" | "contactPhone";
+  | "meetingPoint" | "contactName" | "contactPhone"
+  | "confNumber" | "roomType" | "price" | "duration" | "seatDetails" | "status" | "overnight"
+  | "email" | "action" | "travellerRefs";
 
-/** assignedTo is a list of traveller ids (empty means everyone); every other field is text */
-export type AssistantFields = { [K in Exclude<AssistantFieldKey, "assignedTo">]: string | null } & { assignedTo: string[] | null };
+/** assignedTo is a list of traveller ids (empty means everyone); travellerRefs each person's own reference; every other field is text */
+export type AssistantFields = { [K in Exclude<AssistantFieldKey, "assignedTo" | "travellerRefs">]: string | null }
+  & { assignedTo: string[] | null; travellerRefs: Array<{ travellerId: string; ref: string }> | null };
 
 export interface AssistantChange {
-  /** An itinerary event, or a Trip info card */
-  target?: "event" | "info";
+  /** An itinerary event, a Trip info card, the trip itself, a traveller, or publishing / emailing */
+  target?: "event" | "info" | "trip" | "traveller" | "action";
   op: "add" | "update" | "delete";
   eventId: string;
   summary: string;
@@ -31,13 +35,17 @@ const cap = (s: string | undefined) =>
   s && s.length > TEXT_CAP ? `${s.slice(0, TEXT_CAP)}…` : s;
 
 /** Trip shape sent to the assistant: text fields only, no media, documents or coordinates. */
-export function compactTripForAssistant(trip: Trip) {
+export function compactTripForAssistant(trip: Trip, directory: Array<{ id: string; name: string }> = []) {
   return {
     name: trip.name,
     destination: trip.destination,
     start: trip.start,
     end: trip.end,
     travelers: (trip.travelers ?? []).map(t => ({ id: t.id, name: t.name })),
+    // Named groups, so "only the early departures" resolves to the right people
+    groups: (trip.groups ?? []).map(g => ({ name: g.name, memberIds: g.memberIds })),
+    // The company's people not on this trip yet, so "add Tony" adds the Tony they already have
+    directory: directory.slice(0, 300),
     events: trip.events.map(ev => ({
       id: ev.id,
       type: ev.type,
@@ -62,6 +70,13 @@ export function compactTripForAssistant(trip: Trip) {
       contactName: ev.contactName,
       contactPhone: ev.contactPhone,
       assignedTo: ev.assignedTo?.length ? ev.assignedTo : undefined,
+      roomType: ev.roomType,
+      price: ev.price,
+      duration: ev.duration,
+      seatDetails: ev.seatDetails,
+      status: ev.status,
+      overnight: ev.type === "hotel" ? (ev.isOvernight ? "yes" : "no") : undefined,
+      travellerRefs: ev.travelerRefs && Object.keys(ev.travelerRefs).length ? ev.travelerRefs : undefined,
     })),
     info: (trip.info ?? []).map(i => ({ id: i.id, title: i.title, body: i.body && i.body.length > 2000 ? `${i.body.slice(0, 2000)}…` : i.body, leaderOnly: i.leaderOnly || undefined })),
   };
@@ -72,8 +87,17 @@ const isInfo = (c: AssistantChange) => c.target === "info";
 function setFields(ev: TravelEvent, fields: AssistantFields): TravelEvent {
   const next: TravelEvent = { ...ev };
   for (const [key, value] of Object.entries(fields) as [AssistantFieldKey, string | string[] | null][]) {
-    if (value == null || key === "body") continue;
+    if (value == null || key === "body" || key === "email" || key === "action") continue;
+    // Each traveller's own reference merges into the ones already there
+    if (key === "travellerRefs") {
+      next.travelerRefs = { ...(next.travelerRefs ?? {}), ...Object.fromEntries((value as unknown as Array<{ travellerId: string; ref: string }>).map(r => [r.travellerId, r.ref])) };
+      continue;
+    }
     if (key === "type") next.type = value as TravelEvent["type"];
+    else if (key === "status") next.status = value as TravelEvent["status"];
+    else if (key === "overnight") { if (value === "yes") next.isOvernight = true; else delete next.isOvernight; }
+    // The trip keeps 24-hour times; an "7:00 PM" from the assistant is stored as "19:00"
+    else if (key === "time" || key === "endTime") (next as unknown as Record<string, string>)[key] = parseTimeInput(value as string) || (value as string);
     else if (key === "assignedTo") {
       // An empty list means everyone on the trip, which is how the trip stores it
       if ((value as string[]).length) next.assignedTo = value as string[]; else delete next.assignedTo;
@@ -90,7 +114,7 @@ export function applyAssistantChanges(events: TravelEvent[], changes: AssistantC
   const stamp = Date.now();
   const addedIds: string[] = [];
   changes.forEach((c, i) => {
-    if (isInfo(c)) return;
+    if (c.target && c.target !== "event") return;
     if (c.op === "delete") {
       next = next.filter(ev => ev.id !== c.eventId);
     } else if (c.op === "update") {
@@ -183,6 +207,16 @@ export const FIELD_LABELS: Record<AssistantFieldKey, string> = {
   meetingPoint: "Meet at",
   contactName: "Driver",
   contactPhone: "Their phone",
+  confNumber: "Booking ref",
+  roomType: "Room",
+  price: "Price",
+  duration: "Duration",
+  seatDetails: "Seats",
+  status: "Status",
+  overnight: "Overnight",
+  email: "Email",
+  action: "Action",
+  travellerRefs: "Refs",
 };
 
 /**
@@ -199,6 +233,10 @@ export function changedFields(item: TravelEvent | TripInfo | undefined, fields: 
     .filter(k => fields[k] != null)
     .map(k => k === "assignedTo"
       ? { key: k, label: FIELD_LABELS[k], before: who(record?.assignedTo), after: who(fields.assignedTo) }
-      : { key: k, label: FIELD_LABELS[k], before: (record?.[k] as string | undefined) ?? "", after: fields[k] as string })
+      : k === "travellerRefs"
+        ? { key: k, label: FIELD_LABELS[k], before: "", after: (fields.travellerRefs ?? []).map(r => `${names?.get(r.travellerId) ?? "Someone"} ${r.ref}`).join(", ") }
+      : k === "overnight"
+        ? { key: k, label: FIELD_LABELS[k], before: record?.isOvernight ? "yes" : "no", after: fields[k] as string }
+        : { key: k, label: FIELD_LABELS[k], before: (record?.[k] as string | undefined) ?? "", after: fields[k] as string })
     .filter(d => d.before !== d.after);
 }

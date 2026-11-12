@@ -109,12 +109,14 @@ function FileRows({ items, pdf }: { items: { label: string; reason: string }[]; 
 }
 
 /** Everyone's booking references on one screen, grouped by person, instead of one event dialog at a time */
-export function BookingRefsDialog({ events, travellers, saving, onClose, onSave }: {
+export function BookingRefsDialog({ events, travellers, saving, onClose, onSave, startWithImport = false }: {
   events: TravelEvent[];
   travellers: Person[];
   saving: boolean;
   onClose: () => void;
   onSave: (changes: BookingRefChanges) => Promise<boolean>;
+  /** Opens on the import screen, from the assistant's PDF button */
+  startWithImport?: boolean;
 }) {
   const bookable = useMemo(() => sortEvents(bookableEvents(events)), [events]);
   const [saved] = useState<AllDrafts>(() => Object.fromEntries(FIELDS.map(field => [field, Object.fromEntries(bookable.map(e => [e.id, e[field] ?? {}]))])) as AllDrafts);
@@ -134,7 +136,7 @@ export function BookingRefsDialog({ events, travellers, saving, onClose, onSave 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "missing" | "complete">("all");
   const [focused, setFocused] = useState<string | null>(null);
-  const [view, setView] = useState<"list" | "import">("list");
+  const [view, setView] = useState<"list" | "import">(startWithImport ? "import" : "list");
   const [importFrom, setImportFrom] = useState<"picture" | "paste">("picture");
   const popup = useRef<HTMLDivElement>(null);
   const [pasteText, setPasteText] = useState("");

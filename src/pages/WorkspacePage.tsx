@@ -464,6 +464,7 @@ export function WorkspacePage() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [addPeopleOpen, setAddPeopleOpen] = useState(false);
   const [bookingRefsOpen, setBookingRefsOpen] = useState(false);
+  const [bookingRefsImport, setBookingRefsImport] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editCoordinators, setEditCoordinators] = useState<TripCoordinator[]>([]);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
@@ -729,27 +730,29 @@ export function WorkspacePage() {
 
   const handlePublish = async () => {
     if (publishing) return;
+    // The latest trip, not this render's: the assistant publishes right after applying its other changes
+    const latest = latestTripRef.current ?? trip;
     setPublishing(true);
     const snapshot = {
-      events: trip.events,
-      info: trip.info,
-      documents: trip.documents,
-      organizer: trip.organizer,
-      image: trip.image,
-      imagePosition: trip.imagePosition,
-      name: trip.name,
-      destination: trip.destination,
-      start: trip.start,
-      end: trip.end,
-      paxCount: trip.paxCount,
-      travelers: trip.travelers?.map(({ id, name, initials, avatar }) => ({ id, name, initials, ...(avatar ? { avatar } : {}) })),
+      events: latest.events,
+      info: latest.info,
+      documents: latest.documents,
+      organizer: latest.organizer,
+      image: latest.image,
+      imagePosition: latest.imagePosition,
+      name: latest.name,
+      destination: latest.destination,
+      start: latest.start,
+      end: latest.end,
+      paxCount: latest.paxCount,
+      travelers: latest.travelers?.map(({ id, name, initials, avatar }) => ({ id, name, initials, ...(avatar ? { avatar } : {}) })),
       publishedAt: new Date().toISOString(),
     };
-    const wasPublished = trip.status === "Published";
+    const wasPublished = latest.status === "Published";
     // Travellers only see published versions, so publishing is the one moment they hear about changes
-    const changes = wasPublished && trip.publishedSnapshot ? publishedChanges(trip.publishedSnapshot, snapshot) : ["Trip published"];
+    const changes = wasPublished && latest.publishedSnapshot ? publishedChanges(latest.publishedSnapshot, snapshot) : ["Trip published"];
     try {
-      await saveTrip(trip.id, { status: "Published", publishedSnapshot: snapshot }, trip);
+      await saveTrip(latest.id, { status: "Published", publishedSnapshot: snapshot }, latest);
     } catch {
       setPublishing(false);
       toast.error("Couldn't publish. Check your connection and review the trip before retrying.");
@@ -757,8 +760,8 @@ export function WorkspacePage() {
     }
     setPublishing(false);
     toast.success(wasPublished ? "Changes published" : "Trip published");
-    addNotification({ message: wasPublished ? "Changes published" : "Trip published", detail: trip.name, time: "Just now", type: "success" });
-    if (changes.length) notifyTripUpdate(trip.id, trip.name, changes);
+    addNotification({ message: wasPublished ? "Changes published" : "Trip published", detail: latest.name, time: "Just now", type: "success" });
+    if (changes.length) notifyTripUpdate(latest.id, latest.name, changes);
     setShareOpen(true);
   };
 
@@ -832,10 +835,26 @@ export function WorkspacePage() {
     toast.success(isNew ? "Event added" : "Event saved");
   };
 
-  const openBookingRefs = () => {
+  const openBookingRefs = (startWithImport = false) => {
     if (isViewer || demoGate()) return;
     editBaseline.current = trip;
+    setBookingRefsImport(startWithImport);
     setBookingRefsOpen(true);
+  };
+
+  // The assistant adding someone: the existing directory person when it found one, otherwise a new one, like Quick add
+  const addTravellerFromAssistant = (name: string, email: string, directoryId: string) => {
+    const known = directoryId ? allTravelers.find(p => p.id === directoryId) : undefined;
+    const id = known?.id ?? `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    if ((trip.travelerIds ?? []).includes(id)) return;
+    const initials = known?.initials ?? name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    if (!known) setCustomTravelers(prev => [...prev, { id, name, email, role: "Traveler", avatar: "", initials, status: "Active" }]);
+    const mail = email || known?.email || "";
+    updateTrip(trip.id, {
+      travelerIds: [...(trip.travelerIds ?? []), id],
+      travelers: [...(trip.travelers ?? []), { id, name: known?.name ?? name, initials, ...(mail ? { email: mail } : {}), ...(known?.avatar ? { avatar: known.avatar } : {}) }],
+    });
+    toast.success(`Added ${known?.name ?? name} to trip`);
   };
 
   const saveBookingRefs = async (changes: BookingRefChanges) => {
@@ -1338,7 +1357,7 @@ export function WorkspacePage() {
 
   // Latest handlers for the command palette's trip actions; the listener is set up above the early return
   // eslint-disable-next-line react-hooks/refs -- latest-value ref, read or written on purpose; reviewed
-  paletteActions.current = { publish: handlePublish, share: handleShareTrip, email: handleSendEmail };
+  paletteActions.current = { publish: () => setPublishConfirmOpen(true), share: handleShareTrip, email: handleSendEmail };
 
   return (
     <div className="flex flex-col h-screen bg-background w-full relative overflow-hidden">
@@ -1572,8 +1591,9 @@ export function WorkspacePage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Publishing always shows what travellers will see change first */}
           <Button
-            onClick={handlePublish}
+            onClick={() => setPublishConfirmOpen(true)}
             disabled={publishing}
             variant={pendingChanges === 0 ? "outline" : "default"}
             aria-label={pendingChanges === 0 ? "Published and up to date. Publish again" : pendingChanges > 0 ? `Publish ${pendingChanges} changes` : "Publish trip"}
@@ -2071,7 +2091,7 @@ export function WorkspacePage() {
                         </Button>
                       )}
                         {!isViewer && tripTravelers.length > 0 && bookableEvents(trip.events).length > 0 && (
-                          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={openBookingRefs}>
+                          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => openBookingRefs()}>
                             <Ticket /> Booking references
                           </Button>
                         )}
@@ -2083,16 +2103,39 @@ export function WorkspacePage() {
 
                     {/* Bulk email editor */}
                     {bulkEmailMode && tripTravelers.length > 0 && (
-                      <div className="mb-6 rounded-xl bg-card border border-brand/30 overflow-hidden">
-                        <div className="px-4 py-3 bg-brand/5 border-b border-brand/20 flex items-center justify-between">
-                          <p className="text-xs font-medium text-brand">Bulk email</p>
-                          <p className="text-[10px] font-bold text-muted-foreground">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
+                      <div className="mb-6 rounded-xl bg-card border border-border shadow-sm">
+                        {/* Save and Cancel stay at the top while the list scrolls, so nobody has to scroll down to leave */}
+                        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-xl border-b border-border bg-card/95 px-4 py-3 backdrop-blur">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">Edit emails</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">{tripTravelers.filter(t => bulkEmails[t.id]?.trim()).length} of {tripTravelers.length} have an email</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setBulkEmailMode(false)}>Cancel</Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={emailSaving}
+                              onClick={async () => {
+                              for (const t of tripTravelers) {
+                                const newEmail = (bulkEmails[t.id] || "").trim();
+                                if (newEmail !== (t.email || "")) {
+                                  if (!await saveTravelerEmail(t.id, newEmail)) return;
+                                }
+                              }
+                              setBulkEmailMode(false);
+                              toast.success("Emails updated");
+                            }}
+                            >
+                              {emailSaving ? <><SpinnerGap className="animate-spin" /> Saving…</> : "Save emails"}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="divide-y divide-slate-100 dark:divide-border">
+                        <div className="divide-y divide-border">
                           {tripTravelers.map(t => (
                             <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
                               <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-8 w-8" fallbackClassName="bg-brand/10 text-brand text-[10px] font-black" />
-                              <p className="text-xs font-bold text-foreground/80 w-32 sm:w-40 truncate shrink-0">{t.name}</p>
+                              <p className="text-sm font-medium text-foreground w-32 sm:w-44 truncate shrink-0">{t.name}</p>
                               <Input
                                 type="email"
                                 value={bulkEmails[t.id] || ""}
@@ -2103,137 +2146,126 @@ export function WorkspacePage() {
                             </div>
                           ))}
                         </div>
-                        <div className="px-4 py-3 border-t border-border flex items-center gap-2 justify-end">
-                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                            Cancel
-                          </button>
-                          <button
-                            disabled={emailSaving}
-                            onClick={async () => {
-                              for (const t of tripTravelers) {
-                                const newEmail = (bulkEmails[t.id] || "").trim();
-                                if (newEmail !== (t.email || "")) {
-                                  if (!await saveTravelerEmail(t.id, newEmail)) return;
-                                }
-                              }
-                              setBulkEmailMode(false);
-                              toast.success("Emails updated");
-                            }}
-                            className="h-8 px-5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
-                          >
-                            Save All
-                          </button>
-                        </div>
                       </div>
                     )}
 
                     {tripTravelers.length > 0 ? (
-                      <div className="space-y-2">
+                      // One row per person in fixed columns, so the list scans down instead of repeating itself
+                      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                        <div aria-hidden="true" className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_6rem_2.5rem] gap-4 border-b border-border bg-secondary/50 px-4 py-2 text-[11px] font-medium text-muted-foreground md:grid">
+                          <span>Traveller</span><span>App</span><span>Role</span><span>Tagged on</span><span />
+                        </div>
+                        <ul className="divide-y divide-border">
                         {tripTravelers.map(t => {
                           const eventCount = trip.events.filter(e => e.assignedTo?.includes(t.id)).length;
                           const isEditing = editingEmailId === t.id;
                           // Their app account if they've joined, otherwise the name saved with the coordinator
-                          const appUid = memberByTraveler.get(t.id)?.uid;
+                          const member = memberByTraveler.get(t.id);
+                          const appUid = member?.uid;
                           const isCoordinator = trip.coordinators?.some(c => c.userId === appUid || c.name.trim().toLowerCase() === t.name.trim().toLowerCase());
+                          const isLeader = !!trip.travelers?.find(p => p.id === t.id)?.tripLeader || member?.role === "leader";
+                          const invited = trip.travelers?.find(tv => tv.id === t.id)?.invitedAt;
                           return (
-                            <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border group hover:border-brand/30 transition-colors">
-                              <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-10 w-10" fallbackClassName="bg-brand/10 text-brand text-xs font-black" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <p className="text-sm font-bold text-foreground truncate">{t.name}</p>
-                                  {isCoordinator && (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-foreground shrink-0">
-                                      <Headset aria-hidden="true" className="h-3 w-3" weight="bold" /> Coordinator
-                                    </span>
+                            <li key={t.id} className="group grid grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-x-4 gap-y-1.5 px-4 py-3 transition-colors hover:bg-secondary/40 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_6rem_2.5rem]">
+                              {/* Traveller */}
+                              <div className="flex min-w-0 items-center gap-3">
+                                <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-9 w-9 shrink-0" fallbackClassName="bg-brand/10 text-brand text-[11px] font-semibold" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
+                                  {isEditing ? (
+                                    <form
+                                      className="mt-1 flex items-center gap-1.5"
+                                      onSubmit={async e => {
+                                        e.preventDefault();
+                                        if (emailSaving || !await saveTravelerEmail(t.id, editingEmailValue)) return;
+                                        setEditingEmailId(null);
+                                        toast.success("Email saved");
+                                      }}
+                                    >
+                                      <Input
+                                        autoFocus
+                                        type="email"
+                                        value={editingEmailValue}
+                                        onChange={e => setEditingEmailValue(e.target.value)}
+                                        onKeyDown={e => { if (e.key === "Escape") setEditingEmailId(null); }}
+                                        placeholder="email@example.com"
+                                        className="h-8 flex-1"
+                                      />
+                                      <Button type="submit" size="icon-sm" aria-label="Save email"><Check weight="bold" /></Button>
+                                    </form>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setEditingEmailId(t.id); setEditingEmailValue(t.email || ""); }}
+                                      className="block max-w-full truncate text-left text-xs"
+                                      title="Edit email"
+                                    >
+                                      {t.email
+                                        ? <span className="text-muted-foreground hover:text-foreground">{t.email}</span>
+                                        : <span className="font-medium text-foreground underline-offset-2 hover:underline">Add email</span>}
+                                    </button>
                                   )}
-                                  {memberByTraveler.has(t.id) ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
-                                      <DeviceMobile className="h-3 w-3" weight="bold" /> In the app{memberByTraveler.get(t.id)?.last_seen_at ? `, opened ${timeAgo(memberByTraveler.get(t.id)!.last_seen_at)}` : ""}
-                                    </span>
-                                  ) : membersLoaded ? (
-                                    <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-                                      {(() => {
-                                        const invited = trip.travelers?.find(tv => tv.id === t.id)?.invitedAt;
-                                        return invited
-                                          ? `Invited ${new Date(invited).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, not joined yet`
-                                          : "Not joined yet";
-                                      })()}
-                                    </span>
+                                  {/* They confirmed a different email in the app: offer it in one click */}
+                                  {!isEditing && member?.email && member.email.toLowerCase() !== (t.email || "").toLowerCase() ? (
+                                    <button
+                                      type="button"
+                                      disabled={emailSaving} onClick={async () => { if (await saveTravelerEmail(t.id, member.email!)) toast.success("Email saved"); }}
+                                      className="mt-0.5 block max-w-full truncate text-left text-xs font-medium text-link hover:underline"
+                                    >
+                                      Use {member.email} from the app
+                                    </button>
                                   ) : null}
                                 </div>
-                                {isEditing ? (
-                                  <form
-                                    className="flex items-center gap-1.5 mt-1"
-                                    onSubmit={async e => {
-                                      e.preventDefault();
-                                      if (emailSaving || !await saveTravelerEmail(t.id, editingEmailValue)) return;
-                                      setEditingEmailId(null);
-                                      toast.success("Email saved");
-                                    }}
-                                  >
-                                    <Input
-                                      autoFocus
-                                      type="email"
-                                      value={editingEmailValue}
-                                      onChange={e => setEditingEmailValue(e.target.value)}
-                                      onKeyDown={e => { if (e.key === "Escape") setEditingEmailId(null); }}
-                                      placeholder="email@example.com"
-                                      className="flex-1"
-                                    />
-                                    <button type="submit" className="h-7 w-7 rounded-md bg-brand flex items-center justify-center shrink-0">
-                                      <Check className="h-3 w-3 text-black" weight="bold" />
-                                    </button>
-                                  </form>
-                                ) : (
-                                  <button
-                                    onClick={() => { setEditingEmailId(t.id); setEditingEmailValue(t.email || ""); }}
-                                    className="text-[10px] font-medium truncate mt-0.5 text-left block"
-                                  >
-                                    {t.email
-                                      ? <span className="text-muted-foreground">{t.email}</span>
-                                      : <span className="text-brand/50 hover:text-brand transition-colors">+ Add email</span>
-                                    }
-                                  </button>
-                                )}
-                                {/* They confirmed a different email in the app: offer it in one click */}
-                                {!isEditing && memberByTraveler.get(t.id)?.email && memberByTraveler.get(t.id)!.email!.toLowerCase() !== (t.email || "").toLowerCase() ? (
-                                  <button
-                                    type="button"
-                                    disabled={emailSaving} onClick={async () => { if (await saveTravelerEmail(t.id, memberByTraveler.get(t.id)!.email!)) toast.success("Email saved"); }}
-                                    className="text-[10px] font-medium text-link hover:underline mt-0.5 text-left block truncate max-w-full"
-                                  >
-                                    Use {memberByTraveler.get(t.id)!.email} from the app
-                                  </button>
+                              </div>
+
+                              {/* Remove: on hover, in the last column; on phones it sits beside the name */}
+                              <button
+                                type="button"
+                                aria-label={`Remove ${t.name} from trip`}
+                                // Someone already using the app for this traveller gets a warning first
+                                onClick={() => (memberByTraveler.has(t.id) ? setRemoveTarget({ id: t.id, name: t.name }) : removeTravelerFromTrip(t))}
+                                className="col-start-2 row-start-1 flex h-8 w-8 items-center justify-center justify-self-end rounded-lg text-muted-foreground opacity-0 transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100 md:col-start-5"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+
+                              {/* App */}
+                              <div className="col-span-2 flex items-center gap-1.5 pl-12 text-xs md:col-span-1 md:col-start-2 md:row-start-1 md:pl-0">
+                                {member ? (
+                                  <>
+                                    <DeviceMobile className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" weight="bold" aria-hidden="true" />
+                                    <span className="truncate text-foreground">{member.last_seen_at ? `Opened ${timeAgo(member.last_seen_at)}` : "In the app"}</span>
+                                  </>
+                                ) : membersLoaded ? (
+                                  <span className="truncate text-muted-foreground">
+                                    {invited ? `Invited ${new Date(invited).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, not joined` : "Not joined yet"}
+                                  </span>
                                 ) : null}
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
+
+                              {/* Role */}
+                              <div className="col-span-2 flex flex-wrap items-center gap-2 pl-12 md:col-span-1 md:col-start-3 md:row-start-1 md:pl-0">
                                 {canBeTripLeader(t.email) && (
-                                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-muted-foreground">
-                                    <Checkbox
-                                      checked={!!trip.travelers?.find(p => p.id === t.id)?.tripLeader || memberByTraveler.get(t.id)?.role === "leader"}
-                                      onCheckedChange={on => void setTripLeader(t, on === true)}
-                                    />
+                                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-foreground">
+                                    <Checkbox checked={isLeader} onCheckedChange={on => void setTripLeader(t, on === true)} />
                                     Trip leader
                                   </label>
                                 )}
-                                {eventCount > 0 && (
-                                  <span className="text-[11px] font-medium text-brand/60 hidden sm:inline">
-                                    {eventCount} tagged
+                                {isCoordinator && (
+                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                                    <Headset aria-hidden="true" className="h-3 w-3" weight="bold" /> Coordinator
                                   </span>
                                 )}
-                                <button
-                                  type="button"
-                                  aria-label={`Remove ${t.name} from trip`}
-                                  // Someone already using the app for this traveller gets a warning first
-                                  onClick={() => (memberByTraveler.has(t.id) ? setRemoveTarget({ id: t.id, name: t.name }) : removeTravelerFromTrip(t))}
-                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
                               </div>
-                            </div>
+
+                              {/* Tagged on: events picked for them by name; everyone's events aren't counted */}
+                              <p className="col-span-2 pl-12 text-xs text-muted-foreground tabular-nums md:col-span-1 md:col-start-4 md:row-start-1 md:pl-0">
+                                {eventCount ? `${eventCount} event${eventCount === 1 ? "" : "s"}` : "None"}
+                              </p>
+                            </li>
                           );
                         })}
+                        </ul>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-16 bg-card border-2 border-dashed border-border rounded-xl text-muted-foreground">
@@ -2633,6 +2665,19 @@ export function WorkspacePage() {
                 onUpdateInfo={(info) => updateTrip(trip.id, { info })}
                 onClose={() => setShowAssistant(false)}
                 guard={demoGate}
+                directory={allTravelers.filter(p => !(trip.travelerIds ?? []).includes(p.id)).map(p => ({ id: p.id, name: p.name }))}
+                onUpdateTrip={updates => updateTrip(trip.id, updates)}
+                onAddTraveller={addTravellerFromAssistant}
+                onRemoveTraveller={id => {
+                  const t = tripTravelers.find(p => p.id === id);
+                  if (!t) return;
+                  // Someone using the app gets the same warning as removing them by hand
+                  if (memberByTraveler.has(id)) setRemoveTarget({ id: t.id, name: t.name }); else void removeTravelerFromTrip(t);
+                }}
+                // The assistant's publish opens the same review as the Publish button, never a silent publish
+                onPublish={() => setPublishConfirmOpen(true)}
+                onEmailTravellers={handleSendEmail}
+                onImportPdfs={isViewer ? undefined : () => openBookingRefs(true)}
               />
             </aside>
           )}
@@ -2651,6 +2696,7 @@ export function WorkspacePage() {
       />
       {bookingRefsOpen && (
         <BookingRefsDialog
+          startWithImport={bookingRefsImport}
           events={trip.events}
           travellers={tripTravelers}
           saving={savingChanges}
@@ -3574,7 +3620,7 @@ export function WorkspacePage() {
         onOpenChange={setShareOpen}
         tripId={trip.id}
         tripName={trip.name}
-        onPublish={handlePublish}
+        onPublish={() => { setShareOpen(false); setPublishConfirmOpen(true); }}
         publishing={publishing}
         notInvited={(trip.travelers ?? []).filter(t => !t.invitedAt).length}
         travellerCount={(trip.travelers ?? []).length}
@@ -3593,7 +3639,12 @@ export function WorkspacePage() {
         confirmLabel="Publish"
         onConfirm={handlePublish}
         subject={{ title: trip.name, subtitle: trip.destination, image: trip.image }}
-        details={pendingChanges > 0 ? (
+        details={<div className="space-y-3">
+          {/* Check it as travellers will, before it goes out */}
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setPublishConfirmOpen(false); setPreviewOpen(true); }}>
+            <Eye /> Preview what travellers see
+          </Button>
+          {pendingChanges > 0 && (
           <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-border p-3">
             {([["Travellers are notified", pendingList.notified], ["Updates without a notification", pendingList.quiet]] as const).map(([heading, lines]) => lines.length > 0 && (
               <div key={heading} className="space-y-1.5">
@@ -3604,7 +3655,8 @@ export function WorkspacePage() {
               </div>
             ))}
           </div>
-        ) : undefined}
+          )}
+        </div>}
       />
 
       <SendInviteModal

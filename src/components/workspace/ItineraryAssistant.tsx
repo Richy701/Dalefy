@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowRight, ArrowCounterClockwise, CaretDown, ChatCircleText, Check, Info, NotePencil, Warning, X } from "@phosphor-icons/react";
+import { ArrowUp, ArrowRight, ArrowCounterClockwise, CaretDown, ChatCircleText, Check, CheckCircle, Clock, Info, Megaphone, NotePencil, PaperPlaneTilt, Paperclip, PencilSimpleLine, Suitcase, Ticket, UserMinus, UserPlus, UsersThree, Warning, X } from "@phosphor-icons/react";
 import { differenceInCalendarDays, format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ interface ChatMessage {
   /** Per-change tick state while pending; after applying, which ones went in. */
   selected?: boolean[];
   status?: ProposalStatus;
-  undo?: { originals: TravelEvent[]; addedIds: string[]; infoOriginals?: TripInfo[]; infoAddedIds?: string[] };
+  undo?: { originals: TravelEvent[]; addedIds: string[]; infoOriginals?: TripInfo[]; infoAddedIds?: string[]; trip?: Partial<Trip> };
   error?: boolean;
 }
 
@@ -68,11 +68,26 @@ function prettyValue(key: string, value: string) {
 
 /** Trip info changes are grouped under this key, ahead of the days */
 const INFO_GROUP = "info";
+/** The trip itself, its people, and publishing or emailing, listed before the days */
+const TRIP_GROUP = "trip";
+const isTripLevel = (c: AssistantChange) => c.target === "trip" || c.target === "traveller" || c.target === "action";
 
 /** "Secret Dining Room Dinner — Anantara Chiang Mai" -> "Secret Dining Room Dinner" */
 function shortTitle(title: string) {
   return title.split(/\s+[—–-]\s+/)[0].trim();
 }
+
+/** What the assistant can do, each a starting sentence the agent finishes in the message box */
+const ABILITIES = [
+  { icon: Clock, title: "Move or retime", text: "Move dinner to 20:00, shift day 3 by a day", start: "Move " },
+  { icon: Ticket, title: "Booking details", text: "References, rooms, seats, prices", start: "Add booking reference " },
+  { icon: CheckCircle, title: "Confirm or cancel", text: "Mark events Confirmed or Cancelled", start: "Confirm " },
+  { icon: UsersThree, title: "Who's going", text: "Tag people or a group on events", start: "Only the " },
+  { icon: PencilSimpleLine, title: "Write copy", text: "Descriptions travellers read", start: "Write a description for " },
+  { icon: Info, title: "Trip info", text: "Contacts, dress codes, meeting points", start: "Add to trip info: " },
+  { icon: UserPlus, title: "Travellers", text: "Add or remove people", start: "Add " },
+  { icon: Megaphone, title: "Trip and publishing", text: "Name, dates, publish, email travellers", start: "Publish " },
+] as const;
 
 function suggestionsFor(trip: Trip) {
   const out: string[] = [];
@@ -143,6 +158,7 @@ function ChangeRow({
   skipped: boolean;
   onToggle: (v: boolean) => void;
 }) {
+  if (isTripLevel(change)) return <TripLevelRow change={change} names={names} selectable={selectable} checked={checked} skipped={skipped} onToggle={onToggle} />;
   const info = change.target === "info";
   const type = (change.fields.type ?? event?.type ?? "activity") as TravelEvent["type"];
   const op = OP_STYLE[change.op];
@@ -221,6 +237,34 @@ function ChangeRow({
   );
 }
 
+/** A change to the trip itself, its travellers, or a publish / email: what it does in one line, and what's final */
+function TripLevelRow({ change, names, selectable, checked, skipped, onToggle }: {
+  change: AssistantChange; names: Map<string, string>; selectable: boolean; checked: boolean; skipped: boolean; onToggle: (v: boolean) => void;
+}) {
+  const f = change.fields;
+  const Icon = change.target === "action" ? (f.action === "email" ? PaperPlaneTilt : Megaphone)
+    : change.target === "traveller" ? (change.op === "delete" ? UserMinus : UserPlus) : Suitcase;
+  const title = change.target === "action" ? (f.action === "email" ? "Email the itinerary to travellers" : "Publish to travellers' phones")
+    : change.target === "traveller" ? `${change.op === "delete" ? "Remove" : "Add"} ${change.op === "delete" ? names.get(change.eventId) ?? "a traveller" : f.title}`
+    : "Trip details";
+  const detail = change.target === "action" ? (f.action === "email" ? "Opens the send screen to check who gets it. Emails can't be unsent." : "Travellers see it straight away. This can't be undone.")
+    : change.target === "traveller" ? (change.op === "delete" ? "Also comes off their events and booking references." : f.email ?? (change.eventId ? "From your people directory" : "New to your people directory"))
+    : [f.title && `Name: ${f.title}`, f.location && `Destination: ${f.location}`, (f.date || f.endDate) && `Dates: ${[f.date, f.endDate].filter(Boolean).join(" to ")}`].filter(Boolean).join(", ");
+  const final = change.target === "action" || (change.target === "traveller" && change.op === "delete");
+  return (
+    <li className="flex gap-3 px-3.5 py-3">
+      {selectable && <Checkbox checked={checked} onCheckedChange={v => onToggle(!!v)} aria-label={`Include: ${change.summary}`} className="mt-1.5" />}
+      <div className={cn("flex min-w-0 flex-1 gap-3 transition-opacity", (skipped || (selectable && !checked)) && "opacity-45")}>
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground"><Icon className="h-3.5 w-3.5" weight="fill" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium leading-snug text-foreground">{title}</p>
+          {detail && <p className={cn("mt-0.5 text-xs", final ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>{detail}</p>}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function ProposalCard({
   message,
   trip,
@@ -256,11 +300,12 @@ function ProposalCard({
   const groups = useMemo(() => {
     const map = new Map<string, number[]>();
     changes.forEach((c, i) => {
-      const day = c.target === "info" ? INFO_GROUP : (c.op === "add" ? c.fields.date : eventFor(c)?.date) || "";
+      const day = isTripLevel(c) ? TRIP_GROUP : c.target === "info" ? INFO_GROUP : (c.op === "add" ? c.fields.date : eventFor(c)?.date) || "";
       map.set(day, [...(map.get(day) ?? []), i]);
     });
     // Trip info first, then the days in order
-    return [...map.entries()].sort(([a], [b]) => (a === INFO_GROUP ? -1 : b === INFO_GROUP ? 1 : a.localeCompare(b)));
+    const rank = (d: string) => (d === TRIP_GROUP ? 0 : d === INFO_GROUP ? 1 : 2);
+    return [...map.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [changes, byId, originals]);
   const grouped = groups.length > 1;
@@ -272,6 +317,7 @@ function ProposalCard({
   );
 
   const dayLabel = (date: string) => {
+    if (date === TRIP_GROUP) return { day: "Trip and people", sub: "" };
     if (date === INFO_GROUP) return { day: "Trip info", sub: "" };
     const d = parseISO(date);
     if (!date || !isValid(d)) return { day: "No date", sub: "" };
@@ -367,7 +413,10 @@ function ProposalCard({
             <Button variant="ghost" size="sm" onClick={onDiscard}>Discard</Button>
             <Button size="sm" onClick={onApply} disabled={count === 0} className="font-semibold">
               <Check className="h-3.5 w-3.5" weight="bold" />
-              {changes.length === 1 ? "Apply change" : count === changes.length ? `Apply ${count} changes` : `Apply ${count} of ${changes.length}`}
+              {/* Publishing reaches travellers, so the button says it does */}
+              {changes.some((c, i) => selected[i] && c.target === "action" && c.fields.action === "publish")
+                ? "Apply and publish"
+                : changes.length === 1 ? "Apply change" : count === changes.length ? `Apply ${count} changes` : `Apply ${count} of ${changes.length}`}
             </Button>
           </>
         )}
@@ -395,11 +444,27 @@ export function ItineraryAssistant({
   onUpdateInfo,
   onClose,
   guard,
+  directory = [],
+  onUpdateTrip,
+  onAddTraveller,
+  onRemoveTraveller,
+  onPublish,
+  onEmailTravellers,
+  onImportPdfs,
 }: {
   trip: Trip;
   onUpdateEvents: (events: TravelEvent[]) => void;
   onUpdateInfo: (info: TripInfo[]) => void;
   onClose: () => void;
+  /** The company's people not on this trip, so "add Tony" finds the existing Tony */
+  directory?: Array<{ id: string; name: string }>;
+  onUpdateTrip?: (updates: Partial<Trip>) => void;
+  onAddTraveller?: (name: string, email: string, directoryId: string) => void;
+  onRemoveTraveller?: (id: string) => void;
+  onPublish?: () => void;
+  onEmailTravellers?: () => void;
+  /** Opens the hotel PDF import, which reads each confirmation and files it under its traveller */
+  onImportPdfs?: () => void;
   /** Returns true when the action should be blocked (demo accounts). */
   guard?: () => boolean;
 }) {
@@ -462,7 +527,7 @@ export function ItineraryAssistant({
         method: "POST",
         auth: token,
         timeoutMs: 90_000,
-        body: { trip: compactTripForAssistant(trip), messages: toHistory(nextHistory) },
+        body: { trip: compactTripForAssistant(trip, directory), messages: toHistory(nextHistory) },
       });
       setMessages(prev => [
         ...prev,
@@ -512,7 +577,24 @@ export function ItineraryAssistant({
     const infoOriginals = infoRef.current.filter(card => touchedCards.has(card.id));
     const { info, addedIds: infoAddedIds } = applyInfoChanges(infoRef.current, infoChanges);
     if (infoChanges.length) onUpdateInfo(info);
-    patch(m.id, () => ({ status: "applied", undo: { originals, addedIds, infoOriginals, infoAddedIds } }));
+    // The trip itself: name, dates, destination; kept so Undo can put them back
+    const tripChange = changes.find(c => c.target === "trip");
+    let tripBefore: Partial<Trip> | undefined;
+    if (tripChange && onUpdateTrip) {
+      const f = tripChange.fields;
+      const updates: Partial<Trip> = { ...(f.title ? { name: f.title } : {}), ...(f.location ? { destination: f.location } : {}), ...(f.date ? { start: f.date } : {}), ...(f.endDate ? { end: f.endDate } : {}) };
+      tripBefore = Object.fromEntries(Object.keys(updates).map(k => [k, trip[k as keyof Trip]])) as Partial<Trip>;
+      if (Object.keys(updates).length) onUpdateTrip(updates);
+    }
+    for (const c of changes.filter(c => c.target === "traveller")) {
+      if (c.op === "add" && c.fields.title) onAddTraveller?.(c.fields.title, c.fields.email ?? "", c.eventId);
+      if (c.op === "delete") onRemoveTraveller?.(c.eventId);
+    }
+    // Publishing and emailing go last, once the rest of this batch has landed in the trip
+    const publish = changes.some(c => c.target === "action" && c.fields.action === "publish");
+    const email = changes.some(c => c.target === "action" && c.fields.action === "email");
+    if (publish || email) requestAnimationFrame(() => requestAnimationFrame(() => { if (publish) onPublish?.(); if (email) onEmailTravellers?.(); }));
+    patch(m.id, () => ({ status: "applied", undo: { originals, addedIds, infoOriginals, infoAddedIds, trip: tripBefore } }));
     const changedIds = [...eventChanges.filter(c => c.op === "update").map(c => c.eventId), ...addedIds];
     // Wait a frame for the itinerary to re-render the moved/new cards before flashing them.
     requestAnimationFrame(() => requestAnimationFrame(() => markEvents(changedIds, "assistant-flash", true)));
@@ -523,6 +605,7 @@ export function ItineraryAssistant({
     if (!m.undo) return;
     if (m.undo.originals.length || m.undo.addedIds.length) onUpdateEvents(undoAssistantChanges(eventsRef.current, m.undo.originals, m.undo.addedIds));
     if (m.undo.infoOriginals?.length || m.undo.infoAddedIds?.length) onUpdateInfo(undoInfoChanges(infoRef.current, m.undo.infoOriginals ?? [], m.undo.infoAddedIds ?? []));
+    if (m.undo.trip && Object.keys(m.undo.trip).length) onUpdateTrip?.(m.undo.trip);
     patch(m.id, () => ({ status: "undone" }));
     const restored = m.undo.originals.map(e => e.id);
     requestAnimationFrame(() => requestAnimationFrame(() => markEvents(restored, "assistant-flash", true)));
@@ -566,15 +649,26 @@ export function ItineraryAssistant({
       {/* Conversation */}
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto px-4 py-5">
         {messages.length === 0 && !loading ? (
-          // Empty: a short greeting in the middle; the suggestions wait by the message box
-          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-              <ChatCircleText className="h-5 w-5" />
-            </span>
-            <p className="mt-3 text-sm font-semibold text-foreground">Ask about this trip, or describe a change</p>
-            <p className="mt-1 max-w-64 text-[13px] leading-relaxed text-muted-foreground">
-              The assistant reads the whole itinerary. Nothing changes until you approve it.
+          // Empty: what it can do, so nobody has to guess; each card starts the sentence in the message box
+          <div className="flex min-h-full flex-col justify-center">
+            <p className="text-sm font-semibold text-foreground">What can I change on this trip?</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              Ask in plain words, several changes at once is fine. Nothing changes until you approve it.
             </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {ABILITIES.map(a => (
+                <button
+                  key={a.title}
+                  type="button"
+                  onClick={() => { setDraft(a.start); requestAnimationFrame(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(a.start.length, a.start.length); } }); }}
+                  className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-foreground/25 hover:bg-secondary/50"
+                >
+                  <a.icon className="h-4 w-4 text-foreground" aria-hidden="true" />
+                  <span className="text-[13px] font-semibold text-foreground">{a.title}</span>
+                  <span className="text-xs leading-snug text-muted-foreground">{a.text}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="space-y-5">
@@ -662,10 +756,15 @@ export function ItineraryAssistant({
             onKeyDown={onKeyDown}
             rows={1}
             maxLength={2000}
-            placeholder="Move the welcome dinner to 8pm…"
+            placeholder="Ask anything, or describe the changes…"
             aria-label="Message the trip assistant"
             className="field-sizing-content max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
+          {onImportPdfs && (
+            <Button type="button" variant="ghost" size="icon-sm" onClick={onImportPdfs} aria-label="Add hotel confirmation PDFs" title="Add hotel confirmation PDFs" className="text-muted-foreground">
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             type="submit"
             size="icon-sm"

@@ -27,7 +27,10 @@ How to respond:
 - "warnings": short notes about problems your proposal creates or reveals that the agent should check, e.g. "The 6:00 AM Dawn Game Drive on Mar 21 overlaps the new balloon flight." One sentence each, most important first. Only flag problems this proposal causes or that directly affect it, not unrelated issues elsewhere in the trip. Empty when there is nothing to flag. Do not repeat these in "reply".
 - "options": when you ask a clarifying question with a few clear answers, list them as short replies the agent can tap, written in the agent's voice, e.g. ["The Welcome Dinner on Mar 18", "The Bush Dinner on Mar 20"]. At most 5, under 60 characters each. Empty otherwise.
 
-Each change has a "target": "event" for an itinerary event, "info" for a Trip info card.
+Each change has a "target": "event" for an itinerary event, "info" for a Trip info card, "trip" for the trip itself, "traveller" for the people on the trip, "action" for publishing or emailing.
+- target "trip", op "update", eventId "": the trip's name in "title", its first day in "date", last day in "endDate", its destination in "location". Only what the agent asked to change.
+- target "traveller": op "add" adds someone, with their full name in "title" and email in "email" when given; if "directory" has someone with that name, put their id in eventId so the existing person is added rather than a duplicate. op "delete" removes someone: eventId is their id from "travelers". Removing someone also takes them off their events and booking references, so say so in the reply.
+- target "action", op "add", eventId "": "action" is "publish" to publish the trip to travellers' phones, or "email" to email them the itinerary. Only when the agent asks for it. These reach travellers and can't be undone, so mention that in the reply.
 - op "update": set eventId to the existing event's or info card's id. In "fields", set ONLY the fields that change; every other field is an empty string (assignedTo: null).
 - op "add": eventId is an empty string. For an event, set type, date, time and title at minimum, plus anything else you know. For an info card, set title and body. Unknown fields are empty strings (assignedTo: null).
 - op "delete": set eventId; all fields empty (assignedTo: null).
@@ -36,11 +39,14 @@ Each change has a "target": "event" for an itinerary event, "info" for a Trip in
 
 Field formats:
 - date, checkin, checkout, endDate: YYYY-MM-DD
-- time, endTime: "H:MM AM" / "H:MM PM" (12-hour), or "TBD" for time when unknown
+- time, endTime: 24-hour "HH:MM" (e.g. "07:30", "19:00"), the format the rest of the trip uses, or "TBD" for time when unknown
 - type: flight | hotel | dining | activity | transfer
 - Hotels: "date" equals the check-in date; set checkin and checkout. "time" is check-in time, "endTime" is check-out time.
 - description is public copy travelers read. notes are internal agent notes (confirmation numbers, supplier contacts).
-- assignedTo: the ids of the travellers on this event, from "travelers". An empty list means everyone on the trip. Use it for "only Tony and Laura do the tour".
+- assignedTo: the ids of the travellers on this event, from "travelers". An empty list means everyone on the trip. Use it for "only Tony and Laura do the tour". "groups" lists named groups of travellers ("Early departures") with their memberIds; when the agent names a group, use its members.
+- confNumber: the booking reference shared by everyone on the event, exactly as the agent gives it. travellerRefs: each traveller's own reference on this event, as [{ travellerId, ref }] with ids from "travelers", for "Sajid's reference at Iru Fushi is 1566005". Empty list when not changing them. roomType: the room or villa ("Deluxe Beach Villa with Pool"). price: as written ("1,200 per person"). duration: "3h 30m". seatDetails: seats as written ("14A, 14B").
+- status: "Proposed", "Confirmed" or "Cancelled" when the agent confirms, cancels or reopens something.
+- overnight (hotels only): "yes" makes the event a night in a stay already checked into (no booking of its own), "no" makes it the stay's check-in. A stay's first night is always its check-in.
 - Flights: airline, flightNum (e.g. "BA 2155"), depAirport and arrAirport (3-letter IATA codes). transferType for transfers: car | train | bus | ferry | cruise | other. supplier is the company providing it.
 - Transfers: meetingPoint is where travellers meet the driver or guide ("Exit B, Arrivals hall"); contactName and contactPhone are that person. Travellers see these three, so never put internal notes in them; supplier and notes stay internal.
 
@@ -79,6 +85,16 @@ const FieldsSchema = z.object({
   notes: text(),
   checkin: text(),
   checkout: text(),
+  confNumber: text(),
+  roomType: text(),
+  price: text(),
+  duration: text(),
+  seatDetails: text(),
+  status: z.enum(["Proposed", "Confirmed", "Cancelled", ""]),
+  overnight: z.enum(["yes", "no", ""]),
+  email: text(),
+  action: z.enum(["publish", "email", ""]),
+  travellerRefs: z.array(z.object({ travellerId: z.string(), ref: z.string() })),
 });
 
 const EditResultSchema = z.object({
@@ -86,7 +102,7 @@ const EditResultSchema = z.object({
   warnings: z.array(z.string()),
   options: z.array(z.string()),
   changes: z.array(z.object({
-    target: z.enum(["event", "info"]),
+    target: z.enum(["event", "info", "trip", "traveller", "action"]),
     op: z.enum(["add", "update", "delete"]),
     eventId: z.string(),
     summary: z.string(),
@@ -96,7 +112,7 @@ const EditResultSchema = z.object({
 
 type RawFields = z.infer<typeof FieldsSchema>;
 /** What the workspace receives: null for every field the change leaves alone */
-export type EditFields = { [K in keyof RawFields]: K extends "assignedTo" ? string[] | null : string | null };
+export type EditFields = { [K in keyof RawFields]: K extends "assignedTo" ? string[] | null : K extends "travellerRefs" ? Array<{ travellerId: string; ref: string }> | null : string | null };
 type RawResult = z.infer<typeof EditResultSchema>;
 /** The assistant's answer as the workspace receives it, with unchanged fields as null */
 export type EditResult = Omit<RawResult, "changes"> & { changes: Array<Omit<RawResult["changes"][number], "fields"> & { fields: EditFields }> };
@@ -107,6 +123,9 @@ export interface EditTripInput {
   start?: string;
   end?: string;
   travelers?: Array<{ id: string; name: string }>;
+  groups?: Array<{ name: string; memberIds: string[] }>;
+  /** People in the company directory not on this trip yet, so "add Tony" picks the existing Tony */
+  directory?: Array<{ id: string; name: string }>;
   events: Array<Record<string, unknown> & { id: string }>;
   info?: Array<{ id: string; title?: string; body?: string }>;
 }
@@ -193,19 +212,33 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
   const infoIds = new Set((input.trip.info ?? []).map((i) => i.id));
   const travelerIds = new Set((input.trip.travelers ?? []).map((t) => t.id));
   const iata = (v: string | null) => (v && /^[A-Za-z]{3}$/.test(v.trim()) ? v.trim().toUpperCase() : null);
+  const directoryIds = new Set((input.trip.directory ?? []).map((t) => t.id));
+  const blank = (f: EditFields) => Object.fromEntries(Object.keys(f).map((k) => [k, null])) as EditFields;
   const changes = message.parsed_output.changes
     .map((c) => ({ ...c, fields: Object.fromEntries(Object.entries(c.fields).map(([k, v]) => [k, v === "" ? null : typeof v === "string" ? v.trim() || null : v])) as EditFields }))
-    .filter((c) => (c.op === "add" ? true : (c.target === "info" ? infoIds : ids).has(c.eventId)))
-    .filter((c) => c.op !== "add" || (c.target === "info" ? !!c.fields.title && !!c.fields.body : !!c.fields.title && !!cleanDate(c.fields.date)))
-    .map((c) => ({
-      ...c,
-      eventId: c.op === "add" ? "" : c.eventId,
-      fields: c.target === "info"
-        // A card only carries a title and body; anything else the model set is dropped
-        ? { ...Object.fromEntries(Object.keys(c.fields).map((k) => [k, null])) as typeof c.fields, title: c.fields.title, body: c.fields.body }
-        : {
+    // Each kind of change must point at something real: an event, a card, a traveller on the trip
+    .filter((c) => {
+      if (c.target === "trip") return c.op === "update";
+      if (c.target === "action") return c.op === "add" && (c.fields.action === "publish" || c.fields.action === "email");
+      if (c.target === "traveller") return c.op === "add" ? !!c.fields.title : c.op === "delete" && travelerIds.has(c.eventId);
+      if (c.op === "add") return c.target === "info" ? !!c.fields.title && !!c.fields.body : !!c.fields.title && !!cleanDate(c.fields.date);
+      return (c.target === "info" ? infoIds : ids).has(c.eventId);
+    })
+    .map((c) => {
+      // Someone from the directory keeps their id; anyone else added gets a new one in the workspace
+      const eventId = c.target === "traveller" && c.op === "add" ? (directoryIds.has(c.eventId) ? c.eventId : "") : c.op === "add" || c.target === "trip" ? "" : c.eventId;
+      if (c.target === "info") return { ...c, eventId, fields: { ...blank(c.fields), title: c.fields.title, body: c.fields.body } };
+      if (c.target === "trip") return { ...c, eventId, fields: { ...blank(c.fields), title: c.fields.title, location: c.fields.location, date: cleanDate(c.fields.date), endDate: cleanDate(c.fields.endDate) } };
+      if (c.target === "traveller") return { ...c, eventId, fields: { ...blank(c.fields), title: c.fields.title, email: c.fields.email } };
+      if (c.target === "action") return { ...c, eventId, fields: { ...blank(c.fields), action: c.fields.action } };
+      return {
+        ...c,
+        eventId,
+        fields: {
           ...c.fields,
           body: null,
+          email: null,
+          action: null,
           date: cleanDate(c.fields.date),
           endDate: cleanDate(c.fields.endDate),
           checkin: cleanDate(c.fields.checkin),
@@ -219,8 +252,14 @@ export async function runEdit(client: Anthropic, input: EditInput): Promise<Edit
             const known = c.fields.assignedTo.filter((id) => travelerIds.has(id));
             return c.fields.assignedTo.length && !known.length ? null : known;
           })(),
+          // Each traveller's own reference, only for people on the trip; none means no change
+          travellerRefs: (() => {
+            const refs = (c.fields.travellerRefs ?? []).map((r) => ({ travellerId: r.travellerId, ref: r.ref.trim() })).filter((r) => travelerIds.has(r.travellerId) && r.ref);
+            return refs.length ? refs : null;
+          })(),
         },
-    }));
+      };
+    });
 
   return {
     reply: message.parsed_output.reply,
