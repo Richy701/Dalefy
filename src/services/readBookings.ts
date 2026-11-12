@@ -78,7 +78,8 @@ export async function readStayPdfs(
       onRead(file, { error: error instanceof Error ? error.message : "Couldn't read this PDF" });
     }
   };
-  await Promise.all(Array.from({ length: Math.min(3, files.length) }, async () => {
+  // Two at a time: three left Vercel turning reads away on a big folder, and a retry costs more than the wait
+  await Promise.all(Array.from({ length: Math.min(2, files.length) }, async () => {
     while (queue.length && !cancelled()) await readOne(queue.shift()!);
   }));
 }
