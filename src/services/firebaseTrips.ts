@@ -720,6 +720,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     coordinator_ids: (trip.coordinators ?? []).map(c => c.userId),
     history: trip.history ?? null,
     tasks: trip.tasks ?? null,
+    groups: trip.groups ?? null,
   });
   // Deep-clean: Firestore rejects undefined at any nesting depth.
   // JSON round-trip drops undefined values and deep-clones everything.
@@ -757,5 +758,6 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     ownerId: (data.user_id as string) ?? undefined,
     history: (data.history as Trip["history"]) ?? undefined,
     tasks: (data.tasks as Trip["tasks"]) ?? undefined,
+    groups: (data.groups as Trip["groups"]) ?? undefined,
   };
 }

@@ -21,6 +21,9 @@ export function withoutTravelers(trip: Trip, ids: Set<string>): { updates: Parti
     travelers: (trip.travelers ?? []).filter(t => keep(t.id)),
     travelerIds: (trip.travelerIds ?? []).filter(keep),
   };
+  if (trip.groups?.some(g => g.memberIds.some(id => ids.has(id)))) {
+    updates.groups = trip.groups.map(g => ({ ...g, memberIds: g.memberIds.filter(keep) }));
+  }
   const snap = trip.publishedSnapshot;
   if (snap && ((snap.travelers ?? []).some(t => ids.has(t.id)) || snap.events.some(e => e.assignedTo?.some(id => ids.has(id)) || hasRef(e)))) {
     const remaining = (snap.travelers ?? []).filter(t => keep(t.id));

@@ -46,7 +46,7 @@ import { FocalPointPicker } from "@/components/shared/FocalPointPicker";
 import { CoverPhotoPicker, ImagePager } from "@/components/shared/CoverPhotoPicker";
 import { useSavedInfo } from "@/hooks/useSavedInfo";
 import { hasSavedInfo, infoFromSaved } from "@/services/savedInfo";
-import type { EventDocument, TravelEvent, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
+import type { EventDocument, TravelEvent, TravellerGroup, Trip, TripCoordinator, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useDirectoryTravelers } from "@/context/directory";
 import { useAuth } from "@/context/AuthContext";
@@ -400,6 +400,8 @@ export function WorkspacePage() {
   const [removeMemberTarget, setRemoveMemberTarget] = useState<{ keys: string[]; name: string } | null>(null);
   const [peopleSearch, setPeopleSearch] = useState("");
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  // The group being edited on the People tab, saved to the trip on Done
+  const [groupDraft, setGroupDraft] = useState<TravellerGroup | null>(null);
   const [editingEmailValue, setEditingEmailValue] = useState("");
   const [bulkEmailMode, setBulkEmailMode] = useState(false);
   const [bulkEmails, setBulkEmails] = useState<Record<string, string>>({});
@@ -2213,6 +2215,104 @@ export function WorkspacePage() {
                     )}
                   </div>
 
+                  {/* Groups: named sets of travellers, a shortcut for picking who's going on events */}
+                  {tripTravelers.length > 1 && (
+                    <div>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold tracking-tight text-foreground">Groups</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">Pick a group in Who's going to tick everyone in it at once.</p>
+                        </div>
+                        {!isViewer && !groupDraft && (
+                          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setGroupDraft({ id: crypto.randomUUID(), name: "", memberIds: [] })}>
+                            <Plus /> New group
+                          </Button>
+                        )}
+                      </div>
+                      {(() => {
+                        const groups = trip.groups ?? [];
+                        const isNew = !!groupDraft && !groups.some(g => g.id === groupDraft.id);
+                        const saveDraft = () => {
+                          if (!groupDraft) return;
+                          const name = groupDraft.name.trim();
+                          if (!name) { toast.error("Give the group a name"); return; }
+                          const next = { ...groupDraft, name };
+                          updateTrip(trip.id, { groups: isNew ? [...groups, next] : groups.map(g => (g.id === next.id ? next : g)) });
+                          setGroupDraft(null);
+                        };
+                        const editor = groupDraft && (
+                          <div key={groupDraft.id} className="p-3 sm:p-4 rounded-xl bg-card border border-brand/30 space-y-3">
+                            <Input
+                              autoFocus
+                              value={groupDraft.name}
+                              onChange={e => setGroupDraft(prev => prev ? { ...prev, name: e.target.value } : null)}
+                              onKeyDown={e => { if (e.key === "Enter") saveDraft(); if (e.key === "Escape") setGroupDraft(null); }}
+                              placeholder="Group name, e.g. Early departures"
+                              aria-label="Group name"
+                            />
+                            <div className="flex flex-wrap gap-1.5">
+                              {tripTravelers.map(t => {
+                                const inGroup = groupDraft.memberIds.includes(t.id);
+                                return (
+                                  <button
+                                    key={t.id}
+                                    type="button"
+                                    aria-pressed={inGroup}
+                                    onClick={() => setGroupDraft(prev => prev ? { ...prev, memberIds: inGroup ? prev.memberIds.filter(id => id !== t.id) : [...prev.memberIds, t.id] } : null)}
+                                    className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium border transition-all ${
+                                      inGroup ? "bg-brand/10 border-brand/30 text-brand" : "bg-background border-border text-muted-foreground hover:border-brand/30"
+                                    }`}
+                                  >
+                                    <PersonAvatar avatar={t.avatar} initials={t.initials} name={t.name} className="h-5 w-5" fallbackClassName="text-[8px] font-black" />
+                                    {t.name}
+                                    {inGroup && <Check className="h-3 w-3" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              {!isNew ? (
+                                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { updateTrip(trip.id, { groups: groups.filter(g => g.id !== groupDraft.id) }); setGroupDraft(null); }}>
+                                  <Trash /> Delete group
+                                </Button>
+                              ) : <span />}
+                              <div className="flex items-center gap-2">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setGroupDraft(null)}>Cancel</Button>
+                                <Button type="button" size="sm" onClick={saveDraft}>Done</Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                        if (!groups.length && !groupDraft) {
+                          return <p className="text-xs text-muted-foreground">No groups yet. Make one for people who travel together, arrive late or leave early.</p>;
+                        }
+                        return (
+                          <div className="space-y-2">
+                            {groups.map(g => groupDraft?.id === g.id ? editor : (
+                              <div key={g.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                                  <UsersThree className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-foreground truncate">{g.name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {g.memberIds.length
+                                      ? tripTravelers.filter(t => g.memberIds.includes(t.id)).map(t => t.name).join(", ")
+                                      : "No one yet"}
+                                  </p>
+                                </div>
+                                {!isViewer && !groupDraft && (
+                                  <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setGroupDraft(g)}>Edit</Button>
+                                )}
+                              </div>
+                            ))}
+                            {isNew && editor}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   {/* In the app but not matched to anyone on the list: they see everyone's plan until linked */}
                   {unlistedMembers.length > 0 && (
                     <div>
@@ -2839,6 +2939,48 @@ export function WorkspacePage() {
                   </div>
                   {editingEvent?.assignedTo !== undefined && (
                     <div className="space-y-1.5">
+                      {/* Groups tick or untick all their members at once; names can still be changed one by one after */}
+                      {(trip?.groups ?? []).filter(g => g.memberIds.some(id => tripTravelers.some(t => t.id === id))).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(trip?.groups ?? []).map(g => {
+                            const members = g.memberIds.filter(id => tripTravelers.some(t => t.id === id));
+                            if (!members.length) return null;
+                            const allIn = members.every(id => editingEvent.assignedTo?.includes(id));
+                            return (
+                              <button
+                                key={g.id}
+                                type="button"
+                                aria-pressed={allIn}
+                                onClick={() => setEditingEvent(prev => {
+                                  if (!prev) return null;
+                                  const current = prev.assignedTo || [];
+                                  return { ...prev, assignedTo: allIn ? current.filter(id => !members.includes(id)) : [...current, ...members.filter(id => !current.includes(id))] };
+                                })}
+                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium border transition-all ${
+                                  allIn ? "bg-brand/10 border-brand/30 text-brand" : "bg-background border-border text-foreground hover:border-brand/30"
+                                }`}
+                              >
+                                <UsersThree className="h-4 w-4" aria-hidden="true" />
+                                {g.name}
+                                <span className="text-muted-foreground tabular-nums">{members.length}</span>
+                                {allIn && <Check className="h-3 w-3" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {tripTravelers.length > 0 && (() => {
+                        const allPicked = tripTravelers.every(t => editingEvent.assignedTo?.includes(t.id));
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: allPicked ? [] : tripTravelers.map(t => t.id) } : null)}
+                            className="text-xs font-medium text-brand hover:underline underline-offset-2"
+                          >
+                            {allPicked ? "Clear all" : "Select all"}
+                          </button>
+                        );
+                      })()}
                       {tripTravelers.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {tripTravelers.map(t => {

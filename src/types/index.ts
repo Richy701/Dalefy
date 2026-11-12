@@ -184,6 +184,13 @@ export interface PublishedSnapshot {
   publishedAt: string;
 }
 
+/** A named set of the trip's travellers, a shortcut for picking who's going on events. Organiser-only, never published. */
+export interface TravellerGroup {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -221,6 +228,8 @@ export interface Trip {
   private?: boolean;
   /** Who oversees this trip from home. Never published to travellers. */
   coordinators?: TripCoordinator[];
+  /** Traveller groups for picking who's going; events still store people, so groups never reach travellers */
+  groups?: TravellerGroup[];
   /** Account that created the trip (read-only, from the stored user_id) */
   ownerId?: string;
 }
