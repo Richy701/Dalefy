@@ -100,6 +100,10 @@ export function tripContext(view: Data, travelerId: string | null): { text: stri
   const travelers = Array.isArray(view.travelers) ? view.travelers as Data[] : [];
   const me = travelers.find((t) => t.id === travelerId);
   if (me && str(me.name)) lines.push(`Traveller asking: ${str(me.name)}`);
+  // An account not linked to a traveller (a tester, a leader looking over the trip) sees everyone's events,
+  // so name whose each assigned one is, or two people's flights read as one person's connection
+  const groupView = !me;
+  if (groupView) lines.push("Viewing: the whole group's plan (the person asking isn't linked to one traveller). Events marked \"only for\" belong to those people: say whose they are, and never join different people's events into one journey or connection.");
   if (travelers.length) lines.push(`Group size: ${travelers.length}`);
   const org = view.organizer as Data | null;
   if (org && str(org.name)) {
@@ -125,8 +129,10 @@ export function tripContext(view: Data, travelerId: string | null): { text: stri
       ? [str(e.checkin) && `check-in ${str(e.checkin)}`, str(e.checkout) && `check-out ${str(e.checkout)}`,
         str(e.roomType) && `room ${str(e.roomType)}`].filter(Boolean).join(", ")
       : "";
+    const assigned = Array.isArray(e.assignedTo) ? (e.assignedTo as unknown[]).map(id => str(travelers.find(t => t.id === id)?.name)).filter(Boolean) : [];
     const parts = [
       `[${str(e.id)}] ${when || "time TBC"}, ${str(e.type)}${str(e.transferType) ? ` (${str(e.transferType)})` : ""}: ${str(e.title)}`,
+      groupView && assigned.length ? `only for ${assigned.join(", ")}` : "",
       str(e.endDate) && str(e.endDate) !== day ? `ends ${str(e.endDate)}` : "",
       str(e.location) && `at ${str(e.location)}`,
       flight, stay,
