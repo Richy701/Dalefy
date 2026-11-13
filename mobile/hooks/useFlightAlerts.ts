@@ -1,7 +1,39 @@
 import { useEffect, useRef } from "react";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
-import type { TravelEvent, Notification } from "@/shared/types";
+import type { TravelEvent, Notification, Trip } from "@/shared/types";
+import { doc, getDoc } from "firebase/firestore";
+import { firebaseDb, firebaseAuth, isFirebaseConfigured } from "@/services/firebase";
+import { getDeviceId } from "@/services/deviceId";
+
+/** Which traveller this phone is on a trip, and whether it leads it; read once per trip */
+const membership = new Map<string, Promise<{ traveller: string | null; leader: boolean }>>();
+function memberOf(tripId: string) {
+  let pending = membership.get(tripId);
+  if (!pending) {
+    pending = (async () => {
+      if (!isFirebaseConfigured()) return { traveller: null, leader: false };
+      const uid = firebaseAuth().currentUser?.uid;
+      const deviceId = await getDeviceId();
+      for (const id of [uid && `${uid}_${tripId}`, `${deviceId}_${tripId}`].filter(Boolean) as string[]) {
+        const snap = await getDoc(doc(firebaseDb(), "trip_members", id)).catch(() => null);
+        if (snap?.exists()) return { traveller: (snap.data().linked_traveler_id as string) ?? null, leader: snap.data().role === "leader" };
+      }
+      return { traveller: null, leader: false };
+    })();
+    membership.set(tripId, pending);
+  }
+  return pending;
+}
+
+/** "Kieran's flight", "Laura and Michelle's flight", by first name */
+function whoseFlight(trip: Trip, ids: string[]): string {
+  const first = ids.map(id => trip.travelers?.find(t => t.id === id)?.name?.trim().split(/\s+/)[0]).filter(Boolean) as string[];
+  if (first.length === 0) return "Group flight";
+  if (first.length === 1) return `${first[0]}'s flight`;
+  if (first.length === 2) return `${first[0]} and ${first[1]}'s flight`;
+  return `${first.length} travellers' flight`;
+}
 
 const AIRPORT_NAMES: Record<string, string> = {
   LHR: "London Heathrow", MAN: "Manchester", STN: "London Stansted",
@@ -103,7 +135,9 @@ function detectChanges(
       type = "warning";
       changes.push(`Delayed`);
     } else {
-      changes.push(`Status: ${next.status}`);
+      // Airline words as a traveller would say them: "Expected" means on time
+      const k = next.status.toLowerCase().replace(/[\s_-]+/g, "");
+      changes.push(/^(expected|scheduled|ontime)$/.test(k) ? "On time" : k === "confirmed" ? "Flight confirmed" : `Status: ${next.status}`);
     }
   }
 
@@ -142,7 +176,7 @@ function detectChanges(
 
   return {
     message: `${label} Update`,
-    detail: changes.join(" · "),
+    detail: changes.join("\n"),
     type,
   };
 }
@@ -168,13 +202,20 @@ export function useFlightAlerts() {
           if (prev) {
             const change = detectChanges(prev, snapshot(ev), ev);
             if (change) {
-              addNotification({
-                message: change.message,
-                detail: change.detail,
-                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                type: change.type,
-                tripId: trip.id,
-              });
+              const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              const assigned = (ev.assignedTo ?? []).filter(Boolean);
+              if (!assigned.length) {
+                addNotification({ message: change.message, detail: change.detail, time, type: change.type, tripId: trip.id });
+              } else {
+                // Someone else's flight: nothing for a traveller, and a leader is told whose it is
+                memberOf(trip.id).then(({ traveller, leader }) => {
+                  if (traveller && assigned.includes(traveller)) {
+                    addNotification({ message: change.message, detail: change.detail, time, type: change.type, tripId: trip.id });
+                  } else if (leader) {
+                    addNotification({ message: `${whoseFlight(trip, assigned)}: ${change.message}`, detail: change.detail, time, type: change.type, tripId: trip.id });
+                  }
+                }).catch(() => {});
+              }
             }
           }
         }

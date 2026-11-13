@@ -28,6 +28,40 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification, Trip } from "@/shared/types";
 import { notificationPath } from "@/services/notificationTarget";
+import { airlineLogo } from "@/shared/airlineLogos";
+
+/** Airline status words as a traveller would say them: "Expected" is on time */
+function statusWords(raw: string): string {
+  const k = raw.toLowerCase().replace(/[\s_-]+/g, "");
+  if (/^(expected|scheduled|ontime)$/.test(k)) return "On time";
+  if (k === "confirmed") return "Flight confirmed";
+  const words = raw.replace(/([a-z])([A-Z])/g, "$1 $2").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * What a row shows. The text is tidied here so notifications already in the inbox read better too:
+ * an itinerary change leads with the change itself, airline status words become plain ones,
+ * filler is dropped and "·" separators become commas.
+ */
+function displayText(n: Notification): { title: string; detail: string } {
+  let lines = (n.detail || "").split("\n").flatMap(l => l.split(" · ")).map(l => l.trim()).filter(Boolean)
+    .filter(l => l !== "Open the trip for the latest details.")
+    .map(l => l.replace(/^Status: (.+)$/, (_, st: string) => statusWords(st)));
+  let title = n.message;
+  if (/^your itinerary has changed$/i.test(n.message.trim()) && lines.length) {
+    title = lines[0];
+    lines = lines.slice(1);
+    if (!lines.length) lines = ["Itinerary update"];
+  }
+  return { title, detail: lines.join("\n") };
+}
+
+/** A flight notice's airline logo, from the flight number in its title ("QR 110 is boarding") */
+function flightLogo(n: Notification): number | null {
+  if (n.type !== "flight" && n.type !== "boarding" && n.type !== "landed") return null;
+  return airlineLogo(n.message.match(/\b([A-Z0-9]{2})\s?\d{1,4}\b/)?.[1]);
+}
 
 const ON_RED = "#fff";
 const SWIPE_SLOT = 76;
@@ -215,6 +249,7 @@ interface RowProps {
 }
 
 function NotificationRow({ notification: n, photo, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
+  const shown = displayText(n);
   const swipeRef = useRef<SwipeableMethods>(null);
   const Icon = getNotifIcon(n);
   const tone = getNotifTone(n, Icon, C);
@@ -265,7 +300,7 @@ function NotificationRow({ notification: n, photo, C, styles, onPress, onMarkRea
           <Pressable
             onPress={onPress}
             accessibilityRole="button"
-            accessibilityLabel={`${n.read ? "" : "Unread, "}${n.detail ? `${n.message}. ${n.detail}` : n.message}`}
+            accessibilityLabel={`${n.read ? "" : "Unread, "}${shown.detail ? `${shown.title}. ${shown.detail}` : shown.title}`}
             // Swipe and long-press have VoiceOver equivalents
             accessibilityActions={[
               ...(!n.read ? [{ name: "markRead", label: "Mark read" }] : []),
@@ -284,6 +319,9 @@ function NotificationRow({ notification: n, photo, C, styles, onPress, onMarkRea
             <View style={styles.itemRow}>
               {photo.avatar ? (
                 <ExpoImage source={{ uri: photo.avatar }} style={[styles.iconWrap, { backgroundColor: C.elevated }]} contentFit="cover" accessibilityIgnoresInvertColors />
+              ) : flightLogo(n) ? (
+                // The airline's own mark on a white plate, as on the flight cards
+                <ExpoImage source={flightLogo(n)!} style={[styles.iconWrap, { backgroundColor: "#fff" }, n.read && { opacity: 0.6 }]} contentFit="cover" accessibilityIgnoresInvertColors />
               ) : (
                 <View style={[styles.iconWrap, { backgroundColor: tone.bg }, n.read && { opacity: 0.6 }]}>
                   {/* eslint-disable-next-line react-hooks/static-components -- Icon is an imported icon returned by getNotifIcon, not a component created in render */}
@@ -297,13 +335,13 @@ function NotificationRow({ notification: n, photo, C, styles, onPress, onMarkRea
                     style={[styles.itemMessage, n.read && styles.itemMessageRead]}
                     numberOfLines={2}
                   >
-                    {n.message}
+                    {shown.title}
                   </Text>
                   {!!n.time && <Text style={styles.itemTime}>{n.time}</Text>}
                 </View>
-                {!!n.detail && (
+                {!!shown.detail && (
                   <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={3}>
-                    {n.detail}
+                    {shown.detail}
                   </Text>
                 )}
               </View>

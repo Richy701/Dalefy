@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
-import { CaretLeft, CaretRight, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
+import { CaretLeft, CaretRight, AirplaneTakeoff, AirplaneLanding, Eye } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
 import type { NativeSyntheticEvent, ScrollViewInstance } from "react-native";
 import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
@@ -33,7 +33,7 @@ import { parseTripDate } from "@/shared/dates";
 import { tripFactLine, shortDay, tripDays, todayKey, destinationFlag, nextEvent, untilLabel } from "@/shared/tripSummary";
 import { useBrand } from "@/context/BrandContext";
 import { Avatar } from "@/components/ui/Avatar";
-import { useTripRole } from "@/hooks/useTripRole";
+import { useTripRole, setTravellerPreview } from "@/hooks/useTripRole";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { TripQuickTiles } from "@/components/TripQuickTiles";
 import { OverseeingCard } from "@/components/OverseeingCard";
@@ -103,7 +103,7 @@ export default function TripScreen() {
   const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeDark, themeC]);
   const isDark = themeDark;
   const { brand } = useBrand();
-  const { isLeader, isCoordinator } = useTripRole(id);
+  const { isLeader, isCoordinator, canPreview, previewing } = useTripRole(id);
   const linkedTravelerId = useLinkedTravelerId(id);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
@@ -588,6 +588,22 @@ export default function TripScreen() {
           </View>
         )}
 
+        {/* Previewing as a traveller: said plainly, with the way back right there */}
+        {previewing ? (
+          <View style={[styles.previewBar, { backgroundColor: C.elevated }]}>
+            <Eye size={16} color={C.textPrimary} weight="fill" />
+            <Text style={[styles.previewText, { color: C.textPrimary, flex: 1 }]} numberOfLines={1}>Previewing as a traveller</Text>
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setTravellerPreview(trip.id, false); }}
+              accessibilityRole="button"
+              accessibilityLabel="Switch back to the leader view"
+              hitSlop={8}
+            >
+              <Text style={[styles.previewText, { color: C.tealText, fontWeight: T.semibold }]}>Switch back</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* ── Documents and the organiser, where travellers look first ── */}
         <TripQuickTiles
           C={C}
@@ -601,7 +617,22 @@ export default function TripScreen() {
           onOrganizer={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })}
         />
 
-        {isCoordinator ? <OverseeingCard trip={trip} C={C} /> : null}
+        {isCoordinator && !previewing ? <OverseeingCard trip={trip} C={C} /> : null}
+
+        {/* Leaders can check what the group sees, without leaving the trip */}
+        {canPreview && !previewing ? (
+          <Pressable
+            onPress={() => { Haptics.selectionAsync(); setTravellerPreview(trip.id, true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Preview as a traveller"
+            accessibilityHint="Hides leader-only details on this phone until you switch back"
+            style={({ pressed }) => [styles.previewRow, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Eye size={16} color={C.textSecondary} weight="regular" />
+            <Text style={[styles.previewText, { color: C.textSecondary, flex: 1 }]}>Preview as a traveller</Text>
+            <CaretRight size={14} color={C.textTertiary} weight="regular" />
+          </Pressable>
+        ) : null}
 
         {/* ── Per-traveller filter ── */}
         {hasFilter && (
@@ -825,6 +856,9 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false, onPh
 
     // Hero
     hero: { height: HERO_H, justifyContent: "flex-end" },
+    previewBar: { flexDirection: "row", alignItems: "center", gap: S.xs, marginHorizontal: S.md, marginBottom: S.sm, paddingHorizontal: S.sm2, paddingVertical: S.sm, borderRadius: R.lg },
+    previewRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginHorizontal: S.md, marginBottom: S.md, paddingVertical: S.xs },
+    previewText: { fontSize: T.sm, fontWeight: T.medium, flexShrink: 1 },
     // On a light page the cover fades out under the title block, so the block sits higher to stay on the photo
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
     // Both themes keep white text over the photo; the page fade starts below it.

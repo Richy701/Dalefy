@@ -59,6 +59,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const fields = tripDoc.fields ?? {};
       const tripName = (decodeValue(fields.name) ?? "Trip") as string;
       const rawEvents = (decodeValue(fields.events) ?? []) as StoredFlightEvent[];
+      const travellerNames = new Map(((decodeValue(fields.travelers) ?? []) as { id?: unknown; name?: unknown }[])
+        .filter(t => typeof t?.id === "string").map(t => [t.id as string, String(t.name ?? "")]));
       let tripChanged = false;
 
       for (let i = 0; i < rawEvents.length; i++) {
@@ -145,6 +147,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           eventId: ev.id ?? "",
           status: statusChanged ? result.status : undefined,
           changes,
+          gate: rawEvents[i].gate || undefined,
+          terminal: rawEvents[i].terminal || undefined,
+          assignedTo: Array.isArray(ev.assignedTo) ? ev.assignedTo.filter((id): id is string => typeof id === "string") : [],
+          assignedNames: (Array.isArray(ev.assignedTo) ? ev.assignedTo : []).map(id => travellerNames.get(String(id)) ?? "").filter(Boolean),
         });
       }
 
@@ -232,6 +238,12 @@ interface FlightUpdate {
   /** Set when the flight's status itself changed, e.g. "Delayed" */
   status?: string;
   changes: string[];
+  /** The gate and terminal as now known, so a boarding notice can say where to go even when neither changed */
+  gate?: string;
+  terminal?: string;
+  /** The travellers on this flight; none means the whole group */
+  assignedTo: string[];
+  assignedNames: string[];
 }
 
 /** The fields of a stored trip event this job reads and writes; events carry others that pass through untouched. */
@@ -245,6 +257,8 @@ interface StoredFlightEvent {
   endTime?: string;
   location?: string;
   flightNum?: string;
+  /** Traveller ids on this flight; empty or missing means the whole group */
+  assignedTo?: unknown[];
   /** The schedule difference an organiser was last emailed about, so it's sent once */
   scheduleNotified?: string;
   status?: string;
@@ -496,56 +510,81 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
     if (deviceId && token) tokenByDevice.set(deviceId, token);
   }
 
-  const tokensByTrip = new Map<string, string[]>();
-  const peopleByTrip = new Map<string, string[]>();
+  // Each member's phone, which traveller they are, and whether they lead the trip
+  type Member = { tripId: string; token?: string; people: string[]; traveller: string; leader: boolean };
+  const members: Member[] = [];
   for (const m of memberDocs) {
     const tripId = decodeValue(m.fields?.trip_id) as string | null;
+    if (!tripId) continue;
     const deviceId = decodeValue(m.fields?.device_id) as string | null;
-    if (tripId) peopleByTrip.set(tripId, [...(peopleByTrip.get(tripId) ?? []), String(deviceId ?? ""), String(decodeValue(m.fields?.uid) ?? "")]);
-    const token = deviceId ? tokenByDevice.get(deviceId) : undefined;
-    if (!tripId || !token) continue;
-    const list = tokensByTrip.get(tripId) ?? [];
-    if (!list.includes(token)) list.push(token);
-    tokensByTrip.set(tripId, list);
+    members.push({
+      tripId,
+      token: deviceId ? tokenByDevice.get(deviceId) : undefined,
+      people: [String(deviceId ?? ""), String(decodeValue(m.fields?.uid) ?? "")],
+      traveller: String(decodeValue(m.fields?.linked_traveler_id) ?? ""),
+      leader: decodeValue(m.fields?.role) === "leader",
+    });
   }
 
   for (const update of updates) {
-    const tokens = tokensByTrip.get(update.tripId) ?? [];
-    if (tokens.length === 0) continue;
+    const onTrip = members.filter(m => m.tripId === update.tripId);
+    // A flight assigned to some travellers goes to them; one assigned to no one is the whole group's.
+    // Leaders not on it still hear, told whose flight it is.
+    const assigned = new Set(update.assignedTo);
+    const onFlight = assigned.size ? onTrip.filter(m => assigned.has(m.traveller)) : onTrip;
+    const leadersOnly = assigned.size ? onTrip.filter(m => m.leader && !assigned.has(m.traveller)) : [];
+    const own = flightPushCopy(update);
+    const groups = [
+      { who: onFlight, ...own },
+      { who: leadersOnly, title: `${whoseFlight(update.assignedNames)}: ${own.title}`, body: own.body },
+    ];
 
-    const { title, body } = flightPushCopy(update);
-    const logId = newPushLogId();
+    for (const { who, title, body } of groups) {
+      const tokens = [...new Set(who.map(m => m.token).filter((t): t is string => !!t))];
+      if (tokens.length === 0) continue;
+      const logId = newPushLogId();
 
-    const messages = tokens.map(token => ({
-      to: token,
-      title,
-      subtitle: update.tripName,
-      body,
-      data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum, logId },
-      // "View flight" button, and it comes through Focus modes
-      categoryId: "flight",
-      // iOS stacks each trip's notifications together
-      threadId: update.tripId,
-      interruptionLevel: "time-sensitive" as const,
-      sound: "default" as const,
-    }));
+      const messages = tokens.map(token => ({
+        to: token,
+        title,
+        subtitle: update.tripName,
+        body,
+        data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum, logId },
+        // "View flight" button, and it comes through Focus modes
+        categoryId: "flight",
+        // iOS stacks each trip's notifications together
+        threadId: update.tripId,
+        interruptionLevel: "time-sensitive" as const,
+        sound: "default" as const,
+      }));
 
-    const tickets = await sendPush(messages);
-    await logPush({
-      tripId: update.tripId,
-      tripName: update.tripName,
-      category: "flight",
-      title,
-      body,
-      recipients: peopleByTrip.get(update.tripId) ?? [],
-      sentBy: "system",
-      tickets,
-      target: { eventId: update.eventId },
-    }, logId);
+      const tickets = await sendPush(messages);
+      await logPush({
+        tripId: update.tripId,
+        tripName: update.tripName,
+        category: "flight",
+        title,
+        body,
+        // Only these people, so the inbox on other phones doesn't pick it up either
+        recipients: who.flatMap(m => m.people),
+        sentBy: "system",
+        tickets,
+        target: { eventId: update.eventId },
+      }, logId);
+    }
   }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** "Kieran's flight", "Laura and Michelle's flight", "3 travellers' flight", by first name */
+function whoseFlight(names: string[]): string {
+  const first = names.map(n => n.trim().split(/\s+/)[0]).filter(Boolean);
+  if (first.length === 0) return "Group flight";
+  if (first.length === 1) return `${first[0]}'s flight`;
+  if (first.length === 2) return `${first[0]} and ${first[1]}'s flight`;
+  return `${first.length} travellers' flight`;
+}
 
 /** The title says what happened ("QR 843 is delayed"), the body lists the details one per line */
 function flightPushCopy(update: FlightUpdate): { title: string; body: string } {
@@ -563,6 +602,10 @@ function flightPushCopy(update: FlightUpdate): { title: string; body: string } {
     : has("Departs from gate") ? `${flight} gate change`
     : has("Now departs") ? `${flight} has a new departure time`
     : `${flight} update`;
-  const body = lines.length ? lines.join("\n") : "Open the trip for the latest details.";
+  // With nothing new to list, say where the flight goes from rather than a generic line
+  const where = [update.terminal ? `Terminal ${update.terminal}` : "", update.gate ? `gate ${update.gate}` : ""].filter(Boolean).join(", ");
+  const body = lines.length ? lines.join("\n")
+    : where ? `${status === "boarding" ? "Head to" : "Departs from"} ${where}`
+    : "Open the trip for the latest details.";
   return { title, body };
 }
