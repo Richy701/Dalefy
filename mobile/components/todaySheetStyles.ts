@@ -32,7 +32,7 @@ export const sheetStyles = StyleSheet.create({
   freeNext: { flexDirection: "row", alignItems: "center", gap: S.sm, marginHorizontal: S.md, padding: S.md, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth },
   freeTime: { fontSize: T.base, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
   flightMeta: {
-    flexDirection: "row", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.xs,
+    flexDirection: "row", gap: S.md, paddingRight: S.md, paddingVertical: S.xs,
     borderTopWidth: StyleSheet.hairlineWidth, marginLeft: S.md + 32 + S.sm,
   },
   metaText: { fontSize: T.sm },

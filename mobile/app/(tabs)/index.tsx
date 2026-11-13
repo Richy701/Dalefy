@@ -475,9 +475,10 @@ export default function HomeScreen() {
 
   // Invites-style: the cover photo, blurred, carries down the whole page
   const photoPage = !!heroTrip?.image;
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeDark, themeC]);
-  const isDark = photoPage || themeDark;
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeDark, themeC]);
+  const isDark = themeDark;
+  // In light mode the cover fades into the frost behind the title, so the title is dark text on the light page
+  const styles = useMemo(() => makeStyles(C, isDark, photoPage && !isDark), [C, isDark, photoPage]);
 
   const otherTrips = useMemo(() => sorted.filter(t => t.id !== heroTrip?.id), [sorted, heroTrip]);
   // Upcoming first (soonest at the top), then past (most recent at the top)
@@ -585,8 +586,8 @@ export default function HomeScreen() {
   // showing through instead of washing out to white.
   const onGround = isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
-    { label: "Itinerary", Icon: CalendarDots, symbol: "calendar" as const, go: () => router.push(`/trip/${heroTrip.id}`) },
     { label: "Info", Icon: Info, symbol: "info.circle" as const, go: () => router.push(`/trip/info?tripId=${heroTrip.id}`) },
+    { label: "Itinerary", Icon: CalendarDots, symbol: "calendar" as const, go: () => router.push(`/trip/${heroTrip.id}`) },
     { label: "Ask Dale", Icon: ChatsTeardrop, symbol: "bubble.left.and.bubble.right.fill" as const, go: () => router.push(`/trip/ask?tripId=${heroTrip.id}`) },
     // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
     {
@@ -597,7 +598,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.safe}>
-      {photoPage && heroTrip && <PhotoBackdrop uri={heroTrip.image} />}
+      {photoPage && heroTrip && <PhotoBackdrop dark={themeDark} uri={heroTrip.image} />}
       <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -634,13 +635,13 @@ export default function HomeScreen() {
                 {/* The photo melts into the blurred copy of itself behind the page */}
                 <Animated.View style={[StyleSheet.absoluteFill, heroStretch]}>
                   <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-                  <PhotoDissolve uri={heroTrip.image} scrollY={scrollY} />
+                  <PhotoDissolve dark={themeDark} uri={heroTrip.image} scrollY={scrollY} />
                 </Animated.View>
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
                   <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{heroTrip.name}</Text>
-                  <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{factLine(heroTrip)}</Text>
-                  <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{fmtDay(heroTrip.start)} – {fmtDay(heroTrip.end)}</Text>
+                  <Text style={[styles.heroFact, styles.heroShadow]} numberOfLines={1}>{factLine(heroTrip)}</Text>
+                  <Text style={[styles.heroDates, styles.heroShadow]}>{fmtDay(heroTrip.start)} – {fmtDay(heroTrip.end)}</Text>
                 </View>
               </View>
             </Pressable>
@@ -657,9 +658,9 @@ export default function HomeScreen() {
                   style={styles.action}
                 >
                   {LIQUID_GLASS ? (
-                    // Always the dark glass: the page under it is the dark photo backdrop in either theme
-                    <GlassView glassEffectStyle="regular" colorScheme="dark" style={[styles.actionCircle, styles.actionGlass]}>
-                      <SymbolView name={a.symbol} size={21} tintColor="#fff" weight="medium" style={{ width: 24, height: 24 }} />
+                    // Glass that matches the page under it: dark over the photo backdrop, light on the light page
+                    <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={[styles.actionCircle, styles.actionGlass]}>
+                      <SymbolView name={a.symbol} size={21} tintColor={isDark ? "#fff" : C.textPrimary} weight="medium" style={{ width: 24, height: 24 }} />
                     </GlassView>
                   ) : (
                     <View style={styles.actionCircle}>
@@ -891,7 +892,7 @@ export default function HomeScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors, isDark: boolean, lightOnPhoto = false) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
@@ -901,19 +902,20 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // ── Cover ──
     hero: { justifyContent: "flex-end" },
     heroBody: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
-    heroShadow: {
+    // White over the photo in dark mode; on the light frost the title is plain dark text
+    heroShadow: lightOnPhoto ? {} : {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
+      fontSize: T.sm, fontWeight: T.bold, color: lightOnPhoto ? C.textSecondary : "rgba(255,255,255,0.9)",
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: lightOnPhoto ? C.textPrimary : "#fff", letterSpacing: -0.4, textAlign: "center",
     },
     heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textPrimary, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
 
     // ── Actions ──
     actions: {

@@ -11,7 +11,8 @@ try {
 const DEFAULT_BLURHASH = "L6PZfS~q-;j[j[j[fQj[j[fQj[";
 
 const APP_URL = (process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app").replace(/\/$/, "");
-const TRIP_COVER = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/trips%2F[^/?]+%2Fcover/;
+// Trip covers and event photos: both are organiser uploads stored at whatever size they came in
+const TRIP_COVER = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/trips%2F[^/?]+%2F(?:cover|events%2F)/;
 
 /**
  * Trip covers are stored at full camera size (often 2 MB and up), so they come through Vercel's image resizer

@@ -24,43 +24,46 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk, onOrgani
   // Says what it does only when there's a way to reach them; either way it opens who they are
   const reachable = !!(org?.phone?.trim() || org?.email?.trim());
 
-  const askTile = onAsk ? (
+  const infoTile = docCount > 0 ? (
     <ScalePress
       activeScale={0.97}
-      onPress={() => { Haptics.selectionAsync(); onAsk(); }}
+      onPress={() => { Haptics.selectionAsync(); onDocs(); }}
       accessibilityRole="button"
-      accessibilityLabel="Ask Dale about your trip"
+      accessibilityLabel="Essential info and emergency contacts from your organiser"
       style={s.tile}
     >
       <View style={s.iconTile}>
-        <ChatsTeardrop size={18} color={C.textPrimary} weight="fill" />
+        <FileText size={18} color={C.textPrimary} weight="fill" />
       </View>
       <View style={s.text}>
-        <Text style={s.title} numberOfLines={1}>Ask Dale</Text>
-        <Text style={s.sub} numberOfLines={1}>Quick answers</Text>
+        <Text style={s.title} numberOfLines={2}>Essential Info + Emergency Contacts</Text>
+        <Text style={s.sub} numberOfLines={1}>All the details</Text>
       </View>
       <CaretRight size={14} color={C.textTertiary} weight="regular" />
-        </ScalePress>
+    </ScalePress>
   ) : null;
-  const paired = (docCount > 0 ? 1 : 0) + (org ? 1 : 0);
+  const paired = (onAsk ? 1 : 0) + (org ? 1 : 0);
 
   return (
     <View style={s.wrap}>
+    {/* Essential info takes its own row above a full pair, or leads the row beside a lone tile */}
+    {paired === 2 && infoTile ? <View style={s.row}>{infoTile}</View> : null}
     <View style={s.row}>
-      {docCount > 0 ? (
+      {paired < 2 ? infoTile : null}
+      {onAsk ? (
         <ScalePress
           activeScale={0.97}
-          onPress={() => { Haptics.selectionAsync(); onDocs(); }}
+          onPress={() => { Haptics.selectionAsync(); onAsk(); }}
           accessibilityRole="button"
-          accessibilityLabel="Trip info from your organiser"
+          accessibilityLabel="Ask Dale about your trip"
           style={s.tile}
         >
           <View style={s.iconTile}>
-            <FileText size={18} color={C.textPrimary} weight="fill" />
+            <ChatsTeardrop size={18} color={C.textPrimary} weight="fill" />
           </View>
           <View style={s.text}>
-            <Text style={s.title} numberOfLines={1}>Trip info</Text>
-            <Text style={s.sub} numberOfLines={1}>All the details</Text>
+            <Text style={s.title} numberOfLines={1}>Ask Dale</Text>
+            <Text style={s.sub} numberOfLines={1}>Quick answers</Text>
           </View>
           <CaretRight size={14} color={C.textTertiary} weight="regular" />
         </ScalePress>
@@ -82,12 +85,9 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer, onAsk, onOrgani
           <CaretRight size={14} color={C.textTertiary} weight="regular" />
         </ScalePress>
       ) : null}
-      {/* Ask fills the second half beside a lone tile, or takes its own row under a full pair */}
-      {paired < 2 ? askTile : null}
       {/* A lone tile keeps its half width, so every trip's layout matches */}
-      {paired === 1 && !askTile ? <View style={{ flex: 1 }} /> : null}
+      {paired === 1 && !infoTile ? <View style={{ flex: 1 }} /> : null}
     </View>
-    {paired === 2 && askTile ? <View style={s.row}>{askTile}</View> : null}
     </View>
   );
 }

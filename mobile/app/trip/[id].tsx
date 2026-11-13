@@ -100,8 +100,8 @@ export default function TripScreen() {
   // Invites-style: a trip with a cover photo gets a photo backdrop, so the page always uses the dark palette
   const photoPage = !!trips.find(t => t.id === id)?.image;
   // On the photo backdrop, secondary text is white at partial strength (like Invites) so it reads on any photo's colours
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeDark, themeC]);
-  const isDark = photoPage || themeDark;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeDark, themeC]);
+  const isDark = themeDark;
   const { brand } = useBrand();
   const { isLeader, isCoordinator } = useTripRole(id);
   const linkedTravelerId = useLinkedTravelerId(id);
@@ -112,7 +112,9 @@ export default function TripScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/(tabs)");
   }, [router]);
-  const styles = useMemo(() => makeStyles(C, isDark, photoPage), [C, isDark, photoPage]);
+  // White title over the cover in dark mode; in light mode the cover fades into the frost and the title is dark text
+  const heroOnPhoto = !!trips.find(t => t.id === id)?.image && isDark;
+  const styles = useMemo(() => makeStyles(C, isDark, photoPage, heroOnPhoto), [C, isDark, photoPage, heroOnPhoto]);
   const trip = trips.find(t => t.id === id);
 
   // ── Parallax scroll state ──
@@ -189,7 +191,7 @@ export default function TripScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- removes the old map point when the trip has no destination to geocode
     if (!trip?.destination) { setDestCoords(null); return; }
     let cancelled = false;
-    geocode(trip.destination).then(c => { if (!cancelled) setDestCoords(c); });
+    geocode(trip.destination, undefined, true).then(c => { if (!cancelled) setDestCoords(c); });
     return () => { cancelled = true; };
   }, [trip?.destination]);
 
@@ -386,7 +388,7 @@ export default function TripScreen() {
 
   return (
     <View style={styles.safe}>
-      {photoPage && <PhotoBackdrop uri={trip.image} />}
+      {photoPage && <PhotoBackdrop dark={themeDark} uri={trip.image} />}
       <Stack.Screen options={{
         headerShown: true,
         headerTransparent: true,
@@ -473,9 +475,9 @@ export default function TripScreen() {
               </Animated.View>
               </PhotoBlend>
             )}
-            {photoPage && <PhotoDissolve uri={trip.image} scrollY={scrollY} />}
-            {/* Shade behind the title block so the dates and host line hold over bright photos */}
-            {photoPage && (
+            {photoPage && <PhotoDissolve dark={themeDark} uri={trip.image} scrollY={scrollY} />}
+            {/* Shade behind the title block so the dates and host line hold over bright photos (dark mode's white title) */}
+            {photoPage && isDark && (
               <LinearGradient
                 pointerEvents="none"
                 // Fades back out at the foot so it melts into the page instead of ending in a line
@@ -491,10 +493,10 @@ export default function TripScreen() {
                 <Text style={styles.flag}>{flag}</Text>
               </View>
             ) : null}
-            {trip.destination ? <Text style={[styles.heroDest, photoPage && styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
-            <Text style={[styles.heroName, photoPage && styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
-            <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
-            <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
+            {trip.destination ? <Text style={[styles.heroDest, heroOnPhoto && styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
+            <Text style={[styles.heroName, heroOnPhoto && styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
+            <Text style={[styles.heroFact, heroOnPhoto && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
+            <Text style={[styles.heroDates, heroOnPhoto && styles.heroShadow]}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
 
             {/* A hosted group, not a solo plan: who is coming and who is looking after them */}
             <Pressable
@@ -520,7 +522,7 @@ export default function TripScreen() {
                   )}
                 </View>
               )}
-              <Text style={[styles.groupText, isDark && styles.heroShadow]} numberOfLines={1}>
+              <Text style={[styles.groupText, heroOnPhoto && styles.heroShadow]} numberOfLines={1}>
                 {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"}, ` : ""}Hosted by {brand.name}
               </Text>
               {brand.logoUrl ? <Image source={{ uri: brand.logoUrl }} style={styles.hostLogo} accessible={false} /> : null}
@@ -559,21 +561,16 @@ export default function TripScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextTitle} numberOfLines={2}>{cleanTitle(upNext.title)}</Text>
                 <Text style={styles.nextSub} numberOfLines={1}>
-                  {upNext.location ? tidyTitleSeparators(upNext.location) : ""}
+                  {upNext.type === "flight" && upNext.date === todayKey() && !isPlaceholderTime(upNext.time)
+                    ? `Departs ${upNext.time}`
+                    : upNext.type === "flight" && upNext.flightNum
+                      ? upNext.flightNum
+                      : upNext.location ? tidyTitleSeparators(upNext.location) : ""}
                 </Text>
               </View>
               <CaretRight size={14} color={C.textTertiary} weight="regular" />
             </Pressable>
-            {upNext.type === "flight" ? (
-              <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/event?tripId=${trip.id}&eventId=${upNext.id}`); }}
-                accessibilityRole="button"
-                accessibilityLabel="View flight"
-                style={({ pressed }) => [styles.nextAction, { opacity: pressed ? 0.6 : 1 }]}
-              >
-                <Text style={styles.nextActionText}>View flight</Text>
-              </Pressable>
-            ) : upNext.location ? (
+            {upNext.type !== "flight" && upNext.location ? (
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -802,9 +799,9 @@ export default function TripScreen() {
         style={[{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: pinTop, zIndex: 15 }, stripBackingStyle]}
       >
         {photoPage && Platform.OS === "android"
-          ? <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(9,9,11,0.97)" }]} />
+          ? <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(247,247,249,0.97)" }]} />
           : photoPage
-          ? <BlurView intensity={100} tint="systemChromeMaterialDark" style={StyleSheet.absoluteFill} />
+          ? <BlurView intensity={100} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} />
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />}
         {renderStrip()}
       </Animated.View>
@@ -812,9 +809,9 @@ export default function TripScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
+function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false, onPhoto = photoBackdrop) {
   return StyleSheet.create({
-    safe:   { flex: 1, backgroundColor: photoBackdrop ? "#000" : C.bg },
+    safe:   { flex: 1, backgroundColor: photoBackdrop && isDark ? "#000" : C.bg },
     scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
@@ -828,6 +825,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
 
     // Hero
     hero: { height: HERO_H, justifyContent: "flex-end" },
+    // On a light page the cover fades out under the title block, so the block sits higher to stay on the photo
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
     // Both themes keep white text over the photo; the page fade starts below it.
     heroShadow: {
@@ -836,14 +834,14 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
     },
     // White sits on the photo; a trip without one shows the title on the plain page
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: photoBackdrop ? "rgba(255,255,255,0.9)" : C.textSecondary,
+      fontSize: T.sm, fontWeight: T.bold, color: onPhoto ? "rgba(255,255,255,0.9)" : C.textSecondary,
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: photoBackdrop ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: onPhoto ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.88)" : C.textPrimary, textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark || onPhoto ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, fontWeight: T.medium, color: isDark || onPhoto ? "rgba(255,255,255,0.88)" : C.textPrimary, textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
@@ -859,7 +857,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
     avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "rgba(0,0,0,0.82)" },
-    groupText: { fontSize: T.sm, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.94)" : C.textPrimary, flexShrink: 1 },
+    groupText: { fontSize: T.sm, fontWeight: T.semibold, color: isDark || onPhoto ? "rgba(255,255,255,0.94)" : C.textPrimary, flexShrink: 1 },
     hostLogo: { flexShrink: 0, width: 16, height: 16, borderRadius: 4 },
 
     // Next up
@@ -888,7 +886,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
     stripDay: {
       width: 52, paddingTop: S.xs, paddingBottom: S.xs2, paddingHorizontal: S.xs2,
       alignItems: "center", gap: 2,
-      backgroundColor: photoBackdrop ? "rgba(255,255,255,0.12)" : C.card, borderRadius: R.sm,
+      backgroundColor: photoBackdrop ? C.elevated : C.card, borderRadius: R.sm,
       borderWidth: 1.5, borderColor: "transparent",
     },
     stripDayToday: { borderColor: C.teal },

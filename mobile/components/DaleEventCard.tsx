@@ -18,8 +18,18 @@ const LOGO_PLATE = "#fff";
 const LIQUID_GLASS = isLiquidGlassAvailable();
 
 /** A card's ground: Liquid Glass where the system has it, else a see-through tint with a hairline edge */
-export function Ground({ glass, C }: { glass?: boolean; C: ThemeColors }) {
+/** "frost": a soft white frost with no outline, for cards sitting on a photo */
+export type GlassKind = boolean | "frost";
+
+export function Ground({ glass, C }: { glass?: GlassKind; C: ThemeColors }) {
   if (!glass) return null;
+  // Over a photo the card colour turns into a grey slab; a white frost lets the photo through instead
+  if (glass === "frost") {
+    const frost = { borderRadius: R.lg, backgroundColor: "rgba(255,255,255,0.12)" };
+    return LIQUID_GLASS
+      ? <GlassView glassEffectStyle="clear" style={[StyleSheet.absoluteFill, { borderRadius: R.lg }]} />
+      : <View style={[StyleSheet.absoluteFill, frost]} />;
+  }
   // Tinted with the card colour so the card reads as a card, not a hole in the sheet
   // Android has no glass to soften what shows through, so its cards are solid
   const tint = Platform.OS !== "android" && /^#[0-9a-f]{6}$/i.test(C.card) ? `${C.card}99` : C.elevated;
@@ -66,8 +76,8 @@ function route(ev: TravelEvent): { from: string; to: string } {
  */
 export function DaleEventCard({ ev, C, onPress, stayEnd, glass }: {
   ev: TravelEvent; C: ThemeColors; onPress: () => void; stayEnd?: string;
-  /** On a glass sheet: the card is glass too rather than a solid slab */
-  glass?: boolean;
+  /** On a glass sheet: the card is glass too rather than a solid slab; "frost" over a photo */
+  glass?: GlassKind;
 }) {
   const title = tidyTitleSeparators(ev.title);
   if (ev.type === "flight") return <FlightCard ev={ev} C={C} onPress={onPress} title={title} glass={glass} />;
@@ -97,7 +107,7 @@ export function DaleEventCard({ ev, C, onPress, stayEnd, glass }: {
   );
 }
 
-function FlightCard({ ev, C, onPress, title, glass }: { ev: TravelEvent; C: ThemeColors; onPress: () => void; title: string; glass?: boolean }) {
+function FlightCard({ ev, C, onPress, title, glass }: { ev: TravelEvent; C: ThemeColors; onPress: () => void; title: string; glass?: GlassKind }) {
   // Live status only around the day itself; further out the schedule is the answer and lookups cost money
   const now = useMinuteClock();
   const near = Math.abs(parseTripDate(ev.date).getTime() - now) < 1.5 * DAY_MS;

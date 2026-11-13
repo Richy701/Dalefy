@@ -14,8 +14,11 @@ function km([lat1, lng1]: Coord, [lat2, lng2]: Coord): number {
 }
 const inflight = new Map<string, Promise<Coord | null>>();
 
-/** `near` is [lat, lng]; when given, results are biased toward it (e.g. the trip destination) and anything further than MAX_KM is rejected. */
-export async function geocode(location: string, near?: Coord): Promise<Coord | null> {
+/**
+ * `near` is [lat, lng]; when given, results are biased toward it (e.g. the trip destination) and anything further than MAX_KM is rejected.
+ * `area` accepts a country or region match, for looking up a trip's destination ("Maldives") rather than a venue.
+ */
+export async function geocode(location: string, near?: Coord, area = false): Promise<Coord | null> {
   if (!location) return null;
   const loc = location.trim();
   if (!loc) return null;
@@ -23,7 +26,7 @@ export async function geocode(location: string, near?: Coord): Promise<Coord | n
   const fromStatic = resolveCoords(loc);
   if (fromStatic) return fromStatic;
 
-  const key = near ? `${loc}@${near[0]},${near[1]}` : loc;
+  const key = (near ? `${loc}@${near[0]},${near[1]}` : loc) + (area ? "#area" : "");
 
   if (key in memCache) return memCache[key];
   if (inflight.has(key)) return inflight.get(key)!;
@@ -39,7 +42,7 @@ export async function geocode(location: string, near?: Coord): Promise<Coord | n
       const feat = data?.features?.[0];
       if (!feat?.center) return null;
       // A country/region match means the venue itself was not found
-      if ((feat.place_type ?? []).some((t: string) => AREA_PLACE_TYPES.has(t))) { memCache[key] = null; return null; }
+      if (!area && (feat.place_type ?? []).some((t: string) => AREA_PLACE_TYPES.has(t))) { memCache[key] = null; return null; }
       const coord: Coord = [feat.center[1], feat.center[0]]; // [lat, lng]
       if (near && km(near, coord) > MAX_KM) { memCache[key] = null; return null; }
       memCache[key] = coord;

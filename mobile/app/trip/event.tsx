@@ -49,6 +49,9 @@ import { CategoryDot } from "@/components/ui/CategoryDot";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { RichText } from "@/components/ui/RichText";
+import { Avatar } from "@/components/ui/Avatar";
+import { fetchDayForecast, type DayForecast } from "@/services/weather";
+import { getDestinationTz } from "@/shared/timezones";
 
 // Airline logo plate stays white in both themes so carrier marks render as designed
 const HERO_H = 460;
@@ -141,6 +144,38 @@ function daysAgoText(d: string): string | null {
     - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86400000);
   if (days < 1) return null;
   return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+/** Sunset at [lng, lat] on a YYYY-MM-DD date as "HH:MM" in the given time zone (NOAA approximation, within a minute or two) */
+function sunsetAt([lng, lat]: [number, number], date: string, timeZone?: string): string | null {
+  const d = new Date(date + "T12:00:00Z");
+  if (isNaN(d.getTime())) return null;
+  const rad = Math.PI / 180;
+  const day = Math.floor((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000);
+  const g = (2 * Math.PI / 365) * (day - 1);
+  const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const cosHa = Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(decl)) - Math.tan(lat * rad) * Math.tan(decl);
+  if (cosHa < -1 || cosHa > 1) return null;
+  const ha = Math.acos(cosHa) / rad;
+  const utcMinutes = 720 - 4 * (lng - ha) - eqTime;
+  const at = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + utcMinutes * 60000);
+  try {
+    return at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone });
+  } catch {
+    return null;
+  }
+}
+
+/** "today", "tomorrow", "in 4 days"; null for past dates */
+function daysUntilText(d: string): string | null {
+  const date = new Date(d.includes("T") ? d : d + "T12:00:00");
+  if (isNaN(date.getTime())) return null;
+  const today = new Date();
+  const days = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+    - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86400000);
+  if (days < 0) return null;
+  return days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
 }
 
 function formatShortDate(d: string): string {
@@ -400,8 +435,8 @@ export default function EventDetailScreen() {
     return e.image || t?.image || null;
   })();
   const photoPage = !!backdropImage;
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
-  const isDark = photoPage || themeDark;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = themeDark;
   const { isLeader } = useTripRole(tripId);
   const insets = useSafeAreaInsets();
   const { onScroll, stretchStyle, scrollY } = useBannerStretch(EV_HERO_H + insets.top);
@@ -426,7 +461,7 @@ export default function EventDetailScreen() {
     setResolved(null);
     let cancelled = false;
     (async () => {
-      const dest = tripDest ? await geocode(tripDest) : null;
+      const dest = tripDest ? await geocode(tripDest, undefined, true) : null;
       const near = dest ?? undefined;
       const loc = evLocation ? await geocode(evLocation, near) : null;
       if (cancelled) return;
@@ -436,6 +471,35 @@ export default function EventDetailScreen() {
     })();
     return () => { cancelled = true; };
   }, [evLocation, tripDest]);
+
+  // Where the group sleeps that night: the fallback map pin and the place the forecast is for
+  const nightStay = useMemo(() => {
+    // Stored coordinates come in either order, so wait for the destination to say which way round they are
+    if (!trip || !ev || !resolved?.ref || ev.type === "flight" || ev.type === "hotel") return null;
+    const h = trip.events
+      // Only a stay that covers this date: before the first hotel the group is still travelling
+      .filter(e => e.type === "hotel" && e.locationCoords && e.date <= ev.date && (stayDates(e, trip.events).to || e.date) >= ev.date)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .pop();
+    const c = h ? toLngLat(h.locationCoords, resolved.ref) : undefined;
+    return h && c ? { coord: c, name: cleanEventTitle(h.title, h.type).split(" – ")[0] } : null;
+  }, [trip, ev, resolved]);
+  // Near the destination only, so its time zone is the right one for sunset and the forecast isn't another country's
+  const weatherAt = nightStay?.coord && resolved?.ref && distanceKm(nightStay.coord, resolved.ref) < 500 ? nightStay.coord : null;
+  const weatherKey = weatherAt && ev?.date && (ev.type === "activity" || ev.type === "dining") ? `${weatherAt[0].toFixed(2)},${weatherAt[1].toFixed(2)},${ev.date}` : "";
+  const [forecast, setForecast] = useState<DayForecast | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the last event's forecast must not show while this one loads
+    setForecast(null);
+    if (!weatherKey) return;
+    const [lng, lat, date] = weatherKey.split(",");
+    const days = (new Date(date + "T12:00:00").getTime() - Date.now()) / 86400000;
+    // The provider forecasts five days out; past days have nothing to say
+    if (days < -1 || days > 5) return;
+    let cancelled = false;
+    fetchDayForecast([Number(lng), Number(lat)], date).then(f => { if (!cancelled) setForecast(f); });
+    return () => { cancelled = true; };
+  }, [weatherKey]);
 
   if (!trip || !ev) {
     return (
@@ -469,7 +533,8 @@ export default function EventDetailScreen() {
     ? ((storedIsCentroid || storedIsFar ? undefined : storedLngLat) ?? resolved.geo ?? undefined)
     : undefined;
   // Live timing: "Starts in" within 24h, "Ends in" while underway (needs an end time)
-  const startAt = ev.date ? parseEventDateTime(ev.date, ev.time).getTime() : NaN;
+  // No countdown to a time nobody knows yet ("TBD" would otherwise count to midnight)
+  const startAt = ev.date && ev.time && !/^tb[acd]$/i.test(ev.time) ? parseEventDateTime(ev.date, ev.time).getTime() : NaN;
   const endAt = ev.date && ev.endTime ? parseEventDateTime(ev.endDate || ev.date, ev.endTime).getTime() : NaN;
   const startsIn = !isNaN(startAt) && startAt > nowMs && startAt - nowMs < 24 * 3600000 ? formatGap(startAt - nowMs) : null;
   const endsIn = !isNaN(startAt) && !isNaN(endAt) && nowMs >= startAt && nowMs < endAt ? formatGap(endAt - nowMs) : null;
@@ -493,7 +558,6 @@ export default function EventDetailScreen() {
 
   const detailRows: Array<{ icon: PhosphorIcon; label: string; value: string; onPress?: () => void }> = [];
   // Transfers: where to meet and who to look for, first, as that's what travellers need on the day
-  if (ev.type === "transfer" && ev.meetingPoint?.trim()) detailRows.push({ icon: MapPin, label: "Meet at", value: ev.meetingPoint.trim() });
   if (ev.type === "transfer" && (ev.contactName?.trim() || ev.contactPhone?.trim())) {
     const phone = ev.contactPhone?.trim() ?? "";
     detailRows.push({
@@ -533,6 +597,8 @@ export default function EventDetailScreen() {
     const parts = tidyLocation(ev.location).split(/\s+to\s+/i);
     return parts.length === 2 ? { from: parts[0], to: parts[1] } : null;
   })() : null;
+  // With a route, where to meet sits under the pickup; without one it leads the details
+  if (isTransfer && ev.meetingPoint?.trim() && !route) detailRows.unshift({ icon: MapPin, label: "Meet at", value: ev.meetingPoint.trim() });
   // A transfer straight after a flight on the same day meets that flight
   const prevEvent = dayIdx > 0 ? dayEvents[dayIdx - 1] : null;
   const meetsFlight = isTransfer && prevEvent?.type === "flight" ? prevEvent : null;
@@ -556,18 +622,35 @@ export default function EventDetailScreen() {
     { label: "Before", e: dayIdx > 0 ? dayEvents[dayIdx - 1] : null },
     { label: "Up next", e: dayIdx >= 0 && dayIdx < dayEvents.length - 1 ? dayEvents[dayIdx + 1] : null },
   ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
-  const upNextEvent = neighbours.some(n => n.label === "Up next");
   // An event with only a title and a time: a shorter photo and the time as a line, so the page reads as a summary
   const thin = !isHotel && !ev.location && !ev.description && !ev.notes && !hasDocs && detailRows.length === 0;
   const photoH = Math.round((photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) * (thin ? 0.6 : 1));
+  // Activities and meals read as a story: what it is, when and where in one line, the description, then the day around it
+  const isStory = ev.type === "activity" || ev.type === "dining";
+  // Transfers share the story page's short header and Going row
+  const storyHeader = isStory || isTransfer;
+  // A geocoded guess at a resort venue ("Dive Centre") can land anywhere, so their map needs coordinates the organiser saved
+  const venueCoords = storedLngLat && !storedIsCentroid && !storedIsFar ? storedLngLat : undefined;
+  const mapCoords = isStory ? venueCoords ?? nightStay?.coord : locationCoords;
+  // On the fallback the pin is the hotel, so it says so
+  const mapLabel = isStory && !venueCoords && nightStay ? nightStay.name : (isHotel ? stayName : title).split(" – ")[0];
+  const evening = /sunset|sundowner|dusk|evening/i.test(`${ev.title} ${ev.description ?? ""}`) || (parseInt(ev.time) >= 16 && parseInt(ev.time) <= 20);
+  const sunset = isStory && evening && weatherAt ? sunsetAt(weatherAt, ev.date, getDestinationTz(trip.destination)) : null;
+  const conditions = isStory ? [
+    forecast ? `${Math.round(forecast.high)}°, ${forecast.description.charAt(0).toUpperCase()}${forecast.description.slice(1)}` : null,
+    forecast && forecast.rainChance >= 30 ? `${Math.round(forecast.rainChance)}% chance of rain` : null,
+    sunset ? `Sunset ${sunset}` : null,
+  ].filter((x): x is string => !!x) : [];
+  // Nobody assigned means the whole group
+  const going = ev.assignedTo?.length ? (trip.travelers ?? []).filter(t => ev.assignedTo!.includes(t.id)) : trip.travelers ?? [];
   const goToEvent = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace({ pathname: "/trip/event", params: { tripId: trip.id, eventId: id } });
   };
 
   return (
-    <View style={[styles.safe, photoPage && { backgroundColor: "#000" }]}>
-      {photoPage && <PhotoBackdrop uri={backdropImage!} shade={EV_SHADE} />}
+    <View style={[styles.safe, photoPage && isDark && { backgroundColor: "#000" }]}>
+      {photoPage && <PhotoBackdrop dark={themeDark} uri={backdropImage!} shade={isDark ? EV_SHADE : undefined} />}
       <Stack.Screen options={{
         headerShown: true,
         // The event's own title sits right under the photo, so the bar doesn't repeat a generic "Hotel" or "Activity"
@@ -608,7 +691,7 @@ export default function EventDetailScreen() {
                 <>
                   <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={heroPosition(ev.imagePosition)} accessible={false} />
                   <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-                  <PhotoDissolve uri={ev.image!} scrollY={scrollY} shade={EV_SHADE} />
+                  <PhotoDissolve dark={themeDark} uri={ev.image!} scrollY={scrollY} shade={isDark ? EV_SHADE : undefined} />
                 </>
               ) : (
                 <PhotoBlend>
@@ -629,26 +712,30 @@ export default function EventDetailScreen() {
             </View>
           )}
           {/* The title leads; when it happens sits under it as one line */}
+          {isStory ? <Text style={[styles.heroFact, { color: categoryTone(ev.type, C).fg }]}>{TYPE_LABELS[ev.type]}</Text> : null}
           <Text style={[styles.heroTitle, titleSize(isHotel ? stayName : title), { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
           {isHotel && stayDetail ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{stayDetail}</Text> : null}
           {nightLine ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{nightLine}</Text> : null}
           {isHotel && liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
           {/* When, on its own card: the first thing someone opening this on the day is looking for */}
-          {!isHotel && thin && (
+          {!isHotel && (thin || storyHeader) && (
             <View style={{ gap: 2, marginTop: 2 }} accessible accessibilityLabel={[whenText, ev.date ? formatLongDate(ev.date) : null, durationText(ev.duration), liveLine].filter(Boolean).join(", ")}>
               <Text style={[styles.heroFact, { color: C.textSecondary }]}>
                 {[
-                  whenText,
-                  ev.date ? formatLongDate(ev.date) : null,
+                  storyHeader ? null : whenText,
+                  storyHeader && ev.date ? formatShortDate(ev.date) : null,
+                  storyHeader ? whenText : null,
+                  !storyHeader && ev.date ? formatLongDate(ev.date) : null,
                   ev.date ? daysAgoText(ev.date) : null,
-                  whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
+                  storyHeader && ev.date && !liveLine ? daysUntilText(ev.date) : null,
+                  whenText ? null : isTransfer ? "pickup time TBC" : "time to be confirmed",
                   durationText(ev.duration),
                 ].filter(Boolean).join(", ")}
               </Text>
               {liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
             </View>
           )}
-          {!isHotel && !thin && (
+          {!isHotel && !thin && !storyHeader && (
             <View style={[styles.whenCard, { backgroundColor: C.elevated }]} accessible accessibilityLabel={[whenText, ev.date ? formatLongDate(ev.date) : null, durationText(ev.duration), liveLine].filter(Boolean).join(", ")}>
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 {whenText ? <Text style={[styles.timeBig, { color: C.textPrimary }]}>{whenText}</Text> : null}
@@ -698,41 +785,80 @@ export default function EventDetailScreen() {
           </View>
         )}
 
-        {/* Transfer: pickup to drop-off */}
-        {route && (
-          <View style={styles.routeBlock}>
-            <View style={styles.routeStop}>
-              <View style={styles.routeRail}>
-                <View style={[styles.routeDotOpen, { borderColor: C.textPrimary }]} />
-                <View style={[styles.routeLineV, { backgroundColor: C.border }]} />
+        {/* Transfer: a ticket like the flight's, pickup to drop-off with what you need at the kerb */}
+        {route && (() => {
+          const tone = categoryTone("transfer", C);
+          const pickupTime = knownTime(ev.time) ? ev.time : null;
+          const dropTime = knownTime(ev.endTime) ? ev.endTime! : null;
+          const driver = [ev.contactName?.trim(), ev.contactPhone?.trim()].filter(Boolean).join(", ");
+          const phone = ev.contactPhone?.trim() ?? "";
+          return (
+            <View style={[styles.ticket, { backgroundColor: C.elevated }]}>
+              <View style={styles.ticketRoute}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>From</Text>
+                  <Text style={[styles.ticketPlace, { color: C.textPrimary }]} numberOfLines={3}>{route.from}</Text>
+                </View>
+                <View style={[styles.ticketArrow, { backgroundColor: tone.bg }]}>
+                  <CategoryDot palette={C} type="transfer" transferType={ev.transferType} size={32} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0, alignItems: "flex-end" }}>
+                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>To</Text>
+                  <Text style={[styles.ticketPlace, { color: C.textPrimary, textAlign: "right" }]} numberOfLines={3}>{route.to}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1, paddingBottom: S.md, gap: 2 }}>
-                <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Pickup</Text>
-                <Text style={[styles.routePlace, { color: C.textPrimary }]}>{route.from}</Text>
-                {meetsFlight ? (
-                  <Text style={[styles.heroFact, { color: C.textSecondary }]}>
-                    Meets {[meetsFlight.flightNum, cleanEventTitle(meetsFlight.title, meetsFlight.type).split(" – ")[0]].filter(Boolean)[0]}, lands {meetsFlight.endTime && !/^tb[acd]$/i.test(meetsFlight.endTime) ? formatTo24h(meetsFlight.endTime) : "time TBC"}
-                  </Text>
+
+              <View style={[styles.ticketPanel, { backgroundColor: C.card }]}>
+                <View style={{ flexDirection: "row" }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Pickup</Text>
+                    <Text style={[styles.ticketTime, { color: pickupTime ? C.textPrimary : C.textTertiary }]}>{pickupTime ?? "TBC"}</Text>
+                  </View>
+                  <View style={{ flex: 1, alignItems: "flex-end" }}>
+                    <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Drop-off</Text>
+                    <Text style={[styles.ticketTime, { color: dropTime ? C.textPrimary : C.textTertiary }]}>{dropTime ?? "TBC"}</Text>
+                  </View>
+                </View>
+                {ev.meetingPoint?.trim() || meetsFlight || driver ? (
+                  <View style={[styles.ticketNotes, { borderTopColor: C.border }]}>
+                    {ev.meetingPoint?.trim() ? <Text style={[styles.ticketNote, { color: C.textPrimary }]}>Meet at {ev.meetingPoint.trim()}</Text> : null}
+                    {meetsFlight ? (
+                      <Text style={[styles.ticketNote, { color: C.textSecondary }]}>
+                        Meets {[meetsFlight.flightNum, cleanEventTitle(meetsFlight.title, meetsFlight.type).split(" – ")[0]].filter(Boolean)[0]}, lands {meetsFlight.endTime && !/^tb[acd]$/i.test(meetsFlight.endTime) ? formatTo24h(meetsFlight.endTime) : "time TBC"}
+                      </Text>
+                    ) : null}
+                    {driver ? (
+                      <Pressable
+                        disabled={!phone}
+                        onPress={() => { Linking.openURL(`tel:${phone.replace(/[^\d+]/g, "")}`).catch(() => {}); }}
+                        accessibilityRole={phone ? "button" : undefined}
+                        accessibilityLabel={phone ? `Call ${driver}` : `Driver or guide, ${driver}`}
+                      >
+                        <Text style={[styles.ticketNote, { color: C.textSecondary }]}>Driver or guide: <Text style={{ color: phone ? C.tealText : C.textPrimary }}>{driver}</Text></Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
-            </View>
-            <View style={styles.routeStop}>
-              <View style={styles.routeRail}>
-                <View style={[styles.routeDotSolid, { backgroundColor: C.textPrimary }]} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Drop-off</Text>
-                <Text style={[styles.routePlace, { color: C.textPrimary }]}>{route.to}</Text>
-              </View>
-            </View>
-          </View>
-        )}
 
-        {/* Location card */}
-        {ev.location && (
+              <Pressable
+                onPress={() => openInMaps(ev.location, locationCoords)}
+                accessibilityRole="button"
+                accessibilityLabel={`Directions to ${route.to}`}
+                style={({ pressed }) => [styles.ticketFoot, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>Directions</Text>
+                <CaretRight size={12} color={C.tealText} weight="bold" />
+              </Pressable>
+            </View>
+          );
+        })()}
+
+        {/* Location card; a transfer's route already has its Directions, so only a map would be left */}
+        {ev.location && (!route || locationCoords) && (
           <Animated.View>
             <Pressable
-              onPress={() => openInMaps(ev.location, locationCoords)}
+              onPress={() => openInMaps(ev.location, mapCoords)}
               // The full address copies for a taxi app or a message
               onLongPress={() => { Clipboard.setStringAsync(tidyLocation(ev.location!)).then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)).catch(() => {}); }}
               accessibilityRole="button"
@@ -740,14 +866,10 @@ export default function EventDetailScreen() {
               accessibilityHint="Long press to copy the address"
               style={({ pressed }) => [styles.locationCard, { opacity: pressed ? 0.85 : 1 }]}
             >
-              {route ? (
-                <View style={[styles.locationRow, { justifyContent: "flex-end" }]}>
-                  <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.tealText }}>Directions</Text>
-                </View>
-              ) : (
+              {route ? null : (
                 <>
-                  {isHotel ? null : <Text style={styles.sectionLabel}>Where</Text>}
-                  <View style={[styles.locationRow, isHotel && { alignItems: "center" }]}>
+                  {isHotel || isStory ? null : <Text style={styles.sectionLabel}>Where</Text>}
+                  <View style={[styles.locationRow, (isHotel || isStory) && { alignItems: "center" }]}>
                     <View style={{ flex: 1, gap: 2 }}>
                       {isHotel ? <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Address</Text> : null}
                       <Text style={[styles.locationValue, { color: C.textPrimary }]}>{tidyLocation(ev.location)}</Text>
@@ -757,9 +879,9 @@ export default function EventDetailScreen() {
                   </View>
                 </>
               )}
-              {locationCoords && (
+              {mapCoords && (
                 <View style={{ borderRadius: R.md, overflow: "hidden" }}>
-                  <EventLocationMap coords={locationCoords} accentColor={categoryTone(ev.type, C).fg} isDark={isDark} label={(isHotel ? stayName : title).split(" – ")[0]} />
+                  <EventLocationMap coords={mapCoords} accentColor={categoryTone(ev.type, C).fg} isDark={isDark} label={mapLabel} />
                 </View>
               )}
             </Pressable>
@@ -767,9 +889,9 @@ export default function EventDetailScreen() {
         )}
 
         {/* Details list */}
-        {detailRows.length > 0 && (
+        {detailRows.some(r => !(route && r.label === "Driver or guide")) && (
           <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
-            {detailRows.map((row, i) => {
+            {detailRows.filter(r => !(route && r.label === "Driver or guide")).map((row, i, rows) => {
               const RowIcon = row.icon;
               return (
                 <Pressable
@@ -779,7 +901,7 @@ export default function EventDetailScreen() {
                   accessibilityLabel={row.onPress ? `Copy ${row.label}` : undefined}
                   style={[
                     styles.detailListRow,
-                    i < detailRows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
+                    i < rows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
                   <RowIcon size={16} color={C.textTertiary} weight="regular" style={{ marginTop: 2 }} />
@@ -795,14 +917,28 @@ export default function EventDetailScreen() {
         {/* Notes / description — single section, no double label */}
         {(ev.description || ev.notes) && (
           <Animated.View style={styles.infoCard}>
-            <MicroLabel color={C.textPrimary} style={{ marginBottom: S.sm }}>Good to know</MicroLabel>
+            {isStory ? null : <MicroLabel color={C.textPrimary} style={{ marginBottom: S.sm }}>Good to know</MicroLabel>}
             {ev.description && (
-              <RichText text={ev.description} style={[styles.infoValue, { color: C.textPrimary }]} linkColor={C.tealText} />
+              <RichText text={ev.description} style={[styles.infoValue, isStory && styles.storyLede, { color: C.textPrimary }]} linkColor={C.tealText} />
             )}
             {ev.description && ev.notes && <View style={{ height: S.sm }} />}
             {ev.notes && (
               <RichText text={ev.notes} style={[styles.infoValue, { color: C.textPrimary }]} linkColor={C.tealText} />
             )}
+          </Animated.View>
+        )}
+
+        {/* On the day: the forecast where the group is staying, and sunset for evening plans */}
+        {conditions.length > 0 && (
+          <Animated.View style={styles.infoCard}>
+            <Text style={styles.sectionLabel}>On the day</Text>
+            <View style={styles.conditionsRow}>
+              {conditions.map(c => (
+                <View key={c} style={[styles.conditionChip, { backgroundColor: C.elevated }]}>
+                  <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textPrimary }}>{c}</Text>
+                </View>
+              ))}
+            </View>
           </Animated.View>
         )}
 
@@ -843,45 +979,48 @@ export default function EventDetailScreen() {
           </Animated.View>
         )}
 
-        {/* What's next that day; what came before follows it, under its own label */}
+        {/* Who's going: the group, or the people the organiser put on it */}
+        {storyHeader && going.length > 0 && (
+          <Animated.View style={styles.infoCard}>
+            <GoingRow trip={trip} ev={ev} C={C} onPress={() => router.push({ pathname: "/trip/people", params: { tripId: trip.id } })} />
+          </Animated.View>
+        )}
+
+        {/* Before and next that day, side by side in the order they happen */}
         {neighbours.length > 0 && (
-          <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
-            <Text style={[styles.sectionLabel, { paddingHorizontal: S.md }]}>{upNextEvent ? "Next" : "Before"}</Text>
-            {[...neighbours].sort((a, b) => Number(b.label === "Up next") - Number(a.label === "Up next")).map(({ label, e }, i) => {
+          <Animated.View style={styles.neighbourRow}>
+            {[...neighbours].sort((x, y) => Number(x.label === "Up next") - Number(y.label === "Up next")).map(({ label, e }) => {
               const isNext = label === "Up next";
               const logo = e.type === "flight" ? airlineLogo((e.flightNum || e.title).match(/\b([A-Z0-9]{2})[\s-]?\d{1,4}\b/)?.[1]) : null;
               const gap = isNext ? minutesBetween(ev.endDate || ev.date, ev.endTime || ev.time, e.date, e.time) : null;
-              const sub = [e.type === "flight" ? e.flightNum?.trim() : null, gap != null ? `${gapText(gap)} after this` : null].filter(Boolean).join(", ");
+              const tbc = !e.time || /^tb[acd]$/i.test(e.time);
               const name = e.type === "hotel" ? cleanEventTitle(e.title, e.type, e.transferType).split(" – ")[0] : cleanEventTitle(e.title, e.type, e.transferType);
+              const when = [tbc ? "Time TBC" : e.time, gap != null ? `${gapText(gap)} later` : null].filter(Boolean).join(", ");
               return (
                 <Pressable
                   key={e.id}
                   onPress={() => goToEvent(e.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${isNext ? "Next" : "Before"}: ${name}${sub ? `, ${sub}` : ""}`}
-                  style={({ pressed }) => [
-                    styles.detailListRow,
-                    { alignItems: "center", backgroundColor: pressed ? C.elevated : "transparent" },
-                    i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
-                  ]}
+                  accessibilityLabel={`${isNext ? "Next" : "Before"}: ${name}, ${when}`}
+                  style={({ pressed }) => [styles.neighbourTile, { backgroundColor: C.elevated, opacity: pressed ? 0.7 : 1 }]}
                 >
-                  {logo ? <Image source={logo} accessible={false} style={styles.nextLogo} resizeMode="cover" /> : <CategoryDot palette={C} type={e.type} transferType={e.transferType} size={28} />}
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    {/* The heading says it when there's only one kind of row */}
-                    {!isNext && upNextEvent ? <Text style={{ fontSize: T.sm, color: C.textTertiary }}>Before</Text> : null}
-                    <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={2}>{name}</Text>
-                    {sub ? <Text style={{ fontSize: T.sm, color: C.textSecondary, marginTop: 1 }} numberOfLines={1}>{sub}</Text> : null}
+                  <View style={styles.neighbourHead}>
+                    {logo ? <Image source={logo} accessible={false} style={styles.neighbourLogo} resizeMode="cover" /> : <CategoryDot palette={C} type={e.type} transferType={e.transferType} size={22} />}
+                    <Text style={{ flex: 1, fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary }}>{isNext ? "Next" : "Before"}</Text>
+                    <CaretRight size={12} color={C.textTertiary} weight="regular" />
                   </View>
-                  {e.time ? <Text style={{ fontSize: T.sm, color: /^tb[acd]$/i.test(e.time) ? C.textTertiary : C.tealText, fontWeight: T.medium, fontVariant: ["tabular-nums"] }}>{/^tb[acd]$/i.test(e.time) ? "TBC" : e.time}</Text> : null}
-                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                  <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary }} numberOfLines={2}>{name}</Text>
+                  <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: tbc ? C.textTertiary : C.tealText, fontVariant: ["tabular-nums"] }} numberOfLines={1}>{when}</Text>
                 </Pressable>
               );
             })}
+            {/* A lone tile keeps its half width so it reads the same on every page */}
+            {neighbours.length === 1 ? <View style={{ flex: 1 }} /> : null}
           </Animated.View>
         )}
 
-        {/* Organiser contact */}
-        {trip.organizer && (
+        {/* Organiser contact; activities and meals name them in the Going row instead */}
+        {trip.organizer && !(storyHeader && going.length > 0) && (
           <Animated.View style={{ marginTop: -S.sm, marginBottom: S.md }}>
             <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} compact={isHotel} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} />
           </Animated.View>
@@ -892,6 +1031,41 @@ export default function EventDetailScreen() {
 
       </View>
     </View>
+  );
+}
+
+/** Who's going (the group, or the people the organiser put on it), with the organiser named underneath */
+function GoingRow({ trip, ev, C, onPress }: { trip: Trip; ev: TravelEvent; C: ThemeColors; onPress: () => void }) {
+  const going = ev.assignedTo?.length ? (trip.travelers ?? []).filter(t => ev.assignedTo!.includes(t.id)) : trip.travelers ?? [];
+  if (!going.length) return null;
+  const organiser = trip.organizer?.name?.trim();
+  return (
+    <Pressable
+      onPress={() => { Haptics.selectionAsync(); onPress(); }}
+      accessibilityRole="button"
+      accessibilityLabel={`${going.length} going${organiser ? `, with ${organiser}, your organiser` : ""}`}
+      accessibilityHint="Shows everyone on this trip"
+      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: S.sm, opacity: pressed ? 0.7 : 1 }]}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 }}>Going</Text>
+        <Text style={{ fontSize: T.sm, color: C.textSecondary }}>{ev.assignedTo?.length ? `${going.length} of the group` : `Everyone, ${going.length} travellers`}</Text>
+        {organiser ? <Text style={{ fontSize: T.sm, color: C.textSecondary }} numberOfLines={1}>With {organiser}, your organiser</Text> : null}
+      </View>
+      <View style={{ flexDirection: "row" }}>
+        {[...going].sort((x, y) => Number(!!y.avatar) - Number(!!x.avatar)).slice(0, 4).map((t, i) => (
+          <View key={t.id} style={[{ borderRadius: 16, borderWidth: 2, borderColor: C.bg }, i > 0 && { marginLeft: -8 }]}>
+            <Avatar size={28} uri={t.avatar} initials={t.initials} />
+          </View>
+        ))}
+        {going.length > 4 ? (
+          <View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 2, marginLeft: -8, alignItems: "center", justifyContent: "center", backgroundColor: C.elevated, borderColor: C.bg }}>
+            <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textSecondary }}>+{going.length - 4}</Text>
+          </View>
+        ) : null}
+      </View>
+      <CaretRight size={14} color={C.textTertiary} weight="regular" />
+    </Pressable>
   );
 }
 
@@ -1024,13 +1198,14 @@ function FlightDetailScreen({
     return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
   }, [depTime]);
   const depTerminal = (live?.terminal || ev.terminal) ? terminalName(live?.terminal || ev.terminal || "") : null;
+  const arrTerminalRaw = (live?.arrTerminal || ev.arrTerminal) ? terminalName(live?.arrTerminal || ev.arrTerminal || "") : null;
+  const arrTerminalLabel = arrTerminalRaw ? (/^\d|^[A-Z]$/.test(arrTerminalRaw) ? `Terminal ${arrTerminalRaw}` : arrTerminalRaw === "International" ? "Intl terminal" : `${arrTerminalRaw} terminal`) : null;
   const stubFields: { label: string; value: string | null }[] = [
     { label: "Gate", value: live?.gate || ev.gate || null },
     { label: "Seat", value: ev.seatDetails || null },
     { label: boardingEst ? "Boarding, est." : "Boarding", value: boardingEst },
     // Only until it leaves; after that there's nothing to find
     ...((live?.checkInDesk || ev.checkInDesk) && !(departsMs < 0) ? [{ label: "Check-in desk", value: (live?.checkInDesk || ev.checkInDesk) as string }] : []),
-    ...((live?.arrTerminal || ev.arrTerminal) ? [{ label: "Arrival terminal", value: terminalName(live?.arrTerminal || ev.arrTerminal || "") }] : []),
     ...(ev.checkin ? [{ label: "Check-in", value: ev.checkin }] : []),
     ...((live?.baggageBelt || ev.baggageBelt) ? [{ label: "Baggage belt", value: (live?.baggageBelt || ev.baggageBelt) as string }] : []),
   ];
@@ -1038,7 +1213,7 @@ function FlightDetailScreen({
   // The journey: what happens before the flight that day, the flight itself, and what follows
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the list has trip?.id and the compiler wants all of trip, but only trip.id is read, inside the press handler
   const journey = useMemo(() => {
-    type Step = { key: string; icon: React.ReactNode; title: string; sub?: string; note?: string; time?: string | null; dashed?: boolean; onPress?: () => void };
+    type Step = { key: string; icon: React.ReactNode; title: string; sub?: string; note?: string; time?: string | null; dashed?: boolean; onPress?: () => void; flight?: "start" | "end" };
     const idx = neighbours.findIndex(e => e.id === ev.id);
     const before = idx > 0 ? neighbours.slice(0, idx) : [];
     const after = idx >= 0 ? neighbours.slice(idx + 1) : [];
@@ -1066,6 +1241,7 @@ function FlightDetailScreen({
         note: flightLeg || undefined,
         time: depTime || null,
         dashed: true,
+        flight: "start",
       },
       {
         key: "arrive",
@@ -1074,6 +1250,7 @@ function FlightDetailScreen({
         sub: arrTz ? `${arrCity || arrAirportName || arrCode} local time` : undefined,
         note: connection ?? undefined,
         time: arrTime || null,
+        flight: "end",
       },
       ...after.map(toEvent),
     ] as Step[];
@@ -1201,7 +1378,7 @@ function FlightDetailScreen({
                     <View style={[fs.routeRule, { backgroundColor: P.border }]} />
                   </View>
                   <Text style={[fs.durLabel, { color: P.textTertiary }]} numberOfLines={1}>
-                    {[dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""}` : null, distance ? `${distance.toLocaleString()} km` : null].filter(Boolean).join(", ") || " "}
+                    {dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""}` : " "}
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
@@ -1230,7 +1407,8 @@ function FlightDetailScreen({
                     )}
                   </View>
                   <Text style={[fs.timeMeta, { color: P.textTertiary, textAlign: "right" }]} numberOfLines={2}>
-                    {[arrivalDate ? formatShortDate(arrivalDate) : null, arrTz?.abbr || arrTz?.offset].filter(Boolean).join(", ")}
+                    {/* Same shape as the departure side: the terminal when it's known, else the time zone */}
+                    {[arrivalDate ? formatShortDate(arrivalDate) : null, arrTerminalLabel ?? (arrTz?.abbr || arrTz?.offset)].filter(Boolean).join(", ")}
                   </Text>
                 </View>
               </View>
@@ -1244,9 +1422,11 @@ function FlightDetailScreen({
               {/* With no gate or seat yet, one line says so instead of a row of TBCs */}
               {!stubFields[0].value && !stubFields[1].value ? (
                 <Text style={[fs.stubNote, { color: P.textSecondary }]}>
-                  {boardingEst ? <>Boarding from about <Text style={{ color: P.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text>{"\n"}<Text style={{ fontSize: T.sm, color: P.textTertiary }}>Gate and seat at check-in</Text></> : "Gate and seat at check-in"}
+                  {boardingEst ? <>Boarding from about <Text style={{ color: P.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text>, gate and seat at check-in</> : "Gate and seat at check-in"}
                 </Text>
               ) : null}
+              {/* The note above covers gate, seat and boarding; the row only shows when something else is left */}
+              {(!stubFields[0].value && !stubFields[1].value ? stubFields.slice(3) : stubFields).length > 0 ? (
               <View style={fs.stub}>
                 {(!stubFields[0].value && !stubFields[1].value ? stubFields.slice(3) : stubFields).map(f => (
                   <View key={f.label} style={fs.stubField}>
@@ -1255,6 +1435,7 @@ function FlightDetailScreen({
                   </View>
                 ))}
               </View>
+              ) : null}
 
               {[
                 ...(ev.confNumber ? [{ name: isLeader ? "Group booking reference" : "Your booking reference", ref: ev.confNumber, detail: "" }] : []),
@@ -1290,8 +1471,12 @@ function FlightDetailScreen({
                   onPress={step.onPress}
                   accessibilityRole={step.onPress ? "button" : undefined}
                   accessibilityLabel={[step.title, step.sub, step.time].filter(Boolean).join(", ")}
-                  style={({ pressed }) => [fs.jRow, pressed && step.onPress ? { opacity: 0.6 } : null]}
+                  style={({ pressed }) => [
+                    fs.jRow,
+                    pressed && step.onPress ? { opacity: 0.6 } : null,
+                  ]}
                 >
+                  <Text style={[fs.jTime, fs.jTimeCol, { color: step.time ? (step.flight ? C.textPrimary : C.tealText) : C.textTertiary }]}>{step.time ?? "TBC"}</Text>
                   <View style={fs.jRail}>
                     {step.icon}
                     {i < journey.length - 1 && (
@@ -1300,17 +1485,22 @@ function FlightDetailScreen({
                   </View>
                   <View style={fs.jBody}>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[fs.jTitle, { color: C.textPrimary }]}>{step.title}</Text>
+                      <Text style={[fs.jTitle, { color: C.textPrimary, fontWeight: step.flight ? T.semibold : T.medium }]} numberOfLines={2}>{step.title}</Text>
                       {step.sub ? <Text style={[fs.jSub, { color: C.textSecondary }]} numberOfLines={2}>{step.sub}</Text> : null}
                       {step.note ? <Text style={[fs.jNote, { color: C.textTertiary }]}>{step.note}</Text> : null}
                     </View>
-                    <Text style={[fs.jTime, { color: step.time ? C.textPrimary : C.textTertiary }]}>{step.time ?? "TBC"}</Text>
+                    {step.onPress ? <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ marginTop: 3 }} /> : null}
                   </View>
                 </Pressable>
               ))}
             </View>
 
-            {trip?.organizer && <View style={{ marginHorizontal: -S.md }}><OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} /></View>}
+            {/* Who's flying, with the organiser named; the card only when there's no group to show */}
+            {trip && (trip.travelers?.length ?? 0) > 0 ? (
+              <GoingRow trip={trip} ev={ev} C={C} onPress={() => router.push({ pathname: "/trip/people", params: { tripId: trip.id } })} />
+            ) : trip?.organizer ? (
+              <View style={{ marginHorizontal: -S.md }}><OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} /></View>
+            ) : null}
 
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
@@ -1353,7 +1543,8 @@ function makeFlightStyles(C: ThemeColors) {
     body: { paddingHorizontal: S.md, marginTop: -PASS_OVERLAP, gap: S.md },
     untilText: { fontSize: T.sm, fontWeight: T.medium },
     sideCard: { marginHorizontal: -S.md },
-    jRow: { flexDirection: "row", gap: S.sm2 },
+    jRow: { flexDirection: "row", gap: S.sm, paddingHorizontal: S.sm, marginHorizontal: -S.sm },
+    jTimeCol: { width: 44, paddingTop: 6 },
     jRail: { width: 28, alignItems: "center" },
     jLine: { flex: 1, width: 2, minHeight: 18, marginVertical: 4 },
     jBody: { flex: 1, flexDirection: "row", gap: S.sm, paddingBottom: S.md, paddingTop: 4 },
@@ -1435,13 +1626,15 @@ function makeStyles(C: ThemeColors) {
     stayDivider: { width: StyleSheet.hairlineWidth, alignSelf: "stretch", marginHorizontal: S.md },
     stayLabel: { fontSize: T.sm },
     stayDate: { fontSize: T.lg, fontWeight: T.semibold },
-    routeBlock: { paddingHorizontal: S.md, marginBottom: S.sm },
-    routeStop: { flexDirection: "row", gap: S.sm2 },
-    routeRail: { width: 14, alignItems: "center", paddingTop: 5 },
-    routeDotOpen: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
-    routeDotSolid: { width: 12, height: 12, borderRadius: 2 },
-    routeLineV: { flex: 1, width: 2, marginTop: 4 },
-    routePlace: { fontSize: T.md, fontWeight: T.medium },
+    ticket: { marginHorizontal: S.md, marginBottom: S.lg, borderRadius: R.xl, paddingTop: S.md, overflow: "hidden" },
+    ticketRoute: { flexDirection: "row", alignItems: "flex-start", gap: S.sm, paddingHorizontal: S.md, paddingBottom: S.md },
+    ticketPlace: { fontSize: T.lg, fontWeight: T.semibold, letterSpacing: -0.2, marginTop: 2 },
+    ticketArrow: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+    ticketPanel: { marginHorizontal: S.sm, borderRadius: R.lg, padding: S.md },
+    ticketTime: { fontSize: 26, lineHeight: 30, fontWeight: T.semibold, fontVariant: ["tabular-nums"], letterSpacing: -0.5, marginTop: 2 },
+    ticketNotes: { marginTop: S.sm2, paddingTop: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, gap: S.xs },
+    ticketNote: { fontSize: T.base, lineHeight: 21 },
+    ticketFoot: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: S.md, paddingVertical: S.sm2 },
     sectionLabel: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2, marginBottom: S.xs },
     heroType: { fontSize: T.sm, fontWeight: T.medium, flex: 1 },
     heroTitle: { fontSize: 28, lineHeight: 33, fontWeight: T.semibold, letterSpacing: -0.3 },
@@ -1476,6 +1669,13 @@ function makeStyles(C: ThemeColors) {
     },
     nextLogo: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#fff" },
     infoValue: { fontSize: T.base, lineHeight: 23, fontWeight: T.regular },
+    storyLede: { fontSize: T.md, lineHeight: 25 },
+    conditionsRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs },
+    conditionChip: { paddingHorizontal: S.sm2, paddingVertical: S.xs, borderRadius: R.md },
+    neighbourRow: { flexDirection: "row", gap: S.sm, paddingHorizontal: S.md, marginBottom: S.lg },
+    neighbourTile: { flex: 1, gap: S["2xs"], padding: S.sm2, borderRadius: R.lg },
+    neighbourHead: { flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S["2xs"] },
+    neighbourLogo: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" },
 
     detailListRow: {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,

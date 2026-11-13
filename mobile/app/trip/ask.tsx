@@ -7,7 +7,7 @@ import Animated, { FadeIn as EnterFade, FadeInDown, Easing, useAnimatedKeyboard,
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { ArrowUp, Copy, Check, ChatsTeardrop } from "phosphor-react-native";
+import { ArrowUp, Copy, Check, ChatsTeardrop, CaretRight } from "phosphor-react-native";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -56,7 +56,10 @@ function CopyButton({ text, color }: { text: string; color: string }) {
       hitSlop={10}
       style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, alignSelf: "flex-start", paddingVertical: 2 })}
     >
-      {copied ? <Check size={17} color={color} weight="bold" /> : <Copy size={17} color={color} />}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        {copied ? <Check size={15} color={color} weight="bold" /> : <Copy size={15} color={color} />}
+        <Text style={{ fontSize: T.sm, fontWeight: T.medium, color }}>{copied ? "Copied" : "Copy"}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -86,9 +89,11 @@ export default function AskScreen() {
   const insets = useSafeAreaInsets();
   const trip = trips.find(t => t.id === tripId);
   const photoPage = !!trip?.image;
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
-  const isDark = photoPage || themeDark;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = themeDark;
   const styles = useMemo(() => makeStyles(C), [C]);
+  // Over the dark photo the boxes are frosted; on a light page they keep the card glass
+  const cardGlass = photoPage && isDark ? "frost" as const : true;
   const linkedTravelerId = useLinkedTravelerId(tripId);
   const { prefs, setPref } = usePreferences();
   // Apple requires asking before personal data goes to a third-party AI; nothing is sent until they agree
@@ -132,6 +137,11 @@ export default function AskScreen() {
     return new Map(hotels.map((h, i) => [h.id, h.endDate || hotels.slice(i + 1).find(n => n.date > h.date)?.date || trip?.end || ""]));
   }, [trip?.events, trip?.end]);
   const starters = useMemo(() => (trip ? suggestions(trip, myEvents) : []), [trip, myEvents]);
+  // After an answer, a few of the starters not asked yet, so the next question is one tap away
+  const followUps = useMemo(() => {
+    const asked = new Set(turns.filter(t => t.role === "user").map(t => t.content.trim().toLowerCase()));
+    return starters.filter(q => !asked.has(q.ask.toLowerCase())).slice(0, 3);
+  }, [starters, turns]);
 
   const ask = useCallback(async (base: ChatTurn[], text: string) => {
     const question = text.trim();
@@ -192,7 +202,7 @@ export default function AskScreen() {
 
   return (
     <View style={styles.safe}>
-      {photoPage && <PhotoBackdrop uri={trip.image} />}
+      {photoPage && <PhotoBackdrop dark={themeDark} uri={trip.image} />}
       <Stack.Screen options={headerOptions} />
       <Animated.View style={[{ flex: 1 }, keyboardPad]}>
         <ScrollView
@@ -214,7 +224,7 @@ export default function AskScreen() {
             <FadeIn style={styles.hello}>
               {/* Dale's mark, in the agency's accent */}
               <View style={[styles.mark, { backgroundColor: C.teal }]}>
-                <ChatsTeardrop size={28} color={C.onAccent} weight="fill" />
+                <ChatsTeardrop size={24} color={C.onAccent} weight="fill" />
               </View>
               <Text style={styles.helloTitle}>{firstName ? `Hi ${firstName}, I'm Dale` : "Hi, I'm Dale"}</Text>
               <Text style={styles.helloSub}>Ask me anything about {trip.name}. I answer from your itinerary and your organiser's notes.</Text>
@@ -235,6 +245,28 @@ export default function AskScreen() {
                   </Pressable>
                 </View>
               )}
+              {/* What to ask, built from what this trip actually has */}
+              {consented && starters.length > 0 ? (
+                <View style={styles.starterList}>
+                  <Text style={styles.starterHeading}>Try asking</Text>
+                  {starters.map(q => (
+                    <Pressable
+                      key={q.ask}
+                      onPress={() => send(q.ask)}
+                      accessibilityRole="button"
+                      accessibilityLabel={q.ask}
+                      style={({ pressed }) => [styles.starterRow, { opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Ground glass={cardGlass} C={C} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.starterTitle} numberOfLines={1}>{q.ask}</Text>
+                        <Text style={styles.starterSub} numberOfLines={1}>{q.sub.charAt(0).toUpperCase() + q.sub.slice(1)}</Text>
+                      </View>
+                      <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </FadeIn>
           ) : (
             turns.map((t, i) => t.role === "user" ? (
@@ -243,6 +275,12 @@ export default function AskScreen() {
               </Animated.View>
             ) : (
               <Animated.View key={i} entering={EnterFade.duration(180)} style={styles.answer}>
+                <View style={styles.daleTag}>
+                  <View style={[styles.daleDot, { backgroundColor: C.teal }]}>
+                    <ChatsTeardrop size={11} color={C.onAccent} weight="fill" />
+                  </View>
+                  <Text style={styles.daleName}>Dale</Text>
+                </View>
                 <StreamedText
                   text={t.content}
                   style={[styles.answerText, t.error && { color: C.redText }]}
@@ -257,7 +295,7 @@ export default function AskScreen() {
                       <DaleEventCard
                         ev={ev}
                         C={C}
-                        glass
+                        glass={cardGlass}
                         stayEnd={stayEnds.get(ev.id)}
                         onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                       />
@@ -270,6 +308,22 @@ export default function AskScreen() {
                     ) : null) : (
                       <CopyButton text={t.content} color={C.textTertiary} />
                     )}
+                    {!t.error && i === turns.length - 1 && !pending && followUps.length > 0 ? (
+                      <View style={styles.followUps}>
+                        {followUps.map(q => (
+                          <Pressable
+                            key={q.ask}
+                            onPress={() => send(q.ask)}
+                            accessibilityRole="button"
+                            accessibilityLabel={q.ask}
+                            style={({ pressed }) => [styles.followUp, { opacity: pressed ? 0.7 : 1 }]}
+                          >
+                            <Ground glass={cardGlass} C={C} />
+                            <Text style={styles.followUpText} numberOfLines={1}>{q.ask}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
                   </Animated.View>
                 )}
               </Animated.View>
@@ -282,31 +336,6 @@ export default function AskScreen() {
             and the composer's measured height keeps the last message clear of it. It stays in the layout
             (pulled up by its own height) so the keyboard still lifts it. */}
         <View onLayout={e => setComposerH(e.nativeEvent.layout.height)} style={{ marginTop: -composerH }}>
-        {turns.length === 0 && consented ? (
-          <ScrollView
-            horizontal
-            // ScrollView grows by default; this one only takes its cards' height, right on the composer
-            style={{ flexGrow: 0 }}
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.starterRail}
-          >
-            {starters.map((q, i) => (
-              <Animated.View key={q.ask} entering={FadeInDown.delay(120 + Math.min(i, 6) * 60).duration(320).easing(EASE_OUT)}>
-                <Pressable
-                  onPress={() => send(q.ask)}
-                  accessibilityRole="button"
-                  accessibilityLabel={q.ask}
-                  style={({ pressed }) => [styles.starterCard, { opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <Ground glass C={C} />
-                  <Text style={styles.starterTitle} numberOfLines={1}>{q.title}</Text>
-                  <Text style={styles.starterSub} numberOfLines={1}>{q.sub}</Text>
-                </Pressable>
-              </Animated.View>
-            ))}
-          </ScrollView>
-        ) : null}
         <View style={[styles.composer, { paddingBottom: keyboardUp ? S.xs : Platform.OS === "android" ? insets.bottom + S.md : Math.max(insets.bottom, S.sm) }, !consented && { display: "none" }]}>
           {/* One rounded glass field with the send button inside it */}
           <View style={styles.field}>
@@ -353,24 +382,28 @@ function makeStyles(C: ThemeColors) {
     center: { alignItems: "center", justifyContent: "center" },
     content: { paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.md, gap: S.md },
 
-    contentEmpty: { flexGrow: 1, justifyContent: "center" },
-    hello: { alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingBottom: S["2xl"] },
-    mark: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: S.xs },
-    helloTitle: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4, textAlign: "center" },
-    consent: { marginTop: S.md, alignItems: "center", gap: S.sm, maxWidth: 320 },
-    consentText: { fontSize: T.sm, lineHeight: 20, color: C.textSecondary, textAlign: "center" },
+    contentEmpty: { flexGrow: 1, paddingTop: S.lg },
+    hello: { gap: S.xs },
+    mark: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: S.xs },
+    helloTitle: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
+    consent: { marginTop: S.md, alignItems: "center", gap: S.sm },
+    consentText: { fontSize: T.sm, lineHeight: 20, color: C.textSecondary },
     consentButton: { minHeight: 48, paddingHorizontal: S.xl, borderRadius: R.lg, alignItems: "center", justifyContent: "center", alignSelf: "stretch" },
     consentButtonText: { fontSize: T.md, fontWeight: T.semibold },
     consentNotNow: { fontSize: T.base, fontWeight: T.medium, color: C.textSecondary },
-    helloSub: { fontSize: T.base, lineHeight: 21, color: C.textSecondary, textAlign: "center", maxWidth: 300 },
+    helloSub: { fontSize: T.base, lineHeight: 21, color: C.textSecondary },
     sub: { fontSize: T.base, color: C.textSecondary, lineHeight: 21 },
 
-    starterRail: { paddingHorizontal: S.md, gap: S.xs, paddingBottom: S.xs },
-    starterCard: {
-      minWidth: 150, paddingHorizontal: S.sm2 + 4, paddingVertical: S.sm2,
-      // Glass, like the event cards; the edge comes with it
-      borderRadius: R.lg, overflow: "hidden",
-    },
+    starterList: { marginTop: S.lg, gap: S.xs },
+    starterHeading: { fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, marginBottom: S["2xs"] },
+    // Glass, like the event cards; the edge comes with it
+    starterRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.sm2, borderRadius: R.lg, overflow: "hidden" },
+    daleTag: { flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: 2 },
+    daleDot: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    daleName: { fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary },
+    followUps: { flexDirection: "row", flexWrap: "wrap", gap: S.xs, marginTop: S.sm },
+    followUp: { paddingHorizontal: S.sm2, paddingVertical: S.xs + 2, borderRadius: R.lg, overflow: "hidden" },
+    followUpText: { fontSize: T.sm, fontWeight: T.medium, color: C.textPrimary },
     starterTitle: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
     starterSub: { fontSize: T.sm, color: C.textSecondary, marginTop: 2 },
 

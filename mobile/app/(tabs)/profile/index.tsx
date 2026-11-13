@@ -77,8 +77,8 @@ export default function ProfileScreen() {
   }, [trips]);
   // Like Home: the cover photo, blurred, runs down the whole page
   const photoPage = !!heroTrip?.image;
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
-  const isDark = photoPage || themeDark;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = themeDark;
   const s = useMemo(() => makeStyles(C, isDark, photoPage), [C, isDark, photoPage]);
 
 
@@ -92,7 +92,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={s.safe}>
-      {photoPage && <PhotoBackdrop uri={heroTrip!.image} />}
+      {photoPage && <PhotoBackdrop dark={themeDark} uri={heroTrip!.image} />}
       <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -107,7 +107,7 @@ export default function ProfileScreen() {
           {heroTrip ? (
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
               <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-              <PhotoDissolve uri={heroTrip.image} scrollY={scrollY} />
+              <PhotoDissolve dark={themeDark} uri={heroTrip.image} scrollY={scrollY} />
             </Animated.View>
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
                 hitSlop={10}
               >
                 {heroTrip && GLASS ? (
-                  <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={s.editGlass}>
+                  <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} isInteractive style={s.editGlass}>
                     <Text style={s.editText}>Edit profile</Text>
                   </GlassView>
                 ) : (
@@ -435,9 +435,10 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoPage: boolean) {
     heroDetails: { alignItems: "center", gap: 4, alignSelf: "stretch" },
     hero: { justifyContent: "flex-end" },
     heroBody: { alignItems: "center", gap: 4, paddingHorizontal: S.lg, paddingBottom: S.sm },
-    heroShadow: {
+    // White with a shadow over the dark photo; plain dark text on the light frost
+    heroShadow: isDark ? {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    },
+    } : {},
     editBtn: GLASS
       ? { marginTop: S.sm }
       : { marginTop: S.sm, paddingVertical: 6, paddingHorizontal: S.md, borderRadius: 18, backgroundColor: isDark ? "rgba(255,255,255,0.16)" : C.card },
@@ -486,7 +487,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoPage: boolean) {
     heroName: {
       fontSize: 26,
       fontWeight: T.bold,
-      color: "#fff",
+      color: isDark ? "#fff" : C.textPrimary,
       letterSpacing: -0.3, marginTop: S.xs,
     },
 
@@ -501,7 +502,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoPage: boolean) {
     // Settings is the one place iOS keeps boxes: inset grouped cards
     card: {
       borderRadius: R.lg, overflow: "hidden",
-      backgroundColor: photoPage ? "rgba(255,255,255,0.1)" : C.card,
+      backgroundColor: photoPage ? C.elevated : C.card,
     },
 
     // ── Rows ──

@@ -251,8 +251,8 @@ export default function InfoScreen() {
   // Like the trip page: the trip's photo, blurred, behind everything
   const coverImage = trips.find(t => t.id === tripId)?.image;
   const photoPage = !!coverImage;
-  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
-  const isDark = photoPage || themeDark;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark, true) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = themeDark;
   const styles = useMemo(() => makeStyles(C, photoPage), [C, photoPage]);
 
   const safeBack = useCallback(() => {
@@ -581,8 +581,8 @@ export default function InfoScreen() {
 
   return (
     <View style={styles.safe}>
-      {photoPage && <PhotoBackdrop uri={coverImage!} />}
-      <Stack.Screen options={headerOptions("Trip info")} />
+      {photoPage && <PhotoBackdrop dark={themeDark} uri={coverImage!} />}
+      <Stack.Screen options={headerOptions("Essential info")} />
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
         {ordered.length === 0 ? (
           <View style={{ paddingTop: S.xl }}>
@@ -618,7 +618,7 @@ function makeStyles(C: ThemeColors, photoPage: boolean) {
     introName: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
     introSub: { fontSize: T.base, color: C.textSecondary },
     // Each topic is one inset card: icon and heading on top, its facts as rows underneath
-    topic: { borderRadius: R.xl, overflow: "hidden", backgroundColor: photoPage ? "rgba(255,255,255,0.08)" : C.card },
+    topic: { borderRadius: R.xl, overflow: "hidden", backgroundColor: photoPage ? C.elevated : C.card },
     topicHeader: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.sm2 },
     topicIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" },
     groupTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },

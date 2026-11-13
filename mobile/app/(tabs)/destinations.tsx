@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
-  ActivityIndicator, useWindowDimensions, Platform,
+  ActivityIndicator, useWindowDimensions, Platform, Image,
 } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import type { Camera, MapView } from "@rnmapbox/maps";
@@ -48,6 +48,8 @@ import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext, journeyStage, tripZone, zonedEvents } from "@/shared/today";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
+import { airlineLogo } from "@/shared/airlineLogos";
+import type { TravelEvent } from "@/shared/types";
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -451,6 +453,7 @@ export default function TodayScreen() {
   const arrival = landingFlight && landedAt != null && now - landedAt <= ARRIVAL_WINDOW_MS
     ? { flight: landingFlight, landedAt, then: afterLanding(visibleEvents, landingFlight, landedAt, destTz, now) }
     : null;
+  const listEvents = !arrival && next ? displayEvents.filter(e => e.id !== next.event.id) : displayEvents;
   // Welcome to the destination only when the flight lands in it, not on the way home
   const arrivalTz = arrival ? arrival.flight.arrTz ?? (arrival.flight.arrAirport ? IATA_TZ[arrival.flight.arrAirport] : undefined) ?? destTz : destTz;
   const arrivalPlace = arrival && displayTrip?.destination && arrivalTz === destTz ? displayTrip.destination.split(",")[0].trim() : null;
@@ -672,7 +675,7 @@ export default function TodayScreen() {
               accessibilityLabel={`${next.phase === "current" ? "Happening now" : "Next up"}: ${normaliseTitle(next.event.title, next.event.type, next.event.transferType)}, ${next.event.time}`}
             >
               <View style={[ps.row, ps.rowTop]}>
-                <View style={ps.iconOnTitle}><CategoryDot type={next.event.type} transferType={next.event.transferType} size={32} /></View>
+                <View style={ps.iconOnTitle}><EventIcon ev={next.event} size={32} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
                   <Text style={[ps.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
@@ -680,7 +683,7 @@ export default function TodayScreen() {
                       // The countdown only helps when it's close; further out the clock time says it
                       next.phase !== "current" && (next.minsUntil ?? Infinity) <= 60 ? formatCountdown(next.minsUntil ?? 0).replace(/^in /, "In ") : "",
                       scheduledMinutes(next.event.time) == null ? "Time to be confirmed" : next.event.time,
-                      tidyLocation(next.event.location),
+                      placeLine(next.event),
                     ].filter(Boolean).join(", ")}
                   </Text>
                 </View>
@@ -690,13 +693,15 @@ export default function TodayScreen() {
                 <View style={[ps.flightMeta, { borderTopColor: C.border }]}>
                   {nextFlightLive.terminal ? <Text style={[ps.metaText, { color: C.textSecondary }]}>Terminal {nextFlightLive.terminal}</Text> : null}
                   {nextFlightLive.gate ? <Text style={[ps.metaText, { color: C.textSecondary }]}>Gate {nextFlightLive.gate}</Text> : null}
-                  {nextFlightLive.status ? <Text style={[ps.metaText, { color: C.tealText, fontWeight: T.semibold }]}>{nextFlightLive.status}</Text> : null}
+                  {nextFlightLive.status ? <Text style={[ps.metaText, { color: statusTone(nextFlightLive.status, C), fontWeight: T.semibold }]}>{statusLabel(nextFlightLive.status)}</Text> : null}
                 </View>
               ) : null}
             </ScalePress>
           </FadeIn>
         )}
 
+        {/* Next up already shows its event, so the day's list skips it; a day of only that event drops the list */}
+        {(listEvents.length > 0 || displayEvents.length === 0) && (
         <FadeIn delay={60}>
           <SectionHeader
             title={`Today, ${new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`}
@@ -704,10 +709,11 @@ export default function TodayScreen() {
             first={!next && !arrival}
           />
         </FadeIn>
+        )}
 
         {displayEvents.length > 0 ? (
           <View onLayout={(e) => { listY.current = e.nativeEvent.layout.y; }}>
-            {displayEvents.map((ev, i) => {
+            {listEvents.map((ev, i) => {
               const timing = eventTiming(ev, destTz, now);
               const isPast = timing.phase === "earlier";
 
@@ -748,7 +754,7 @@ export default function TodayScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Show event on map"
                       >
-                        <CategoryDot type={ev.type} transferType={ev.transferType} size={32} />
+                        <EventIcon ev={ev} size={32} />
                       </Pressable>
                       <View style={{ flex: 1 }}>
                         <Text style={[ps.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>
@@ -757,7 +763,7 @@ export default function TodayScreen() {
                         <Text style={[ps.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
                           <Text style={{ color: unscheduled ? C.textSecondary : C.tealText, fontWeight: T.semibold }}>{unscheduled ? "Time to be confirmed" : ev.time}</Text>
                           {km != null ? `, ${formatDistance(km)}` : ""}
-                          {ev.location ? `, ${tidyLocation(ev.location)}` : ""}
+                          {placeLine(ev) ? `, ${placeLine(ev)}` : ""}
                         </Text>
                       </View>
                       <CaretRight size={14} color={C.textTertiary} weight="regular" />
@@ -785,7 +791,7 @@ export default function TodayScreen() {
                 accessibilityLabel={`Next up: ${normaliseTitle(nextPlanned.title, nextPlanned.type, nextPlanned.transferType)}`}
                 style={[ps.freeNext, { backgroundColor: C.card, borderColor: C.border }]}
               >
-                <CategoryDot type={nextPlanned.type} transferType={nextPlanned.transferType} size={32} />
+                <EventIcon ev={nextPlanned} size={32} />
                 <View style={{ flex: 1 }}>
                   <Text style={[ps.rowSub, { color: C.textTertiary }]}>
                     {new Date(nextPlanned.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
@@ -864,4 +870,35 @@ function makeStyles(C: ThemeColors) {
     offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
     }),
   };
+}
+
+const FLIGHT_CODE = /\b([A-Z0-9]{2})[\s-]?\d{1,4}\b/;
+
+/** A flight shows its airline's logo when one is bundled; everything else keeps its category circle */
+function EventIcon({ ev, size }: { ev: TravelEvent; size: number }) {
+  const logo = ev.type === "flight" ? airlineLogo((ev.flightNum || ev.title).match(FLIGHT_CODE)?.[1]) : null;
+  if (!logo) return <CategoryDot type={ev.type} transferType={ev.transferType} size={size} />;
+  // White plate so dark logos stay readable in dark mode, same as the itinerary's flight cards
+  return <Image source={logo} accessible={false} resizeMode="cover" style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: "#fff" }} />;
+}
+
+/** The line under a title. A flight's title already says the route, so it gets its flight number instead (unless the title has that too) */
+function placeLine(ev: TravelEvent): string {
+  if (ev.type !== "flight") return ev.location ? tidyLocation(ev.location) : "";
+  const num = ev.flightNum?.replace(/\s+/g, "") ?? "";
+  return num && !ev.title.replace(/\s+/g, "").toUpperCase().includes(num.toUpperCase()) ? num : "";
+}
+
+/** Live statuses arrive as one word ("GateClosed"); spell them out as a sentence */
+function statusLabel(status: string): string {
+  const words = status.replace(/([a-z])([A-Z])/g, "$1 $2").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Problems in red, things to hurry for in amber, everything else in the accent */
+function statusTone(status: string, C: ThemeColors): string {
+  const k = status.toLowerCase().replace(/\s+/g, "");
+  if (/cancel|divert/.test(k)) return C.redText;
+  if (/gateclosed|delay|late|finalcall/.test(k)) return C.amberText;
+  return C.tealText;
 }
