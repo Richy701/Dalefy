@@ -6,7 +6,7 @@ import { useBannerStretch } from "@/hooks/useBannerStretch";
 import { AndroidTopBar, ANDROID_BAR_H } from "@/components/ui/AndroidTopBar";
 import {
   View, Text, Pressable, Linking,
-  StyleSheet, Platform, Image,
+  StyleSheet, Platform, Image, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -439,6 +439,7 @@ export default function EventDetailScreen() {
   const isDark = themeDark;
   const { isLeader } = useTripRole(tripId);
   const insets = useSafeAreaInsets();
+  const { height: screenH } = useWindowDimensions();
   const { onScroll, stretchStyle, scrollY } = useBannerStretch(EV_HERO_H + insets.top);
   const styles = useMemo(() => makeStyles(C), [C]);
 
@@ -624,7 +625,8 @@ export default function EventDetailScreen() {
   ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
   // An event with only a title and a time: a shorter photo and the time as a line, so the page reads as a summary
   const thin = !isHotel && !ev.location && !ev.description && !ev.notes && !hasDocs && detailRows.length === 0;
-  const photoH = Math.round((photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) * (thin ? 0.6 : 1));
+  // Photo pages scale the photo with the screen, so a short event doesn't leave the bottom half empty
+  const photoH = photoPage ? Math.max(EV_PHOTO_PAGE_H, Math.round(screenH * (thin ? 0.55 : 0.45))) : Math.round(EV_PHOTO_H * (thin ? 0.6 : 1));
   // Activities and meals read as a story: what it is, when and where in one line, the description, then the day around it
   const isStory = ev.type === "activity" || ev.type === "dining";
   // Transfers share the story page's short header and Going row
