@@ -6,7 +6,7 @@ Trip planning without the mess. A modern travel management platform for organize
 
 - **Trip Management** -- Create, edit, and organize trips with itineraries, travelers, budgets, and documents
 - **AI-Powered Itinerary Import** -- Upload travel documents (PDF, Word, PowerPoint, text) and parse them with Claude Sonnet 5.5 (copy assist on Claude Haiku 5.5) into structured events with polished descriptions, internal agent notes, traveler extraction, and info sections. Re-importing over a trip keeps its travellers' photos and hand-written Trip information. Falls back to offline heuristic parser when AI is unavailable
-- **Event Photos** -- Each imported event gets its own photo (no two events on a trip share one). The Event photos view (trip menu, or the note above the itinerary when photos repeat or are missing) lists every event with its photo; Find photos searches options on demand, Fix for me picks unused photos for every flagged event, and nothing saves until Save
+- **Event Photos** -- On the phone, event photos and trip covers load through Vercel's image resizer (event photos at 1080px wide, about 100 to 150 KB; covers at 2048px), and opening a trip downloads its upcoming events' photos in the background so event pages open with the photo ready. Each imported event gets its own photo (no two events on a trip share one). The Event photos view (trip menu, or the note above the itinerary when photos repeat or are missing) lists every event with its photo; Find photos searches options on demand, Fix for me picks unused photos for every flagged event, and nothing saves until Save
 - **Private Trips** -- A trip can be made private so only its creator sees it, enforced by Firestore and Storage rules as well as the UI
 - **Safe Concurrent Editing** -- Two people editing the same trip merge card by card (events, travellers, Trip information, documents, tasks, media); only the same card changed twice is a conflict. Trip information can only be emptied after someone confirms it in the Workspace; a stale or background save never wipes it, and if it does go missing the Workspace offers to restore it from the published copy
 - **Live Search** -- Search flights (AeroDataBox), hotels, restaurants, and activities (Google Places API) directly in the workspace
@@ -20,7 +20,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Mobile Preview** -- Live phone-frame preview in the workspace that renders the real mobile trip screens (itinerary, event and flight pages, Trip info) from `mobile/` via React Native Web, inside an iPhone 17 Pro or Pixel 10 Pro frame. Preview settings cover screen width, text size, a "simulate today" stepper, role (traveller or leader) and dark/light. It rebuilds with every website deploy, so it only updates when `npm run build` passes (see `mobile-preview/README.md`)
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, lightbox with in-place video playback, multi-select with zip download, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
-- **Mobile Companion** -- Expo React Native app with four tabs (Home, Today, Gallery, Profile) for travellers. Join a trip with a PIN, a QR scan or a pasted invite link; every trip page uses the same photo-led design in light and dark mode
+- **Mobile Companion** -- Expo React Native app with four tabs (Home, Today, Gallery, Profile) for travellers. Join a trip with a PIN, a QR scan or a pasted invite link. Every trip page sits on the trip's blurred cover photo: dark mode darkens it, light mode frosts it light with darker secondary text so it holds 4.5:1 (`components/ui/PhotoBackdrop.tsx`). Onboarding and the shared web itinerary stay dark in both
+- **Ask Dale** -- A trip assistant on Claude Haiku 5.5 (`api/_tripChatCore.ts`) that answers from the itinerary, the organiser's Trip information, live flight status and the weather, and shows the events it means as tappable cards. A traveller only gets their own events and the group's; someone not linked to a traveller gets the whole plan with each assigned event labelled "only for <name>". The screen opens with a Try asking list built from the trip, and suggests follow-ups after each answer
+- **Preview as a Traveller** -- Trip leaders and coordinators can switch a trip to the traveller view on their own phone (trip page), which hides leader-only Trip information, booking references, seats and tickets until they switch back
 - **Trip Links** -- Share links are `https://dalefy.app/shared/{id}` (also `dalefy.vercel.app`). They open the app through iOS universal links and Android app links, fall back to the web trip page, and unfurl with the trip's own title, dates and cover photo in Messages, WhatsApp, Slack and the iOS share sheet. The page's redirect is an external script (`public/share-redirect.js`) because the CSP blocks inline scripts
 - **Interactive Maps** -- Mapbox-powered trip maps with Standard 3D basemap on the Today tab (pitched city view with 3D buildings, facades, trees, landmarks), flat Standard style on trip detail, animated flight routes, native symbol-layer plane markers, and destination explorer
 - **Landing Page** -- Public marketing page with interactive map, scroll-reveal feature sections, and trip showcase
@@ -37,8 +39,8 @@ Trip planning without the mess. A modern travel management platform for organize
 - **iOS Home Screen Widget** -- Photo-led trip widget (small, medium, large, plus lock-screen sizes): the trip photo with a big countdown before the trip, today's next stop during it, and the first day's plan or "Later today" on the large size. Native SwiftUI in `mobile/native-widgets/`
 - **iOS Live Activities & Dynamic Island** -- Flight activity in the airline's colour with a live boarding, departure and landing countdown, a plane on a progress track and the gate; event activity with category colour, icon tile and a big countdown. Native SwiftUI in `mobile/native-widgets/TripCountdown.swift`, so layout changes need a store build
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
-- **Notification Center** -- Grouped by date with type-based icons, unread state, Mail-style full-height swipe actions (read, delete) and context menus
-- **Push Notifications** -- Itinerary updates, flight changes ("QR 843 is delayed") and local reminders for trips, flights, hotels and events. Titles say what happened, the trip is the subtitle, details are one per line. Reminders carry the trip photo; flights, events and trips have View flight / Directions / Open itinerary buttons; flight alerts are time-sensitive. iOS groups each trip's notifications together
+- **Notification Center** -- Grouped by date with type-based icons (the airline's logo on flight notices), unread state, Mail-style full-height swipe actions (read, delete) and context menus. Text is tidied as it shows, so older notices read the same: an itinerary change leads with the change itself, airline status words become plain ones ("Expected" is "On time")
+- **Push Notifications** -- Itinerary updates, flight changes ("QR 843 is delayed") and local reminders for trips, flights, hotels and events. Titles say what happened, the trip is the subtitle, details are one per line. Reminders carry the trip photo; flights, events and trips have View flight / Directions / Open itinerary buttons; flight alerts are time-sensitive. iOS groups each trip's notifications together. A flight assigned to some travellers alerts only them; trip leaders not on it still get it, titled "Kieran's flight: QR 110 is boarding". A boarding alert with nothing else new says where to go ("Head to Terminal 4, gate 12")
 - **Message Travellers** -- Organisers message everyone on a trip, chosen people, or everyone on an event, from Workspace (Share menu) or the Travelers page. Quick messages are written from the itinerary, a tap can open an event, a day or a Trip info item, urgent messages break through Focus, and a lock-screen preview and per-person results (notified, notifications off, didn't go through) show who it reached
 - **In-app Inbox** -- Every push is recorded in the server's push log, and the app's notifications list reads the traveller's own entries, so messages sent while the app was closed or with notifications off still show up
 - **PWA Support** -- Installable as a progressive web app with offline caching
@@ -95,18 +97,27 @@ The preview screen shows the trip itinerary with image-forward day cards -- each
 
 ### Home Tab
 
-Photo hero for the current or next trip with Itinerary, Info and Share actions, then the next event ("Flight, Sat 7 Nov") and the rest of that day. A day strip lists every trip day with its first event's icon and opens the itinerary on that day. Other trips appear as photo cards with a countdown chip; long-press opens Share Trip / Copy Link.
+Photo hero for the current or next trip with Info, Itinerary, Ask Dale and Share actions, then the next event ("Flight, Sat 7 Nov") and the rest of that day. A day strip lists every trip day with its first event's icon and opens the itinerary on that day. Other trips appear as photo cards with a countdown chip; long-press opens Share Trip / Copy Link.
 
 ### Itinerary
 
-Pinned day strip (a tapped or linked day stays highlighted; scrolling ticks with a light haptic between days), a Next up card, Trip info and organiser tiles (Call, Message, Email), then the timeline. Rows trim repeated place names, transfers say where from, hotels show the area, and "times TBC" appears once per day.
+Pinned day strip (a tapped or linked day stays highlighted; scrolling ticks with a light haptic between days), a Next up card (a flight shows "Departs 15:15" on the day, its flight number before), an Essential Info + Emergency Contacts tile with Ask Dale and organiser tiles under it, then the timeline. Rows trim repeated place names, transfers say where from, hotels show the area, and "times TBC" appears once per day.
+
+### Event Pages
+
+- **Activities and meals** -- the photo, the type, the title and one line of when ("Tue 17 Nov, 08:45, in 4 days"), the place with Directions, then the description. A map shows only for a saved pin, else the hotel the group is staying at that night (a geocoded resort venue name lands anywhere). Within five days: the forecast where the group is staying, plus sunset for evening plans. Then who's going (with the organiser named) and Before / Next tiles
+- **Transfers** -- a ticket: From and To, pickup and drop-off times, the meeting point, the flight it meets and the driver's number to tap. A pickup time still TBC shows no countdown
+- **Flights** -- the boarding-pass card, then Your journey: the day around the flight as a timeline with times down the left
+- **People and organiser** -- the people sheet leads with the organiser (Call, Email), then the travellers; the organiser sheet is a contact card with Call, Message and Email and copyable details
+
+Destination lookups (`mobile/services/geocode.ts`) accept a country match, so a trip to "Maldives" resolves and stored coordinates are read the right way round; venue lookups still reject one.
 
 ### Today Tab
 
 A full-screen Mapbox map behind a Liquid Glass sheet. The sheet has one job per state:
 
 - **Before the trip** -- Before you go tasks, the first flight (live terminal, gate and status from a day out), notes from the organiser, then Where you're staying: a card per hotel with its photo, nights and dates, address and Directions. An import's check-in, overnight and check-out entries for the same hotel count as one stay
-- **During the trip** -- A Day N of M chip with weather and local time over the map, Next up with a countdown, today's timeline, and Tonight: the hotel card with directions back to it
+- **During the trip** -- A Day N of M chip with weather and local time over the map, Next up with a countdown (and live terminal, gate and status for a flight), today's timeline without the Next up event repeated, and Tonight: the hotel card with directions back to it. Flights show the airline's logo
 - **After the trip** -- The dates (or "Ended N days ago" while it's recent), the destination with a days, hotels and flights recap, a strip of the group's photos and Relive the itinerary
 - **Empty** -- Compass icon in teal circle, "No trips yet" with "Join a trip" CTA button
 
@@ -170,7 +181,8 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/share-page` | — | Serves `/shared/{id}` with the trip's Open Graph tags (title, dates, cover photo) and forwards to the trip page |
 | `/api/auth-email` | — | Branded sign-in, verification and password reset emails through Resend (rate limited) |
 | `/api/my-trips` | Bearer | The published trips a traveller's verified sign-in email is on, who they are on each, and their own photo on file |
-| `/api/check-flight-status` | Bearer | Cron (every 15 min): checks flights around departure (3-hourly from 24h out, every run from 3h before to 1h after, hourly in the air), saves airport codes/coordinates, and pushes delays, cancellations, gate and time changes to travelers |
+| `/api/check-flight-status` | Bearer | Cron (every 15 min): checks flights around departure (3-hourly from 24h out, every run from 3h before to 1h after, hourly in the air), saves airport codes/coordinates, and pushes delays, cancellations, gate and time changes to the travellers on that flight (everyone when it's assigned to no one), with a named copy to trip leaders not on it |
+| `/api/trip-chat` | Bearer | Ask Dale (rate limited, with a daily cap per person): answers a traveller's question about their trip from the published itinerary, Trip information, live flight status and weather (Claude Haiku 5.5) |
 
 ## Security
 
@@ -254,7 +266,7 @@ Hosted on [Vercel](https://dalefy.app) (also `dalefy.vercel.app`). Push to `main
 
 - **JavaScript changes** ship over the air: `cd mobile && npx eas-cli update --branch production --environment production`
 - **Native changes** (Live Activities, widgets, splash, entitlements, native module or Expo SDK updates) need a store build: `npx eas-cli build --profile production --platform ios --auto-submit`
-- **Runtime version** is a fixed string in `mobile/app.json`. Bump it with every build that changes native code or package versions, so over-the-air updates only reach builds they match (currently `1.0.0-sdk58-20261026`)
+- **Runtime version** is a fixed string in `mobile/app.json`. Bump it with every build that changes native code or package versions, so over-the-air updates only reach builds they match (currently `1.0.1-sdk58-20261106`)
 - **Universal links** are served from `public/.well-known/` (`apple-app-site-association`, `assetlinks.json`); the app claims `dalefy.vercel.app` and `dalefy.app` for `/shared/*`
 
 The flight status cron runs daily via Vercel Cron Jobs (Hobby plan limit). On-demand flight checks run when users view trips with upcoming flights. AI itinerary parsing requires an `ANTHROPIC_API_KEY` -- without it, the import falls back to the offline heuristic parser.

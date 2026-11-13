@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CachedImage } from "@/components/CachedImage";
+import { CachedImage, prefetchPhotos } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
@@ -116,6 +116,21 @@ export default function TripScreen() {
   const heroOnPhoto = !!trips.find(t => t.id === id)?.image && isDark;
   const styles = useMemo(() => makeStyles(C, isDark, photoPage, heroOnPhoto), [C, isDark, photoPage, heroOnPhoto]);
   const trip = trips.find(t => t.id === id);
+
+  // Event photos come down in the background while the itinerary is read, upcoming ones first,
+  // so an event page opens with its photo ready (and the resizer has made its copy)
+  const photoKey = (trip?.events ?? [])
+    .filter(e => e.image && e.date >= todayKey())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 40)
+    .map(e => e.image)
+    .join("|");
+  useEffect(() => {
+    if (!photoKey) return;
+    // A moment after the page itself has drawn, so its own photos load first
+    const t = setTimeout(() => prefetchPhotos(photoKey.split("|")), 800);
+    return () => clearTimeout(t);
+  }, [photoKey]);
 
   // ── Parallax scroll state ──
   // Timeline: where each category circle's centre sits inside its day, so the rail can run circle to circle

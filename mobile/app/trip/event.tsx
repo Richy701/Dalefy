@@ -712,7 +712,7 @@ export default function EventDetailScreen() {
             </View>
           )}
           {/* The title leads; when it happens sits under it as one line */}
-          {isStory ? <Text style={[styles.heroFact, { color: categoryTone(ev.type, C).fg }]}>{TYPE_LABELS[ev.type]}</Text> : null}
+          {isStory || isHotel ? <Text style={[styles.heroFact, { color: categoryTone(ev.type, C).fg }]}>{TYPE_LABELS[ev.type]}</Text> : null}
           <Text style={[styles.heroTitle, titleSize(isHotel ? stayName : title), { color: C.textPrimary }]}>{isHotel ? stayName : title}</Text>
           {isHotel && stayDetail ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{stayDetail}</Text> : null}
           {nightLine ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{nightLine}</Text> : null}
@@ -758,32 +758,33 @@ export default function EventDetailScreen() {
           )}
         </View>
 
-        {/* Hotel: check in and check out side by side */}
-        {isHotel && (
-          <View style={[styles.stayRow, { borderColor: C.border }]}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check in</Text>
-              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{checkInDate ? formatShortDate(checkInDate) : "TBC"}</Text>
-              {/* An overnight has no times of its own; they belong to the check-in */}
-              {!overnight && <Text style={[styles.heroFact, { color: ev.time && !/^tb[acd]$/i.test(ev.time) ? C.tealText : C.textTertiary }]}>{ev.time && !/^tb[acd]$/i.test(ev.time) ? ev.time : "Time TBC"}</Text>}
-            </View>
-            <View style={[styles.stayDivider, { backgroundColor: C.border }]} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check out</Text>
-              <Text style={[styles.stayDate, { color: C.textPrimary }]}>{checkOutDate ? formatShortDate(checkOutDate) : "TBC"}</Text>
-              {!overnight && <Text style={[styles.heroFact, { color: ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? C.tealText : C.textTertiary }]}>{ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? ev.endTime : "Time TBC"}</Text>}
-            </View>
-            {nights && nights > 0 ? (
-              <>
-                <View style={[styles.stayDivider, { backgroundColor: C.border }]} />
-                <View style={{ gap: 2 }}>
-                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Nights</Text>
-                  <Text style={[styles.stayDate, { color: C.textPrimary }]}>{nights}</Text>
+        {/* Hotel: a ticket like the transfer's, check in and check out either side of the nights */}
+        {isHotel && (() => {
+          const known = (t?: string) => !!t && !/^tb[acd]$/i.test(t);
+          return (
+            <View style={[styles.ticket, { backgroundColor: C.elevated }]}>
+              <View style={styles.ticketRoute}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check in</Text>
+                  <Text style={[styles.ticketPlace, { color: C.textPrimary }]}>{checkInDate ? formatShortDate(checkInDate) : "TBC"}</Text>
+                  {/* An overnight has no times of its own; they belong to the check-in */}
+                  {!overnight ? <Text style={[styles.heroFact, { color: known(ev.time) ? C.tealText : C.textTertiary }]}>{known(ev.time) ? ev.time : "Time TBC"}</Text> : null}
                 </View>
-              </>
-            ) : null}
-          </View>
-        )}
+                {nights && nights > 0 ? (
+                  <View style={[styles.ticketArrow, { width: 64, height: 64, borderRadius: 32, backgroundColor: categoryTone("hotel", C).bg }]}>
+                    <Text style={{ fontSize: T.lg, fontWeight: T.bold, color: C.textPrimary, fontVariant: ["tabular-nums"] }}>{nights}</Text>
+                    <Text style={{ fontSize: T.xs, color: C.textSecondary }}>{nights === 1 ? "night" : "nights"}</Text>
+                  </View>
+                ) : null}
+                <View style={{ flex: 1, minWidth: 0, alignItems: "flex-end" }}>
+                  <Text style={[styles.stayLabel, { color: C.textTertiary }]}>Check out</Text>
+                  <Text style={[styles.ticketPlace, { color: C.textPrimary, textAlign: "right" }]}>{checkOutDate ? formatShortDate(checkOutDate) : "TBC"}</Text>
+                  {!overnight ? <Text style={[styles.heroFact, { color: known(ev.endTime) ? C.tealText : C.textTertiary }]}>{known(ev.endTime) ? ev.endTime : "Time TBC"}</Text> : null}
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Transfer: a ticket like the flight's, pickup to drop-off with what you need at the kerb */}
         {route && (() => {
@@ -980,7 +981,7 @@ export default function EventDetailScreen() {
         )}
 
         {/* Who's going: the group, or the people the organiser put on it */}
-        {storyHeader && going.length > 0 && (
+        {(storyHeader || isHotel) && going.length > 0 && (
           <Animated.View style={styles.infoCard}>
             <GoingRow trip={trip} ev={ev} C={C} onPress={() => router.push({ pathname: "/trip/people", params: { tripId: trip.id } })} />
           </Animated.View>
@@ -1020,7 +1021,7 @@ export default function EventDetailScreen() {
         )}
 
         {/* Organiser contact; activities and meals name them in the Going row instead */}
-        {trip.organizer && !(storyHeader && going.length > 0) && (
+        {trip.organizer && !((storyHeader || isHotel) && going.length > 0) && (
           <Animated.View style={{ marginTop: -S.sm, marginBottom: S.md }}>
             <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} compact={isHotel} onPress={() => router.push({ pathname: "/trip/organiser", params: { tripId: trip.id } })} />
           </Animated.View>
@@ -1622,10 +1623,7 @@ function makeStyles(C: ThemeColors) {
     whenLine: { fontSize: T.sm, lineHeight: 20 },
     whenCountdown: { fontSize: T.md, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
     timeBig: { fontSize: 30, lineHeight: 36, fontWeight: T.bold, letterSpacing: -0.6, fontVariant: ["tabular-nums"] },
-    stayRow: { flexDirection: "row", alignItems: "flex-start", marginHorizontal: S.md, marginBottom: S.lg, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
-    stayDivider: { width: StyleSheet.hairlineWidth, alignSelf: "stretch", marginHorizontal: S.md },
     stayLabel: { fontSize: T.sm },
-    stayDate: { fontSize: T.lg, fontWeight: T.semibold },
     ticket: { marginHorizontal: S.md, marginBottom: S.lg, borderRadius: R.xl, paddingTop: S.md, overflow: "hidden" },
     ticketRoute: { flexDirection: "row", alignItems: "flex-start", gap: S.sm, paddingHorizontal: S.md, paddingBottom: S.md },
     ticketPlace: { fontSize: T.lg, fontWeight: T.semibold, letterSpacing: -0.2, marginTop: 2 },

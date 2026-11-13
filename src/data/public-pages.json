@@ -34,6 +34,23 @@
     "sections": [],
     "releases": [
       {
+        "date": "2026-11-13",
+        "dateLabel": "13 Nov 2026",
+        "heading": "Flight alerts that are yours, and richer trip pages",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Flight alerts only come for the flights you're on. When boarding starts, the alert tells you the terminal and gate.",
+          "Activity and meal pages lead with what you're doing, then show the forecast, sunset for evening plans and who's going.",
+          "Transfers show as a ticket with pickup and drop-off, and flight pages show your whole travel day as a timeline.",
+          "Ask Dale opens with questions to try and suggests what to ask next.",
+          "Light mode keeps your trip's photo behind every page, and flights show the airline's logo.",
+          "Maps and weather now show the right place for island resorts, and photos load faster."
+        ]
+      },
+      {
         "date": "2026-10-28",
         "dateLabel": "28 Oct 2026",
         "heading": "Dale gets live answers, and you can report a photo",

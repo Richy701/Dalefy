@@ -18,8 +18,22 @@ const TRIP_COVER = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o
  * Trip covers are stored at full camera size (often 2 MB and up), so they come through Vercel's image resizer
  * (vercel.json "images"). 2048 wide keeps the full-width hero sharp; blurred backdrops need far less.
  */
-function sizedCover(uri: string, width: 640 | 2048): string {
+function sizedCover(uri: string, width: 640 | 1080 | 2048): string {
   return TRIP_COVER.test(uri) ? `${APP_URL}/_vercel/image?url=${encodeURIComponent(uri)}&w=${width}&q=75` : uri;
+}
+
+// An event photo fills a phone's width (about 1200px), so 1080 looks the same as 2048 at a third of the bytes
+const EVENT_PHOTO = /%2Fevents%2F/;
+const widthFor = (uri: string, blurred: boolean): 640 | 1080 | 2048 => blurred ? 640 : EVENT_PHOTO.test(uri) ? 1080 : 2048;
+
+/**
+ * Fetch photos into the disk cache ahead of time (and get the resizer to make its copy), so a page opens
+ * with its photo ready. The sharp and blurred sizes both, as the event pages show both.
+ */
+export function prefetchPhotos(uris: (string | undefined)[]) {
+  if (!ExpoImage) return;
+  const urls = [...new Set(uris.filter((u): u is string => !!u).flatMap(u => [sizedCover(u, widthFor(u, false)), sizedCover(u, 640)]))];
+  if (urls.length) ExpoImage.prefetch(urls, "disk").catch(() => {});
 }
 
 interface Props {
@@ -62,7 +76,7 @@ function ImageRequest({
   const [retries, setRetries] = useState(0);
   // The resized copy failed (resizer down or over quota): use the original instead
   const [original, setOriginal] = useState(false);
-  const src = original ? uri : sizedCover(uri, blurRadius ? 640 : 2048);
+  const src = original ? uri : sizedCover(uri, widthFor(uri, !!blurRadius));
   const maxRetries = 3;
   const failed = retries > maxRetries;
   const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
