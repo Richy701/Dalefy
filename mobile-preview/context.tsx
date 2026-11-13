@@ -19,7 +19,9 @@ export function useTheme() {
   const isDark = theme === 'dark';
   return { isDark, C: applyAccentHex(isDark ? darkColors : lightColors, brand.accentColor || '#0bd2b5') };
 }
-export function useTripRole(_tripId?: string) { const { role } = usePreview(); return { role: role || 'traveler', isLeader: role === 'leader' }; }
+export function useTripRole(_tripId?: string) { const { role } = usePreview(); return { role: role || 'traveler', isLeader: role === 'leader', isCoordinator: false, canPreview: false, previewing: false }; }
+// The preview already has its own leader/traveller switch, so the phone's "Preview as a traveller" does nothing here
+export const setTravellerPreview = (_tripId: string, _on: boolean) => {};
 export const useLinkedTravelerId = (_tripId?: string) => null;
 // The preview has no signed-in person to be a coordinator, and this card reads the live server
 export const OverseeingCard = () => null;
