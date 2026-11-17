@@ -167,7 +167,13 @@ export function WorkspacePage() {
     const notified = publishedChanges(snap, { events: trip.events, start: trip.start, end: trip.end, info: trip.info });
     // The organiser counts when it's a different person: directory syncs rewrite the published copy's contact fields on their own
     const organiserWas = snap.organizer?.name?.trim() ?? "", organiserNow = trip.organizer?.name?.trim() ?? "";
+    const wasIds = new Set((snap.travelers ?? []).map(t => t.id)), nowIds = new Set((trip.travelers ?? []).map(t => t.id));
+    const travellerLines = !snap.travelers ? [] : [
+      ...(trip.travelers ?? []).filter(t => !wasIds.has(t.id)).map(t => `${t.name} added`),
+      ...snap.travelers.filter(t => !nowIds.has(t.id)).map(t => `${t.name} removed`),
+    ];
     const quiet = [
+      ...travellerLines,
       snap.name !== trip.name ? `Trip name now ${trip.name}` : "",
       snap.image !== trip.image ? "Cover photo changed" : "",
       organiserWas.toLowerCase() !== organiserNow.toLowerCase()
