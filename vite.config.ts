@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           clientsClaim: true,
           // Firebase OAuth helpers must reach the server, never the cached app shell.
-          navigateFallbackDenylist: [/\.html$/, /^\/__(?:\/|$)/, /^\/api(?:\/|$)/],
+          navigateFallbackDenylist: [/\.html$/, /^\/__(?:\/|$)/, /^\/api(?:\/|$)/, /^\/android(?:\/|$)/],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           runtimeCaching: [
