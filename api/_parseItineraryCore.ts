@@ -174,6 +174,20 @@ const AssistSchema = z.object({
   notes: z.string(),
 });
 
+const PROOFREAD_PROMPT = `You fix spelling, typos, grammar and punctuation in text a travel organiser wrote. Return the corrected text in "text".
+
+Rules:
+- Change as little as possible. Keep the organiser's wording, tone, sentence order, line breaks and formatting.
+- Never rewrite, shorten, expand or add information.
+- Keep names of people, hotels, restaurants, places, brands, flight numbers, codes, times, prices, phone numbers and links exactly as written, even if they look unusual.
+- Use the spelling variant (British or American) the text already uses.
+- Never add em dashes.
+- If nothing needs fixing, return the text unchanged.`;
+
+const ProofreadSchema = z.object({ text: z.string() });
+
+export const PROOFREAD_MAX_CHARS = 6000;
+
 /** Error with an HTTP status the route handlers can send straight to the client. */
 export class ParseHttpError extends Error {
   status: number;
@@ -431,6 +445,29 @@ export async function runAssist(client: Anthropic, input: AssistInput) {
       output_tokens: message.usage.output_tokens,
     },
   };
+}
+
+export async function runProofread(client: Anthropic, input: { text?: unknown }) {
+  const text = typeof input.text === "string" ? input.text : "";
+  if (!text.trim()) throw new ParseHttpError(400, "Nothing to check");
+  if (text.length > PROOFREAD_MAX_CHARS) throw new ParseHttpError(400, "Text is too long to check in one go");
+
+  const message = await client.messages.parse({
+    model: ASSIST_MODEL,
+    max_tokens: 4096,
+    system: PROOFREAD_PROMPT,
+    messages: [{ role: "user", content: text }],
+    output_config: { effort: "low", format: zodOutputFormat(ProofreadSchema) },
+  });
+
+  if (message.stop_reason === "refusal") {
+    throw new ParseHttpError(422, "Couldn't check this text");
+  }
+  if (!message.parsed_output) {
+    throw new ParseHttpError(500, "AI returned an unreadable result");
+  }
+
+  return { text: message.parsed_output.text || text };
 }
 
 /** Map an error from runParse/runAssist to an HTTP status + safe client message. */

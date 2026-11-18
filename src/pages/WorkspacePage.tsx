@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Files, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
+  Ticket, Headset, ChatCircleText, Megaphone, CaretLeft, Files, Moon, Sun, CircleHalf, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, MagicWand, TextAa, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus, DeviceMobile, LinkSimple, Archive, ArrowCounterClockwise, Wallet, ClockCounterClockwise, ImageSquare, LockSimple, UsersThree,
 } from "@phosphor-icons/react";
 import { lifecycleLabel } from "@/lib/tripLifecycle";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -314,6 +314,7 @@ export function WorkspacePage() {
   const [imageLastQuery, setImageLastQuery] = useState("");
   const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
+  const [proofreading, setProofreading] = useState<"description" | "notes" | null>(null);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
   const savePerson = useSavePerson();
   const [emailSaving, setEmailSaving] = useState(false);
@@ -991,6 +992,40 @@ export function WorkspacePage() {
       toast.error((err instanceof Error && err.message) || "AI assist unavailable");
     } finally {
       setAiAssistLoading(false);
+    }
+  };
+
+  const handleFixSpelling = async (field: "description" | "notes") => {
+    const original = editingEvent?.[field] || "";
+    if (!original.trim() || proofreading) return;
+    setProofreading(field);
+    try {
+      const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+      if (!idToken) {
+        toast.error("Sign in to fix spelling");
+        return;
+      }
+      const resp = await fetch("/api/parse-itinerary?mode=proofread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ text: original }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || "Couldn't check spelling");
+      }
+      const { text } = await resp.json() as { text?: string };
+      if (!text || text === original) {
+        toast.success("No spelling mistakes found");
+        return;
+      }
+      setEditingEvent(prev => prev && (prev[field] || "") === original ? { ...prev, [field]: text } : prev);
+      const undo = () => setEditingEvent(prev => prev && prev[field] === text ? { ...prev, [field]: original } : prev);
+      toast.success("Spelling fixed", { duration: 8000, action: { label: "Undo", onClick: undo }, actionButtonStyle: { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" } });
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || "Couldn't check spelling");
+    } finally {
+      setProofreading(null);
     }
   };
 
@@ -3550,14 +3585,26 @@ export function WorkspacePage() {
 
                 {/* Description (visible to travelers) */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Description (Visible to Travelers)</Label>
-                  <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium text-muted-foreground">Description (Visible to Travelers)</Label>
+                    <button type="button" onClick={() => handleFixSpelling("description")} disabled={!!proofreading || !editingEvent?.description?.trim()} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                      {proofreading === "description" ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <TextAa className="h-3.5 w-3.5" />}
+                      {proofreading === "description" ? "Checking…" : "Fix spelling"}
+                    </button>
+                  </div>
+                  <Textarea value={editingEvent?.description || ""} readOnly={proofreading === "description"} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
 
                 {/* Notes */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Agent Notes (Internal)</Label>
-                  <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium text-muted-foreground">Agent Notes (Internal)</Label>
+                    <button type="button" onClick={() => handleFixSpelling("notes")} disabled={!!proofreading || !editingEvent?.notes?.trim()} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                      {proofreading === "notes" ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <TextAa className="h-3.5 w-3.5" />}
+                      {proofreading === "notes" ? "Checking…" : "Fix spelling"}
+                    </button>
+                  </div>
+                  <Textarea value={editingEvent?.notes || ""} readOnly={proofreading === "notes"} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
               </div>
                 </TabsContent>
